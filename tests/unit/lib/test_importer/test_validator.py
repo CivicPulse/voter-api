@@ -71,6 +71,33 @@ class TestValidateRecord:
         assert not is_valid
         assert any("birth_year" in e for e in errors)
 
+    def test_non_numeric_birth_year(self) -> None:
+        """Non-numeric birth year fails with format error."""
+        record = {
+            "county": "Fulton",
+            "voter_registration_number": "12345",
+            "status": "ACTIVE",
+            "last_name": "SMITH",
+            "first_name": "JOHN",
+            "birth_year": "abc",
+        }
+        is_valid, errors = validate_record(record)
+        assert not is_valid
+        assert any("format" in e for e in errors)
+
+    def test_non_standard_status_still_valid(self) -> None:
+        """Non-standard status logs warning but doesn't fail validation."""
+        record = {
+            "county": "Fulton",
+            "voter_registration_number": "12345",
+            "status": "CUSTOM_STATUS",
+            "last_name": "SMITH",
+            "first_name": "JOHN",
+        }
+        is_valid, errors = validate_record(record)
+        assert is_valid
+        assert errors == []
+
 
 class TestIsGeocodable:
     """Tests for geocodability check."""

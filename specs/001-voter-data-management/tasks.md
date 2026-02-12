@@ -224,10 +224,10 @@
 
 **Purpose**: Quality gates, contract validation, performance, and end-to-end verification
 
-- [ ] T104 Write comprehensive contract tests for all API endpoint groups (auth, imports, geocoding, boundaries, analysis, exports) validating response schemas against OpenAPI spec in tests/contract/test_openapi/
-- [ ] T105 [P] Add request size limits to file upload endpoints (imports/voters, imports/boundaries) in src/voter_api/api/v1/imports.py
-- [ ] T106 Run full test suite, identify coverage gaps, and add targeted tests to achieve 90% threshold across all modules
-- [ ] T107 [P] Validate all public API surfaces have type hints and Google-style docstrings per constitution Principle II across src/voter_api/
+- [x] T104 Write comprehensive contract tests for all API endpoint groups (auth, imports, geocoding, boundaries, analysis, exports) validating response schemas against OpenAPI spec in tests/contract/test_openapi/
+- [x] T105 [P] Add request size limits to file upload endpoints (imports/voters, imports/boundaries) in src/voter_api/api/v1/imports.py
+- [x] T106 Run full test suite, identify coverage gaps, and add targeted tests to achieve 90% threshold across all modules
+- [x] T107 [P] Validate all public API surfaces have type hints and Google-style docstrings per constitution Principle II across src/voter_api/
 - [ ] T108 Run complete quickstart.md workflow end-to-end (setup, import voters, import boundaries, geocode, analyze, search, export) and verify all operations succeed
 - [ ] T109 [P] Create performance test fixtures: generate synthetic voter dataset (500,000 records), boundary dataset (all 15 types, ~2,000 boundaries), and pre-geocoded locations in tests/performance/conftest.py and tests/performance/fixtures/
 - [ ] T110 [P] Write performance benchmark for SC-001: import 500K voter CSV completes within 30 minutes, measure wall-clock time and memory usage in tests/performance/test_import_benchmark.py

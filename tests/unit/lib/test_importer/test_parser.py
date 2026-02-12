@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from voter_api.lib.importer.parser import detect_delimiter, detect_encoding, parse_csv_chunks
 
@@ -27,6 +28,13 @@ class TestDetectDelimiter:
         f = tmp_path / "test.csv"
         f.write_text("County\tVoter Registration #\tStatus\nFulton\t12345\tACTIVE\n")
         assert detect_delimiter(f) == "\t"
+
+    def test_no_delimiter_raises(self, tmp_path: Path) -> None:
+        """Raise ValueError when no delimiter can be detected."""
+        f = tmp_path / "test.csv"
+        f.write_text("single_column_no_delimiter\n")
+        with pytest.raises(ValueError, match="Cannot detect delimiter"):
+            detect_delimiter(f)
 
 
 class TestDetectEncoding:

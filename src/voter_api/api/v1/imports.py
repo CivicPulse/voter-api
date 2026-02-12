@@ -24,6 +24,10 @@ from voter_api.services.boundary_service import import_boundaries
 
 router = APIRouter(prefix="/imports", tags=["imports"])
 
+# Max file sizes for uploads
+MAX_VOTER_FILE_SIZE = 500 * 1024 * 1024  # 500 MB
+MAX_BOUNDARY_FILE_SIZE = 200 * 1024 * 1024  # 200 MB
+
 
 @router.post("/voters", response_model=ImportJobResponse, status_code=202)
 async def import_voters(
@@ -36,9 +40,14 @@ async def import_voters(
     if not file.filename:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No file provided")
 
-    # Save uploaded file to temp location
+    # Save uploaded file to temp location with size limit
     with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
         content = await file.read()
+        if len(content) > MAX_VOTER_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File exceeds maximum size of {MAX_VOTER_FILE_SIZE // (1024 * 1024)} MB",
+            )
         tmp.write(content)
         tmp_path = Path(tmp.name)
 
@@ -86,6 +95,11 @@ async def import_boundary_file(
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         content = await file.read()
+        if len(content) > MAX_BOUNDARY_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File exceeds maximum size of {MAX_BOUNDARY_FILE_SIZE // (1024 * 1024)} MB",
+            )
         tmp.write(content)
         tmp_path = Path(tmp.name)
 

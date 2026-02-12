@@ -1,6 +1,7 @@
 """Tests for the JSON export writer."""
 
 import json
+from datetime import UTC, date, datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -49,6 +50,24 @@ class TestJSONWriter:
 
         data = json.loads(output.read_text())
         assert data[0]["value"] is None
+
+    def test_handles_datetime(self, tmp_path: Path) -> None:
+        output = tmp_path / "test.json"
+        dt = datetime(2024, 6, 15, 12, 30, 0, tzinfo=UTC)
+        records = [{"name": "test", "created_at": dt}]
+        write_json(output, records)
+
+        data = json.loads(output.read_text())
+        assert data[0]["created_at"] == dt.isoformat()
+
+    def test_handles_date(self, tmp_path: Path) -> None:
+        output = tmp_path / "test.json"
+        d = date(2024, 6, 15)
+        records = [{"name": "test", "date_of_birth": d}]
+        write_json(output, records)
+
+        data = json.loads(output.read_text())
+        assert data[0]["date_of_birth"] == "2024-06-15"
 
     def test_valid_json_structure(self, tmp_path: Path) -> None:
         output = tmp_path / "test.json"
