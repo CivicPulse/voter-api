@@ -123,6 +123,7 @@ tests/
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes
+- 002-static-dataset-publish: Added Python 3.13 + FastAPI, SQLAlchemy 2.x + GeoAlchemy2, Typer, Pydantic v2, boto3 (new), Loguru
 
 ### 002-static-dataset-publish
 
@@ -132,6 +133,7 @@ Key files:
 
 - `src/voter_api/models/county_metadata.py` — ORM model (18 typed columns)
 - `src/voter_api/services/county_metadata_service.py` — import (upsert by GEOID) and query
-- `src/voter_api/schemas/county_metadata.py` — Pydantic response with computed `land_area_km2`/`water_area_km2`
-- `src/voter_api/cli/import_cmd.py` — metadata extraction during county boundary import (`_TIGER_TO_METADATA` mapping)
-- `alembic/versions/011_county_metadata.py` — migration
+
+## Active Technologies
+- Python 3.13 + FastAPI, SQLAlchemy 2.x + GeoAlchemy2, Typer, Pydantic v2, boto3 (new), Loguru (002-static-dataset-publish)
+- PostgreSQL + PostGIS (read-only for this feature), Cloudflare R2 (new, S3-compatible) (002-static-dataset-publish)

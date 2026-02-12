@@ -83,6 +83,13 @@ def read_shapefile(file_path: Path) -> list[BoundaryData]:
             logger.warning("Skipping row with no identifier (likely remainder polygon)")
             continue
 
+        # Skip remainder polygons: if a district-type column exists but is
+        # NaN/empty for this row, the row is a remainder polygon even if a
+        # generic fallback like "ID" produced an identifier.
+        if _is_remainder_polygon(row, gdf.columns):
+            logger.warning(f"Skipping remainder polygon (district column is NaN, fallback ID={identifier})")
+            continue
+
         boundaries.append(
             BoundaryData(
                 name=name or f"Boundary {len(boundaries) + 1}",
@@ -94,6 +101,30 @@ def read_shapefile(file_path: Path) -> list[BoundaryData]:
 
     logger.info(f"Parsed {len(boundaries)} boundaries from shapefile")
     return boundaries
+
+
+def _is_remainder_polygon(row: object, columns: object) -> bool:
+    """Detect remainder polygons where a district column exists but is NaN/empty.
+
+    Some shapefiles include a statewide or county-wide "remainder" polygon
+    alongside real district polygons.  These rows have NaN in the district
+    column but may still have a generic row-number ``ID`` that would otherwise
+    pass the null-identifier check.
+
+    Args:
+        row: A GeoDataFrame row.
+        columns: The column index of the GeoDataFrame.
+
+    Returns:
+        True if the row appears to be a remainder polygon.
+    """
+    district_columns = ["DISTRICT", "DISTRICTID"]
+    for col in district_columns:
+        if col in columns:
+            val = _serialize_value(row[col])  # type: ignore[index]
+            if val is None or str(val).strip() == "":
+                return True
+    return False
 
 
 def _extract_field(row: object, candidates: list[str]) -> str | None:

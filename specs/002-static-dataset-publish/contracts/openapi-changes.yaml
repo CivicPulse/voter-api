@@ -73,7 +73,29 @@ paths:
                 format: uri
                 example: https://geo.example.com/boundaries/congressional.geojson
 
-  # ──────────────── New Endpoint ────────────────
+  # ──────────────── New Endpoint: Discovery ────────────────
+  /datasets:
+    get:
+      tags: [Datasets]
+      summary: Discover published static datasets
+      operationId: getPublishedDatasets
+      description: |
+        Returns the base URL for public static files and a list of
+        currently published datasets with their full public URLs.
+        No authentication required. Intended for UIs, developers,
+        and AI agents to discover and directly access published
+        static files.
+      security: []
+      parameters: []
+      responses:
+        "200":
+          description: Published dataset discovery
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatasetDiscoveryResponse"
+
+  # ──────────────── New Endpoint: Publish Status ────────────────
   /boundaries/publish/status:
     get:
       tags: [Boundaries]
@@ -164,6 +186,38 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PublishedDatasetInfo"
+
+    DatasetDiscoveryResponse:
+      type: object
+      required: [base_url, datasets]
+      properties:
+        base_url:
+          type: string
+          format: uri
+          description: R2 public URL prefix for constructing paths to any public content
+        datasets:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoveredDataset"
+
+    DiscoveredDataset:
+      type: object
+      required: [name, url, boundary_type, record_count]
+      properties:
+        name:
+          type: string
+          description: Dataset name (e.g., "congressional", "all-boundaries")
+        url:
+          type: string
+          format: uri
+          description: Full public URL for direct access
+        boundary_type:
+          type: string
+          nullable: true
+          description: Boundary type (null for combined file)
+        record_count:
+          type: integer
+          description: Number of boundary features
 
     PublishedDatasetInfo:
       type: object

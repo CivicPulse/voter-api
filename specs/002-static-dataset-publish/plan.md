@@ -5,7 +5,7 @@
 
 ## Summary
 
-Generate static GeoJSON files from boundary data and upload them to Cloudflare R2 (S3-compatible) object storage via a CLI command. The existing `/api/v1/boundaries/geojson` endpoint is modified to return HTTP 302 redirects to the static files when available, falling back to database-served responses when not. A `manifest.json` file on R2 tracks published datasets and is cached by the API with a 5-minute TTL.
+Generate static GeoJSON files from boundary data and upload them to Cloudflare R2 (S3-compatible) object storage via a CLI command. The existing `/api/v1/boundaries/geojson` endpoint is modified to return HTTP 302 redirects to the static files when available, falling back to database-served responses when not. A `manifest.json` file on R2 tracks published datasets and is cached by the API with a 5-minute TTL. A public discovery endpoint (`GET /api/v1/datasets`) exposes the R2 base URL and published dataset list for consumers.
 
 **Technical approach**: boto3 for R2 uploads (sync CLI + `asyncio.to_thread()` for async manifest fetch), library-first architecture with `lib/publisher/`, manifest-based redirect lookup, ordered uploads (data files first, manifest last) for atomicity.
 
@@ -32,8 +32,8 @@ Generate static GeoJSON files from boundary data and upload them to Cloudflare R
 | III. Testing Discipline (NON-NEGOTIABLE) | PASS | Unit tests for library (moto for S3), integration tests for CLI + API redirect, contract tests for endpoint changes. 90% coverage target |
 | IV. Twelve-Factor Configuration | PASS | All R2 config via env vars (`R2_ENABLED`, `R2_ACCOUNT_ID`, etc.), validated by Pydantic Settings |
 | V. Developer Experience | PASS | CLI via Typer (`voter-api publish datasets`, `voter-api publish status`), works with `uv run` |
-| VI. API Documentation | PASS | Modified endpoint + new status endpoint documented via OpenAPI/Pydantic schemas |
-| VII. Security by Design | PASS | R2 credentials in env vars only, publish commands require DB access (admin context), status endpoint requires admin auth |
+| VI. API Documentation | PASS | Modified endpoint + new discovery endpoint + new status endpoint documented via OpenAPI/Pydantic schemas |
+| VII. Security by Design | PASS | R2 credentials in env vars only, publish commands require DB access (admin context), status endpoint requires admin auth, discovery endpoint intentionally public per spec |
 | VIII. CI/CD & Version Control | PASS | Conventional commits, feature branch, all quality gates |
 
 **Post-Phase 1 re-check**: All principles satisfied. No violations.
@@ -75,9 +75,10 @@ src/voter_api/
 │   ├── app.py                     # MODIFY: Register publish subcommand
 │   └── publish_cmd.py             # NEW: Typer publish commands
 ├── api/v1/
-│   └── boundaries.py              # MODIFY: Add redirect logic to geojson endpoint
+│   ├── boundaries.py              # MODIFY: Add redirect logic to geojson endpoint
+│   └── datasets.py                # NEW: Public discovery endpoint
 └── schemas/
-    └── publish.py                 # NEW: Pydantic schemas for publish status response
+    └── publish.py                 # NEW: Pydantic schemas for publish status + discovery
 
 tests/
 ├── unit/
@@ -111,7 +112,8 @@ tests/
 | CREATE | `src/voter_api/lib/publisher/manifest.py` | Manifest logic + caching |
 | CREATE | `src/voter_api/services/publish_service.py` | Service orchestration |
 | CREATE | `src/voter_api/cli/publish_cmd.py` | CLI commands |
-| CREATE | `src/voter_api/schemas/publish.py` | Response schemas |
+| CREATE | `src/voter_api/schemas/publish.py` | Response schemas (status + discovery) |
+| CREATE | `src/voter_api/api/v1/datasets.py` | Public discovery endpoint (FR-022) |
 | CREATE | `tests/unit/lib/test_publisher/` | Unit tests |
 | CREATE | `tests/integration/test_publish_cli.py` | CLI integration tests |
 | CREATE | `tests/integration/test_publish_redirect.py` | API redirect tests |
@@ -219,6 +221,17 @@ The existing `get_boundaries_geojson` function is modified:
 3. Call `get_redirect_url(manifest, boundary_type, county, source)`
 4. If redirect URL found → return `RedirectResponse(url, status_code=302)`
 5. If no redirect URL → fall through to existing database logic (unchanged)
+
+### Discovery Endpoint (`api/v1/datasets.py`)
+
+New public endpoint implementing FR-022:
+
+- `GET /api/v1/datasets` — no authentication required
+- Reads `r2_public_url` from settings as `base_url`
+- Reads cached manifest for dataset list
+- Returns `DatasetDiscoveryResponse` with `base_url` + datasets list
+- Returns empty datasets list with `base_url` when no manifest loaded
+- Returns 503 or empty response when R2 not configured
 
 ### CLI Commands (`cli/publish_cmd.py`)
 
