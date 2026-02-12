@@ -11,6 +11,9 @@ import geopandas as gpd
 from loguru import logger
 from shapely.geometry import MultiPolygon, Polygon
 
+# Maximum file size for shapefile input (500 MB uncompressed)
+MAX_SHAPEFILE_SIZE_BYTES = 500 * 1024 * 1024
+
 
 @dataclass
 class BoundaryData:
@@ -38,6 +41,11 @@ def read_shapefile(file_path: Path) -> list[BoundaryData]:
     """
     logger.info(f"Reading shapefile: {file_path}")
 
+    # Validate file size to guard against zip bombs
+    if file_path.is_file() and file_path.stat().st_size > MAX_SHAPEFILE_SIZE_BYTES:
+        msg = f"Shapefile exceeds maximum size of {MAX_SHAPEFILE_SIZE_BYTES // (1024 * 1024)} MB: {file_path}"
+        raise ValueError(msg)
+
     gdf = gpd.read_file(file_path, engine="pyogrio")
 
     if gdf.empty:
@@ -53,7 +61,7 @@ def read_shapefile(file_path: Path) -> list[BoundaryData]:
 
     for _, row in gdf.iterrows():
         geom = row.geometry
-        if geom is None:
+        if geom is None or not hasattr(geom, "geom_type"):
             continue
 
         # Convert to MultiPolygon if needed
@@ -86,7 +94,10 @@ def read_shapefile(file_path: Path) -> list[BoundaryData]:
 def _extract_field(row: object, candidates: list[str]) -> str | None:
     """Try to extract a field value from common column name patterns."""
     for col in candidates:
-        val = getattr(row, col, None) if hasattr(row, col) else None
+        try:
+            val = row[col]  # type: ignore[index]
+        except (KeyError, IndexError, TypeError):
+            continue
         if val is not None and str(val).strip():
             return str(val).strip()
     return None

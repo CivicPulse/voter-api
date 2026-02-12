@@ -8,6 +8,7 @@ from shapely.geometry import mapping
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.dependencies import get_async_session, get_current_user
+from voter_api.models.user import User
 from voter_api.schemas.boundary import (
     BoundaryDetailResponse,
     BoundarySummaryResponse,
@@ -34,7 +35,7 @@ async def list_all_boundaries(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     session: AsyncSession = Depends(get_async_session),
-    _current_user: dict = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
 ) -> PaginatedBoundaryResponse:
     """List boundaries with optional filters."""
     boundaries, total = await list_boundaries(
@@ -65,7 +66,7 @@ async def containing_point(
     longitude: float = Query(..., ge=-180, le=180),
     boundary_type: str | None = Query(None),
     session: AsyncSession = Depends(get_async_session),
-    _current_user: dict = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
 ) -> list[BoundarySummaryResponse]:
     """Find all boundaries containing a given point."""
     boundaries = await find_containing_boundaries(session, latitude, longitude, boundary_type)
@@ -80,7 +81,7 @@ async def get_boundary_detail(
     boundary_id: uuid.UUID,
     include_geometry: bool = Query(True),
     session: AsyncSession = Depends(get_async_session),
-    _current_user: dict = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
 ) -> BoundaryDetailResponse:
     """Get boundary details with optional geometry."""
     boundary = await get_boundary(session, boundary_id)

@@ -232,7 +232,7 @@ async def _geocode_with_retry(
 
         if attempt < MAX_RETRIES - 1:
             delay = RETRY_BASE_DELAY * (2**attempt)
-            logger.debug(f"Geocoding retry {attempt + 1}/{MAX_RETRIES} in {delay}s for: {address[:50]}...")
+            logger.debug(f"Geocoding retry {attempt + 1}/{MAX_RETRIES} in {delay}s")
             await asyncio.sleep(delay)
 
     return None

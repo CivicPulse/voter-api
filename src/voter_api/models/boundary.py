@@ -3,7 +3,7 @@
 from datetime import date, datetime
 
 from geoalchemy2 import Geometry
-from sqlalchemy import Date, DateTime, String, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, Index, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -52,4 +52,5 @@ class Boundary(Base, UUIDMixin):
 
     __table_args__ = (
         UniqueConstraint("boundary_type", "boundary_identifier", "county", name="uq_boundary_type_id_county"),
+        Index("idx_boundaries_geometry", "geometry", postgresql_using="gist"),
     )

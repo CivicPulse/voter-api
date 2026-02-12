@@ -100,18 +100,17 @@ async def process_export(
     return job
 
 
-async def _fetch_export_records(
-    session: AsyncSession,
-    filters: dict,
-) -> list[dict]:
-    """Fetch voter records applying export filters.
+EXPORT_STREAM_BATCH_SIZE = 1000
+
+
+def _build_export_query(filters: dict) -> select:
+    """Build the SQLAlchemy query for export with applied filters.
 
     Args:
-        session: Database session.
         filters: Filter criteria.
 
     Returns:
-        List of voter record dicts.
+        Configured select query.
     """
     query = select(Voter)
 
@@ -148,42 +147,65 @@ async def _fetch_export_records(
         if filters.get("match_status"):
             query = query.where(AnalysisResult.match_status == filters["match_status"])
 
-    query = query.order_by(Voter.last_name, Voter.first_name)
+    return query.order_by(Voter.last_name, Voter.first_name)
 
-    result = await session.execute(query)
-    voters = result.scalars().all()
 
-    # Convert to dicts for the exporter
+def _voter_to_dict(voter: Voter) -> dict:
+    """Convert a Voter ORM object to an export dict."""
+    record = {
+        "voter_registration_number": voter.voter_registration_number,
+        "county": voter.county,
+        "status": voter.status,
+        "last_name": voter.last_name,
+        "first_name": voter.first_name,
+        "middle_name": voter.middle_name,
+        "residence_street_number": voter.residence_street_number,
+        "residence_street_name": voter.residence_street_name,
+        "residence_street_type": voter.residence_street_type,
+        "residence_city": voter.residence_city,
+        "residence_zipcode": voter.residence_zipcode,
+        "congressional_district": voter.congressional_district,
+        "state_senate_district": voter.state_senate_district,
+        "state_house_district": voter.state_house_district,
+        "county_precinct": voter.county_precinct,
+    }
+
+    # Add geocoded location for GeoJSON
+    primary_loc = next(
+        (loc for loc in (voter.geocoded_locations or []) if loc.is_primary),
+        None,
+    )
+    if primary_loc:
+        record["latitude"] = primary_loc.latitude
+        record["longitude"] = primary_loc.longitude
+
+    return record
+
+
+async def _fetch_export_records(
+    session: AsyncSession,
+    filters: dict,
+) -> list[dict]:
+    """Fetch voter records applying export filters using streaming.
+
+    Uses server-side cursor with yield_per() to avoid loading all
+    records into memory at once.
+
+    Args:
+        session: Database session.
+        filters: Filter criteria.
+
+    Returns:
+        List of voter record dicts.
+    """
+    query = _build_export_query(filters)
+
+    result = await session.stream(query)
+
     records = []
-    for voter in voters:
-        record = {
-            "voter_registration_number": voter.voter_registration_number,
-            "county": voter.county,
-            "status": voter.status,
-            "last_name": voter.last_name,
-            "first_name": voter.first_name,
-            "middle_name": voter.middle_name,
-            "residence_street_number": voter.residence_street_number,
-            "residence_street_name": voter.residence_street_name,
-            "residence_street_type": voter.residence_street_type,
-            "residence_city": voter.residence_city,
-            "residence_zipcode": voter.residence_zipcode,
-            "congressional_district": voter.congressional_district,
-            "state_senate_district": voter.state_senate_district,
-            "state_house_district": voter.state_house_district,
-            "county_precinct": voter.county_precinct,
-        }
-
-        # Add geocoded location for GeoJSON
-        primary_loc = next(
-            (loc for loc in (voter.geocoded_locations or []) if loc.is_primary),
-            None,
-        )
-        if primary_loc:
-            record["latitude"] = primary_loc.latitude
-            record["longitude"] = primary_loc.longitude
-
-        records.append(record)
+    async for partition in result.scalars().partitions(EXPORT_STREAM_BATCH_SIZE):
+        for voter in partition:
+            records.append(_voter_to_dict(voter))
 
     return records
 

@@ -48,9 +48,10 @@ def create_app() -> FastAPI:
             content={"detail": str(exc)},
         )
 
-    # Import and include routers
-    from voter_api.api.router import create_router
+    # Register middleware and routers
+    from voter_api.api.router import create_router, setup_middleware
 
+    setup_middleware(app, settings)
     app.include_router(create_router(settings))
 
     return app

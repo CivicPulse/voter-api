@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     )
 
     # JWT
-    jwt_secret_key: str = Field(description="Secret key for signing JWTs")
+    jwt_secret_key: str = Field(min_length=32, description="Secret key for signing JWTs (minimum 32 characters)")
     jwt_algorithm: str = Field(default="HS256", description="JWT signing algorithm")
     jwt_access_token_expire_minutes: int = Field(
         default=30,
@@ -72,8 +72,8 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: str = Field(
-        default="*",
-        description="Comma-separated list of allowed CORS origins",
+        default="",
+        description="Comma-separated list of allowed CORS origins (must be explicitly configured)",
     )
 
     # API

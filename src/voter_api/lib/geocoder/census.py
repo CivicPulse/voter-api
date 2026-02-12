@@ -47,13 +47,13 @@ class CensusGeocoder(BaseGeocoder):
             return self._parse_response(data)
 
         except httpx.TimeoutException:
-            logger.warning(f"Census geocoder timeout for address: {address[:50]}...")
+            logger.warning("Census geocoder timeout for address (redacted)")
             return None
         except httpx.HTTPStatusError as e:
-            logger.warning(f"Census geocoder HTTP error {e.response.status_code}: {address[:50]}...")
+            logger.warning(f"Census geocoder HTTP error {e.response.status_code}")
             return None
         except Exception:
-            logger.exception(f"Census geocoder unexpected error: {address[:50]}...")
+            logger.exception("Census geocoder unexpected error")
             return None
 
     def _parse_response(self, data: dict) -> GeocodingResult | None:

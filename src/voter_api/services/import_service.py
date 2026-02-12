@@ -170,13 +170,14 @@ async def process_voter_import(
 
                 succeeded += 1
 
-            await session.commit()
+            # Flush batch data without committing
+            await session.flush()
 
-            # Update checkpoint
+            # Update checkpoint and commit batch atomically
             job.last_processed_offset = chunk_idx + 1
             await session.commit()
 
-        # Soft-delete absent voters
+        # Soft-delete absent voters and update job status in one transaction
         absent_reg_numbers = previous_reg_numbers - imported_reg_numbers
         if absent_reg_numbers:
             await session.execute(
@@ -184,11 +185,10 @@ async def process_voter_import(
                 .where(Voter.voter_registration_number.in_(absent_reg_numbers))
                 .values(present_in_latest_import=False, soft_deleted_at=datetime.now(UTC))
             )
-            await session.commit()
 
         soft_deleted = len(absent_reg_numbers)
 
-        # Update job
+        # Update job status and commit everything atomically
         job.status = "completed"
         job.total_records = total
         job.records_succeeded = succeeded

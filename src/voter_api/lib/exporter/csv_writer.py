@@ -5,6 +5,27 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
+# Characters that trigger formula execution in spreadsheet applications
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _sanitize_cell(value: object) -> object:
+    """Sanitize a cell value to prevent CSV formula injection.
+
+    Prefixes values starting with formula-triggering characters with
+    a single quote to prevent execution in spreadsheet applications.
+
+    Args:
+        value: The cell value to sanitize.
+
+    Returns:
+        The sanitized value.
+    """
+    if isinstance(value, str) and value and value[0] in _FORMULA_PREFIXES:
+        return f"'{value}"
+    return value
+
+
 # Default columns for CSV export
 DEFAULT_COLUMNS = [
     "voter_registration_number",
@@ -49,7 +70,8 @@ def write_csv(
         writer.writeheader()
 
         for record in records:
-            writer.writerow(record)
+            sanitized = {k: _sanitize_cell(v) for k, v in record.items()}
+            writer.writerow(sanitized)
             count += 1
 
     return count

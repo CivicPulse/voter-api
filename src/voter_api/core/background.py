@@ -11,6 +11,8 @@ import uuid
 from collections.abc import Coroutine
 from typing import Any, Protocol
 
+from loguru import logger
+
 
 class JobStatus(enum.StrEnum):
     """Status of a background job."""
@@ -77,6 +79,7 @@ class InProcessTaskRunner:
                 self._jobs[job_id] = JobStatus.COMPLETED
             except Exception:
                 self._jobs[job_id] = JobStatus.FAILED
+                logger.exception(f"Background task {job_id} failed")
                 raise
 
         task = asyncio.create_task(_run())

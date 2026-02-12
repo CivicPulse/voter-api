@@ -62,11 +62,14 @@ async def import_voters(
     async def _run_import() -> None:
         from voter_api.core.database import get_session_factory
 
-        factory = get_session_factory()
-        async with factory() as bg_session:
-            bg_job = await import_service.get_import_job(bg_session, job.id)
-            if bg_job:
-                await import_service.process_voter_import(bg_session, bg_job, tmp_path, settings.import_batch_size)
+        try:
+            factory = get_session_factory()
+            async with factory() as bg_session:
+                bg_job = await import_service.get_import_job(bg_session, job.id)
+                if bg_job:
+                    await import_service.process_voter_import(bg_session, bg_job, tmp_path, settings.import_batch_size)
+        finally:
+            tmp_path.unlink(missing_ok=True)
 
     task_runner.submit_task(_run_import())
     return ImportJobResponse.model_validate(job)
@@ -103,13 +106,16 @@ async def import_boundary_file(
         tmp.write(content)
         tmp_path = Path(tmp.name)
 
-    boundaries = await import_boundaries(
-        session,
-        file_path=tmp_path,
-        boundary_type=boundary_type,
-        source=source,
-        county=county,
-    )
+    try:
+        boundaries = await import_boundaries(
+            session,
+            file_path=tmp_path,
+            boundary_type=boundary_type,
+            source=source,
+            county=county,
+        )
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
     return {"imported": len(boundaries), "boundary_type": boundary_type}
 

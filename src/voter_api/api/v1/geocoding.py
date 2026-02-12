@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.background import task_runner
 from voter_api.core.dependencies import get_async_session, get_current_user, require_role
+from voter_api.models.user import User
 from voter_api.schemas.geocoding import (
     BatchGeocodingRequest,
     CacheStatsResponse,
@@ -31,7 +32,7 @@ geocoding_router = APIRouter(prefix="/geocoding", tags=["geocoding"])
 async def trigger_batch_geocoding(
     request: BatchGeocodingRequest,
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
-    current_user: dict = Depends(get_current_user),  # noqa: B008
+    current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> GeocodingJobResponse:
     """Trigger a batch geocoding job (admin only)."""
     job = await create_geocoding_job(
@@ -39,7 +40,7 @@ async def trigger_batch_geocoding(
         provider=request.provider,
         county=request.county,
         force_regeocode=request.force_regeocode,
-        triggered_by=uuid.UUID(current_user["sub"]),
+        triggered_by=current_user.id,
     )
 
     # Run geocoding in background
@@ -52,7 +53,7 @@ async def trigger_batch_geocoding(
             if bg_job:
                 await process_geocoding_job(bg_session, bg_job)
 
-    task_runner.submit(_run_geocoding())
+    task_runner.submit_task(_run_geocoding())
 
     return GeocodingJobResponse.model_validate(job)
 
@@ -64,7 +65,7 @@ async def trigger_batch_geocoding(
 async def get_geocoding_status(
     job_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
-    _current_user: dict = Depends(get_current_user),  # noqa: B008
+    _current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> GeocodingJobResponse:
     """Get the status of a geocoding job."""
     job = await get_geocoding_job(session, job_id)
@@ -79,7 +80,7 @@ async def get_geocoding_status(
 )
 async def get_cache_statistics(
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
-    _current_user: dict = Depends(get_current_user),  # noqa: B008
+    _current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> CacheStatsResponse:
     """Get per-provider geocoding cache statistics."""
     stats = await get_cache_stats(session)
