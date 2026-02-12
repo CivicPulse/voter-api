@@ -1,4 +1,4 @@
-"""Integration tests for API redirect to static files on R2."""
+"""Integration tests for API redirect to static files on R2 and dataset discovery."""
 
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -9,6 +9,7 @@ from httpx import ASGITransport, AsyncClient
 
 from voter_api.api.v1 import boundaries as boundaries_module
 from voter_api.api.v1.boundaries import boundaries_router
+from voter_api.api.v1.datasets import datasets_router
 from voter_api.core.dependencies import get_async_session
 from voter_api.lib.publisher.manifest import ManifestCache
 from voter_api.lib.publisher.types import DatasetEntry, ManifestData
@@ -85,9 +86,10 @@ def mock_settings_r2_disabled():
 
 @pytest.fixture
 def app() -> FastAPI:
-    """Create a minimal FastAPI app with the boundaries router."""
+    """Create a minimal FastAPI app with boundaries and datasets routers."""
     app = FastAPI()
     app.include_router(boundaries_router, prefix="/api/v1")
+    app.include_router(datasets_router, prefix="/api/v1")
     app.dependency_overrides[get_async_session] = lambda: AsyncMock()
     return app
 
@@ -185,5 +187,57 @@ class TestFallbackToDB:
             ),
         ):
             resp = await client.get("/api/v1/boundaries/geojson")
+
+        assert resp.status_code == 200
+
+
+class TestDiscoveryEndpointIntegration:
+    """Integration tests for GET /api/v1/datasets discovery endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_returns_datasets_from_cached_manifest(self, client: AsyncClient, mock_settings_r2_enabled) -> None:
+        """Returns 200 with base_url and datasets from cached manifest."""
+        cache = ManifestCache(ttl_seconds=300)
+        cache.set(_make_manifest_data())
+        boundaries_module._manifest_cache = cache
+
+        with patch("voter_api.api.v1.datasets.get_settings", return_value=mock_settings_r2_enabled):
+            resp = await client.get("/api/v1/datasets")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["base_url"] == "https://geo.example.com"
+        assert len(data["datasets"]) == 2
+        names = {ds["name"] for ds in data["datasets"]}
+        assert "congressional" in names
+        assert "all-boundaries" in names
+
+    @pytest.mark.asyncio
+    async def test_returns_null_base_url_when_r2_disabled(self, client: AsyncClient, mock_settings_r2_disabled) -> None:
+        """Returns base_url=null and empty datasets when R2 not configured."""
+        with patch("voter_api.api.v1.datasets.get_settings", return_value=mock_settings_r2_disabled):
+            resp = await client.get("/api/v1/datasets")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["base_url"] is None
+        assert data["datasets"] == []
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_datasets_when_no_manifest(self, client: AsyncClient, mock_settings_r2_enabled) -> None:
+        """Returns base_url with empty datasets when R2 configured but no manifest."""
+        with patch("voter_api.api.v1.datasets.get_settings", return_value=mock_settings_r2_enabled):
+            resp = await client.get("/api/v1/datasets")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["base_url"] == "https://geo.example.com"
+        assert data["datasets"] == []
+
+    @pytest.mark.asyncio
+    async def test_no_auth_required(self, client: AsyncClient, mock_settings_r2_enabled) -> None:
+        """Endpoint requires no authentication — no Authorization header needed."""
+        with patch("voter_api.api.v1.datasets.get_settings", return_value=mock_settings_r2_enabled):
+            resp = await client.get("/api/v1/datasets")
 
         assert resp.status_code == 200

@@ -52,13 +52,22 @@ def _create_r2_client_from_settings(settings: Any) -> Any:
 
 @publish_app.command("datasets")
 def datasets_command(
+    boundary_type: str | None = typer.Option(None, "--boundary-type", help="Publish only this boundary type"),
+    county: str | None = typer.Option(None, "--county", help="Republish types containing this county's boundaries"),
+    source: str | None = typer.Option(None, "--source", help="Republish types containing this source's boundaries"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed progress"),
 ) -> None:
     """Generate and upload boundary GeoJSON datasets to R2."""
-    asyncio.run(_datasets_command(verbose=verbose))
+    asyncio.run(_datasets_command(boundary_type=boundary_type, county=county, source=source, verbose=verbose))
 
 
-async def _datasets_command(*, verbose: bool = False) -> None:
+async def _datasets_command(
+    *,
+    boundary_type: str | None = None,
+    county: str | None = None,
+    source: str | None = None,
+    verbose: bool = False,
+) -> None:
     """Async implementation of the datasets publish command."""
     from voter_api.core.config import get_settings
     from voter_api.core.database import dispose_engine, get_session_factory, init_engine
@@ -88,6 +97,9 @@ async def _datasets_command(*, verbose: bool = False) -> None:
                 settings.r2_public_url or "",
                 settings.r2_prefix,
                 publisher_version=_get_publisher_version(),
+                boundary_type=boundary_type,
+                county=county,
+                source=source,
             )
 
         if not result.datasets:
@@ -112,3 +124,44 @@ async def _datasets_command(*, verbose: bool = False) -> None:
         raise typer.Exit(code=1) from exc
     finally:
         await dispose_engine()
+
+
+@publish_app.command("status")
+def status_command() -> None:
+    """Show status of published datasets on R2."""
+    asyncio.run(_status_command())
+
+
+async def _status_command() -> None:
+    """Async implementation of the status command."""
+    from voter_api.core.config import get_settings
+    from voter_api.lib.publisher.storage import fetch_manifest
+
+    settings = get_settings()
+
+    if not settings.r2_enabled:
+        typer.echo("R2 publishing is not configured.")
+        return
+
+    client = _create_r2_client_from_settings(settings)
+    manifest_key = f"{settings.r2_prefix}manifest.json".lstrip("/")
+
+    try:
+        manifest = fetch_manifest(client, settings.r2_bucket, manifest_key)
+    except Exception as exc:
+        typer.echo(f"Error: Failed to fetch manifest from R2: {exc}")
+        raise typer.Exit(code=1) from exc
+
+    if manifest is None:
+        typer.echo("No datasets have been published yet.")
+        return
+
+    typer.echo(f"Published Datasets (last updated: {manifest.published_at.strftime('%Y-%m-%d %H:%M:%S UTC')})")
+    typer.echo("─" * 60)
+
+    for name, ds in sorted(manifest.datasets.items()):
+        size_mb = ds.file_size_bytes / (1024 * 1024)
+        typer.echo(
+            f"  {name + '.geojson':30s}  {ds.record_count:>6,} features  {size_mb:>7.1f} MB  "
+            f"  {ds.published_at.strftime('%Y-%m-%d %H:%M:%S')}"
+        )

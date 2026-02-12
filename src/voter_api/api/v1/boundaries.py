@@ -11,7 +11,7 @@ from shapely.geometry import mapping
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.config import get_settings
-from voter_api.core.dependencies import get_async_session
+from voter_api.core.dependencies import get_async_session, require_role
 from voter_api.lib.publisher.manifest import ManifestCache, get_redirect_url
 from voter_api.lib.publisher.storage import fetch_manifest
 from voter_api.schemas.boundary import (
@@ -23,6 +23,7 @@ from voter_api.schemas.boundary import (
     PaginatedBoundaryResponse,
 )
 from voter_api.schemas.common import PaginationMeta
+from voter_api.schemas.publish import PublishedDatasetInfo, PublishStatusResponse
 from voter_api.services.boundary_service import (
     find_containing_boundaries,
     get_boundary,
@@ -206,6 +207,46 @@ async def get_boundary_types(
     """
     types = await list_boundary_types(session)
     return BoundaryTypesResponse(types=types)
+
+
+@boundaries_router.get(
+    "/publish/status",
+    response_model=PublishStatusResponse,
+)
+async def get_publish_status(
+    _admin: object = Depends(require_role("admin")),
+) -> PublishStatusResponse:
+    """Get status of published boundary datasets.
+
+    Requires admin authentication.
+    """
+    settings = get_settings()
+    cache = _get_manifest_cache()
+    manifest = cache.get_data_unchecked()
+
+    datasets_info: list[PublishedDatasetInfo] = []
+    if manifest:
+        for ds in manifest.datasets.values():
+            datasets_info.append(
+                PublishedDatasetInfo(
+                    name=ds.name,
+                    key=ds.key,
+                    public_url=ds.public_url,
+                    content_type=ds.content_type,
+                    record_count=ds.record_count,
+                    file_size_bytes=ds.file_size_bytes,
+                    boundary_type=ds.boundary_type,
+                    published_at=ds.published_at,
+                )
+            )
+
+    return PublishStatusResponse(
+        configured=settings.r2_enabled,
+        manifest_loaded=manifest is not None,
+        manifest_published_at=manifest.published_at if manifest else None,
+        manifest_cached_at=cache.cached_at_datetime,
+        datasets=datasets_info,
+    )
 
 
 @boundaries_router.get(

@@ -230,3 +230,188 @@ class TestPublishDatasetsIntegration:
 
         with pytest.raises(ClientError):
             validate_config(mock_client, _BUCKET)
+
+
+class TestFilteredPublishIntegration:
+    """Integration tests for filtered publishing (US2)."""
+
+    @pytest.mark.asyncio
+    async def test_boundary_type_filter_regenerates_only_matching(self, s3_client) -> None:
+        """boundary_type filter regenerates only the matching type's file."""
+        from voter_api.services.publish_service import publish_datasets
+
+        boundaries = [
+            _make_mock_boundary("id-1", "District 1", "congressional", "01"),
+            _make_mock_boundary("id-2", "District 2", "congressional", "02"),
+        ]
+
+        mock_shape = MagicMock()
+        mock_mapping = {
+            "type": "MultiPolygon",
+            "coordinates": [[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]],
+        }
+
+        with (
+            patch(
+                "voter_api.services.publish_service.list_boundaries",
+                new_callable=AsyncMock,
+                return_value=(boundaries, 2),
+            ),
+            patch("voter_api.services.publish_service.to_shape", return_value=mock_shape),
+            patch("voter_api.services.publish_service.mapping", return_value=mock_mapping),
+        ):
+            session = AsyncMock()
+            result = await publish_datasets(
+                session,
+                s3_client,
+                _BUCKET,
+                _PUBLIC_URL,
+                "",
+                publisher_version="0.1.0",
+                boundary_type="congressional",
+            )
+
+        # Should only have congressional (no combined all-boundaries)
+        assert len(result.datasets) == 1
+        assert result.datasets[0].name == "congressional"
+
+        objects = s3_client.list_objects_v2(Bucket=_BUCKET)
+        keys = {obj["Key"] for obj in objects.get("Contents", [])}
+        assert "boundaries/congressional.geojson" in keys
+        assert "boundaries/all-boundaries.geojson" not in keys
+        assert "manifest.json" in keys
+
+    @pytest.mark.asyncio
+    async def test_filtered_publish_merges_into_existing_manifest(self, s3_client) -> None:
+        """Filtered publish merges into existing manifest without removing other entries."""
+        from voter_api.services.publish_service import publish_datasets
+
+        # Pre-populate an existing manifest
+        existing_manifest = {
+            "version": "1",
+            "published_at": "2026-02-12T10:00:00+00:00",
+            "publisher_version": "0.1.0",
+            "datasets": {
+                "state_senate": {
+                    "key": "boundaries/state_senate.geojson",
+                    "public_url": f"{_PUBLIC_URL}/boundaries/state_senate.geojson",
+                    "content_type": "application/geo+json",
+                    "record_count": 56,
+                    "file_size_bytes": 8100000,
+                    "boundary_type": "state_senate",
+                    "filters": {"boundary_type": "state_senate"},
+                    "published_at": "2026-02-12T10:00:00+00:00",
+                }
+            },
+        }
+        s3_client.put_object(
+            Bucket=_BUCKET,
+            Key="manifest.json",
+            Body=json.dumps(existing_manifest).encode(),
+        )
+
+        boundaries = [
+            _make_mock_boundary("id-1", "District 1", "congressional", "01"),
+        ]
+
+        mock_shape = MagicMock()
+        mock_mapping = {
+            "type": "MultiPolygon",
+            "coordinates": [[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]],
+        }
+
+        with (
+            patch(
+                "voter_api.services.publish_service.list_boundaries",
+                new_callable=AsyncMock,
+                return_value=(boundaries, 1),
+            ),
+            patch("voter_api.services.publish_service.to_shape", return_value=mock_shape),
+            patch("voter_api.services.publish_service.mapping", return_value=mock_mapping),
+        ):
+            session = AsyncMock()
+            await publish_datasets(
+                session,
+                s3_client,
+                _BUCKET,
+                _PUBLIC_URL,
+                "",
+                publisher_version="0.1.0",
+                boundary_type="congressional",
+            )
+
+        # Verify merged manifest
+        obj = s3_client.get_object(Bucket=_BUCKET, Key="manifest.json")
+        manifest = json.loads(obj["Body"].read().decode("utf-8"))
+
+        assert "congressional" in manifest["datasets"]
+        assert "state_senate" in manifest["datasets"]  # Preserved from existing
+
+    @pytest.mark.asyncio
+    async def test_no_boundaries_match_reports_nothing(self, s3_client) -> None:
+        """No matching boundaries reports nothing to publish."""
+        from voter_api.services.publish_service import publish_datasets
+
+        with patch(
+            "voter_api.services.publish_service.list_boundaries",
+            new_callable=AsyncMock,
+            return_value=([], 0),
+        ):
+            session = AsyncMock()
+            result = await publish_datasets(
+                session,
+                s3_client,
+                _BUCKET,
+                _PUBLIC_URL,
+                "",
+                publisher_version="0.1.0",
+                boundary_type="nonexistent",
+            )
+
+        assert result.datasets == []
+
+
+class TestPublishStatusCLI:
+    """Integration tests for the publish status CLI command."""
+
+    @pytest.mark.asyncio
+    async def test_status_displays_datasets(self, s3_client) -> None:
+        """publish status displays dataset info from manifest."""
+        from voter_api.lib.publisher.storage import fetch_manifest
+
+        # Upload a manifest
+        manifest = {
+            "version": "1",
+            "published_at": "2026-02-12T15:30:00+00:00",
+            "publisher_version": "0.1.0",
+            "datasets": {
+                "congressional": {
+                    "key": "boundaries/congressional.geojson",
+                    "public_url": f"{_PUBLIC_URL}/boundaries/congressional.geojson",
+                    "content_type": "application/geo+json",
+                    "record_count": 14,
+                    "file_size_bytes": 2340500,
+                    "boundary_type": "congressional",
+                    "filters": {"boundary_type": "congressional"},
+                    "published_at": "2026-02-12T15:30:00+00:00",
+                }
+            },
+        }
+        s3_client.put_object(
+            Bucket=_BUCKET,
+            Key="manifest.json",
+            Body=json.dumps(manifest).encode(),
+        )
+
+        result = fetch_manifest(s3_client, _BUCKET, "manifest.json")
+        assert result is not None
+        assert "congressional" in result.datasets
+        assert result.datasets["congressional"].record_count == 14
+
+    @pytest.mark.asyncio
+    async def test_status_no_manifest(self, s3_client) -> None:
+        """publish status with no manifest returns None."""
+        from voter_api.lib.publisher.storage import fetch_manifest
+
+        result = fetch_manifest(s3_client, _BUCKET, "manifest.json")
+        assert result is None
