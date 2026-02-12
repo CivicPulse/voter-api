@@ -203,17 +203,17 @@
 
 ### Implementation for User Story 6
 
-- [ ] T092 [P] [US6] Create ExportJob model with id, filters (JSONB), output_format (csv/json/geojson), status, record_count, file_path, file_size_bytes, triggered_by, timestamps per data-model.md in src/voter_api/models/export_job.py
-- [ ] T093 [US6] Create Alembic migration for export_jobs table with status and triggered_by indexes per data-model.md in alembic/versions/
-- [ ] T094 [P] [US6] Create export Pydantic v2 schemas: ExportRequest (output_format, filters with county/status/district/match_status/analysis_run_id), ExportJobResponse (with download_url), PaginatedExportJobResponse per OpenAPI spec in src/voter_api/schemas/export.py
-- [ ] T095 [US6] Implement CSV export writer: configurable column selection, header row, streaming write for large datasets in src/voter_api/lib/exporter/csv_writer.py
-- [ ] T096 [P] [US6] Implement JSON export writer: array of voter objects, streaming JSON array for large datasets in src/voter_api/lib/exporter/json_writer.py
-- [ ] T097 [P] [US6] Implement GeoJSON export writer: FeatureCollection with Point geometries from primary geocoded location, voter properties as Feature attributes in src/voter_api/lib/exporter/geojson_writer.py
-- [ ] T098 [US6] Define exporter public API: export_voters(voters_query, format, output_path) → ExportResult with format registry in src/voter_api/lib/exporter/__init__.py
-- [ ] T099 [US6] Implement export service: create ExportJob, submit via BackgroundTaskRunner, apply filters (reuse voter_service query builder), select format writer, process asynchronously for large datasets (>50K records), write to EXPORT_DIR, update job with file path/size/count, ensure snapshot consistency for concurrent operations by capturing snapshot timestamp at export initiation using REPEATABLE READ isolation per spec edge case in src/voter_api/services/export_service.py
-- [ ] T100 [US6] Implement export API endpoints: POST /exports (request export, admin only), GET /exports (list jobs), GET /exports/{id} (job status), GET /exports/{id}/download (stream file) per OpenAPI spec in src/voter_api/api/v1/exports.py
-- [ ] T101 [US6] Implement export CLI command: `export --format <csv|json|geojson> --county --match-status --output` with progress in src/voter_api/cli/export_cmd.py
-- [ ] T102 [P] [US6] Write unit tests for exporter library: CSV writer (columns, escaping), JSON writer (structure, streaming), GeoJSON writer (FeatureCollection, geometry) in tests/unit/lib/test_exporter/
+- [x] T092 [P] [US6] Create ExportJob model with id, filters (JSONB), output_format (csv/json/geojson), status, record_count, file_path, file_size_bytes, triggered_by, timestamps per data-model.md in src/voter_api/models/export_job.py
+- [x] T093 [US6] Create Alembic migration for export_jobs table with status and triggered_by indexes per data-model.md in alembic/versions/
+- [x] T094 [P] [US6] Create export Pydantic v2 schemas: ExportRequest (output_format, filters with county/status/district/match_status/analysis_run_id), ExportJobResponse (with download_url), PaginatedExportJobResponse per OpenAPI spec in src/voter_api/schemas/export.py
+- [x] T095 [US6] Implement CSV export writer: configurable column selection, header row, streaming write for large datasets in src/voter_api/lib/exporter/csv_writer.py
+- [x] T096 [P] [US6] Implement JSON export writer: array of voter objects, streaming JSON array for large datasets in src/voter_api/lib/exporter/json_writer.py
+- [x] T097 [P] [US6] Implement GeoJSON export writer: FeatureCollection with Point geometries from primary geocoded location, voter properties as Feature attributes in src/voter_api/lib/exporter/geojson_writer.py
+- [x] T098 [US6] Define exporter public API: export_voters(voters_query, format, output_path) → ExportResult with format registry in src/voter_api/lib/exporter/__init__.py
+- [x] T099 [US6] Implement export service: create ExportJob, submit via BackgroundTaskRunner, apply filters (reuse voter_service query builder), select format writer, process asynchronously for large datasets (>50K records), write to EXPORT_DIR, update job with file path/size/count, ensure snapshot consistency for concurrent operations by capturing snapshot timestamp at export initiation using REPEATABLE READ isolation per spec edge case in src/voter_api/services/export_service.py
+- [x] T100 [US6] Implement export API endpoints: POST /exports (request export, admin only), GET /exports (list jobs), GET /exports/{id} (job status), GET /exports/{id}/download (stream file) per OpenAPI spec in src/voter_api/api/v1/exports.py
+- [x] T101 [US6] Implement export CLI command: `export --format <csv|json|geojson> --county --match-status --output` with progress in src/voter_api/cli/export_cmd.py
+- [x] T102 [P] [US6] Write unit tests for exporter library: CSV writer (columns, escaping), JSON writer (structure, streaming), GeoJSON writer (FeatureCollection, geometry) in tests/unit/lib/test_exporter/
 - [ ] T103 [US6] Write integration tests for export: API endpoints (request, status, download), filter application, snapshot consistency, all formats, CLI command in tests/integration/
 
 **Checkpoint**: Data can be exported in all three formats with filters. Large exports complete asynchronously with snapshot consistency and download links.

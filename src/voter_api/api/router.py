@@ -18,6 +18,7 @@ def create_router(settings: Settings) -> APIRouter:
     from voter_api.api.v1.analysis import analysis_router
     from voter_api.api.v1.auth import router as auth_router
     from voter_api.api.v1.boundaries import boundaries_router
+    from voter_api.api.v1.exports import exports_router
     from voter_api.api.v1.geocoding import geocoding_router
     from voter_api.api.v1.imports import router as imports_router
     from voter_api.api.v1.voters import voters_router
@@ -29,6 +30,7 @@ def create_router(settings: Settings) -> APIRouter:
     root_router.include_router(voters_router)
     root_router.include_router(boundaries_router)
     root_router.include_router(analysis_router)
+    root_router.include_router(exports_router)
 
     return root_router
 
