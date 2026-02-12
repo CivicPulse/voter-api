@@ -76,7 +76,7 @@ class TestReadShapefile:
     def test_crs_transformation(self, mock_read: object, tmp_path: Path) -> None:
         """Non-4326 CRS is transformed to EPSG:4326."""
         poly = Polygon([(500000, 4000000), (500100, 4000000), (500100, 4000100), (500000, 4000100)])
-        gdf = _make_gdf([poly], {"NAME": ["Projected"]}, crs="EPSG:32617")
+        gdf = _make_gdf([poly], {"NAME": ["Projected"], "GEOID": ["01"]}, crs="EPSG:32617")
         mock_read.return_value = gdf
 
         shp = tmp_path / "test.shp"
@@ -154,8 +154,8 @@ class TestReadShapefile:
         assert boundaries[0].boundary_identifier == "D01"
 
     @patch("voter_api.lib.boundary_loader.shapefile.gpd.read_file")
-    def test_fallback_identifier(self, mock_read: object, tmp_path: Path) -> None:
-        """Identifier falls back to sequential number when no matching columns."""
+    def test_no_identifier_column_skips_row(self, mock_read: object, tmp_path: Path) -> None:
+        """Rows with no identifier column are skipped (remainder polygons)."""
         poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)])
         gdf = _make_gdf([poly], {"NAME": ["Test"], "OTHER_COL": ["value"]})
         mock_read.return_value = gdf
@@ -164,10 +164,7 @@ class TestReadShapefile:
         shp.write_bytes(b"fake")
 
         boundaries = read_shapefile(shp)
-        assert len(boundaries) == 1
-        assert boundaries[0].name == "Test"
-        # No GEOID/DISTRICT/ID column, so falls back to sequential number
-        assert boundaries[0].boundary_identifier == "1"
+        assert len(boundaries) == 0
 
     def test_file_size_limit(self, tmp_path: Path) -> None:
         """Oversized file raises ValueError."""
@@ -194,6 +191,26 @@ class TestReadShapefile:
         assert len(boundaries) == 1
         assert boundaries[0].name == "Boundary 1"
         assert boundaries[0].boundary_identifier == "01"
+
+    @patch("voter_api.lib.boundary_loader.shapefile.gpd.read_file")
+    def test_nan_identifier_skipped(self, mock_read: object, tmp_path: Path) -> None:
+        """Rows with NaN identifier columns are skipped (remainder polygons)."""
+        polys = [
+            Polygon([(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)]),
+            Polygon([(-86, 30), (-80, 30), (-80, 35), (-86, 35), (-86, 30)]),
+        ]
+        gdf = _make_gdf(
+            polys,
+            {"DISTRICT": ["001", np.nan]},
+        )
+        mock_read.return_value = gdf
+
+        shp = tmp_path / "test.shp"
+        shp.write_bytes(b"fake")
+
+        boundaries = read_shapefile(shp)
+        assert len(boundaries) == 1
+        assert boundaries[0].boundary_identifier == "001"
 
     @patch("voter_api.lib.boundary_loader.shapefile.gpd.read_file")
     def test_multiple_boundaries(self, mock_read: object, tmp_path: Path) -> None:

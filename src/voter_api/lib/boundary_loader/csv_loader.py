@@ -101,4 +101,4 @@ def _parse_district_numbers(raw: str) -> list[str]:
     Returns:
         List of stripped district number strings.
     """
-    return [num.strip() for num in raw.split(",") if num.strip()]
+    return [num.strip().zfill(3) for num in raw.split(",") if num.strip()]

@@ -78,6 +78,11 @@ def read_shapefile(file_path: Path) -> list[BoundaryData]:
         name = _extract_field(row, ["NAME", "Name", "name", "NAMELSAD", "DISTRICT"])
         identifier = _extract_field(row, ["GEOID", "DISTRICT", "DISTRICTID", "ID", "PREC_ID", "PRECINCT"])
 
+        # Skip rows with no usable identifier (e.g., statewide remainder polygons)
+        if identifier is None:
+            logger.warning("Skipping row with no identifier (likely remainder polygon)")
+            continue
+
         boundaries.append(
             BoundaryData(
                 name=name or f"Boundary {len(boundaries) + 1}",

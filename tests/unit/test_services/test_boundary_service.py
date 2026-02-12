@@ -69,11 +69,10 @@ class TestBuildCountyFilter:
         assert "boundaries.name" in compiled.lower()
 
     def test_filter_includes_spatial_fallback(self) -> None:
-        """Filter should include ST_Within with centroid as spatial fallback."""
+        """Filter should include ST_Intersects as spatial fallback."""
         f = _build_county_filter("Bibb")
         compiled = _compile_query(f)
-        assert "st_within" in compiled.lower()
-        assert "st_centroid" in compiled.lower()
+        assert "st_intersects" in compiled.lower()
 
     def test_spatial_fallback_uses_per_boundary_not_exists(self) -> None:
         """Spatial fallback should check NOT EXISTS per boundary, not globally per type.
@@ -112,9 +111,8 @@ class TestListBoundariesHybridCountyFilter:
         queries = [_compile_query(call[0][0]) for call in calls]
         # Should include county_districts table reference
         assert any("county_districts" in q.lower() for q in queries)
-        # Should include ST_Within with centroid for spatial fallback
-        assert any("st_within" in q.lower() for q in queries)
-        assert any("st_centroid" in q.lower() for q in queries)
+        # Should include ST_Intersects for spatial fallback
+        assert any("st_intersects" in q.lower() for q in queries)
 
     @pytest.mark.asyncio
     async def test_without_county_no_county_filter(self) -> None:
@@ -154,7 +152,7 @@ class TestFindContainingBoundariesHybridCountyFilter:
         compiled = _compile_query(call[0][0])
         assert "county_districts" in compiled.lower()
         assert "st_contains" in compiled.lower()
-        assert "st_centroid" in compiled.lower()
+        assert "st_intersects" in compiled.lower()
 
     @pytest.mark.asyncio
     async def test_without_county_no_county_filter(self) -> None:

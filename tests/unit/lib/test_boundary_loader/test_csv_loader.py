@@ -16,10 +16,10 @@ class TestParseDistrictNumbers:
     """Tests for _parse_district_numbers helper."""
 
     def test_single_number(self) -> None:
-        assert _parse_district_numbers("1") == ["1"]
+        assert _parse_district_numbers("1") == ["001"]
 
     def test_multiple_comma_separated(self) -> None:
-        assert _parse_district_numbers("2, 8") == ["2", "8"]
+        assert _parse_district_numbers("2, 8") == ["002", "008"]
 
     def test_many_numbers(self) -> None:
         assert _parse_district_numbers("142, 143, 144, 145, 149") == [
@@ -32,7 +32,7 @@ class TestParseDistrictNumbers:
 
     def test_trailing_comma(self) -> None:
         """Multi-row counties in the CSV have trailing commas."""
-        assert _parse_district_numbers("25, 47, 48, 49,") == ["25", "47", "48", "49"]
+        assert _parse_district_numbers("25, 47, 48, 49,") == ["025", "047", "048", "049"]
 
     def test_empty_string(self) -> None:
         assert _parse_district_numbers("") == []
@@ -41,7 +41,13 @@ class TestParseDistrictNumbers:
         assert _parse_district_numbers("   ") == []
 
     def test_strips_whitespace(self) -> None:
-        assert _parse_district_numbers(" 1 , 2 , 3 ") == ["1", "2", "3"]
+        assert _parse_district_numbers(" 1 , 2 , 3 ") == ["001", "002", "003"]
+
+    def test_zero_pads_to_three_digits(self) -> None:
+        """District numbers are zero-padded to match shapefile DISTRICT column format."""
+        assert _parse_district_numbers("2") == ["002"]
+        assert _parse_district_numbers("18") == ["018"]
+        assert _parse_district_numbers("142") == ["142"]
 
 
 class TestParseCountyDistrictsCsv:
@@ -58,8 +64,8 @@ class TestParseCountyDistrictsCsv:
         records = parse_county_districts_csv(csv_file)
 
         assert len(records) == 4
-        assert CountyDistrictRecord("APPLING", "congressional", "1") in records
-        assert CountyDistrictRecord("APPLING", "state_senate", "19") in records
+        assert CountyDistrictRecord("APPLING", "congressional", "001") in records
+        assert CountyDistrictRecord("APPLING", "state_senate", "019") in records
         assert CountyDistrictRecord("APPLING", "state_house", "157") in records
         assert CountyDistrictRecord("APPLING", "state_house", "178") in records
 
@@ -84,7 +90,7 @@ class TestParseCountyDistrictsCsv:
         # House should be merged (different values across rows)
         assert len(cobb_house) == 6
         house_ids = {r.district_identifier for r in cobb_house}
-        assert house_ids == {"19", "22", "34", "41", "42", "43"}
+        assert house_ids == {"019", "022", "034", "041", "042", "043"}
 
     def test_county_name_uppercased(self, tmp_path: Path) -> None:
         csv_content = textwrap.dedent("""\
@@ -144,7 +150,7 @@ class TestParseCountyDistrictsCsv:
 
         house = [r for r in records if r.boundary_type == "state_house"]
         house_ids = {r.district_identifier for r in house}
-        assert house_ids == {"25", "47", "48", "57", "58", "59"}
+        assert house_ids == {"025", "047", "048", "057", "058", "059"}
 
     def test_real_csv_data(self) -> None:
         """Test against the actual data file if present."""
@@ -167,4 +173,4 @@ class TestParseCountyDistrictsCsv:
         bibb_cong = {
             r.district_identifier for r in records if r.county_name == "BIBB" and r.boundary_type == "congressional"
         }
-        assert bibb_cong == {"2", "8"}
+        assert bibb_cong == {"002", "008"}
