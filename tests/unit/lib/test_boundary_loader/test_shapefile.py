@@ -236,3 +236,12 @@ class TestSerializeValue:
     def test_regular_value_passthrough(self) -> None:
         assert _serialize_value("hello") == "hello"
         assert _serialize_value(42) == 42
+
+    def test_nan_returns_none(self) -> None:
+        assert _serialize_value(float("nan")) is None
+
+    def test_numpy_nan_returns_none(self) -> None:
+        assert _serialize_value(np.float64("nan")) is None
+
+    def test_inf_returns_none(self) -> None:
+        assert _serialize_value(float("inf")) is None

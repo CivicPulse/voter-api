@@ -113,7 +113,6 @@ async def _import_all_boundaries(
         ImportResult,
         find_shp_in_zip,
         get_manifest,
-        load_boundaries,
         resolve_zip_path,
         verify_sha512,
     )
@@ -168,16 +167,10 @@ async def _import_all_boundaries(
                 with tempfile.TemporaryDirectory() as tmp_dir:
                     shp_path = find_shp_in_zip(zip_path, Path(tmp_dir))
 
-                    # Filter to Georgia counties if state_fips is set
-                    if entry.state_fips:
-                        boundary_data = _filter_by_state_fips(shp_path, entry.state_fips)
-                    else:
-                        boundary_data = load_boundaries(shp_path)
-
-                    # Import via service with its own session
                     async with factory() as session:
                         if entry.state_fips:
-                            # Use filtered data directly via boundary_service internals
+                            # Filter to matching state before import
+                            boundary_data = _filter_by_state_fips(shp_path, entry.state_fips)
                             imported = await _import_filtered_boundaries(
                                 session, boundary_data, entry.boundary_type, entry.source, entry.county
                             )
