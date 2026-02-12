@@ -342,6 +342,7 @@ independently of user lifecycle and reference user ID from the JWT.
 | records_updated | INTEGER | NULLABLE | Existing records updated |
 | records_soft_deleted | INTEGER | NULLABLE | Voters absent from new import |
 | error_log | JSONB | NULLABLE | Array of error objects |
+| last_processed_offset | INTEGER | NULLABLE | Batch offset for checkpoint/resume (SC-009) |
 | triggered_by | UUID | NULLABLE | User ID who triggered |
 | started_at | TIMESTAMP | NULLABLE | |
 | completed_at | TIMESTAMP | NULLABLE | |
@@ -354,7 +355,7 @@ independently of user lifecycle and reference user ID from the JWT.
 
 ---
 
-### 8. ExportJob
+### 9. ExportJob
 
 **Table**: `export_jobs`
 **Description**: Tracks a bulk data export operation.
@@ -378,7 +379,7 @@ independently of user lifecycle and reference user ID from the JWT.
 
 ---
 
-### 9. AnalysisRun
+### 10. AnalysisRun
 
 **Table**: `analysis_runs`
 **Description**: A single execution of the location analysis process.
@@ -394,6 +395,7 @@ Each run produces a complete snapshot of results.
 | mismatch_count | INTEGER | NULLABLE | |
 | unable_to_analyze_count | INTEGER | NULLABLE | |
 | notes | TEXT | NULLABLE | e.g., "post-redistricting re-analysis" |
+| last_processed_voter_offset | INTEGER | NULLABLE | Voter batch offset for checkpoint/resume (SC-009) |
 | started_at | TIMESTAMP | NULLABLE | |
 | completed_at | TIMESTAMP | NULLABLE | |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT NOW | |
@@ -404,7 +406,7 @@ Each run produces a complete snapshot of results.
 
 ---
 
-### 10. AnalysisResult
+### 11. AnalysisResult
 
 **Table**: `analysis_results`
 **Description**: Outcome of comparing a voter's physical location to their
