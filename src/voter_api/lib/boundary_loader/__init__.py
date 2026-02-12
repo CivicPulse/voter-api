@@ -5,11 +5,27 @@ Public API:
     - BoundaryData: Parsed boundary data structure
     - read_shapefile: Direct shapefile reader
     - read_geojson: Direct GeoJSON reader
+    - verify_sha512: SHA512 checksum verification
+    - BoundaryFileEntry: Manifest entry dataclass
+    - BOUNDARY_MANIFEST: All boundary file entries
+    - ImportResult: Import outcome tracker
+    - find_shp_in_zip: Zip extraction + .shp locator
+    - get_manifest: Get a copy of the manifest
+    - resolve_zip_path: Resolve zip file path from data dir
 """
 
 from pathlib import Path
 
+from voter_api.lib.boundary_loader.checksum import verify_sha512
 from voter_api.lib.boundary_loader.geojson import read_geojson
+from voter_api.lib.boundary_loader.manifest import (
+    BOUNDARY_MANIFEST,
+    BoundaryFileEntry,
+    ImportResult,
+    find_shp_in_zip,
+    get_manifest,
+    resolve_zip_path,
+)
 from voter_api.lib.boundary_loader.shapefile import BoundaryData, read_shapefile
 
 
@@ -39,8 +55,15 @@ def load_boundaries(file_path: Path) -> list[BoundaryData]:
 
 
 __all__ = [
+    "BOUNDARY_MANIFEST",
     "BoundaryData",
+    "BoundaryFileEntry",
+    "ImportResult",
+    "find_shp_in_zip",
+    "get_manifest",
     "load_boundaries",
     "read_geojson",
     "read_shapefile",
+    "resolve_zip_path",
+    "verify_sha512",
 ]
