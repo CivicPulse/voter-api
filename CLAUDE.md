@@ -179,6 +179,8 @@ These were required on the piku server beyond the standard `piku setup`:
    ```
    This service (`piku-uwsgi`) survives deploys and automatically picks up new piku apps.
 
+5. **nginx path watcher**: Piku writes new nginx configs on each deploy with a fresh port, but doesn't reload nginx. The `piku-nginx.path` systemd unit watches `/home/piku/.piku/nginx/` and triggers `piku-nginx.service` (which runs `systemctl reload nginx`) on changes. Installed from the piku repo's `piku-nginx.{path,service}` files.
+
 ### Deploy flow
 
 On `git push piku main`, piku runs:
@@ -187,11 +189,11 @@ On `git push piku main`, piku runs:
 3. `release` worker — runs `voter-api db upgrade` (Alembic migrations)
 4. `web` worker — spawns `uvicorn --factory voter_api.main:create_app` via uwsgi `attach-daemon`
 
-**Note**: Piku picks a new random port on each deploy and writes it into both the nginx and uwsgi configs. The `piku-uwsgi` emperor auto-restarts the vassal, but **nginx must be reloaded** to pick up the new port: `sudo systemctl reload nginx` on the server after each deploy.
+Piku picks a new random port on each deploy. The `piku-uwsgi` emperor auto-restarts the vassal, and the `piku-nginx.path` systemd path watcher detects config changes and auto-reloads nginx. No manual intervention needed after `git push`.
 
 ### Troubleshooting
 
-- **502 Bad Gateway after deploy**: Nginx needs a reload to pick up the new port: `sudo systemctl reload nginx`. Also check if uvicorn is running (`ssh piku@... -- ps voter-api`) and `systemctl status piku-uwsgi`
+- **502 Bad Gateway after deploy**: Check `systemctl status piku-nginx.path` (should be `active (waiting)`) and `systemctl status piku-uwsgi` (should be `active (running)`). If either is down, restart it. Also check if uvicorn is running: `ssh piku@... -- ps voter-api`
 - **"Generic app" on deploy**: `uv` is not in PATH on the server
 - **"No interpreter found for Python 3.13"**: The piku.py patch was lost (re-apply after `piku update`)
 - **Stale venv errors**: Remove and redeploy: `ssh piku@... -- run voter-api -- rm -rf /home/piku/.piku/envs/voter-api` then `ssh piku@... -- deploy voter-api`
