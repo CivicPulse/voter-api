@@ -191,7 +191,7 @@ contributors:
 
 | Category | Tool | Constraint |
 |---|---|---|
-| Language | Python 3.11+ | Minimum version |
+| Language | Python 3.13+ | Minimum version |
 | Framework | FastAPI | Async-first web framework |
 | ORM | SQLAlchemy 2.x + GeoAlchemy2 | Async session support required |
 | Database | PostgreSQL + PostGIS | Geospatial queries |

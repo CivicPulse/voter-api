@@ -17,10 +17,10 @@ async, following library-first architecture principles.
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+
+**Language/Version**: Python 3.13+
 **Primary Dependencies**: FastAPI, SQLAlchemy 2.x (async), GeoAlchemy2,
-Pydantic v2, Typer, Loguru, Pandas, Alembic, PyJWT (python-jose),
-httpx, Fiona/pyshp (shapefile), GeoJSON
+Pydantic v2, Typer, Loguru, Pandas, Alembic, PyJWT,
+httpx, GeoPandas, pyogrio
 **Storage**: PostgreSQL 15+ with PostGIS 3.x
 **Testing**: pytest with pytest-cov, pytest-asyncio, httpx (AsyncClient)
 **Target Platform**: Linux server (Docker containers, docker-compose for local dev)
