@@ -44,3 +44,41 @@ async def _import_voters(file_path: Path, batch_size: int) -> None:
             typer.echo(f"  Soft-deleted:   {job.records_soft_deleted or 0}")
     finally:
         await dispose_engine()
+
+
+@import_app.command("boundaries")
+def import_boundaries_cmd(
+    file: Path = typer.Argument(..., help="Path to shapefile or GeoJSON", exists=True),
+    boundary_type: str = typer.Option(..., "--type", help="Boundary type (e.g., congressional)"),
+    source: str = typer.Option(..., "--source", help="Data source (state or county)"),
+    county: str | None = typer.Option(None, "--county", help="County name"),
+) -> None:
+    """Import boundary data from a shapefile or GeoJSON file."""
+    asyncio.run(_import_boundaries(file, boundary_type, source, county))
+
+
+async def _import_boundaries(file_path: Path, boundary_type: str, source: str, county: str | None) -> None:
+    """Async implementation of boundary import."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.boundary_service import import_boundaries
+
+    settings = get_settings()
+    init_engine(settings.database_url)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            boundaries = await import_boundaries(
+                session,
+                file_path=file_path,
+                boundary_type=boundary_type,
+                source=source,
+                county=county,
+            )
+            typer.echo(f"Imported {len(boundaries)} boundaries")
+            typer.echo(f"  Type:   {boundary_type}")
+            typer.echo(f"  Source: {source}")
+            typer.echo(f"  County: {county or 'all'}")
+    finally:
+        await dispose_engine()
