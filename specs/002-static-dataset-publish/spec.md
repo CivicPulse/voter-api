@@ -13,6 +13,8 @@
 - Q: How does the API know which datasets are published (for redirect lookup)? → A: Manifest file on object storage. The publish command writes a `manifest.json` alongside the datasets; the API fetches and caches it periodically.
 - Q: Should the publish system be scoped to boundary GeoJSON only or designed generically for any dataset type? → A: Boundaries only for now. Other dataset types can be added in future iterations.
 - Q: How often should the API refresh the cached manifest to pick up newly published datasets? → A: 5-minute TTL. Newly published datasets are picked up within 5 minutes without API restart.
+- Q: How should the API hint to consumers (UIs, developers, AI agents) that published static files are available for direct access? → A: Public discovery endpoint (e.g., `GET /api/v1/datasets`) that returns the R2 base URL and available static file URLs from the cached manifest. No authentication required.
+- Q: Should the discovery endpoint expose the R2 base URL as a standalone field for constructing URLs to any public data? → A: Yes. Response includes a top-level `base_url` field plus the list of currently published datasets with full URLs. Consumers can use the base URL to construct paths for any current or future public content.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -116,6 +118,7 @@ As a consumer of the boundary GeoJSON endpoint, I want the API to automatically 
 - **FR-019**: The publish command MUST generate and upload a `manifest.json` file alongside the dataset files, containing metadata (storage key, public URL, record count, file size, publish timestamp) for each published dataset.
 - **FR-020**: The API MUST fetch and cache the manifest from object storage to determine redirect targets for the GeoJSON endpoint.
 - **FR-021**: The API MUST periodically refresh the cached manifest with a 5-minute TTL so that newly published datasets are picked up within 5 minutes without requiring an API restart.
+- **FR-022**: System MUST expose a public (no authentication required) discovery endpoint (e.g., `GET /api/v1/datasets`) that returns: (a) a top-level `base_url` field containing the R2 public URL prefix, enabling consumers to construct URLs for any current or future public dataset path; and (b) a list of currently published static dataset files with their full public URLs, record counts, and boundary type metadata, sourced from the cached manifest. This enables UIs, developers, and AI agents to discover and directly access published static files without going through the redirect mechanism.
 
 ### Key Entities
 
