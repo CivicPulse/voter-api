@@ -1,3 +1,8 @@
+*.zip
+*.csv
+*.pdf
+logs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -14,8 +19,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# lib/ and lib64/ — only at repo root to avoid ignoring src/voter_api/lib/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -60,6 +66,10 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+docs/voter_data_sample_from_state.csv
+
+# Exports
+exports/
 
 # Flask stuff:
 instance/
@@ -207,3 +217,4 @@ marimo/_lsp/
 __marimo__/
 docs/notes.md
 logs/status_line.json
+docs/voter_data_sample_from_state.csv

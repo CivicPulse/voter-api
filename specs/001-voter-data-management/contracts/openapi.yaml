@@ -1,0 +1,1738 @@
+openapi: 3.1.0
+info:
+  title: Voter Data Management API
+  description: |
+    REST API for managing Georgia voter data with geospatial capabilities.
+    Supports voter file ingestion, address geocoding, district/precinct
+    boundary management, registration-location analysis, search, and
+    bulk data export.
+  version: 1.0.0
+  contact:
+    name: Voter API Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development
+  - url: https://api.example.com/api/v1
+    description: Production
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Auth
+    description: Authentication and user management
+  - name: Voters
+    description: Voter record CRUD and search
+  - name: Imports
+    description: Voter file and boundary data import
+  - name: Geocoding
+    description: Address geocoding operations
+  - name: Boundaries
+    description: District and precinct boundary management
+  - name: Analysis
+    description: Location analysis runs and results
+  - name: Exports
+    description: Bulk data export operations
+
+paths:
+  # ──────────────── Auth ────────────────
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate and receive JWT
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: JWT token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: New access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user profile
+      operationId: getCurrentUser
+      responses:
+        "200":
+          description: Current user details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+
+  /users:
+    get:
+      tags: [Auth]
+      summary: List users (admin only)
+      operationId: listUsers
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated user list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedUserResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Auth]
+      summary: Create user (admin only)
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreateRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "409":
+          description: Username or email already exists
+
+  # ──────────────── Voters ────────────────
+  /voters:
+    get:
+      tags: [Voters]
+      summary: Search and list voters
+      operationId: searchVoters
+      parameters:
+        - name: voter_registration_number
+          in: query
+          schema:
+            type: string
+        - name: first_name
+          in: query
+          schema:
+            type: string
+        - name: last_name
+          in: query
+          schema:
+            type: string
+        - name: county
+          in: query
+          schema:
+            type: string
+        - name: residence_city
+          in: query
+          schema:
+            type: string
+        - name: residence_zipcode
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE]
+        - name: congressional_district
+          in: query
+          schema:
+            type: string
+        - name: state_senate_district
+          in: query
+          schema:
+            type: string
+        - name: state_house_district
+          in: query
+          schema:
+            type: string
+        - name: county_precinct
+          in: query
+          schema:
+            type: string
+        - name: present_in_latest_import
+          in: query
+          schema:
+            type: boolean
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated voter results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedVoterResponse"
+
+  /voters/{voter_id}:
+    get:
+      tags: [Voters]
+      summary: Get voter by ID
+      operationId: getVoter
+      parameters:
+        - $ref: "#/components/parameters/VoterIdParam"
+      responses:
+        "200":
+          description: Voter details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoterDetailResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /voters/{voter_id}/geocoded-locations:
+    get:
+      tags: [Voters]
+      summary: List all geocoded locations for a voter
+      operationId: getVoterGeocodedLocations
+      parameters:
+        - $ref: "#/components/parameters/VoterIdParam"
+      responses:
+        "200":
+          description: All geocoding results for the voter
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeocodedLocationResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /voters/{voter_id}/geocoded-locations/manual:
+    post:
+      tags: [Voters]
+      summary: Add manual coordinate entry for voter
+      operationId: addManualGeocodedLocation
+      parameters:
+        - $ref: "#/components/parameters/VoterIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualGeocodingRequest"
+      responses:
+        "201":
+          description: Manual geocoded location created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeocodedLocationResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /voters/{voter_id}/geocoded-locations/{location_id}/set-primary:
+    put:
+      tags: [Voters]
+      summary: Set a geocoded location as primary (admin only)
+      operationId: setPrimaryGeocodedLocation
+      parameters:
+        - $ref: "#/components/parameters/VoterIdParam"
+        - name: location_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Primary location updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeocodedLocationResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ──────────────── Imports ────────────────
+  /imports/voters:
+    post:
+      tags: [Imports]
+      summary: Import voter file (admin only)
+      operationId: importVoterFile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                county:
+                  type: string
+                  description: County filter (optional)
+      responses:
+        "202":
+          description: Import job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportJobResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /imports/boundaries:
+    post:
+      tags: [Imports]
+      summary: Import boundary file (admin only)
+      operationId: importBoundaryFile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, boundary_type]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                boundary_type:
+                  type: string
+                  enum:
+                    - congressional
+                    - state_senate
+                    - state_house
+                    - judicial
+                    - county_commission
+                    - school_board
+                    - city_council
+                    - municipal_school_board
+                    - water_board
+                    - super_council
+                    - super_commissioner
+                    - super_school_board
+                    - fire_district
+                    - county_precinct
+                    - municipal_precinct
+                source:
+                  type: string
+                  enum: [state, county]
+                  default: state
+                county:
+                  type: string
+                  description: County name (required for county-sourced data)
+      responses:
+        "202":
+          description: Import job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportJobResponse"
+
+  /imports/{job_id}:
+    get:
+      tags: [Imports]
+      summary: Get import job status
+      operationId: getImportJob
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Import job details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportJobResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /imports:
+    get:
+      tags: [Imports]
+      summary: List import jobs
+      operationId: listImportJobs
+      parameters:
+        - name: file_type
+          in: query
+          schema:
+            type: string
+            enum: [voter_csv, shapefile, geojson]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, completed, failed]
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated import job list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedImportJobResponse"
+
+  /imports/{job_id}/diff:
+    get:
+      tags: [Imports]
+      summary: Get import diff report
+      operationId: getImportDiff
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Import diff showing added/removed/updated voters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportDiffResponse"
+
+  # ──────────────── Geocoding ────────────────
+  /geocoding/batch:
+    post:
+      tags: [Geocoding]
+      summary: Trigger batch geocoding for un-geocoded voters
+      operationId: triggerBatchGeocoding
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                county:
+                  type: string
+                  description: Limit to specific county
+                provider:
+                  type: string
+                  description: Geocoder provider to use
+                  default: census
+                force_regeocode:
+                  type: boolean
+                  description: Re-geocode already geocoded records
+                  default: false
+      responses:
+        "202":
+          description: Batch geocoding job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeocodingJobResponse"
+
+  /geocoding/status/{job_id}:
+    get:
+      tags: [Geocoding]
+      summary: Get geocoding job status
+      operationId: getGeocodingJobStatus
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Geocoding job status with progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeocodingJobResponse"
+
+  /geocoding/cache/stats:
+    get:
+      tags: [Geocoding]
+      summary: Get geocoder cache statistics
+      operationId: getGeocoderCacheStats
+      responses:
+        "200":
+          description: Cache stats per provider
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  providers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        provider:
+                          type: string
+                        cached_count:
+                          type: integer
+                        oldest_entry:
+                          type: string
+                          format: date-time
+                        newest_entry:
+                          type: string
+                          format: date-time
+
+  # ──────────────── Boundaries ────────────────
+  /boundaries:
+    get:
+      tags: [Boundaries]
+      summary: List boundaries with optional filters
+      operationId: listBoundaries
+      parameters:
+        - name: boundary_type
+          in: query
+          schema:
+            type: string
+        - name: county
+          in: query
+          schema:
+            type: string
+        - name: source
+          in: query
+          schema:
+            type: string
+            enum: [state, county]
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated boundary list (geometry excluded for performance)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedBoundaryResponse"
+
+  /boundaries/{boundary_id}:
+    get:
+      tags: [Boundaries]
+      summary: Get boundary details including geometry
+      operationId: getBoundary
+      parameters:
+        - name: boundary_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: include_geometry
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        "200":
+          description: Boundary details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoundaryDetailResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /boundaries/containing-point:
+    get:
+      tags: [Boundaries]
+      summary: Find all boundaries containing a point
+      operationId: findBoundariesContainingPoint
+      parameters:
+        - name: latitude
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+        - name: longitude
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+        - name: boundary_type
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Boundaries containing the point
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BoundarySummaryResponse"
+
+  # ──────────────── Analysis ────────────────
+  /analysis/runs:
+    post:
+      tags: [Analysis]
+      summary: Trigger a new analysis run
+      operationId: triggerAnalysisRun
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                county:
+                  type: string
+                  description: Limit analysis to a county
+                notes:
+                  type: string
+                  description: Notes for this run
+      responses:
+        "202":
+          description: Analysis run accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisRunResponse"
+    get:
+      tags: [Analysis]
+      summary: List analysis runs (analyst/admin only)
+      operationId: listAnalysisRuns
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, completed, failed]
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated analysis run list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedAnalysisRunResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /analysis/runs/{run_id}:
+    get:
+      tags: [Analysis]
+      summary: Get analysis run details (analyst/admin only)
+      operationId: getAnalysisRun
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Analysis run details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisRunResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /analysis/runs/{run_id}/results:
+    get:
+      tags: [Analysis]
+      summary: Get analysis results for a run (analyst/admin only)
+      operationId: getAnalysisResults
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: match_status
+          in: query
+          schema:
+            type: string
+            enum:
+              - match
+              - mismatch-district
+              - mismatch-precinct
+              - mismatch-both
+              - unable-to-analyze
+        - name: county
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated analysis results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedAnalysisResultResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /analysis/compare:
+    get:
+      tags: [Analysis]
+      summary: Compare results across two analysis runs (analyst/admin only)
+      operationId: compareAnalysisRuns
+      parameters:
+        - name: run_id_a
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: run_id_b
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: county
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Comparison of results between two runs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisComparisonResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ──────────────── Exports ────────────────
+  /exports:
+    post:
+      tags: [Exports]
+      summary: Request a bulk data export
+      operationId: requestExport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExportRequest"
+      responses:
+        "202":
+          description: Export job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportJobResponse"
+    get:
+      tags: [Exports]
+      summary: List export jobs
+      operationId: listExportJobs
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, completed, failed]
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated export job list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedExportJobResponse"
+
+  /exports/{job_id}:
+    get:
+      tags: [Exports]
+      summary: Get export job status
+      operationId: getExportJob
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Export job details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportJobResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /exports/{job_id}/download:
+    get:
+      tags: [Exports]
+      summary: Download completed export file
+      operationId: downloadExport
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Export file download
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Export not yet completed
+
+  # ──────────────── Health ────────────────
+  /health:
+    get:
+      tags: [Auth]
+      summary: Health check
+      operationId: healthCheck
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  version:
+                    type: string
+                  database:
+                    type: string
+                    enum: [connected, disconnected]
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSizeParam:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    VoterIdParam:
+      name: voter_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    # ── Auth ──
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          default: bearer
+        expires_in:
+          type: integer
+          description: Seconds until access token expires
+
+    UserCreateRequest:
+      type: object
+      required: [username, email, password, role]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+        role:
+          type: string
+          enum: [admin, analyst, viewer]
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    PaginatedUserResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/UserResponse"
+
+    # ── Voter ──
+    VoterSummaryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        voter_registration_number:
+          type: string
+        county:
+          type: string
+        status:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        residence_city:
+          type: string
+        residence_zipcode:
+          type: string
+        present_in_latest_import:
+          type: boolean
+        has_geocoded_location:
+          type: boolean
+
+    VoterDetailResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        voter_registration_number:
+          type: string
+        county:
+          type: string
+        status:
+          type: string
+        status_reason:
+          type: string
+          nullable: true
+        first_name:
+          type: string
+        last_name:
+          type: string
+        middle_name:
+          type: string
+          nullable: true
+        suffix:
+          type: string
+          nullable: true
+        birth_year:
+          type: integer
+          nullable: true
+        residence_address:
+          $ref: "#/components/schemas/AddressResponse"
+        mailing_address:
+          $ref: "#/components/schemas/MailingAddressResponse"
+          nullable: true
+        registered_districts:
+          $ref: "#/components/schemas/RegisteredDistrictsResponse"
+        registration_date:
+          type: string
+          format: date
+          nullable: true
+        race:
+          type: string
+          nullable: true
+        gender:
+          type: string
+          nullable: true
+        last_modified_date:
+          type: string
+          format: date
+          nullable: true
+        last_party_voted:
+          type: string
+          nullable: true
+        last_vote_date:
+          type: string
+          format: date
+          nullable: true
+        date_of_last_contact:
+          type: string
+          format: date
+          nullable: true
+        voter_created_date:
+          type: string
+          format: date
+          nullable: true
+        present_in_latest_import:
+          type: boolean
+        soft_deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        primary_geocoded_location:
+          $ref: "#/components/schemas/GeocodedLocationResponse"
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AddressResponse:
+      type: object
+      properties:
+        street_number:
+          type: string
+          nullable: true
+        pre_direction:
+          type: string
+          nullable: true
+        street_name:
+          type: string
+          nullable: true
+        street_type:
+          type: string
+          nullable: true
+        post_direction:
+          type: string
+          nullable: true
+        apt_unit_number:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        zipcode:
+          type: string
+          nullable: true
+        full_address:
+          type: string
+          description: Reconstructed full address string
+
+    MailingAddressResponse:
+      type: object
+      properties:
+        street_number:
+          type: string
+          nullable: true
+        street_name:
+          type: string
+          nullable: true
+        apt_unit_number:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        zipcode:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+
+    RegisteredDistrictsResponse:
+      type: object
+      properties:
+        county_precinct:
+          type: string
+          nullable: true
+        county_precinct_description:
+          type: string
+          nullable: true
+        municipal_precinct:
+          type: string
+          nullable: true
+        municipal_precinct_description:
+          type: string
+          nullable: true
+        congressional_district:
+          type: string
+          nullable: true
+        state_senate_district:
+          type: string
+          nullable: true
+        state_house_district:
+          type: string
+          nullable: true
+        judicial_district:
+          type: string
+          nullable: true
+        county_commission_district:
+          type: string
+          nullable: true
+        school_board_district:
+          type: string
+          nullable: true
+        city_council_district:
+          type: string
+          nullable: true
+        municipal_school_board_district:
+          type: string
+          nullable: true
+        water_board_district:
+          type: string
+          nullable: true
+        super_council_district:
+          type: string
+          nullable: true
+        super_commissioner_district:
+          type: string
+          nullable: true
+        super_school_board_district:
+          type: string
+          nullable: true
+        fire_district:
+          type: string
+          nullable: true
+        municipality:
+          type: string
+          nullable: true
+        combo:
+          type: string
+          nullable: true
+        land_lot:
+          type: string
+          nullable: true
+        land_district:
+          type: string
+          nullable: true
+
+    PaginatedVoterResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/VoterSummaryResponse"
+
+    # ── Geocoding ──
+    GeocodedLocationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        voter_id:
+          type: string
+          format: uuid
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        confidence_score:
+          type: number
+          format: double
+          nullable: true
+        source_type:
+          type: string
+        is_primary:
+          type: boolean
+        input_address:
+          type: string
+          nullable: true
+        geocoded_at:
+          type: string
+          format: date-time
+
+    ManualGeocodingRequest:
+      type: object
+      required: [latitude, longitude, source_type]
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        source_type:
+          type: string
+          enum: [manual, field-survey]
+        set_as_primary:
+          type: boolean
+          default: false
+
+    GeocodingJobResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        provider:
+          type: string
+        total_records:
+          type: integer
+          nullable: true
+        processed:
+          type: integer
+          nullable: true
+        succeeded:
+          type: integer
+          nullable: true
+        failed:
+          type: integer
+          nullable: true
+        cache_hits:
+          type: integer
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ── Boundary ──
+    BoundarySummaryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        boundary_type:
+          type: string
+        boundary_identifier:
+          type: string
+        source:
+          type: string
+        county:
+          type: string
+          nullable: true
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+
+    BoundaryDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/BoundarySummaryResponse"
+        - type: object
+          properties:
+            geometry:
+              type: object
+              description: GeoJSON geometry object
+              nullable: true
+            properties:
+              type: object
+              nullable: true
+            created_at:
+              type: string
+              format: date-time
+
+    PaginatedBoundaryResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/BoundarySummaryResponse"
+
+    # ── Analysis ──
+    AnalysisRunResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        triggered_by:
+          type: string
+          format: uuid
+          nullable: true
+        total_voters_analyzed:
+          type: integer
+          nullable: true
+        match_count:
+          type: integer
+          nullable: true
+        mismatch_count:
+          type: integer
+          nullable: true
+        unable_to_analyze_count:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    PaginatedAnalysisRunResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/AnalysisRunResponse"
+
+    AnalysisResultResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        analysis_run_id:
+          type: string
+          format: uuid
+        voter_id:
+          type: string
+          format: uuid
+        voter_summary:
+          $ref: "#/components/schemas/VoterSummaryResponse"
+        determined_boundaries:
+          type: object
+          additionalProperties:
+            type: string
+        registered_boundaries:
+          type: object
+          additionalProperties:
+            type: string
+        match_status:
+          type: string
+          enum:
+            - match
+            - mismatch-district
+            - mismatch-precinct
+            - mismatch-both
+            - unable-to-analyze
+        mismatch_details:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              boundary_type:
+                type: string
+              registered:
+                type: string
+              determined:
+                type: string
+        analyzed_at:
+          type: string
+          format: date-time
+
+    PaginatedAnalysisResultResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/AnalysisResultResponse"
+
+    AnalysisComparisonResponse:
+      type: object
+      properties:
+        run_a:
+          $ref: "#/components/schemas/AnalysisRunResponse"
+        run_b:
+          $ref: "#/components/schemas/AnalysisRunResponse"
+        summary:
+          type: object
+          properties:
+            newly_matched:
+              type: integer
+            newly_mismatched:
+              type: integer
+            unchanged:
+              type: integer
+            total_compared:
+              type: integer
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              voter_id:
+                type: string
+                format: uuid
+              voter_registration_number:
+                type: string
+              status_in_run_a:
+                type: string
+              status_in_run_b:
+                type: string
+              changed:
+                type: boolean
+
+    # ── Import ──
+    ImportJobResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        file_name:
+          type: string
+        file_type:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        total_records:
+          type: integer
+          nullable: true
+        records_succeeded:
+          type: integer
+          nullable: true
+        records_failed:
+          type: integer
+          nullable: true
+        records_inserted:
+          type: integer
+          nullable: true
+        records_updated:
+          type: integer
+          nullable: true
+        records_soft_deleted:
+          type: integer
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    PaginatedImportJobResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ImportJobResponse"
+
+    ImportDiffResponse:
+      type: object
+      properties:
+        import_job_id:
+          type: string
+          format: uuid
+        previous_import_job_id:
+          type: string
+          format: uuid
+          nullable: true
+        voters_added:
+          type: integer
+        voters_removed:
+          type: integer
+        voters_updated:
+          type: integer
+        details:
+          type: object
+          properties:
+            added:
+              type: array
+              items:
+                type: object
+                properties:
+                  voter_registration_number:
+                    type: string
+                  name:
+                    type: string
+                  county:
+                    type: string
+            removed:
+              type: array
+              items:
+                type: object
+                properties:
+                  voter_registration_number:
+                    type: string
+                  name:
+                    type: string
+                  county:
+                    type: string
+                  last_seen_import:
+                    type: string
+                    format: date-time
+            updated:
+              type: array
+              items:
+                type: object
+                properties:
+                  voter_registration_number:
+                    type: string
+                  name:
+                    type: string
+                  county:
+                    type: string
+                  changed_fields:
+                    type: array
+                    items:
+                      type: string
+                    description: List of field names that changed
+
+    # ── Export ──
+    ExportRequest:
+      type: object
+      required: [output_format]
+      properties:
+        output_format:
+          type: string
+          enum: [csv, json, geojson]
+        filters:
+          type: object
+          properties:
+            county:
+              type: string
+            status:
+              type: string
+            first_name:
+              type: string
+              description: Partial match (ILIKE)
+            last_name:
+              type: string
+              description: Partial match (ILIKE)
+            residence_city:
+              type: string
+            residence_zipcode:
+              type: string
+            congressional_district:
+              type: string
+            state_senate_district:
+              type: string
+            state_house_district:
+              type: string
+            county_precinct:
+              type: string
+            analysis_run_id:
+              type: string
+              format: uuid
+            match_status:
+              type: string
+              enum:
+                - match
+                - mismatch-district
+                - mismatch-precinct
+                - mismatch-both
+                - unable-to-analyze
+            present_in_latest_import:
+              type: boolean
+
+    ExportJobResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        output_format:
+          type: string
+        filters:
+          type: object
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        record_count:
+          type: integer
+          nullable: true
+        file_size_bytes:
+          type: integer
+          nullable: true
+        requested_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        download_url:
+          type: string
+          nullable: true
+
+    PaginatedExportJobResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ExportJobResponse"
+
+    # ── Common ──
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        code:
+          type: string
+          nullable: true
+        errors:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
