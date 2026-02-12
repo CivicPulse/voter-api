@@ -112,21 +112,39 @@ async def import_boundaries(
     for bd in boundary_data:
         geom_wkb = from_shape(bd.geometry, srid=4326)
 
+        # Extract county from properties when caller doesn't supply one
+        effective_county = county
+        if effective_county is None and bd.properties:
+            effective_county = bd.properties.get("CTYNAME") or bd.properties.get("COUNTY")
+
         # Check for existing boundary (upsert)
         result = await session.execute(
             select(Boundary).where(
                 Boundary.boundary_type == boundary_type,
                 Boundary.boundary_identifier == bd.boundary_identifier,
-                Boundary.county == county if county else Boundary.county.is_(None),
+                Boundary.county == effective_county if effective_county else Boundary.county.is_(None),
             )
         )
         existing = result.scalar_one_or_none()
+
+        # Fallback: check for legacy record with NULL county (pre-migration)
+        if existing is None and effective_county is not None:
+            fallback_result = await session.execute(
+                select(Boundary).where(
+                    Boundary.boundary_type == boundary_type,
+                    Boundary.boundary_identifier == bd.boundary_identifier,
+                    Boundary.county.is_(None),
+                )
+            )
+            existing = fallback_result.scalar_one_or_none()
 
         if existing:
             existing.name = bd.name
             existing.geometry = geom_wkb
             existing.properties = bd.properties
             existing.source = source
+            if effective_county:
+                existing.county = effective_county
             imported.append(existing)
         else:
             boundary = Boundary(
@@ -134,7 +152,7 @@ async def import_boundaries(
                 boundary_type=boundary_type,
                 boundary_identifier=bd.boundary_identifier,
                 source=source,
-                county=county,
+                county=effective_county,
                 geometry=geom_wkb,
                 properties=bd.properties,
             )
@@ -142,6 +160,19 @@ async def import_boundaries(
             imported.append(boundary)
 
     await session.commit()
+
+    # Import precinct metadata for county_precinct boundaries
+    if boundary_type == "county_precinct":
+        from voter_api.services.precinct_metadata_service import upsert_precinct_metadata
+
+        meta_count = 0
+        for b in imported:
+            if b.properties:
+                result = await upsert_precinct_metadata(session, b.id, b.properties)
+                if result:
+                    meta_count += 1
+        await session.commit()
+        logger.info(f"Upserted {meta_count} precinct metadata records")
 
     logger.info(f"Imported {len(imported)} boundaries")
     return imported

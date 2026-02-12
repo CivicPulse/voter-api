@@ -17,11 +17,14 @@ from voter_api.models.base import Base
 
 # Import all models so they are registered with Base.metadata
 from voter_api.models.boundary import Boundary  # noqa: F401
+from voter_api.models.county_district import CountyDistrict  # noqa: F401
+from voter_api.models.county_metadata import CountyMetadata  # noqa: F401
 from voter_api.models.export_job import ExportJob  # noqa: F401
 from voter_api.models.geocoded_location import GeocodedLocation  # noqa: F401
 from voter_api.models.geocoder_cache import GeocoderCache  # noqa: F401
 from voter_api.models.geocoding_job import GeocodingJob  # noqa: F401
 from voter_api.models.import_job import ImportJob  # noqa: F401
+from voter_api.models.precinct_metadata import PrecinctMetadata  # noqa: F401
 from voter_api.models.user import User  # noqa: F401
 from voter_api.models.voter import Voter  # noqa: F401
 
