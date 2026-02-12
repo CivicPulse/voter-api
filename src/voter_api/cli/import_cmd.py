@@ -200,11 +200,19 @@ async def _import_all_boundaries(
                     async with factory() as session:
                         if entry.state_fips:
                             # Filter to matching state before import
-                            boundary_data = _filter_by_state_fips(shp_path, entry.state_fips)
+                            boundary_data, metadata_records = _filter_by_state_fips(shp_path, entry.state_fips)
                             imported = await _import_filtered_boundaries(
                                 session, boundary_data, entry.boundary_type, entry.source, entry.county
                             )
+
+                            # Import county metadata from the same shapefile
+                            if metadata_records:
+                                from voter_api.services.county_metadata_service import import_county_metadata
+
+                                meta_count = await import_county_metadata(session, metadata_records)
                         else:
+                            metadata_records = []
+                            meta_count = 0
                             imported = await import_boundaries(
                                 session,
                                 file_path=shp_path,
@@ -215,7 +223,10 @@ async def _import_all_boundaries(
 
                     result.success = True
                     result.count = len(imported)
-                    typer.echo(f"  OK: {result.count} boundaries imported")
+                    if metadata_records:
+                        typer.echo(f"  OK: {result.count} boundaries imported, {meta_count} county metadata records")
+                    else:
+                        typer.echo(f"  OK: {result.count} boundaries imported")
 
             except Exception as e:
                 result.error = str(e)
@@ -236,15 +247,41 @@ async def _import_all_boundaries(
         raise typer.Exit(code=1)
 
 
-def _filter_by_state_fips(shp_path: Path, state_fips: str) -> list:
+# Mapping from TIGER/Line shapefile column names to CountyMetadata field names.
+_TIGER_TO_METADATA: dict[str, str] = {
+    "STATEFP": "fips_state",
+    "COUNTYFP": "fips_county",
+    "COUNTYNS": "gnis_code",
+    "GEOID": "geoid",
+    "GEOIDFQ": "geoid_fq",
+    "NAME": "name",
+    "NAMELSAD": "name_lsad",
+    "LSAD": "lsad_code",
+    "CLASSFP": "class_fp",
+    "MTFCC": "mtfcc",
+    "CSAFP": "csa_code",
+    "CBSAFP": "cbsa_code",
+    "METDIVFP": "metdiv_code",
+    "FUNCSTAT": "functional_status",
+    "ALAND": "land_area_m2",
+    "AWATER": "water_area_m2",
+    "INTPTLAT": "internal_point_lat",
+    "INTPTLON": "internal_point_lon",
+}
+
+
+def _filter_by_state_fips(shp_path: Path, state_fips: str) -> tuple[list, list[dict]]:
     """Read a shapefile and filter to rows matching a state FIPS code.
+
+    Also extracts county metadata records from the same GeoDataFrame,
+    mapping TIGER/Line column names to snake_case CountyMetadata fields.
 
     Args:
         shp_path: Path to the .shp file.
         state_fips: State FIPS code to filter on (e.g., "13" for Georgia).
 
     Returns:
-        List of BoundaryData objects for the matching state.
+        Tuple of (BoundaryData list, metadata dicts list).
     """
     import geopandas as gpd
     from shapely.geometry import MultiPolygon, Polygon
@@ -261,6 +298,8 @@ def _filter_by_state_fips(shp_path: Path, state_fips: str) -> list:
         gdf = gdf[gdf["STATEFP"] == state_fips]
 
     boundaries: list[BoundaryData] = []
+    metadata_records: list[dict] = []
+
     for _, row in gdf.iterrows():
         geom = row.geometry
         if geom is None:
@@ -283,7 +322,17 @@ def _filter_by_state_fips(shp_path: Path, state_fips: str) -> list:
             )
         )
 
-    return boundaries
+        # Extract metadata record using TIGER/Line column mapping
+        meta: dict = {}
+        for tiger_col, meta_field in _TIGER_TO_METADATA.items():
+            if tiger_col in gdf.columns:
+                val = _serialize_value(row[tiger_col])
+                if val is not None:
+                    meta[meta_field] = val
+        if meta.get("geoid"):
+            metadata_records.append(meta)
+
+    return boundaries, metadata_records
 
 
 async def _import_filtered_boundaries(
