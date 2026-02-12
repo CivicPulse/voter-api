@@ -16,9 +16,11 @@ def create_router(settings: Settings) -> APIRouter:
         Configured API router.
     """
     from voter_api.api.v1.auth import router as auth_router
+    from voter_api.api.v1.imports import router as imports_router
 
     root_router = APIRouter(prefix=settings.api_v1_prefix)
     root_router.include_router(auth_router)
+    root_router.include_router(imports_router)
 
     return root_router
 

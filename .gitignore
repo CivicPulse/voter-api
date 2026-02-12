@@ -19,8 +19,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# lib/ and lib64/ — only at repo root to avoid ignoring src/voter_api/lib/
+/lib/
+/lib64/
 parts/
 sdist/
 var/

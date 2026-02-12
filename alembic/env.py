@@ -14,7 +14,9 @@ from voter_api.models.audit_log import AuditLog  # noqa: F401
 from voter_api.models.base import Base
 
 # Import all models so they are registered with Base.metadata
+from voter_api.models.import_job import ImportJob  # noqa: F401
 from voter_api.models.user import User  # noqa: F401
+from voter_api.models.voter import Voter  # noqa: F401
 
 config = context.config
 

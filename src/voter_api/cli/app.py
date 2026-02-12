@@ -26,10 +26,12 @@ def serve(
 def _register_subcommands() -> None:
     """Register all CLI subcommand groups."""
     from voter_api.cli.db_cmd import db_app
+    from voter_api.cli.import_cmd import import_app
     from voter_api.cli.user_cmd import user_app
 
     app.add_typer(db_app, name="db", help="Database migration commands")
     app.add_typer(user_app, name="user", help="User management commands")
+    app.add_typer(import_app, name="import", help="Data import commands")
 
 
 _register_subcommands()
