@@ -84,6 +84,27 @@ async def upsert_precinct_metadata(
     return record
 
 
+async def get_precinct_metadata_batch(
+    session: AsyncSession,
+    boundary_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, PrecinctMetadata]:
+    """Look up precinct metadata for multiple boundaries in a single query.
+
+    Args:
+        session: Database session.
+        boundary_ids: List of boundary UUIDs to look up.
+
+    Returns:
+        Dict mapping boundary_id to PrecinctMetadata record.
+        Boundaries without metadata are omitted from the result.
+    """
+    if not boundary_ids:
+        return {}
+
+    result = await session.execute(select(PrecinctMetadata).where(PrecinctMetadata.boundary_id.in_(boundary_ids)))
+    return {record.boundary_id: record for record in result.scalars().all()}
+
+
 async def get_precinct_metadata_by_boundary(
     session: AsyncSession,
     boundary_id: uuid.UUID,

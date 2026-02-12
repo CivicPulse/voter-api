@@ -31,6 +31,10 @@ from voter_api.services.boundary_service import (
     list_boundary_types,
 )
 from voter_api.services.county_metadata_service import get_county_metadata_by_geoid
+from voter_api.services.precinct_metadata_service import (
+    get_precinct_metadata_batch,
+    get_precinct_metadata_by_boundary,
+)
 
 # Module-level manifest cache singleton
 _manifest_cache: ManifestCache | None = None
@@ -171,19 +175,42 @@ async def get_boundaries_geojson(
         page_size=10_000,
     )
 
+    # Batch-load precinct metadata for county_precinct boundaries
+    precinct_ids = [b.id for b in boundaries if b.boundary_type == "county_precinct"]
+    precinct_meta_map = await get_precinct_metadata_batch(session, precinct_ids) if precinct_ids else {}
+
     features: list[dict] = []
     for b in boundaries:
         geom_shape = to_shape(b.geometry)
+        properties: dict = {
+            "name": b.name,
+            "boundary_type": b.boundary_type,
+            "boundary_identifier": b.boundary_identifier,
+            "source": b.source,
+            "county": b.county,
+        }
+
+        # Enrich with flat precinct metadata when available
+        if b.boundary_type == "county_precinct" and b.id in precinct_meta_map:
+            meta = precinct_meta_map[b.id]
+            properties.update(
+                {
+                    "precinct_name": meta.precinct_name,
+                    "precinct_id": meta.precinct_id,
+                    "precinct_fips": meta.fips,
+                    "precinct_fips_county": meta.fips_county,
+                    "precinct_county_name": meta.county_name,
+                    "precinct_county_number": meta.county_number,
+                    "precinct_sos_district_id": meta.sos_district_id,
+                    "precinct_sos_id": meta.sos_id,
+                    "precinct_area": float(meta.area) if meta.area is not None else None,
+                }
+            )
+
         feature = BoundaryGeoJSONFeature(
             id=str(b.id),
             geometry=mapping(geom_shape),
-            properties={
-                "name": b.name,
-                "boundary_type": b.boundary_type,
-                "boundary_identifier": b.boundary_identifier,
-                "source": b.source,
-                "county": b.county,
-            },
+            properties=properties,
         )
         features.append(feature.model_dump())
 
@@ -289,5 +316,13 @@ async def get_boundary_detail(
             from voter_api.schemas.county_metadata import CountyMetadataResponse
 
             response_data["county_metadata"] = CountyMetadataResponse.model_validate(metadata)
+
+    # Include precinct metadata for county_precinct boundaries
+    if boundary.boundary_type == "county_precinct":
+        metadata = await get_precinct_metadata_by_boundary(session, boundary.id)
+        if metadata:
+            from voter_api.schemas.precinct_metadata import PrecinctMetadataResponse
+
+            response_data["precinct_metadata"] = PrecinctMetadataResponse.model_validate(metadata)
 
     return BoundaryDetailResponse(**response_data)

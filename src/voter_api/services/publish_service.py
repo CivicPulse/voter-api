@@ -6,6 +6,7 @@ to object storage, and produces a manifest.
 
 import tempfile
 import time
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -22,9 +23,13 @@ from voter_api.lib.publisher.storage import fetch_manifest, upload_file, upload_
 from voter_api.lib.publisher.types import DatasetEntry, PublishResult
 from voter_api.models.boundary import Boundary
 from voter_api.services.boundary_service import list_boundaries
+from voter_api.services.precinct_metadata_service import get_precinct_metadata_batch
 
 
-def boundary_to_feature_dict(boundary: Boundary) -> dict[str, Any]:
+def boundary_to_feature_dict(
+    boundary: Boundary,
+    precinct_metadata_map: dict[uuid.UUID, Any] | None = None,
+) -> dict[str, Any]:
     """Convert a Boundary ORM model to a GeoJSON feature dict.
 
     Matches the exact feature structure of the existing
@@ -32,22 +37,42 @@ def boundary_to_feature_dict(boundary: Boundary) -> dict[str, Any]:
 
     Args:
         boundary: Boundary ORM instance with loaded geometry.
+        precinct_metadata_map: Optional dict mapping boundary_id to
+            PrecinctMetadata records for enriching county_precinct features.
 
     Returns:
         GeoJSON Feature dict with id, geometry, and properties.
     """
     geom_shape = to_shape(boundary.geometry)
+    properties: dict[str, Any] = {
+        "name": boundary.name,
+        "boundary_type": boundary.boundary_type,
+        "boundary_identifier": boundary.boundary_identifier,
+        "source": boundary.source,
+        "county": boundary.county,
+    }
+
+    if boundary.boundary_type == "county_precinct" and precinct_metadata_map and boundary.id in precinct_metadata_map:
+        meta = precinct_metadata_map[boundary.id]
+        properties.update(
+            {
+                "precinct_name": meta.precinct_name,
+                "precinct_id": meta.precinct_id,
+                "precinct_fips": meta.fips,
+                "precinct_fips_county": meta.fips_county,
+                "precinct_county_name": meta.county_name,
+                "precinct_county_number": meta.county_number,
+                "precinct_sos_district_id": meta.sos_district_id,
+                "precinct_sos_id": meta.sos_id,
+                "precinct_area": float(meta.area) if meta.area is not None else None,
+            }
+        )
+
     return {
         "type": "Feature",
         "id": str(boundary.id),
         "geometry": mapping(geom_shape),
-        "properties": {
-            "name": boundary.name,
-            "boundary_type": boundary.boundary_type,
-            "boundary_identifier": boundary.boundary_identifier,
-            "source": boundary.source,
-            "county": boundary.county,
-        },
+        "properties": properties,
     }
 
 
@@ -142,29 +167,33 @@ async def publish_datasets(
         types_to_regenerate = None  # All types
 
     # For each type to regenerate, query ALL boundaries of that type
-    features_by_type: dict[str, list[dict[str, Any]]] = {}
-    all_features: list[dict[str, Any]] = []
+    all_boundaries: list[Boundary] = []
 
     if types_to_regenerate is not None:
         # Filtered: query each type separately (full data for each type)
         for bt in types_to_regenerate:
             boundaries, _ = await list_boundaries(session, boundary_type=bt, page=1, page_size=100_000)
-            for b in boundaries:
-                feature = boundary_to_feature_dict(b)
-                all_features.append(feature)
-                if bt not in features_by_type:
-                    features_by_type[bt] = []
-                features_by_type[bt].append(feature)
+            all_boundaries.extend(boundaries)
     else:
         # Unfiltered: query all
         boundaries, _ = await list_boundaries(session, page=1, page_size=100_000)
-        for b in boundaries:
-            feature = boundary_to_feature_dict(b)
-            all_features.append(feature)
-            bt = b.boundary_type
-            if bt not in features_by_type:
-                features_by_type[bt] = []
-            features_by_type[bt].append(feature)
+        all_boundaries.extend(boundaries)
+
+    # Batch-load precinct metadata for county_precinct boundaries
+    precinct_ids = [b.id for b in all_boundaries if b.boundary_type == "county_precinct"]
+    precinct_meta_map = await get_precinct_metadata_batch(session, precinct_ids) if precinct_ids else {}
+
+    # Generate features with enriched metadata
+    features_by_type: dict[str, list[dict[str, Any]]] = {}
+    all_features: list[dict[str, Any]] = []
+
+    for b in all_boundaries:
+        feature = boundary_to_feature_dict(b, precinct_metadata_map=precinct_meta_map)
+        all_features.append(feature)
+        bt = b.boundary_type
+        if bt not in features_by_type:
+            features_by_type[bt] = []
+        features_by_type[bt].append(feature)
 
     if not features_by_type:
         logger.info("No boundaries found — nothing to publish")

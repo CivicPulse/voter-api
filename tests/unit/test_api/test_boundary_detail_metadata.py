@@ -1,7 +1,8 @@
-"""Tests for county metadata in boundary detail endpoint."""
+"""Tests for county and precinct metadata in boundary detail endpoint."""
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -187,3 +188,117 @@ class TestBoundaryDetailCountyMetadata:
         assert mock_get_meta.await_count == 1
         call_args, _ = mock_get_meta.await_args_list[0]
         assert call_args[1] == "13067"
+
+
+def _make_mock_precinct_metadata() -> MagicMock:
+    """Create a mock PrecinctMetadata object."""
+    meta = MagicMock()
+    meta.sos_district_id = "121001"
+    meta.sos_id = "13121001"
+    meta.fips = "13121"
+    meta.fips_county = "121"
+    meta.county_name = "Fulton"
+    meta.county_number = "059"
+    meta.precinct_id = "12A"
+    meta.precinct_name = "Sandy Springs North"
+    meta.area = Decimal("2.456789")
+    return meta
+
+
+class TestBoundaryDetailPrecinctMetadata:
+    """Tests for precinct_metadata field in boundary detail response."""
+
+    @pytest.mark.asyncio
+    async def test_precinct_boundary_includes_metadata(self, client: AsyncClient) -> None:
+        """County precinct boundary detail includes precinct_metadata when metadata exists."""
+        mock_boundary = _make_mock_boundary(
+            boundary_type="county_precinct",
+            boundary_identifier="121-12A",
+        )
+        mock_metadata = _make_mock_precinct_metadata()
+
+        with (
+            patch(
+                "voter_api.api.v1.boundaries.get_boundary",
+                new_callable=AsyncMock,
+                return_value=mock_boundary,
+            ),
+            patch("voter_api.api.v1.boundaries.to_shape") as mock_to_shape,
+            patch("voter_api.api.v1.boundaries.mapping") as mock_mapping,
+            patch(
+                "voter_api.api.v1.boundaries.get_precinct_metadata_by_boundary",
+                new_callable=AsyncMock,
+                return_value=mock_metadata,
+            ),
+        ):
+            mock_to_shape.return_value = MagicMock()
+            mock_mapping.return_value = {"type": "MultiPolygon", "coordinates": []}
+
+            resp = await client.get(f"/api/v1/boundaries/{mock_boundary.id}")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["precinct_metadata"] is not None
+        assert data["precinct_metadata"]["sos_district_id"] == "121001"
+        assert data["precinct_metadata"]["precinct_name"] == "Sandy Springs North"
+        assert data["precinct_metadata"]["precinct_id"] == "12A"
+        assert data["precinct_metadata"]["fips"] == "13121"
+
+    @pytest.mark.asyncio
+    async def test_non_precinct_boundary_has_null_precinct_metadata(self, client: AsyncClient) -> None:
+        """Non-precinct boundary detail has precinct_metadata as null."""
+        mock_boundary = _make_mock_boundary(boundary_type="county", boundary_identifier="13121")
+
+        with (
+            patch(
+                "voter_api.api.v1.boundaries.get_boundary",
+                new_callable=AsyncMock,
+                return_value=mock_boundary,
+            ),
+            patch("voter_api.api.v1.boundaries.to_shape") as mock_to_shape,
+            patch("voter_api.api.v1.boundaries.mapping") as mock_mapping,
+            patch(
+                "voter_api.api.v1.boundaries.get_county_metadata_by_geoid",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+        ):
+            mock_to_shape.return_value = MagicMock()
+            mock_mapping.return_value = {"type": "MultiPolygon", "coordinates": []}
+
+            resp = await client.get(f"/api/v1/boundaries/{mock_boundary.id}")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["precinct_metadata"] is None
+
+    @pytest.mark.asyncio
+    async def test_precinct_boundary_without_metadata_has_null(self, client: AsyncClient) -> None:
+        """County precinct boundary with no matching metadata record has precinct_metadata as null."""
+        mock_boundary = _make_mock_boundary(
+            boundary_type="county_precinct",
+            boundary_identifier="121-99Z",
+        )
+
+        with (
+            patch(
+                "voter_api.api.v1.boundaries.get_boundary",
+                new_callable=AsyncMock,
+                return_value=mock_boundary,
+            ),
+            patch("voter_api.api.v1.boundaries.to_shape") as mock_to_shape,
+            patch("voter_api.api.v1.boundaries.mapping") as mock_mapping,
+            patch(
+                "voter_api.api.v1.boundaries.get_precinct_metadata_by_boundary",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+        ):
+            mock_to_shape.return_value = MagicMock()
+            mock_mapping.return_value = {"type": "MultiPolygon", "coordinates": []}
+
+            resp = await client.get(f"/api/v1/boundaries/{mock_boundary.id}")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["precinct_metadata"] is None
