@@ -1,0 +1,2603 @@
+[
+  {
+    "timestamp": "2026-02-11T20:26:47.193081",
+    "version": "v4",
+    "input_data": {
+      "session_id": "8410bb70-4e02-45e2-8ec4-12df75ae5d21",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/8410bb70-4e02-45e2-8ec4-12df75ae5d21.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0,
+        "total_duration_ms": 447,
+        "total_api_duration_ms": 0,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 0,
+        "total_output_tokens": 0,
+        "context_window_size": 200000,
+        "current_usage": null,
+        "used_percentage": null,
+        "remaining_percentage": null
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[34m[Opus 4.6]\u001b[0m \u001b[90m\ud83d\udcad No session data\u001b[0m",
+    "error": "Transcript file /home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/8410bb70-4e02-45e2-8ec4-12df75ae5d21.jsonl does not exist",
+    "performance": {
+      "total_generation_time": 0.00012254714965820312,
+      "error": "Transcript file /home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/8410bb70-4e02-45e2-8ec4-12df75ae5d21.jsonl does not exist",
+      "cache_stats": {
+        "prompt_cache_size": 0,
+        "redis_cache_size": 0,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 0,
+        "cwd_cache_size": 0
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:26:47.193383",
+    "version": "v4",
+    "input_data": {
+      "session_id": "8410bb70-4e02-45e2-8ec4-12df75ae5d21",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/8410bb70-4e02-45e2-8ec4-12df75ae5d21.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0,
+        "total_duration_ms": 447,
+        "total_api_duration_ms": 0,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 0,
+        "total_output_tokens": 0,
+        "context_window_size": 200000,
+        "current_usage": null,
+        "used_percentage": null,
+        "remaining_percentage": null
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.00012254714965820312,
+      "error": "Transcript file /home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/8410bb70-4e02-45e2-8ec4-12df75ae5d21.jsonl does not exist",
+      "cache_stats": {
+        "prompt_cache_size": 0,
+        "redis_cache_size": 0,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 0,
+        "cwd_cache_size": 0
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:26:47.193795",
+    "version": "v4",
+    "input_data": {
+      "session_id": "8410bb70-4e02-45e2-8ec4-12df75ae5d21",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/8410bb70-4e02-45e2-8ec4-12df75ae5d21.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0,
+        "total_duration_ms": 447,
+        "total_api_duration_ms": 0,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 0,
+        "total_output_tokens": 0,
+        "context_window_size": 200000,
+        "current_usage": null,
+        "used_percentage": null,
+        "remaining_percentage": null
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[34m[Opus 4.6]\u001b[0m \u001b[90m\ud83d\udcad No session data\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.0009503364562988281
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:26:50.957355",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.0006969999999999999,
+        "total_duration_ms": 4245,
+        "total_api_duration_ms": 2611,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 137,
+        "total_output_tokens": 112,
+        "context_window_size": 200000,
+        "current_usage": null,
+        "used_percentage": null,
+        "remaining_percentage": null
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[34m[Opus 4.6]\u001b[0m \u001b[90m\ud83d\udcad No session data\u001b[0m",
+    "error": "Transcript file /home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl does not exist",
+    "performance": {
+      "total_generation_time": 5.91278076171875e-05,
+      "error": "Transcript file /home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl does not exist",
+      "cache_stats": {
+        "prompt_cache_size": 0,
+        "redis_cache_size": 0,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 0,
+        "cwd_cache_size": 0
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:26:50.957865",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.0006969999999999999,
+        "total_duration_ms": 4245,
+        "total_api_duration_ms": 2611,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 137,
+        "total_output_tokens": 112,
+        "context_window_size": 200000,
+        "current_usage": null,
+        "used_percentage": null,
+        "remaining_percentage": null
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 5.91278076171875e-05,
+      "error": "Transcript file /home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl does not exist",
+      "cache_stats": {
+        "prompt_cache_size": 0,
+        "redis_cache_size": 0,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 0,
+        "cwd_cache_size": 0
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:26:50.958271",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.0006969999999999999,
+        "total_duration_ms": 4245,
+        "total_api_duration_ms": 2611,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 137,
+        "total_output_tokens": 112,
+        "context_window_size": 200000,
+        "current_usage": null,
+        "used_percentage": null,
+        "remaining_percentage": null
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[34m[Opus 4.6]\u001b[0m \u001b[90m\ud83d\udcad No session data\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.0010166168212890625
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:26:53.159240",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.0006969999999999999,
+        "total_duration_ms": 6455,
+        "total_api_duration_ms": 2611,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 137,
+        "total_output_tokens": 112,
+        "context_window_size": 200000,
+        "current_usage": null,
+        "used_percentage": null,
+        "remaining_percentage": null
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.003369569778442383,
+      "prompts_count": 0,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.00011682510375976562,
+          "redis_lookup_times": 0.0015790462493896484,
+          "total_generation_times": 0.003369569778442383
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:26:53.159859",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.0006969999999999999,
+        "total_duration_ms": 6455,
+        "total_api_duration_ms": 2611,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 137,
+        "total_output_tokens": 112,
+        "context_window_size": 200000,
+        "current_usage": null,
+        "used_percentage": null,
+        "remaining_percentage": null
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \u001b[90m\ud83d\udcad No prompts yet\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.004018545150756836
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:26:58.482798",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.0006969999999999999,
+        "total_duration_ms": 11778,
+        "total_api_duration_ms": 2611,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 137,
+        "total_output_tokens": 112,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 2,
+          "output_tokens": 14,
+          "cache_creation_input_tokens": 29223,
+          "cache_read_input_tokens": 0
+        },
+        "used_percentage": 15,
+        "remaining_percentage": 85
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.0035588741302490234,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.00018906593322753906,
+          "redis_lookup_times": 0.0014643669128417969,
+          "total_generation_times": 0.0035588741302490234
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:26:58.483461",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.0006969999999999999,
+        "total_duration_ms": 11778,
+        "total_api_duration_ms": 2611,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 137,
+        "total_output_tokens": 112,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 2,
+          "output_tokens": 14,
+          "cache_creation_input_tokens": 29223,
+          "cache_read_input_tokens": 0
+        },
+        "used_percentage": 15,
+        "remaining_percentage": 85
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.004304409027099609
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:26:59.099246",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.0006969999999999999,
+        "total_duration_ms": 12394,
+        "total_api_duration_ms": 2611,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 137,
+        "total_output_tokens": 112,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 2,
+          "output_tokens": 14,
+          "cache_creation_input_tokens": 29223,
+          "cache_read_input_tokens": 0
+        },
+        "used_percentage": 15,
+        "remaining_percentage": 85
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.003610372543334961,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0002579689025878906,
+          "redis_lookup_times": 0.001482248306274414,
+          "total_generation_times": 0.003610372543334961
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:26:59.100085",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.0006969999999999999,
+        "total_duration_ms": 12394,
+        "total_api_duration_ms": 2611,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 137,
+        "total_output_tokens": 112,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 2,
+          "output_tokens": 14,
+          "cache_creation_input_tokens": 29223,
+          "cache_read_input_tokens": 0
+        },
+        "used_percentage": 15,
+        "remaining_percentage": 85
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.004506349563598633
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:26:59.702977",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.0006969999999999999,
+        "total_duration_ms": 12999,
+        "total_api_duration_ms": 2611,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 137,
+        "total_output_tokens": 112,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 2,
+          "output_tokens": 14,
+          "cache_creation_input_tokens": 29223,
+          "cache_read_input_tokens": 0
+        },
+        "used_percentage": 15,
+        "remaining_percentage": 85
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.0038788318634033203,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0002911090850830078,
+          "redis_lookup_times": 0.0017809867858886719,
+          "total_generation_times": 0.0038788318634033203
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:26:59.703731",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.0006969999999999999,
+        "total_duration_ms": 12999,
+        "total_api_duration_ms": 2611,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 137,
+        "total_output_tokens": 112,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 2,
+          "output_tokens": 14,
+          "cache_creation_input_tokens": 29223,
+          "cache_read_input_tokens": 0
+        },
+        "used_percentage": 15,
+        "remaining_percentage": 85
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.0047075748443603516
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:01.262099",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.18970075,
+        "total_duration_ms": 14557,
+        "total_api_duration_ms": 8181,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 139,
+        "total_output_tokens": 366,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 2,
+          "output_tokens": 254,
+          "cache_creation_input_tokens": 29223,
+          "cache_read_input_tokens": 0
+        },
+        "used_percentage": 15,
+        "remaining_percentage": 85
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.003670215606689453,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0003390312194824219,
+          "redis_lookup_times": 0.0014934539794921875,
+          "total_generation_times": 0.003670215606689453
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:01.262964",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.18970075,
+        "total_duration_ms": 14557,
+        "total_api_duration_ms": 8181,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 139,
+        "total_output_tokens": 366,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 2,
+          "output_tokens": 254,
+          "cache_creation_input_tokens": 29223,
+          "cache_read_input_tokens": 0
+        },
+        "used_percentage": 15,
+        "remaining_percentage": 85
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.004630565643310547
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:03.589311",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.18970075,
+        "total_duration_ms": 16880,
+        "total_api_duration_ms": 8181,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 139,
+        "total_output_tokens": 366,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 2372,
+          "cache_read_input_tokens": 29223
+        },
+        "used_percentage": 16,
+        "remaining_percentage": 84
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.003598928451538086,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.00035071372985839844,
+          "redis_lookup_times": 0.001501321792602539,
+          "total_generation_times": 0.003598928451538086
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:03.590477",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.18970075,
+        "total_duration_ms": 16880,
+        "total_api_duration_ms": 8181,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 139,
+        "total_output_tokens": 366,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 2372,
+          "cache_read_input_tokens": 29223
+        },
+        "used_percentage": 16,
+        "remaining_percentage": 84
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.0048487186431884766
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:03.914436",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.18970075,
+        "total_duration_ms": 17202,
+        "total_api_duration_ms": 8181,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 139,
+        "total_output_tokens": 366,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 2372,
+          "cache_read_input_tokens": 29223
+        },
+        "used_percentage": 16,
+        "remaining_percentage": 84
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.004344463348388672,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0005216598510742188,
+          "redis_lookup_times": 0.0018916130065917969,
+          "total_generation_times": 0.004344463348388672
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:03.915826",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.18970075,
+        "total_duration_ms": 17202,
+        "total_api_duration_ms": 8181,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 139,
+        "total_output_tokens": 366,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 2372,
+          "cache_read_input_tokens": 29223
+        },
+        "used_percentage": 16,
+        "remaining_percentage": 84
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.005781650543212891
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:04.357900",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.18970075,
+        "total_duration_ms": 17653,
+        "total_api_duration_ms": 8181,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 139,
+        "total_output_tokens": 366,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 2372,
+          "cache_read_input_tokens": 29223
+        },
+        "used_percentage": 16,
+        "remaining_percentage": 84
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.0037047863006591797,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0003647804260253906,
+          "redis_lookup_times": 0.0014505386352539062,
+          "total_generation_times": 0.0037047863006591797
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:04.359073",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.18970075,
+        "total_duration_ms": 17653,
+        "total_api_duration_ms": 8181,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 139,
+        "total_output_tokens": 366,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 2372,
+          "cache_read_input_tokens": 29223
+        },
+        "used_percentage": 16,
+        "remaining_percentage": 84
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.004992485046386719
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:04.770597",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.18970075,
+        "total_duration_ms": 18066,
+        "total_api_duration_ms": 8181,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 139,
+        "total_output_tokens": 366,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 2372,
+          "cache_read_input_tokens": 29223
+        },
+        "used_percentage": 16,
+        "remaining_percentage": 84
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.0036575794219970703,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0004439353942871094,
+          "redis_lookup_times": 0.001466989517211914,
+          "total_generation_times": 0.0036575794219970703
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:04.772272",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.18970075,
+        "total_duration_ms": 18066,
+        "total_api_duration_ms": 8181,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 139,
+        "total_output_tokens": 366,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 2372,
+          "cache_read_input_tokens": 29223
+        },
+        "used_percentage": 16,
+        "remaining_percentage": 84
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.005361318588256836
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:05.299744",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.18970075,
+        "total_duration_ms": 18596,
+        "total_api_duration_ms": 8181,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 139,
+        "total_output_tokens": 366,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 2372,
+          "cache_read_input_tokens": 29223
+        },
+        "used_percentage": 16,
+        "remaining_percentage": 84
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.003946065902709961,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.00070953369140625,
+          "redis_lookup_times": 0.0014379024505615234,
+          "total_generation_times": 0.003946065902709961
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:05.301142",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.18970075,
+        "total_duration_ms": 18596,
+        "total_api_duration_ms": 8181,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 139,
+        "total_output_tokens": 366,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 2372,
+          "cache_read_input_tokens": 29223
+        },
+        "used_percentage": 16,
+        "remaining_percentage": 84
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.0054759979248046875
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:06.617151",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.22831725,
+        "total_duration_ms": 19912,
+        "total_api_duration_ms": 13403,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 140,
+        "total_output_tokens": 733,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 367,
+          "cache_creation_input_tokens": 2372,
+          "cache_read_input_tokens": 29223
+        },
+        "used_percentage": 16,
+        "remaining_percentage": 84
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.003996372222900391,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0007140636444091797,
+          "redis_lookup_times": 0.0014781951904296875,
+          "total_generation_times": 0.003996372222900391
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:06.618552",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.22831725,
+        "total_duration_ms": 19912,
+        "total_api_duration_ms": 13403,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 140,
+        "total_output_tokens": 733,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 367,
+          "cache_creation_input_tokens": 2372,
+          "cache_read_input_tokens": 29223
+        },
+        "used_percentage": 16,
+        "remaining_percentage": 84
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.005478382110595703
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:09.296347",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.22831725,
+        "total_duration_ms": 22592,
+        "total_api_duration_ms": 13403,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 140,
+        "total_output_tokens": 733,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 6824,
+          "cache_read_input_tokens": 31595
+        },
+        "used_percentage": 19,
+        "remaining_percentage": 81
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.003917217254638672,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0007350444793701172,
+          "redis_lookup_times": 0.0013797283172607422,
+          "total_generation_times": 0.003917217254638672
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:09.297841",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.22831725,
+        "total_duration_ms": 22592,
+        "total_api_duration_ms": 13403,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 140,
+        "total_output_tokens": 733,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 6824,
+          "cache_read_input_tokens": 31595
+        },
+        "used_percentage": 19,
+        "remaining_percentage": 81
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.005516529083251953
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:10.255047",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.22831725,
+        "total_duration_ms": 23550,
+        "total_api_duration_ms": 13403,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 140,
+        "total_output_tokens": 733,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 6824,
+          "cache_read_input_tokens": 31595
+        },
+        "used_percentage": 19,
+        "remaining_percentage": 81
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.004176616668701172,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0007498264312744141,
+          "redis_lookup_times": 0.0014357566833496094,
+          "total_generation_times": 0.004176616668701172
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:10.256642",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.22831725,
+        "total_duration_ms": 23550,
+        "total_api_duration_ms": 13403,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 140,
+        "total_output_tokens": 733,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 6824,
+          "cache_read_input_tokens": 31595
+        },
+        "used_percentage": 19,
+        "remaining_percentage": 81
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.005873918533325195
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:10.648500",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.22831725,
+        "total_duration_ms": 23942,
+        "total_api_duration_ms": 13403,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 140,
+        "total_output_tokens": 733,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 6824,
+          "cache_read_input_tokens": 31595
+        },
+        "used_percentage": 19,
+        "remaining_percentage": 81
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.004002571105957031,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0007641315460205078,
+          "redis_lookup_times": 0.0013921260833740234,
+          "total_generation_times": 0.004002571105957031
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:10.650258",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.22831725,
+        "total_duration_ms": 23942,
+        "total_api_duration_ms": 13403,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 140,
+        "total_output_tokens": 733,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 6824,
+          "cache_read_input_tokens": 31595
+        },
+        "used_percentage": 19,
+        "remaining_percentage": 81
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.0058400630950927734
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:11.100544",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.29244475000000003,
+        "total_duration_ms": 24396,
+        "total_api_duration_ms": 17880,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 141,
+        "total_output_tokens": 960,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 227,
+          "cache_creation_input_tokens": 6824,
+          "cache_read_input_tokens": 31595
+        },
+        "used_percentage": 19,
+        "remaining_percentage": 81
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.004301786422729492,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0008985996246337891,
+          "redis_lookup_times": 0.0015060901641845703,
+          "total_generation_times": 0.004301786422729492
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:11.102286",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.29244475000000003,
+        "total_duration_ms": 24396,
+        "total_api_duration_ms": 17880,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 141,
+        "total_output_tokens": 960,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 227,
+          "cache_creation_input_tokens": 6824,
+          "cache_read_input_tokens": 31595
+        },
+        "used_percentage": 19,
+        "remaining_percentage": 81
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.0061528682708740234
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:25.627520",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.29244475000000003,
+        "total_duration_ms": 38920,
+        "total_api_duration_ms": 17880,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 141,
+        "total_output_tokens": 960,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 4231,
+          "cache_read_input_tokens": 38419
+        },
+        "used_percentage": 21,
+        "remaining_percentage": 79
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.004153728485107422,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0009312629699707031,
+          "redis_lookup_times": 0.0013740062713623047,
+          "total_generation_times": 0.004153728485107422
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:27:25.629362",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.29244475000000003,
+        "total_duration_ms": 38920,
+        "total_api_duration_ms": 17880,
+        "total_lines_added": 0,
+        "total_lines_removed": 0
+      },
+      "context_window": {
+        "total_input_tokens": 141,
+        "total_output_tokens": 960,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 8,
+          "cache_creation_input_tokens": 4231,
+          "cache_read_input_tokens": 38419
+        },
+        "used_percentage": 21,
+        "remaining_percentage": 79
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.0060765743255615234
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:28:42.687704",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.419528,
+        "total_duration_ms": 115977,
+        "total_api_duration_ms": 82863,
+        "total_lines_added": 269,
+        "total_lines_removed": 35
+      },
+      "context_window": {
+        "total_input_tokens": 142,
+        "total_output_tokens": 4217,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 3257,
+          "cache_creation_input_tokens": 4231,
+          "cache_read_input_tokens": 38419
+        },
+        "used_percentage": 21,
+        "remaining_percentage": 79
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.00460505485534668,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.001154184341430664,
+          "redis_lookup_times": 0.0014908313751220703,
+          "total_generation_times": 0.00460505485534668
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:28:42.689767",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.419528,
+        "total_duration_ms": 115977,
+        "total_api_duration_ms": 82863,
+        "total_lines_added": 269,
+        "total_lines_removed": 35
+      },
+      "context_window": {
+        "total_input_tokens": 142,
+        "total_output_tokens": 4217,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 3257,
+          "cache_creation_input_tokens": 4231,
+          "cache_read_input_tokens": 38419
+        },
+        "used_percentage": 21,
+        "remaining_percentage": 79
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.006837606430053711
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:28:42.992622",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.419528,
+        "total_duration_ms": 116284,
+        "total_api_duration_ms": 82863,
+        "total_lines_added": 269,
+        "total_lines_removed": 35
+      },
+      "context_window": {
+        "total_input_tokens": 142,
+        "total_output_tokens": 4217,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 3257,
+          "cache_creation_input_tokens": 4231,
+          "cache_read_input_tokens": 38419
+        },
+        "used_percentage": 21,
+        "remaining_percentage": 79
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.0043184757232666016,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0011608600616455078,
+          "redis_lookup_times": 0.0014231204986572266,
+          "total_generation_times": 0.0043184757232666016
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:28:42.994628",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.419528,
+        "total_duration_ms": 116284,
+        "total_api_duration_ms": 82863,
+        "total_lines_added": 269,
+        "total_lines_removed": 35
+      },
+      "context_window": {
+        "total_input_tokens": 142,
+        "total_output_tokens": 4217,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 3257,
+          "cache_creation_input_tokens": 4231,
+          "cache_read_input_tokens": 38419
+        },
+        "used_percentage": 21,
+        "remaining_percentage": 79
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.00641322135925293
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:28:45.751672",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.419528,
+        "total_duration_ms": 119044,
+        "total_api_duration_ms": 82863,
+        "total_lines_added": 269,
+        "total_lines_removed": 35
+      },
+      "context_window": {
+        "total_input_tokens": 142,
+        "total_output_tokens": 4217,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 1,
+          "cache_creation_input_tokens": 3278,
+          "cache_read_input_tokens": 42650
+        },
+        "used_percentage": 23,
+        "remaining_percentage": 77
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.0043714046478271484,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0011267662048339844,
+          "redis_lookup_times": 0.0013985633850097656,
+          "total_generation_times": 0.0043714046478271484
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:28:45.753903",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.419528,
+        "total_duration_ms": 119044,
+        "total_api_duration_ms": 82863,
+        "total_lines_added": 269,
+        "total_lines_removed": 35
+      },
+      "context_window": {
+        "total_input_tokens": 142,
+        "total_output_tokens": 4217,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 1,
+          "cache_creation_input_tokens": 3278,
+          "cache_read_input_tokens": 42650
+        },
+        "used_percentage": 23,
+        "remaining_percentage": 77
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.006758928298950195
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:28:47.073477",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.4648205,
+        "total_duration_ms": 120366,
+        "total_api_duration_ms": 86850,
+        "total_lines_added": 269,
+        "total_lines_removed": 35
+      },
+      "context_window": {
+        "total_input_tokens": 143,
+        "total_output_tokens": 4356,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 139,
+          "cache_creation_input_tokens": 3278,
+          "cache_read_input_tokens": 42650
+        },
+        "used_percentage": 23,
+        "remaining_percentage": 77
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.0047512054443359375,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0012450218200683594,
+          "redis_lookup_times": 0.0016312599182128906,
+          "total_generation_times": 0.0047512054443359375
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:28:47.076547",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.4648205,
+        "total_duration_ms": 120366,
+        "total_api_duration_ms": 86850,
+        "total_lines_added": 269,
+        "total_lines_removed": 35
+      },
+      "context_window": {
+        "total_input_tokens": 143,
+        "total_output_tokens": 4356,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 139,
+          "cache_creation_input_tokens": 3278,
+          "cache_read_input_tokens": 42650
+        },
+        "used_percentage": 23,
+        "remaining_percentage": 77
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.007675647735595703
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:28:55.951343",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.49915200000000004,
+        "total_duration_ms": 129237,
+        "total_api_duration_ms": 95694,
+        "total_lines_added": 269,
+        "total_lines_removed": 35
+      },
+      "context_window": {
+        "total_input_tokens": 144,
+        "total_output_tokens": 4772,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 416,
+          "cache_creation_input_tokens": 154,
+          "cache_read_input_tokens": 45928
+        },
+        "used_percentage": 23,
+        "remaining_percentage": 77
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "",
+    "performance": {
+      "total_generation_time": 0.0045392513275146484,
+      "prompts_count": 1,
+      "cache_stats": {
+        "prompt_cache_size": 1,
+        "redis_cache_size": 1,
+        "file_stat_cache_size": 0,
+        "git_cache_size": 1,
+        "cwd_cache_size": 1
+      },
+      "performance_summary": {
+        "cache_hit_rate": "0.0%",
+        "total_operations": 4,
+        "recent_warnings": [],
+        "recent_errors": [],
+        "avg_times": {
+          "transcript_parse_times": 0.0012052059173583984,
+          "redis_lookup_times": 0.0014791488647460938,
+          "total_generation_times": 0.0045392513275146484
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-11T20:28:55.953734",
+    "version": "v4",
+    "input_data": {
+      "session_id": "47e3dbc6-d46e-4311-a413-d626f2e0ca61",
+      "transcript_path": "/home/kwhatcher/.claude/projects/-home-kwhatcher-projects-voter-api/47e3dbc6-d46e-4311-a413-d626f2e0ca61.jsonl",
+      "cwd": "/home/kwhatcher/projects/voter-api",
+      "model": {
+        "id": "claude-opus-4-6",
+        "display_name": "Opus 4.6"
+      },
+      "workspace": {
+        "current_dir": "/home/kwhatcher/projects/voter-api",
+        "project_dir": "/home/kwhatcher/projects/voter-api"
+      },
+      "version": "2.1.39",
+      "output_style": {
+        "name": "default"
+      },
+      "cost": {
+        "total_cost_usd": 0.49915200000000004,
+        "total_duration_ms": 129237,
+        "total_api_duration_ms": 95694,
+        "total_lines_added": 269,
+        "total_lines_removed": 35
+      },
+      "context_window": {
+        "total_input_tokens": 144,
+        "total_output_tokens": 4772,
+        "context_window_size": 200000,
+        "current_usage": {
+          "input_tokens": 1,
+          "output_tokens": 416,
+          "cache_creation_input_tokens": 154,
+          "cache_read_input_tokens": 45928
+        },
+        "used_percentage": 23,
+        "remaining_percentage": 77
+      },
+      "exceeds_200k_tokens": false
+    },
+    "status_line_output": "\u001b[32m\ud83d\udd00 voter-api\u001b[0m | \u001b[36m\ud83d\udcc1 ~/projects/voter-api\u001b[0m | \u001b[34m[Opus 4.6]\u001b[0m | \ud83d\udca1 \u001b[97m## User Input ```text This project follows a \"Library-First\" approach. A...\u001b[0m",
+    "performance": {
+      "main_execution_time": 0.007004499435424805
+    }
+  }
+]
