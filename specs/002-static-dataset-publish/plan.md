@@ -224,6 +224,8 @@ The existing `get_boundaries_geojson` function is modified:
 
 - `voter-api publish datasets [--boundary-type] [--county] [--source] [--verbose]`
   - Generates and uploads boundary GeoJSON files to R2
+  - --boundary-type: regenerate only this type's file
+  - --county/--source: scope which types to regenerate (files always contain complete data for their type)
   - Shows progress (record counts, file sizes, upload status)
 - `voter-api publish status`
   - Fetches manifest from R2 and displays published dataset info

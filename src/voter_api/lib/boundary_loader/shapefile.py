@@ -95,7 +95,7 @@ def _extract_field(row: object, candidates: list[str]) -> str | None:
     """Try to extract a field value from common column name patterns."""
     for col in candidates:
         try:
-            val = row[col]  # type: ignore[index]
+            val = _serialize_value(row[col])  # type: ignore[index]
         except (KeyError, IndexError, TypeError):
             continue
         if val is not None and str(val).strip():

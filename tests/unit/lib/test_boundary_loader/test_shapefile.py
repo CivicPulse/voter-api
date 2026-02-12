@@ -181,6 +181,21 @@ class TestReadShapefile:
                 read_shapefile(shp)
 
     @patch("voter_api.lib.boundary_loader.shapefile.gpd.read_file")
+    def test_nan_name_produces_fallback(self, mock_read: object, tmp_path: Path) -> None:
+        """NaN NAME column falls back to generic 'Boundary N' name."""
+        poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)])
+        gdf = _make_gdf([poly], {"NAME": [float("nan")], "GEOID": ["01"]})
+        mock_read.return_value = gdf
+
+        shp = tmp_path / "test.shp"
+        shp.write_bytes(b"fake")
+
+        boundaries = read_shapefile(shp)
+        assert len(boundaries) == 1
+        assert boundaries[0].name == "Boundary 1"
+        assert boundaries[0].boundary_identifier == "01"
+
+    @patch("voter_api.lib.boundary_loader.shapefile.gpd.read_file")
     def test_multiple_boundaries(self, mock_read: object, tmp_path: Path) -> None:
         """Multiple features are parsed correctly."""
         polys = [
@@ -210,6 +225,16 @@ class TestExtractField:
     def test_skips_empty(self) -> None:
         """Skips empty string values."""
         row = {"NAME": "  ", "GEOID": "42"}
+        assert _extract_field(row, ["NAME", "GEOID"]) == "42"
+
+    def test_skips_nan_float(self) -> None:
+        """Skips float NaN values and returns next valid candidate."""
+        row = {"NAME": float("nan"), "GEOID": "42"}
+        assert _extract_field(row, ["NAME", "GEOID"]) == "42"
+
+    def test_skips_numpy_nan(self) -> None:
+        """Skips numpy NaN values and returns next valid candidate."""
+        row = {"NAME": np.float64("nan"), "GEOID": "42"}
         assert _extract_field(row, ["NAME", "GEOID"]) == "42"
 
     def test_returns_none_when_no_match(self) -> None:

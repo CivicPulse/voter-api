@@ -109,7 +109,7 @@ bucket-root/
     └── ... (one per boundary type with data)
 ```
 
-All keys are prefixed by the configurable `S3_PREFIX` setting (default: empty, files at bucket root).
+All keys are prefixed by the configurable `R2_PREFIX` setting (default: empty, files at bucket root).
 
 ## Existing Entities (No Changes)
 

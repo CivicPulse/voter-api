@@ -35,7 +35,7 @@ As an administrator, I want to generate static GeoJSON files from boundary data 
 
 ### User Story 2 - Filter Published Datasets (Priority: P2)
 
-As an administrator, I want to selectively publish datasets by boundary type, county, or source so that I can update only the datasets that have changed without republishing everything.
+As an administrator, I want to selectively republish datasets by specifying which boundary types to regenerate, optionally scoped by county or source, so that I can update only the affected files without republishing everything.
 
 **Why this priority**: Boundary data may be updated incrementally (e.g., only county precincts change after redistricting). Being able to publish selectively avoids unnecessary work and reduces upload time.
 
@@ -43,9 +43,9 @@ As an administrator, I want to selectively publish datasets by boundary type, co
 
 **Acceptance Scenarios**:
 
-1. **Given** boundaries exist for multiple types, **When** an admin publishes with a boundary type filter, **Then** only datasets matching that type are generated and uploaded.
-2. **Given** boundaries exist for multiple counties, **When** an admin publishes with a county filter, **Then** only datasets for that county are generated and uploaded.
-3. **Given** an admin publishes with a source filter ("state" or "county"), **When** boundaries exist from both sources, **Then** only boundaries matching the selected source are included.
+1. **Given** boundaries exist for multiple types, **When** an admin publishes with a boundary type filter (e.g., `--boundary-type congressional`), **Then** only the `congressional.geojson` file is regenerated and uploaded; other type files and their manifest entries are preserved unchanged.
+2. **Given** boundaries exist for multiple counties, **When** an admin publishes with a county scope (e.g., `--county Fulton`), **Then** only boundary types that contain Fulton county boundaries are regenerated and uploaded. Each regenerated file still contains ALL boundaries of that type (not just Fulton).
+3. **Given** an admin publishes with a source scope (e.g., `--source state`), **When** boundaries exist from both sources, **Then** only boundary types that contain state-sourced boundaries are regenerated and uploaded. Each regenerated file still contains ALL boundaries of that type.
 
 ---
 
@@ -85,7 +85,7 @@ As a consumer of the boundary GeoJSON endpoint, I want the API to automatically 
 ### Edge Cases
 
 - What happens when a dataset file is too large for a single upload? The system should use multipart uploads for files exceeding 100 MB.
-- What happens when an upload is interrupted midway? The system should not leave partial or corrupt files in object storage; uploads should be atomic (upload to a temporary key, then move/copy to the final key).
+- What happens when an upload is interrupted midway? S3 multipart uploads are automatically aborted on failure (no partial files persist). The manifest is uploaded last, so an interrupted publish does not cause the API to redirect to missing or stale files. A subsequent successful publish overwrites any partially-updated dataset files.
 - What happens when object storage credentials are missing or invalid? The system should fail with a clear error message before attempting any generation or upload work.
 - What happens when boundary data contains invalid geometries? The system should skip invalid records, log warnings, and include only valid geometries in the published files.
 - What happens when the publish command is run concurrently? The system should handle concurrent runs gracefully without producing corrupt files (last-write-wins is acceptable).
@@ -100,14 +100,14 @@ As a consumer of the boundary GeoJSON endpoint, I want the API to automatically 
 - **FR-003**: System MUST produce a combined GeoJSON file (`all-boundaries.geojson`) containing every boundary regardless of type.
 - **FR-004**: System MUST upload generated files to an S3-compatible object storage service (supporting Cloudflare R2, AWS S3, MinIO, and similar services).
 - **FR-005**: System MUST expose the publish operation as a CLI command (e.g., `voter-api publish datasets`).
-- **FR-006**: System MUST support filtering by boundary type, county, and source when publishing.
+- **FR-006**: System MUST support selecting which datasets to regenerate by boundary type, and optionally scoping the selection by county or source (to identify which type files need regeneration). Published files always contain the complete dataset for their boundary type.
 - **FR-007**: System MUST set appropriate content-type metadata (`application/geo+json`) on uploaded files.
 - **FR-008**: System MUST set uploaded files as publicly readable.
 - **FR-009**: Generated GeoJSON files MUST use the same feature structure and properties as the existing `/api/v1/boundaries/geojson` endpoint to maintain compatibility with existing consumers.
 - **FR-010**: System MUST report progress during generation and upload (number of records processed, files uploaded, total size).
 - **FR-011**: System MUST validate object storage configuration (endpoint, bucket, credentials) before beginning dataset generation.
 - **FR-012**: System MUST expose a CLI command to check the status of previously published datasets (e.g., `voter-api publish status`).
-- **FR-013**: System MUST use atomic uploads (write to a temporary key, then copy to the final key) to prevent consumers from reading partial files.
+- **FR-013**: System MUST upload all dataset files before uploading the manifest, ensuring the API only begins redirecting to new files after all uploads are complete. Individual file uploads are atomic per the S3 protocol (consumers never see partial file content).
 - **FR-014**: System MUST use multipart upload for files exceeding 100 MB.
 - **FR-015**: The existing `/api/v1/boundaries/geojson` endpoint MUST respond with an HTTP 302 redirect to the corresponding static file URL when a matching published dataset exists on object storage.
 - **FR-016**: When the GeoJSON endpoint receives a `boundary_type` filter that matches a published per-type file, the redirect MUST point to that specific type's file.
