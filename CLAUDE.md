@@ -183,12 +183,15 @@ These were required on the piku server beyond the standard `piku setup`:
 
 On `git push piku main`, piku runs:
 1. `uv sync` — installs dependencies into `/home/piku/.piku/envs/voter-api`
-2. `release` worker — runs `voter-api db upgrade` (Alembic migrations)
-3. `web` worker — spawns `uvicorn --factory voter_api.main:create_app` via uwsgi `attach-daemon`
+2. Writes new nginx config (with a fresh random port) and uwsgi worker config
+3. `release` worker — runs `voter-api db upgrade` (Alembic migrations)
+4. `web` worker — spawns `uvicorn --factory voter_api.main:create_app` via uwsgi `attach-daemon`
+
+**Note**: Piku picks a new random port on each deploy and writes it into both the nginx and uwsgi configs. The `piku-uwsgi` emperor auto-restarts the vassal, but **nginx must be reloaded** to pick up the new port: `sudo systemctl reload nginx` on the server after each deploy.
 
 ### Troubleshooting
 
-- **502 Bad Gateway**: Check if uvicorn is running (`ssh piku@... -- ps voter-api`). Check `systemctl status piku-uwsgi` — if not running, restart: `sudo systemctl restart piku-uwsgi`
+- **502 Bad Gateway after deploy**: Nginx needs a reload to pick up the new port: `sudo systemctl reload nginx`. Also check if uvicorn is running (`ssh piku@... -- ps voter-api`) and `systemctl status piku-uwsgi`
 - **"Generic app" on deploy**: `uv` is not in PATH on the server
 - **"No interpreter found for Python 3.13"**: The piku.py patch was lost (re-apply after `piku update`)
 - **Stale venv errors**: Remove and redeploy: `ssh piku@... -- run voter-api -- rm -rf /home/piku/.piku/envs/voter-api` then `ssh piku@... -- deploy voter-api`
