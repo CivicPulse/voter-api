@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, computed_field
 
+from voter_api.schemas.common import PaginationMeta
+
 
 class AddressResponse(BaseModel):
     """Voter residence address components."""
@@ -124,3 +126,10 @@ class VoterDetailResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class PaginatedVoterResponse(BaseModel):
+    """Paginated list of voter summaries."""
+
+    items: list[VoterSummaryResponse]
+    pagination: PaginationMeta

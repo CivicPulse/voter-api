@@ -183,11 +183,11 @@
 
 ### Implementation for User Story 5
 
-- [ ] T085 [US5] Implement voter service with multi-parameter search (voter_registration_number exact, first_name/last_name partial ILIKE, county, city, zipcode, status, districts, present_in_latest_import), AND logic for combined filters, configurable pagination, and eager-loaded relationships in src/voter_api/services/voter_service.py
-- [ ] T086 [US5] Implement GET /voters search endpoint with all query parameters (voter_registration_number, first_name, last_name, county, residence_city, residence_zipcode, status, congressional_district, state_senate_district, state_house_district, county_precinct, present_in_latest_import, page, page_size) per OpenAPI spec in src/voter_api/api/v1/voters.py
-- [ ] T087 [US5] Implement GET /voters/{voter_id} detail endpoint with full voter data including primary_geocoded_location, nested address/district objects per OpenAPI spec in src/voter_api/api/v1/voters.py
-- [ ] T088 [US5] Create Alembic migration adding any additional composite search indexes on voters table for query performance optimization
-- [ ] T089 [P] [US5] Write unit tests for voter_service search logic: single-param queries, combined filters, partial name matching, pagination, empty results in tests/unit/test_services/test_voter_service.py
+- [x] T085 [US5] Implement voter service with multi-parameter search (voter_registration_number exact, first_name/last_name partial ILIKE, county, city, zipcode, status, districts, present_in_latest_import), AND logic for combined filters, configurable pagination, and eager-loaded relationships in src/voter_api/services/voter_service.py
+- [x] T086 [US5] Implement GET /voters search endpoint with all query parameters (voter_registration_number, first_name, last_name, county, residence_city, residence_zipcode, status, congressional_district, state_senate_district, state_house_district, county_precinct, present_in_latest_import, page, page_size) per OpenAPI spec in src/voter_api/api/v1/voters.py
+- [x] T087 [US5] Implement GET /voters/{voter_id} detail endpoint with full voter data including primary_geocoded_location, nested address/district objects per OpenAPI spec in src/voter_api/api/v1/voters.py
+- [x] T088 [US5] Create Alembic migration adding any additional composite search indexes on voters table for query performance optimization
+- [x] T089 [P] [US5] Write unit tests for voter_service search logic: single-param queries, combined filters, partial name matching, pagination, empty results in tests/unit/test_services/test_voter_service.py
 - [ ] T090 [US5] Write integration tests for voter search API: all query parameters, combined filters, pagination, voter detail endpoint in tests/integration/test_api/test_voters.py
 - [ ] T091 [US5] Write contract tests for voter endpoints validating response shapes against OpenAPI spec in tests/contract/test_openapi/test_voters.py
 
