@@ -86,7 +86,7 @@ As a consumer of the boundary GeoJSON endpoint, I want the API to automatically 
 
 ### Edge Cases
 
-- What happens when a dataset file is too large for a single upload? The system should use multipart uploads for files exceeding 100 MB.
+- What happens when a dataset file is too large for a single upload? The system uses boto3 TransferConfig with a 25 MB multipart threshold, so large files are automatically uploaded in parts.
 - What happens when an upload is interrupted midway? S3 multipart uploads are automatically aborted on failure (no partial files persist). The manifest is uploaded last, so an interrupted publish does not cause the API to redirect to missing or stale files. A subsequent successful publish overwrites any partially-updated dataset files.
 - What happens when object storage credentials are missing or invalid? The system should fail with a clear error message before attempting any generation or upload work.
 - What happens when boundary data contains invalid geometries? The system should skip invalid records, log warnings, and include only valid geometries in the published files.
@@ -104,13 +104,13 @@ As a consumer of the boundary GeoJSON endpoint, I want the API to automatically 
 - **FR-005**: System MUST expose the publish operation as a CLI command (e.g., `voter-api publish datasets`).
 - **FR-006**: System MUST support selecting which datasets to regenerate by boundary type, and optionally scoping the selection by county or source (to identify which type files need regeneration). Published files always contain the complete dataset for their boundary type.
 - **FR-007**: System MUST set appropriate content-type metadata (`application/geo+json`) on uploaded files.
-- **FR-008**: System MUST set uploaded files as publicly readable.
+- **FR-008**: Published files MUST be publicly readable. Public access is configured at the bucket level (custom domain or r2.dev subdomain for R2; bucket policy for S3). The publish command MUST validate that the configured `R2_PUBLIC_URL` is set before uploading, ensuring the operator has considered public access configuration.
 - **FR-009**: Generated GeoJSON files MUST use the same feature structure and properties as the existing `/api/v1/boundaries/geojson` endpoint to maintain compatibility with existing consumers.
 - **FR-010**: System MUST report progress during generation and upload (number of records processed, files uploaded, total size).
 - **FR-011**: System MUST validate object storage configuration (endpoint, bucket, credentials) before beginning dataset generation.
 - **FR-012**: System MUST expose a CLI command to check the status of previously published datasets (e.g., `voter-api publish status`).
 - **FR-013**: System MUST upload all dataset files before uploading the manifest, ensuring the API only begins redirecting to new files after all uploads are complete. Individual file uploads are atomic per the S3 protocol (consumers never see partial file content).
-- **FR-014**: System MUST use multipart upload for files exceeding 100 MB.
+- **FR-014**: System MUST use boto3 TransferConfig with a 25 MB multipart threshold so that large files are uploaded in parts automatically. This threshold was chosen based on R2 compatibility testing (see research.md Decision 4).
 - **FR-015**: The existing `/api/v1/boundaries/geojson` endpoint MUST respond with an HTTP 302 redirect to the corresponding static file URL when a matching published dataset exists on object storage.
 - **FR-016**: When the GeoJSON endpoint receives a `boundary_type` filter that matches a published per-type file, the redirect MUST point to that specific type's file.
 - **FR-017**: When the GeoJSON endpoint receives filters (e.g., county, source) that do not map to a pre-published static file, the system MUST fall back to serving the response directly from the database.
@@ -118,7 +118,7 @@ As a consumer of the boundary GeoJSON endpoint, I want the API to automatically 
 - **FR-019**: The publish command MUST generate and upload a `manifest.json` file alongside the dataset files, containing metadata (storage key, public URL, record count, file size, publish timestamp) for each published dataset.
 - **FR-020**: The API MUST fetch and cache the manifest from object storage to determine redirect targets for the GeoJSON endpoint.
 - **FR-021**: The API MUST periodically refresh the cached manifest with a 5-minute TTL so that newly published datasets are picked up within 5 minutes without requiring an API restart.
-- **FR-022**: System MUST expose a public (no authentication required) discovery endpoint (e.g., `GET /api/v1/datasets`) that returns: (a) a top-level `base_url` field containing the R2 public URL prefix, enabling consumers to construct URLs for any current or future public dataset path; and (b) a list of currently published static dataset files with their full public URLs, record counts, and boundary type metadata, sourced from the cached manifest. This enables UIs, developers, and AI agents to discover and directly access published static files without going through the redirect mechanism.
+- **FR-022**: System MUST expose a public (no authentication required) discovery endpoint (e.g., `GET /api/v1/datasets`) that returns: (a) a top-level `base_url` field containing the R2 public URL prefix, enabling consumers to construct URLs for any current or future public dataset path; and (b) a list of currently published static dataset files with their full public URLs, record counts, and boundary type metadata, sourced from the cached manifest. This enables UIs, developers, and AI agents to discover and directly access published static files without going through the redirect mechanism. When R2 is not configured (`R2_ENABLED=false`), the endpoint MUST return HTTP 200 with `base_url` set to `null` and an empty `datasets` list — not 503, since the endpoint is always available and the absence of published datasets is a normal state, not an error.
 
 ### Key Entities
 

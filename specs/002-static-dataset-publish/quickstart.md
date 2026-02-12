@@ -211,3 +211,4 @@ uv run voter-api serve
 | "Access denied" | Verify API token has Object Read & Write permissions for the bucket |
 | "Redirect URL returns 403" | Enable public access on the bucket (custom domain or r2.dev) |
 | GeoJSON endpoint not redirecting | Check `R2_ENABLED=true`, publish datasets, wait up to 5 minutes for manifest cache refresh |
+| Redirect URL returns 404 | A published file was deleted from R2 but the manifest still references it. Run `uv run voter-api publish datasets` to republish all files and update the manifest. |

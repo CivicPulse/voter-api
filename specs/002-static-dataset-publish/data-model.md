@@ -60,6 +60,7 @@ The `manifest.json` file is the central data structure. It is stored on R2 along
 
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
+| `name` | string | yes | Dataset name (e.g., "congressional", "all-boundaries"). Also used as the key in the `datasets` map. The code DatasetEntry dataclass includes this field for convenience; in JSON it appears only as the map key. |
 | `key` | string | yes | S3 object key (path within the bucket). |
 | `public_url` | string | yes | Full public URL for consumer access (used as redirect target). |
 | `content_type` | string | yes | MIME type of the file. Always `application/geo+json`. |

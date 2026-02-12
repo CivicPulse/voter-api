@@ -231,7 +231,7 @@ New public endpoint implementing FR-022:
 - Reads cached manifest for dataset list
 - Returns `DatasetDiscoveryResponse` with `base_url` + datasets list
 - Returns empty datasets list with `base_url` when no manifest loaded
-- Returns 503 or empty response when R2 not configured
+- Returns 200 with `base_url: null` and empty `datasets` list when R2 not configured
 
 ### CLI Commands (`cli/publish_cmd.py`)
 

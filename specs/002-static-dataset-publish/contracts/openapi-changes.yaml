@@ -194,7 +194,8 @@ components:
         base_url:
           type: string
           format: uri
-          description: R2 public URL prefix for constructing paths to any public content
+          nullable: true
+          description: R2 public URL prefix for constructing paths to any public content. Null when R2 publishing is not configured.
         datasets:
           type: array
           items:
