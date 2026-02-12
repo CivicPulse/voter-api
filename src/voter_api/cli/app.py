@@ -25,6 +25,7 @@ def serve(
 
 def _register_subcommands() -> None:
     """Register all CLI subcommand groups."""
+    from voter_api.cli.analyze_cmd import analyze_app
     from voter_api.cli.db_cmd import db_app
     from voter_api.cli.geocode_cmd import geocode_app
     from voter_api.cli.import_cmd import import_app
@@ -34,6 +35,7 @@ def _register_subcommands() -> None:
     app.add_typer(user_app, name="user", help="User management commands")
     app.add_typer(import_app, name="import", help="Data import commands")
     app.add_typer(geocode_app, name="geocode", help="Geocoding commands")
+    app.add_typer(analyze_app, name="analyze", help="Location analysis commands")
 
 
 _register_subcommands()
