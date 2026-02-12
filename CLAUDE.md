@@ -123,4 +123,15 @@ tests/
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes
-- 002-static-dataset-publish: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
+
+### 002-static-dataset-publish
+
+**County Metadata** — Census TIGER/Line attributes are stored in a dedicated `county_metadata` table (migration 011), keyed by FIPS GEOID. Populated automatically during `import all-boundaries` from the same county shapefile. The boundary detail endpoint (`GET /api/v1/boundaries/{id}`) includes a `county_metadata` field when `boundary_type == "county"`, with typed fields like FIPS codes, statistical area codes, land/water area, and computed km² values. Designed as the join point for future Census ACS demographic enrichment.
+
+Key files:
+
+- `src/voter_api/models/county_metadata.py` — ORM model (18 typed columns)
+- `src/voter_api/services/county_metadata_service.py` — import (upsert by GEOID) and query
+- `src/voter_api/schemas/county_metadata.py` — Pydantic response with computed `land_area_km2`/`water_area_km2`
+- `src/voter_api/cli/import_cmd.py` — metadata extraction during county boundary import (`_TIGER_TO_METADATA` mapping)
+- `alembic/versions/011_county_metadata.py` — migration

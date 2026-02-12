@@ -145,10 +145,50 @@ curl -H "Authorization: Bearer $TOKEN" \
 3. Scope to the specific bucket
 4. Copy the Access Key ID and Secret Access Key
 
+## County Metadata
+
+County metadata (FIPS codes, statistical area codes, land/water area) is automatically extracted from the Census TIGER/Line county shapefile during boundary import. No separate command is needed.
+
+### Verify Metadata Was Imported
+
+After importing boundaries, county metadata is available in the boundary detail response:
+
+```bash
+# List county boundaries to get an ID
+curl "http://localhost:8000/api/v1/boundaries?boundary_type=county&page_size=1"
+
+# Get detail for a county boundary — includes county_metadata field
+curl "http://localhost:8000/api/v1/boundaries/{boundary_id}"
+```
+
+Example `county_metadata` in response:
+
+```json
+{
+  "county_metadata": {
+    "geoid": "13121",
+    "fips_state": "13",
+    "fips_county": "121",
+    "name": "Fulton",
+    "name_lsad": "Fulton County",
+    "cbsa_code": "12060",
+    "csa_code": "122",
+    "land_area_m2": 1364558845,
+    "water_area_m2": 20564942,
+    "land_area_km2": 1364.56,
+    "water_area_km2": 20.56,
+    "internal_point_lat": "+33.7900338",
+    "internal_point_lon": "-084.4681816"
+  }
+}
+```
+
+For non-county boundaries, `county_metadata` is `null`.
+
 ## Typical Workflow
 
 ```bash
-# 1. Import boundary data (existing command)
+# 1. Import boundary data (also imports county metadata automatically)
 uv run voter-api import all-boundaries
 
 # 2. Publish to R2

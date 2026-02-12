@@ -111,6 +111,41 @@ bucket-root/
 
 All keys are prefixed by the configurable `R2_PREFIX` setting (default: empty, files at bucket root).
 
+## New Entities
+
+### CountyMetadata (migration 011)
+
+Census TIGER/Line attributes for county boundaries. Standalone table keyed by FIPS GEOID — no FK to `boundaries`. Linked via `boundaries.boundary_identifier = county_metadata.geoid` for county boundaries. Populated automatically during `import all-boundaries`.
+
+| Field | Type | Nullable | Notes |
+| ----- | ---- | -------- | ----- |
+| `id` | UUID | no | Primary key |
+| `geoid` | String(5) | no | Unique. FIPS state+county code (e.g. "13121"). Primary Census linkage key. |
+| `fips_state` | String(2) | no | State FIPS (e.g. "13" for Georgia) |
+| `fips_county` | String(3) | no | County FIPS (e.g. "121") |
+| `gnis_code` | String(8) | yes | GNIS identifier |
+| `geoid_fq` | String(20) | yes | Fully qualified GEOID (e.g. "0500000US13121") |
+| `name` | String(100) | no | County name (e.g. "Fulton") |
+| `name_lsad` | String(200) | no | Full legal name (e.g. "Fulton County") |
+| `lsad_code` | String(2) | yes | Legal/Statistical Area Description code |
+| `class_fp` | String(2) | yes | FIPS class code (e.g. "H1" = active government) |
+| `mtfcc` | String(5) | yes | MAF/TIGER Feature Class Code |
+| `csa_code` | String(3) | yes | Combined Statistical Area code |
+| `cbsa_code` | String(5) | yes | Core-Based Statistical Area code (metro area) |
+| `metdiv_code` | String(5) | yes | Metropolitan Division code |
+| `functional_status` | String(1) | yes | "A" = active |
+| `land_area_m2` | BigInteger | yes | Land area in square meters |
+| `water_area_m2` | BigInteger | yes | Water area in square meters |
+| `internal_point_lat` | String(15) | yes | Census internal point latitude |
+| `internal_point_lon` | String(15) | yes | Census internal point longitude |
+| `created_at` | DateTime(tz) | no | Auto-set via `server_default=func.now()` |
+
+**Indexes**: Unique on `geoid`, indexed on `name` and `fips_state`.
+
+**API exposure**: Included as `county_metadata` field in the `GET /api/v1/boundaries/{id}` response when `boundary_type == "county"`. Response also includes computed `land_area_km2` and `water_area_km2` fields.
+
+**Future enrichment**: The `geoid` column is the standard join key for Census ACS demographic/population data products.
+
 ## Existing Entities (No Changes)
 
 ### Boundary (existing, unchanged)
