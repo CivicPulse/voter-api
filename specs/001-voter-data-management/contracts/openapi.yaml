@@ -623,7 +623,7 @@ paths:
                 $ref: "#/components/schemas/AnalysisRunResponse"
     get:
       tags: [Analysis]
-      summary: List analysis runs
+      summary: List analysis runs (analyst/admin only)
       operationId: listAnalysisRuns
       parameters:
         - name: status
@@ -640,11 +640,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PaginatedAnalysisRunResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /analysis/runs/{run_id}:
     get:
       tags: [Analysis]
-      summary: Get analysis run details
+      summary: Get analysis run details (analyst/admin only)
       operationId: getAnalysisRun
       parameters:
         - name: run_id
@@ -660,13 +662,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AnalysisRunResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
 
   /analysis/runs/{run_id}/results:
     get:
       tags: [Analysis]
-      summary: Get analysis results for a run
+      summary: Get analysis results for a run (analyst/admin only)
       operationId: getAnalysisResults
       parameters:
         - name: run_id
@@ -698,11 +702,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PaginatedAnalysisResultResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /analysis/compare:
     get:
       tags: [Analysis]
-      summary: Compare results across two analysis runs
+      summary: Compare results across two analysis runs (analyst/admin only)
       operationId: compareAnalysisRuns
       parameters:
         - name: run_id_a
@@ -730,6 +736,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AnalysisComparisonResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   # ──────────────── Exports ────────────────
   /exports:
@@ -1064,6 +1072,14 @@ components:
           type: string
           format: date
           nullable: true
+        date_of_last_contact:
+          type: string
+          format: date
+          nullable: true
+        voter_created_date:
+          type: string
+          format: date
+          nullable: true
         present_in_latest_import:
           type: boolean
         soft_deleted_at:
@@ -1191,6 +1207,15 @@ components:
           type: string
           nullable: true
         municipality:
+          type: string
+          nullable: true
+        combo:
+          type: string
+          nullable: true
+        land_lot:
+          type: string
+          nullable: true
+        land_district:
           type: string
           nullable: true
 
