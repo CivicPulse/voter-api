@@ -152,7 +152,7 @@ External traffic reaches the app via a Cloudflare Tunnel (`hatchweb`), not direc
 
 - **Domain**: `voteapi.kerryhatcher.com` (DNS managed by Cloudflare)
 - **Tunnel route**: `HTTP://localhost:80` (Cloudflare terminates TLS at the edge)
-- Piku's Let's Encrypt attempts will fail (ACME HTTP-01 challenge can't reach the server directly); the self-signed cert fallback is harmless since Cloudflare handles TLS
+- Let's Encrypt certs are issued via ACME HTTP-01 through the tunnel. Piku also generates SSL listeners on port 443 — if another site on the server defines conflicting SSL protocol options (e.g. `ssl` vs `ssl http2`), piku's nginx config test will fail and delete the config. The hatchertechnology.com site was disabled to resolve this
 
 ### Server prerequisites (one-time setup)
 
@@ -167,11 +167,17 @@ These were required on the piku server beyond the standard `piku setup`:
    include /home/piku/.piku/nginx/*.conf;
    ```
 
-4. **uwsgi linkage**: Piku generates uwsgi worker configs in `/home/piku/.piku/uwsgi-enabled/` but the system uwsgi service watches `/etc/uwsgi/apps-enabled/`. Symlinked the config:
-   ```bash
-   sudo ln -s /home/piku/.piku/uwsgi-enabled/voter-api_web.1.ini /etc/uwsgi/apps-enabled/
+4. **uwsgi emperor service**: Piku generates uwsgi worker configs in `/home/piku/.piku/uwsgi-enabled/` but the system uwsgi service watches `/etc/uwsgi/apps-enabled/`. Symlinks break on every deploy because piku deletes and recreates the .ini files. Instead, a dedicated systemd service runs uwsgi in emperor mode watching piku's directory:
    ```
-   New piku apps will need their uwsgi configs symlinked similarly.
+   # /etc/systemd/system/piku-uwsgi.service
+   [Service]
+   User=piku
+   Group=www-data
+   ExecStart=/usr/bin/uwsgi --emperor /home/piku/.piku/uwsgi-enabled
+   Restart=always
+   Type=notify
+   ```
+   This service (`piku-uwsgi`) survives deploys and automatically picks up new piku apps.
 
 ### Deploy flow
 
@@ -182,7 +188,7 @@ On `git push piku main`, piku runs:
 
 ### Troubleshooting
 
-- **502 Bad Gateway**: Check if uvicorn is running (`ssh piku@... -- ps voter-api`). If uwsgi shows `active (exited)`, restart it: `sudo systemctl restart uwsgi`
+- **502 Bad Gateway**: Check if uvicorn is running (`ssh piku@... -- ps voter-api`). Check `systemctl status piku-uwsgi` — if not running, restart: `sudo systemctl restart piku-uwsgi`
 - **"Generic app" on deploy**: `uv` is not in PATH on the server
 - **"No interpreter found for Python 3.13"**: The piku.py patch was lost (re-apply after `piku update`)
 - **Stale venv errors**: Remove and redeploy: `ssh piku@... -- run voter-api -- rm -rf /home/piku/.piku/envs/voter-api` then `ssh piku@... -- deploy voter-api`

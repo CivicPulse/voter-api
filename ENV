@@ -6,7 +6,6 @@
 
 # --- Piku / nginx settings ---
 NGINX_SERVER_NAME=voteapi.kerryhatcher.com
-NGINX_SSL=443 ssl
 NGINX_CLOUDFLARE_ACL=true
 BIND_ADDRESS=0.0.0.0
 
