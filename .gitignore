@@ -66,6 +66,10 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 docs/voter_data_sample_from_state.csv
+
+# Exports
+exports/
+
 # Flask stuff:
 instance/
 .webassets-cache

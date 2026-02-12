@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgis/postgis:15-3.4
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: voter_api
+      POSTGRES_USER: voter_api
+      POSTGRES_PASSWORD: voter_api_dev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U voter_api
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://voter_api:voter_api_dev@db:5432/voter_api
+    volumes:
+      - ./src:/app/src
+      - ./exports:/app/exports
+
+volumes:
+  pgdata:
