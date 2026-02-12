@@ -4,4 +4,24 @@ Provides GeoJSON generation, S3/R2 storage operations, and manifest management
 for publishing boundary datasets to object storage.
 """
 
-__all__: list[str] = []
+from voter_api.lib.publisher.generator import generate_boundary_geojson
+from voter_api.lib.publisher.manifest import build_manifest
+from voter_api.lib.publisher.storage import (
+    create_r2_client,
+    upload_file,
+    upload_manifest,
+    validate_config,
+)
+from voter_api.lib.publisher.types import DatasetEntry, ManifestData, PublishResult
+
+__all__ = [
+    "DatasetEntry",
+    "ManifestData",
+    "PublishResult",
+    "build_manifest",
+    "create_r2_client",
+    "generate_boundary_geojson",
+    "upload_file",
+    "upload_manifest",
+    "validate_config",
+]
