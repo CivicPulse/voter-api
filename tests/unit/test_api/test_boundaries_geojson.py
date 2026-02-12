@@ -1,4 +1,4 @@
-"""Unit tests for the public GeoJSON boundary endpoint."""
+"""Unit tests for public boundary endpoints (no authentication required)."""
 
 import uuid
 from datetime import UTC, datetime
@@ -214,3 +214,75 @@ class TestGetBoundariesGeoJSON:
         assert isinstance(feature["id"], str)
         # Should be a valid UUID string
         uuid.UUID(feature["id"])
+
+
+class TestListAllBoundariesNoAuth:
+    """Tests for GET /api/v1/boundaries (no auth required)."""
+
+    @pytest.mark.asyncio
+    async def test_no_auth_required(self, client: AsyncClient) -> None:
+        """Endpoint does not require a JWT token."""
+        with patch(
+            "voter_api.api.v1.boundaries.list_boundaries",
+            new_callable=AsyncMock,
+            return_value=([], 0),
+        ):
+            resp = await client.get("/api/v1/boundaries")
+
+        assert resp.status_code == 200
+
+
+class TestContainingPointNoAuth:
+    """Tests for GET /api/v1/boundaries/containing-point (no auth required)."""
+
+    @pytest.mark.asyncio
+    async def test_no_auth_required(self, client: AsyncClient) -> None:
+        """Endpoint does not require a JWT token."""
+        with patch(
+            "voter_api.api.v1.boundaries.find_containing_boundaries",
+            new_callable=AsyncMock,
+            return_value=[],
+        ):
+            resp = await client.get("/api/v1/boundaries/containing-point?latitude=33.7&longitude=-84.4")
+
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_filters_by_county(self, client: AsyncClient) -> None:
+        """Query param county is forwarded to find_containing_boundaries."""
+        with patch(
+            "voter_api.api.v1.boundaries.find_containing_boundaries",
+            new_callable=AsyncMock,
+            return_value=[],
+        ) as mock_find:
+            await client.get("/api/v1/boundaries/containing-point?latitude=33.7&longitude=-84.4&county=Bibb")
+
+        assert mock_find.call_args.kwargs.get("county") == "Bibb"
+
+
+class TestGetBoundaryDetailNoAuth:
+    """Tests for GET /api/v1/boundaries/{boundary_id} (no auth required)."""
+
+    @pytest.mark.asyncio
+    async def test_no_auth_required(self, client: AsyncClient) -> None:
+        """Endpoint does not require a JWT token."""
+        mock_boundary = _make_mock_boundary()
+
+        with (
+            patch(
+                "voter_api.api.v1.boundaries.get_boundary",
+                new_callable=AsyncMock,
+                return_value=mock_boundary,
+            ),
+            patch("voter_api.api.v1.boundaries.to_shape") as mock_to_shape,
+            patch("voter_api.api.v1.boundaries.mapping") as mock_mapping,
+        ):
+            mock_to_shape.return_value = MagicMock()
+            mock_mapping.return_value = {
+                "type": "MultiPolygon",
+                "coordinates": [[[[0, 0], [1, 0], [1, 1], [0, 0]]]],
+            }
+
+            resp = await client.get(f"/api/v1/boundaries/{mock_boundary.id}")
+
+        assert resp.status_code == 200

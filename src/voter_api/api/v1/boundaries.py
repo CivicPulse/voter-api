@@ -8,8 +8,7 @@ from geoalchemy2.shape import to_shape
 from shapely.geometry import mapping
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from voter_api.core.dependencies import get_async_session, get_current_user
-from voter_api.models.user import User
+from voter_api.core.dependencies import get_async_session
 from voter_api.schemas.boundary import (
     BoundaryDetailResponse,
     BoundaryFeatureCollection,
@@ -38,9 +37,11 @@ async def list_all_boundaries(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     session: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_user),
 ) -> PaginatedBoundaryResponse:
-    """List boundaries with optional filters."""
+    """List boundaries with optional filters.
+
+    No authentication required. Boundary data is public.
+    """
     boundaries, total = await list_boundaries(
         session,
         boundary_type=boundary_type,
@@ -54,7 +55,7 @@ async def list_all_boundaries(
         pagination=PaginationMeta(
             page=page,
             page_size=page_size,
-            total_items=total,
+            total=total,
             total_pages=(total + page_size - 1) // page_size,
         ),
     )
@@ -68,11 +69,14 @@ async def containing_point(
     latitude: float = Query(..., ge=-90, le=90),
     longitude: float = Query(..., ge=-180, le=180),
     boundary_type: str | None = Query(None),
+    county: str | None = Query(None),
     session: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_user),
 ) -> list[BoundarySummaryResponse]:
-    """Find all boundaries containing a given point."""
-    boundaries = await find_containing_boundaries(session, latitude, longitude, boundary_type)
+    """Find all boundaries containing a given point.
+
+    No authentication required. Boundary data is public.
+    """
+    boundaries = await find_containing_boundaries(session, latitude, longitude, boundary_type, county=county)
     return [BoundarySummaryResponse.model_validate(b) for b in boundaries]
 
 
@@ -131,9 +135,11 @@ async def get_boundary_detail(
     boundary_id: uuid.UUID,
     include_geometry: bool = Query(True),
     session: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_user),
 ) -> BoundaryDetailResponse:
-    """Get boundary details with optional geometry."""
+    """Get boundary details with optional geometry.
+
+    No authentication required. Boundary data is public.
+    """
     boundary = await get_boundary(session, boundary_id)
     if boundary is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Boundary not found")

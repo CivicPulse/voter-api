@@ -12,6 +12,30 @@ from voter_api.lib.boundary_loader import load_boundaries
 from voter_api.models.boundary import Boundary
 
 
+def _county_geometry_subquery(county_name: str):
+    """Build a scalar subquery returning the geometry of a named county boundary.
+
+    Performs a case-insensitive lookup against boundaries with
+    boundary_type='county'.
+
+    Args:
+        county_name: County name to look up (e.g., "Bibb", "Fulton").
+
+    Returns:
+        A scalar subquery yielding the county's MULTIPOLYGON geometry,
+        or NULL if no matching county boundary exists.
+    """
+    return (
+        select(Boundary.geometry)
+        .where(
+            Boundary.boundary_type == "county",
+            func.upper(Boundary.name) == func.upper(county_name),
+        )
+        .limit(1)
+        .scalar_subquery()
+    )
+
+
 async def import_boundaries(
     session: AsyncSession,
     file_path: Path,
@@ -89,7 +113,7 @@ async def list_boundaries(
     Args:
         session: Database session.
         boundary_type: Filter by boundary type.
-        county: Filter by county.
+        county: Filter by spatial intersection with named county boundary.
         source: Filter by source.
         page: Page number.
         page_size: Items per page.
@@ -104,8 +128,10 @@ async def list_boundaries(
         query = query.where(Boundary.boundary_type == boundary_type)
         count_query = count_query.where(Boundary.boundary_type == boundary_type)
     if county:
-        query = query.where(Boundary.county == county)
-        count_query = count_query.where(Boundary.county == county)
+        county_geom = _county_geometry_subquery(county)
+        spatial_filter = func.ST_Intersects(Boundary.geometry, county_geom)
+        query = query.where(spatial_filter)
+        count_query = count_query.where(spatial_filter)
     if source:
         query = query.where(Boundary.source == source)
         count_query = count_query.where(Boundary.source == source)
@@ -130,6 +156,7 @@ async def find_containing_boundaries(
     latitude: float,
     longitude: float,
     boundary_type: str | None = None,
+    county: str | None = None,
 ) -> list[Boundary]:
     """Find all boundaries containing a given point (point-in-polygon).
 
@@ -138,6 +165,7 @@ async def find_containing_boundaries(
         latitude: WGS84 latitude.
         longitude: WGS84 longitude.
         boundary_type: Optional filter by boundary type.
+        county: Optional filter by spatial intersection with named county.
 
     Returns:
         List of boundaries containing the point.
@@ -148,6 +176,10 @@ async def find_containing_boundaries(
 
     if boundary_type:
         query = query.where(Boundary.boundary_type == boundary_type)
+
+    if county:
+        county_geom = _county_geometry_subquery(county)
+        query = query.where(func.ST_Intersects(Boundary.geometry, county_geom))
 
     result = await session.execute(query)
     return list(result.scalars().all())
