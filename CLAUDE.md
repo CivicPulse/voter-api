@@ -120,6 +120,16 @@ tests/
 `data/` contains Georgia boundary shapefiles and district data (ZIP archives with SHA512 checksums). These are input data files, not generated artifacts.
 
 <!-- MANUAL ADDITIONS START -->
+
+## Deployment (Piku)
+
+The app deploys to a piku server via `git push piku main`. Configuration lives in two root files:
+
+- **`Procfile`** — defines `release` (Alembic migrations) and `web` (uvicorn ASGI) workers
+- **`ENV`** — piku/nginx settings and app environment variables; secrets should be set on the server via `piku config:set` rather than committed here
+
+**Dependency detection caveat**: Piku detects Python projects via `requirements.txt` or `pyproject.toml`. Its `pyproject.toml` support documents poetry and uv but does not explicitly cover hatchling as a build backend. If piku fails to install dependencies on deploy, generate a `requirements.txt` fallback with `uv export --no-hashes > requirements.txt` and commit it. Piku will prefer `requirements.txt` when present.
+
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes
