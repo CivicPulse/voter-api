@@ -1,0 +1,198 @@
+# OpenAPI 3.1 Changes for Static Dataset Publishing
+# These changes modify the existing API contract from specs/001-voter-data-management/contracts/openapi.yaml
+
+openapi: 3.1.0
+info:
+  title: Voter Data Management API - Static Dataset Publishing Changes
+  version: 1.1.0
+  description: |
+    Changes to the existing API to support static dataset publishing.
+    The primary change is to the GET /boundaries/geojson endpoint,
+    which now returns HTTP 302 redirects when published datasets are available.
+
+paths:
+  # ──────────────── Modified Endpoint ────────────────
+  /boundaries/geojson:
+    get:
+      tags: [Boundaries]
+      summary: Get boundaries as GeoJSON (with static file redirect)
+      operationId: getBoundariesGeoJSON
+      description: |
+        Returns boundary data as a GeoJSON FeatureCollection.
+
+        **Redirect behavior**: When static datasets have been published to
+        object storage (R2) and a matching dataset exists for the requested
+        filters, this endpoint responds with an HTTP 302 redirect to the
+        static file URL. Consumers should follow the redirect to fetch the
+        GeoJSON data directly from object storage.
+
+        **Fallback behavior**: When no published datasets exist, object
+        storage is not configured, or the requested filters don't match
+        any published dataset, the endpoint serves the response directly
+        from the database (original behavior).
+
+        No authentication required. Intended for consumption by map
+        libraries (Leaflet, Mapbox GL, OpenLayers).
+      security: []
+      parameters:
+        - name: boundary_type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: |
+            Filter by boundary type (e.g., congressional, state_senate).
+            When a matching published dataset exists, triggers a 302 redirect.
+        - name: county
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by county name. Always served from database (no static file match).
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [state, county]
+          description: Filter by data source. Always served from database (no static file match).
+      responses:
+        "200":
+          description: GeoJSON FeatureCollection served directly from database (fallback)
+          content:
+            application/geo+json:
+              schema:
+                $ref: "#/components/schemas/BoundaryFeatureCollection"
+        "302":
+          description: Redirect to static file on object storage
+          headers:
+            Location:
+              description: URL of the static GeoJSON file on object storage
+              schema:
+                type: string
+                format: uri
+                example: https://geo.example.com/boundaries/congressional.geojson
+
+  # ──────────────── New Endpoint ────────────────
+  /boundaries/publish/status:
+    get:
+      tags: [Boundaries]
+      summary: Get status of published boundary datasets
+      operationId: getPublishStatus
+      description: |
+        Returns metadata about published boundary datasets, including
+        last publish timestamp, record counts, and file sizes.
+        Requires admin authentication.
+      parameters: []
+      responses:
+        "200":
+          description: Published dataset status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishStatusResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden (admin only)
+
+components:
+  schemas:
+    BoundaryFeatureCollection:
+      type: object
+      required: [type, features]
+      properties:
+        type:
+          type: string
+          const: FeatureCollection
+        features:
+          type: array
+          items:
+            $ref: "#/components/schemas/BoundaryGeoJSONFeature"
+
+    BoundaryGeoJSONFeature:
+      type: object
+      required: [type, id, geometry, properties]
+      properties:
+        type:
+          type: string
+          const: Feature
+        id:
+          type: string
+          format: uuid
+        geometry:
+          type: object
+          description: GeoJSON MultiPolygon geometry
+        properties:
+          type: object
+          required: [name, boundary_type, boundary_identifier, source]
+          properties:
+            name:
+              type: string
+            boundary_type:
+              type: string
+            boundary_identifier:
+              type: string
+            source:
+              type: string
+              enum: [state, county]
+            county:
+              type: string
+              nullable: true
+
+    PublishStatusResponse:
+      type: object
+      required: [configured, datasets]
+      properties:
+        configured:
+          type: boolean
+          description: Whether R2/S3 publishing is configured
+        manifest_loaded:
+          type: boolean
+          description: Whether a manifest has been successfully loaded
+        manifest_published_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the manifest was last published
+        manifest_cached_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the manifest was last fetched from R2
+        datasets:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublishedDatasetInfo"
+
+    PublishedDatasetInfo:
+      type: object
+      required: [name, key, public_url, record_count, file_size_bytes, published_at]
+      properties:
+        name:
+          type: string
+          description: Dataset name (e.g., "congressional", "all-boundaries")
+        key:
+          type: string
+          description: S3 object key
+        public_url:
+          type: string
+          format: uri
+          description: Public URL for direct access
+        content_type:
+          type: string
+          default: application/geo+json
+        record_count:
+          type: integer
+          description: Number of boundary features in the file
+        file_size_bytes:
+          type: integer
+          description: File size in bytes
+        boundary_type:
+          type: string
+          nullable: true
+          description: Boundary type filter (null for combined file)
+        published_at:
+          type: string
+          format: date-time
+          description: When this dataset was last published

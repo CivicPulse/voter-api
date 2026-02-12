@@ -147,9 +147,7 @@ async def list_boundaries(
 
 async def list_boundary_types(session: AsyncSession) -> list[str]:
     """Return distinct boundary_type values, sorted alphabetically."""
-    result = await session.execute(
-        select(Boundary.boundary_type).distinct().order_by(Boundary.boundary_type)
-    )
+    result = await session.execute(select(Boundary.boundary_type).distinct().order_by(Boundary.boundary_type))
     return list(result.scalars().all())
 
 

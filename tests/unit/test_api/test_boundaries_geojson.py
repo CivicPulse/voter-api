@@ -260,6 +260,62 @@ class TestContainingPointNoAuth:
         assert mock_find.call_args.kwargs.get("county") == "Bibb"
 
 
+class TestGetBoundaryTypes:
+    """Tests for GET /api/v1/boundaries/types."""
+
+    @pytest.mark.asyncio
+    async def test_returns_types_list(self, client: AsyncClient) -> None:
+        """Endpoint returns a list of boundary type strings."""
+        with patch(
+            "voter_api.api.v1.boundaries.list_boundary_types",
+            new_callable=AsyncMock,
+            return_value=["congressional", "county"],
+        ):
+            resp = await client.get("/api/v1/boundaries/types")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data == {"types": ["congressional", "county"]}
+
+    @pytest.mark.asyncio
+    async def test_empty_result(self, client: AsyncClient) -> None:
+        """Empty table returns an empty types list."""
+        with patch(
+            "voter_api.api.v1.boundaries.list_boundary_types",
+            new_callable=AsyncMock,
+            return_value=[],
+        ):
+            resp = await client.get("/api/v1/boundaries/types")
+
+        assert resp.status_code == 200
+        assert resp.json() == {"types": []}
+
+    @pytest.mark.asyncio
+    async def test_no_auth_required(self, client: AsyncClient) -> None:
+        """Endpoint does not require a JWT token."""
+        with patch(
+            "voter_api.api.v1.boundaries.list_boundary_types",
+            new_callable=AsyncMock,
+            return_value=[],
+        ):
+            resp = await client.get("/api/v1/boundaries/types")
+
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_types_are_sorted(self, client: AsyncClient) -> None:
+        """Types are returned in alphabetical order."""
+        sorted_types = ["congressional", "county", "county_precinct", "state_house", "state_senate"]
+        with patch(
+            "voter_api.api.v1.boundaries.list_boundary_types",
+            new_callable=AsyncMock,
+            return_value=sorted_types,
+        ):
+            resp = await client.get("/api/v1/boundaries/types")
+
+        assert resp.json()["types"] == sorted_types
+
+
 class TestGetBoundaryDetailNoAuth:
     """Tests for GET /api/v1/boundaries/{boundary_id} (no auth required)."""
 
