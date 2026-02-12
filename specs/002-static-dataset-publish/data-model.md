@@ -87,9 +87,9 @@ Dataset names in the manifest map directly to the GeoJSON file names:
 The API uses the manifest to determine redirect targets for the `/api/v1/boundaries/geojson` endpoint:
 
 1. **No filters** → Redirect to `datasets["all-boundaries"].public_url`
-2. **`?boundary_type=X`** → Redirect to `datasets[X].public_url` if the key exists
+2. **`?boundary_type=X` only** (no county/source filters) → Redirect to `datasets[X].public_url` if the key exists
 3. **`?boundary_type=X` not in manifest** → Fall back to database
-4. **`?county=Y` or `?source=Z`** (without matching static file) → Fall back to database
+4. **Any `county` or `source` filter present** (even with `boundary_type`) → Always fall back to database. Static files contain complete datasets and cannot serve county/source-scoped subsets.
 5. **Manifest not loaded or empty** → Fall back to database
 
 ## Object Storage Layout
