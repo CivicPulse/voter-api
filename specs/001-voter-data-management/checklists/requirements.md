@@ -19,7 +19,7 @@
 - [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined
 - [x] Edge cases are identified
-- [x] Scope is clearly bounded
+- [x] Scope is clearly bounded (Out of Scope section added)
 - [x] Dependencies and assumptions identified
 
 ## Feature Readiness
@@ -31,10 +31,11 @@
 
 ## Notes
 
-- All items pass validation.
-- District types resolved: all 15 boundary types from the Georgia
-  SoS voter file are supported.
-- Voter entity updated to reflect actual 53-column CSV structure
-  from sample data.
-- Address reconstruction from decomposed components documented
-  as edge case and functional requirement.
+- All items pass validation after two clarification sessions.
+- Session 1: 5 clarifications (PII/data tiers, analysis history,
+  multi-county scope, manual geocoding, soft-delete with import diffs).
+- Session 2: 2 clarifications (API-first scope, JWT+API key auth).
+- Geocoder caching per-provider integrated from user input.
+- Out of Scope section explicitly excludes all UI/frontend.
+- User, APIKey, and AuditLog entities added for auth model.
+- Functional requirements now FR-001 through FR-030.
