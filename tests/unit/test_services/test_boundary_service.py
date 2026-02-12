@@ -53,27 +53,26 @@ class TestListBoundariesSpatialCountyFilter:
     """Tests for list_boundaries with spatial county filter."""
 
     @pytest.mark.asyncio
-    async def test_county_filter_uses_st_intersects(self) -> None:
-        """When county is provided, the query uses ST_Intersects."""
+    async def test_county_filter_uses_centroid_within(self) -> None:
+        """When county is provided, the query uses ST_Within(ST_Centroid(...))."""
         session = _mock_session()
 
         await list_boundaries(session, county="Bibb")
 
-        # At least one execute call should contain ST_Intersects
         calls = session.execute.call_args_list
         queries = [_compile_query(call[0][0]) for call in calls]
-        assert any("st_intersects" in q.lower() for q in queries)
+        assert any("st_within" in q.lower() and "st_centroid" in q.lower() for q in queries)
 
     @pytest.mark.asyncio
-    async def test_without_county_no_st_intersects(self) -> None:
-        """Without county param, ST_Intersects is not in the query."""
+    async def test_without_county_no_spatial_filter(self) -> None:
+        """Without county param, no spatial filter is in the query."""
         session = _mock_session()
 
         await list_boundaries(session)
 
         calls = session.execute.call_args_list
         queries = [_compile_query(call[0][0]) for call in calls]
-        assert not any("st_intersects" in q.lower() for q in queries)
+        assert not any("st_within" in q.lower() for q in queries)
 
     @pytest.mark.asyncio
     async def test_county_composes_with_boundary_type(self) -> None:
@@ -85,27 +84,28 @@ class TestListBoundariesSpatialCountyFilter:
         calls = session.execute.call_args_list
         queries = [_compile_query(call[0][0]) for call in calls]
         # Both filters should appear in the query
-        assert any("st_intersects" in q.lower() and "congressional" in q.lower() for q in queries)
+        assert any("st_within" in q.lower() and "congressional" in q.lower() for q in queries)
 
 
 class TestFindContainingBoundariesSpatialCountyFilter:
     """Tests for find_containing_boundaries with spatial county filter."""
 
     @pytest.mark.asyncio
-    async def test_county_filter_adds_st_intersects(self) -> None:
-        """When county is provided, ST_Intersects is added alongside ST_Contains."""
+    async def test_county_filter_adds_centroid_within(self) -> None:
+        """When county is provided, ST_Within(ST_Centroid(...)) is added alongside ST_Contains."""
         session = _mock_session()
 
         await find_containing_boundaries(session, 33.7, -84.4, county="Bibb")
 
         call = session.execute.call_args
         compiled = _compile_query(call[0][0])
-        assert "st_intersects" in compiled.lower()
+        assert "st_within" in compiled.lower()
+        assert "st_centroid" in compiled.lower()
         assert "st_contains" in compiled.lower()
 
     @pytest.mark.asyncio
-    async def test_without_county_no_st_intersects(self) -> None:
-        """Without county param, only ST_Contains is in the query."""
+    async def test_without_county_no_spatial_county_filter(self) -> None:
+        """Without county param, only ST_Contains is in the query (no centroid filter)."""
         session = _mock_session()
 
         await find_containing_boundaries(session, 33.7, -84.4)
@@ -113,4 +113,4 @@ class TestFindContainingBoundariesSpatialCountyFilter:
         call = session.execute.call_args
         compiled = _compile_query(call[0][0])
         assert "st_contains" in compiled.lower()
-        assert "st_intersects" not in compiled.lower()
+        assert "st_within" not in compiled.lower()

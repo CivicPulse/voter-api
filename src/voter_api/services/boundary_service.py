@@ -113,7 +113,7 @@ async def list_boundaries(
     Args:
         session: Database session.
         boundary_type: Filter by boundary type.
-        county: Filter by spatial intersection with named county boundary.
+        county: Filter by centroid within named county boundary.
         source: Filter by source.
         page: Page number.
         page_size: Items per page.
@@ -129,7 +129,7 @@ async def list_boundaries(
         count_query = count_query.where(Boundary.boundary_type == boundary_type)
     if county:
         county_geom = _county_geometry_subquery(county)
-        spatial_filter = func.ST_Intersects(Boundary.geometry, county_geom)
+        spatial_filter = func.ST_Within(func.ST_Centroid(Boundary.geometry), county_geom)
         query = query.where(spatial_filter)
         count_query = count_query.where(spatial_filter)
     if source:
@@ -171,7 +171,7 @@ async def find_containing_boundaries(
         latitude: WGS84 latitude.
         longitude: WGS84 longitude.
         boundary_type: Optional filter by boundary type.
-        county: Optional filter by spatial intersection with named county.
+        county: Optional filter by centroid within named county.
 
     Returns:
         List of boundaries containing the point.
@@ -185,7 +185,7 @@ async def find_containing_boundaries(
 
     if county:
         county_geom = _county_geometry_subquery(county)
-        query = query.where(func.ST_Intersects(Boundary.geometry, county_geom))
+        query = query.where(func.ST_Within(func.ST_Centroid(Boundary.geometry), county_geom))
 
     result = await session.execute(query)
     return list(result.scalars().all())
