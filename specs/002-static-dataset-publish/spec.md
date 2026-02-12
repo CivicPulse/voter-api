@@ -125,7 +125,7 @@ As a consumer of the boundary GeoJSON endpoint, I want the API to automatically 
 
 ## Assumptions
 
-- The target object storage service is S3-compatible (supporting the S3 API protocol), which covers Cloudflare R2, AWS S3, MinIO, DigitalOcean Spaces, and similar services.
+- The primary target object storage service is Cloudflare R2. The implementation uses the S3-compatible API protocol, so it would also work with AWS S3, MinIO, DigitalOcean Spaces, and similar services, but R2 is the tested and documented target.
 - Boundary data is already imported into the database before publishing. This feature does not handle data ingestion.
 - Published files follow a predictable key structure (e.g., `boundaries/{boundary_type}.geojson`) so consumers can construct URLs without needing a directory listing.
 - The administrator is responsible for configuring any CDN or custom domain in front of object storage; this feature only handles generation and upload.

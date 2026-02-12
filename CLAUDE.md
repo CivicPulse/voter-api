@@ -121,3 +121,6 @@ tests/
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
+
+## Recent Changes
+- 002-static-dataset-publish: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
