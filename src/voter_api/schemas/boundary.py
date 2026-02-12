@@ -43,3 +43,19 @@ class ContainingPointRequest(BaseModel):
     latitude: float
     longitude: float
     boundary_type: str | None = None
+
+
+class BoundaryGeoJSONFeature(BaseModel):
+    """A single GeoJSON Feature representing a boundary polygon."""
+
+    type: str = "Feature"
+    id: str
+    geometry: dict
+    properties: dict
+
+
+class BoundaryFeatureCollection(BaseModel):
+    """GeoJSON FeatureCollection of boundary polygons."""
+
+    type: str = "FeatureCollection"
+    features: list[BoundaryGeoJSONFeature]
