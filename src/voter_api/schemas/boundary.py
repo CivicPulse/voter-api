@@ -8,6 +8,12 @@ from pydantic import BaseModel
 from voter_api.schemas.common import PaginationMeta
 
 
+class BoundaryTypesResponse(BaseModel):
+    """List of distinct boundary type strings."""
+
+    types: list[str]
+
+
 class BoundarySummaryResponse(BaseModel):
     """Boundary response without geometry (for list endpoints)."""
 

@@ -14,6 +14,7 @@ from voter_api.schemas.boundary import (
     BoundaryFeatureCollection,
     BoundaryGeoJSONFeature,
     BoundarySummaryResponse,
+    BoundaryTypesResponse,
     PaginatedBoundaryResponse,
 )
 from voter_api.schemas.common import PaginationMeta
@@ -21,6 +22,7 @@ from voter_api.services.boundary_service import (
     find_containing_boundaries,
     get_boundary,
     list_boundaries,
+    list_boundary_types,
 )
 
 boundaries_router = APIRouter(prefix="/boundaries", tags=["boundaries"])
@@ -125,6 +127,21 @@ async def get_boundaries_geojson(
         content=collection.model_dump(),
         media_type="application/geo+json",
     )
+
+
+@boundaries_router.get(
+    "/types",
+    response_model=BoundaryTypesResponse,
+)
+async def get_boundary_types(
+    session: AsyncSession = Depends(get_async_session),
+) -> BoundaryTypesResponse:
+    """List distinct boundary types, sorted alphabetically.
+
+    No authentication required. Boundary data is public.
+    """
+    types = await list_boundary_types(session)
+    return BoundaryTypesResponse(types=types)
 
 
 @boundaries_router.get(
