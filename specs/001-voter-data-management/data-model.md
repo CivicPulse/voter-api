@@ -324,7 +324,7 @@ independently of user lifecycle and reference user ID from the JWT.
 
 ---
 
-### 7. ImportJob
+### 8. ImportJob
 
 **Table**: `import_jobs`
 **Description**: Tracks a data import operation (voter file or boundary file).
