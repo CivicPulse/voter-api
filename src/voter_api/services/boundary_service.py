@@ -5,18 +5,19 @@ from pathlib import Path
 
 from geoalchemy2.shape import from_shape
 from loguru import logger
-from sqlalchemy import func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.boundary_loader import load_boundaries
 from voter_api.models.boundary import Boundary
+from voter_api.models.county_district import CountyDistrict
 
 
 def _county_geometry_subquery(county_name: str):
     """Build a scalar subquery returning the geometry of a named county boundary.
 
-    Performs a case-insensitive lookup against boundaries with
-    boundary_type='county'.
+    Used as a spatial fallback for boundary types not covered by the
+    county_districts relation table.
 
     Args:
         county_name: County name to look up (e.g., "Bibb", "Fulton").
@@ -34,6 +35,58 @@ def _county_geometry_subquery(county_name: str):
         .limit(1)
         .scalar_subquery()
     )
+
+
+def _build_county_filter(county_name: str):
+    """Build a hybrid county filter combining relation table, column, and spatial lookups.
+
+    Four-tier OR filter:
+    1. Relation table — matches boundaries via county_districts mapping
+    2. Direct column — matches boundaries with county column set
+    3. County self-match — matches the county boundary itself by name
+    4. Spatial fallback — ST_Intersects for boundary types not in county_districts
+
+    Args:
+        county_name: County name to filter by.
+
+    Returns:
+        A SQLAlchemy filter clause.
+    """
+    upper_county = func.upper(county_name)
+
+    # 1. Relation table: boundary exists in county_districts for this county
+    relation_match = exists(
+        select(CountyDistrict.id).where(
+            func.upper(CountyDistrict.county_name) == upper_county,
+            CountyDistrict.boundary_type == Boundary.boundary_type,
+            CountyDistrict.district_identifier == Boundary.boundary_identifier,
+        )
+    )
+
+    # 2. Direct column: boundary has county column set to this county
+    column_match = func.upper(Boundary.county) == upper_county
+
+    # 3. County self-match: the county boundary itself
+    county_self_match = and_(
+        Boundary.boundary_type == "county",
+        func.upper(Boundary.name) == upper_county,
+    )
+
+    # 4. Spatial fallback: for statewide types NOT in county_districts (e.g., PSC, county_precinct)
+    has_relation_entries = exists(
+        select(CountyDistrict.id).where(
+            CountyDistrict.boundary_type == Boundary.boundary_type,
+        )
+    )
+    county_geom = _county_geometry_subquery(county_name)
+    spatial_fallback = and_(
+        Boundary.county.is_(None),
+        Boundary.boundary_type != "county",
+        ~has_relation_entries,
+        func.ST_Intersects(Boundary.geometry, county_geom),
+    )
+
+    return or_(relation_match, column_match, county_self_match, spatial_fallback)
 
 
 async def import_boundaries(
@@ -113,7 +166,7 @@ async def list_boundaries(
     Args:
         session: Database session.
         boundary_type: Filter by boundary type.
-        county: Filter by centroid within named county boundary.
+        county: Filter by county using hybrid approach (relation table + spatial).
         source: Filter by source.
         page: Page number.
         page_size: Items per page.
@@ -128,10 +181,9 @@ async def list_boundaries(
         query = query.where(Boundary.boundary_type == boundary_type)
         count_query = count_query.where(Boundary.boundary_type == boundary_type)
     if county:
-        county_geom = _county_geometry_subquery(county)
-        spatial_filter = func.ST_Within(func.ST_Centroid(Boundary.geometry), county_geom)
-        query = query.where(spatial_filter)
-        count_query = count_query.where(spatial_filter)
+        county_filter = _build_county_filter(county)
+        query = query.where(county_filter)
+        count_query = count_query.where(county_filter)
     if source:
         query = query.where(Boundary.source == source)
         count_query = count_query.where(Boundary.source == source)
@@ -171,7 +223,7 @@ async def find_containing_boundaries(
         latitude: WGS84 latitude.
         longitude: WGS84 longitude.
         boundary_type: Optional filter by boundary type.
-        county: Optional filter by centroid within named county.
+        county: Optional filter by county using hybrid approach.
 
     Returns:
         List of boundaries containing the point.
@@ -184,8 +236,7 @@ async def find_containing_boundaries(
         query = query.where(Boundary.boundary_type == boundary_type)
 
     if county:
-        county_geom = _county_geometry_subquery(county)
-        query = query.where(func.ST_Within(func.ST_Centroid(Boundary.geometry), county_geom))
+        query = query.where(_build_county_filter(county))
 
     result = await session.execute(query)
     return list(result.scalars().all())

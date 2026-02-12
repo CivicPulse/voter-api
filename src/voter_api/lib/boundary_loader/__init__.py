@@ -1,10 +1,12 @@
-"""Boundary loader library — imports shapefiles and GeoJSON boundary data.
+"""Boundary loader library — imports shapefiles, GeoJSON, and county-district CSV data.
 
 Public API:
     - load_boundaries: Auto-detect format and parse boundary file
     - BoundaryData: Parsed boundary data structure
     - read_shapefile: Direct shapefile reader
     - read_geojson: Direct GeoJSON reader
+    - parse_county_districts_csv: Parse county-to-district CSV
+    - CountyDistrictRecord: County-to-district mapping record
     - verify_sha512: SHA512 checksum verification
     - BoundaryFileEntry: Manifest entry dataclass
     - BOUNDARY_MANIFEST: All boundary file entries
@@ -17,6 +19,7 @@ Public API:
 from pathlib import Path
 
 from voter_api.lib.boundary_loader.checksum import verify_sha512
+from voter_api.lib.boundary_loader.csv_loader import CountyDistrictRecord, parse_county_districts_csv
 from voter_api.lib.boundary_loader.geojson import read_geojson
 from voter_api.lib.boundary_loader.manifest import (
     BOUNDARY_MANIFEST,
@@ -58,10 +61,12 @@ __all__ = [
     "BOUNDARY_MANIFEST",
     "BoundaryData",
     "BoundaryFileEntry",
+    "CountyDistrictRecord",
     "ImportResult",
     "find_shp_in_zip",
     "get_manifest",
     "load_boundaries",
+    "parse_county_districts_csv",
     "read_geojson",
     "read_shapefile",
     "resolve_zip_path",

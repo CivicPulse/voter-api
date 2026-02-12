@@ -85,6 +85,36 @@ async def _import_boundaries(file_path: Path, boundary_type: str, source: str, c
         await dispose_engine()
 
 
+@import_app.command("county-districts")
+def import_county_districts_cmd(
+    file: Path = typer.Argument(..., help="Path to county-districts CSV file", exists=True),  # noqa: B008
+) -> None:
+    """Import county-to-district mappings from a CSV file.
+
+    Populates the county_districts table used for filtering multi-county
+    districts (congressional, state senate, state house) by county.
+    """
+    asyncio.run(_import_county_districts(file))
+
+
+async def _import_county_districts(file_path: Path) -> None:
+    """Async implementation of county-districts import."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.county_district_service import import_county_districts
+
+    settings = get_settings()
+    init_engine(settings.database_url)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            inserted = await import_county_districts(session, file_path)
+            typer.echo(f"County-district import complete: {inserted} records inserted")
+    finally:
+        await dispose_engine()
+
+
 @import_app.command("all-boundaries")
 def import_all_boundaries(
     data_dir: Path = typer.Option("data", "--data-dir", help="Directory containing boundary zip files"),  # noqa: B008
