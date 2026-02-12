@@ -104,13 +104,21 @@ def _extract_field(row: object, candidates: list[str]) -> str | None:
 
 
 def _serialize_value(val: object) -> object:
-    """Serialize a GeoDataFrame value to JSON-safe type."""
+    """Serialize a GeoDataFrame value to JSON-safe type.
+
+    Returns None for NaN/Inf values since they are not valid JSON.
+    """
+    import math
+
     import numpy as np
 
+    if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+        return None
     if isinstance(val, (np.integer,)):
         return int(val)
     if isinstance(val, (np.floating,)):
-        return float(val)
+        v = float(val)
+        return None if math.isnan(v) or math.isinf(v) else v
     if isinstance(val, np.ndarray):
         return val.tolist()
     return val

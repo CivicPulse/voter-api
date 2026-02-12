@@ -15,6 +15,8 @@ BOUNDARY_TYPES = [
     "state_senate",
     "state_house",
     "judicial",
+    "psc",
+    "county",
     "county_commission",
     "school_board",
     "city_council",
