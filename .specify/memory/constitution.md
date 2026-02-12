@@ -220,6 +220,13 @@ constitution amendment.
   `<type>/<short-description>` (e.g., `feat/voter-lookup`).
 - Pull requests MUST reference the related issue or spec.
 
+### Commit Cadence
+
+Work MUST be committed to git after completing each task, user
+story, or implementation phase. Large uncommitted changesets MUST
+be avoided. This ensures incremental progress is preserved and
+enables effective code review.
+
 ### Pre-Commit Quality Gates
 
 Before any commit, the following MUST pass:

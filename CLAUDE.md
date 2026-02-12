@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 voter-api is a Python/FastAPI REST API + CLI for managing Georgia Secretary of State voter data with geospatial capabilities. It ingests voter CSV files, geocodes addresses, imports district/precinct boundary shapefiles, performs point-in-polygon analysis to detect registration-location mismatches, and supports search and bulk export. No frontend — API and CLI only.
 
-**Status**: Early development. Architecture is planned in `specs/001-voter-data-management/` but source code is not yet built. The planned structure lives under `src/voter_api/`.
+**Status**: Active development. Implementation follows the task plan in `specs/001-voter-data-management/tasks.md`. Source code lives under `src/voter_api/`.
 
 ## Tech Stack
 
@@ -102,6 +102,8 @@ tests/
 - **No raw SQL** — SQLAlchemy ORM/Core exclusively
 - **API versioning** via URL prefix (`/api/v1/`)
 - **Branch strategy** — all work on feature branches, never directly on `main`
+- **Commit cadence** — commit to git after completing each task, story, or phase; do not accumulate large uncommitted changesets
+- **Lint before commit** — always run `uv run ruff check .` and `uv run ruff format --check .` before committing
 
 ## Reference Documents
 

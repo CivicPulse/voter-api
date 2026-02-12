@@ -1,0 +1,35 @@
+"""Root API router with /api/v1 prefix and middleware registration."""
+
+from fastapi import APIRouter, FastAPI
+
+from voter_api.api.middleware import RateLimitMiddleware, SecurityHeadersMiddleware, setup_cors
+from voter_api.core.config import Settings
+
+
+def create_router(settings: Settings) -> APIRouter:
+    """Create the root API router with all sub-routers included.
+
+    Args:
+        settings: Application settings.
+
+    Returns:
+        Configured API router.
+    """
+    from voter_api.api.v1.auth import router as auth_router
+
+    root_router = APIRouter(prefix=settings.api_v1_prefix)
+    root_router.include_router(auth_router)
+
+    return root_router
+
+
+def setup_middleware(app: FastAPI, settings: Settings) -> None:
+    """Register all middleware on the FastAPI app.
+
+    Args:
+        app: The FastAPI application.
+        settings: Application settings.
+    """
+    setup_cors(app, settings)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
