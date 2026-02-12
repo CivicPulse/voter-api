@@ -137,9 +137,9 @@
 
 **Purpose**: Quality gates and final validation
 
-- [ ] T035 Run `uv run ruff check .` and `uv run ruff format .` on all new and modified files
-- [ ] T036 Verify test coverage meets 90% threshold via `uv run pytest --cov=voter_api --cov-report=term-missing`
-- [ ] T037 Validate quickstart.md scenarios by reviewing CLI command help output and error messages
+- [x] T035 Run `uv run ruff check .` and `uv run ruff format .` on all new and modified files
+- [x] T036 Verify test coverage meets 90% threshold via `uv run pytest --cov=voter_api --cov-report=term-missing`
+- [x] T037 Validate quickstart.md scenarios by reviewing CLI command help output and error messages
 
 ---
 
