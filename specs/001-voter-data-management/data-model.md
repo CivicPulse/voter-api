@@ -189,7 +189,38 @@ address. Avoids redundant external API calls.
 
 ---
 
-### 4. Boundary
+### 4. GeocodingJob
+
+**Table**: `geocoding_jobs`
+**Description**: Tracks a batch geocoding operation. Persists job state
+for progress tracking, checkpoint/resume, and API status queries.
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| id | UUID | PK, default gen | |
+| provider | VARCHAR(50) | NOT NULL | Geocoder provider used |
+| county | VARCHAR(100) | NULLABLE | County filter (NULL = all) |
+| force_regeocode | BOOLEAN | NOT NULL, DEFAULT FALSE | Re-geocode already geocoded |
+| status | VARCHAR(20) | NOT NULL, DEFAULT 'pending' | pending, running, completed, failed |
+| total_records | INTEGER | NULLABLE | Total voters to geocode |
+| processed | INTEGER | NULLABLE | Records processed so far |
+| succeeded | INTEGER | NULLABLE | |
+| failed | INTEGER | NULLABLE | |
+| cache_hits | INTEGER | NULLABLE | |
+| last_processed_voter_offset | INTEGER | NULLABLE | Checkpoint for resume |
+| error_log | JSONB | NULLABLE | Array of error objects |
+| triggered_by | UUID | NULLABLE | User ID who triggered |
+| started_at | TIMESTAMP | NULLABLE | |
+| completed_at | TIMESTAMP | NULLABLE | |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT NOW | |
+
+**Indexes**:
+- `ix_geocoding_job_status` — B-tree on `status`
+- `ix_geocoding_job_created_at` — B-tree on `created_at`
+
+---
+
+### 5. Boundary
 
 **Table**: `boundaries`
 **Description**: Political or administrative district/precinct boundary
@@ -240,7 +271,7 @@ polygon from state or county GIS data.
 
 ---
 
-### 5. User
+### 6. User
 
 **Table**: `users`
 **Description**: Authenticated human user of the system with role-based
@@ -263,7 +294,7 @@ access control.
 
 ---
 
-### 6. AuditLog
+### 7. AuditLog
 
 **Table**: `audit_logs`
 **Description**: Immutable record of data access events. Write-only

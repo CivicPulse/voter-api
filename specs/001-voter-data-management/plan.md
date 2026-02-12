@@ -24,6 +24,8 @@ httpx, GeoPandas, pyogrio
 **Storage**: PostgreSQL 15+ with PostGIS 3.x
 **Testing**: pytest with pytest-cov, pytest-asyncio, httpx (AsyncClient)
 **Target Platform**: Linux server (Docker containers, docker-compose for local dev)
+**Background Tasks**: FastAPI BackgroundTasks for MVP (in-process async).
+Celery/ARQ deferred to production hardening if needed.
 **Project Type**: single (API + library + CLI, no frontend)
 **Performance Goals**: 500K voter import <30min, voter search <2s p95,
 analysis for 500K voters <60min, bulk export 500K <15min

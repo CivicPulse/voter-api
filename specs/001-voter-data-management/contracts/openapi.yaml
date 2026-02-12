@@ -1148,6 +1148,9 @@ components:
         municipal_precinct:
           type: string
           nullable: true
+        municipal_precinct_description:
+          type: string
+          nullable: true
         congressional_district:
           type: string
           nullable: true
@@ -1573,6 +1576,22 @@ components:
                   last_seen_import:
                     type: string
                     format: date-time
+            updated:
+              type: array
+              items:
+                type: object
+                properties:
+                  voter_registration_number:
+                    type: string
+                  name:
+                    type: string
+                  county:
+                    type: string
+                  changed_fields:
+                    type: array
+                    items:
+                      type: string
+                    description: List of field names that changed
 
     # ── Export ──
     ExportRequest:
@@ -1589,7 +1608,21 @@ components:
               type: string
             status:
               type: string
+            first_name:
+              type: string
+              description: Partial match (ILIKE)
+            last_name:
+              type: string
+              description: Partial match (ILIKE)
+            residence_city:
+              type: string
+            residence_zipcode:
+              type: string
             congressional_district:
+              type: string
+            state_senate_district:
+              type: string
+            state_house_district:
               type: string
             county_precinct:
               type: string

@@ -63,8 +63,9 @@
 - [ ] T029 Implement data sensitivity tier classification: define SensitivityTier enum (government_sourced, system_generated), create a field-level annotation system to tag Pydantic response schema fields by tier (government-sourced: all SoS voter file fields; system-generated: validated addresses, manual geocoding coordinates, analysis results) per FR-022 in src/voter_api/core/sensitivity.py
 - [ ] T030 Implement field-level access control: create a response serializer that inspects the requesting user's role and excludes system_generated-tier fields for viewer-role users, integrate with FastAPI dependency injection so analyst/admin see all fields while viewers see only government-sourced fields per FR-024 in src/voter_api/core/dependencies.py
 - [ ] T031 [P] Implement rate limiting middleware with configurable per-endpoint limits per constitution Principle VII in src/voter_api/api/middleware.py
+- [ ] T031b [P] Implement background task runner abstraction: define a BackgroundTaskRunner protocol with submit_task(coroutine) → job_id, get_status(job_id) → status, and an in-process FastAPI BackgroundTasks implementation. Used by geocoding batch, analysis runs, and async exports. Enables future swap to Celery/ARQ without service layer changes in src/voter_api/core/background.py
 
-**Checkpoint**: Foundation ready — database, auth, audit, data sensitivity tiers, rate limiting, API framework, CLI, and test infrastructure operational. User story implementation can now begin.
+**Checkpoint**: Foundation ready — database, auth, audit, data sensitivity tiers, rate limiting, background task runner, API framework, CLI, and test infrastructure operational. User story implementation can now begin.
 
 ---
 
