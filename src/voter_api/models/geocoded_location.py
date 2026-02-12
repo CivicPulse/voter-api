@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from geoalchemy2 import Geometry
-from sqlalchemy import Boolean, DateTime, Double, Index, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Double, ForeignKey, Index, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,7 +16,9 @@ class GeocodedLocation(Base, UUIDMixin):
 
     __tablename__ = "geocoded_locations"
 
-    voter_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    voter_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("voters.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     latitude: Mapped[float] = mapped_column(Double, nullable=False)
     longitude: Mapped[float] = mapped_column(Double, nullable=False)
     point: Mapped[object] = mapped_column(Geometry(geometry_type="POINT", srid=4326), nullable=False)

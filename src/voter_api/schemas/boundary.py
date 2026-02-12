@@ -6,6 +6,14 @@ from datetime import date, datetime
 from pydantic import BaseModel
 
 from voter_api.schemas.common import PaginationMeta
+from voter_api.schemas.county_metadata import CountyMetadataResponse
+from voter_api.schemas.precinct_metadata import PrecinctMetadataResponse
+
+
+class BoundaryTypesResponse(BaseModel):
+    """List of distinct boundary type strings."""
+
+    types: list[str]
 
 
 class BoundarySummaryResponse(BaseModel):
@@ -28,6 +36,8 @@ class BoundaryDetailResponse(BoundarySummaryResponse):
 
     geometry: dict | None = None
     properties: dict | None = None
+    county_metadata: CountyMetadataResponse | None = None
+    precinct_metadata: PrecinctMetadataResponse | None = None
 
 
 class PaginatedBoundaryResponse(BaseModel):

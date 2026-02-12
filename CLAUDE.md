@@ -121,3 +121,19 @@ tests/
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
+
+## Recent Changes
+- 002-static-dataset-publish: Added Python 3.13 + FastAPI, SQLAlchemy 2.x + GeoAlchemy2, Typer, Pydantic v2, boto3 (new), Loguru
+
+### 002-static-dataset-publish
+
+**County Metadata** — Census TIGER/Line attributes are stored in a dedicated `county_metadata` table (migration 011), keyed by FIPS GEOID. Populated automatically during `import all-boundaries` from the same county shapefile. The boundary detail endpoint (`GET /api/v1/boundaries/{id}`) includes a `county_metadata` field when `boundary_type == "county"`, with typed fields like FIPS codes, statistical area codes, land/water area, and computed km² values. Designed as the join point for future Census ACS demographic enrichment.
+
+Key files:
+
+- `src/voter_api/models/county_metadata.py` — ORM model (18 typed columns)
+- `src/voter_api/services/county_metadata_service.py` — import (upsert by GEOID) and query
+
+## Active Technologies
+- Python 3.13 + FastAPI, SQLAlchemy 2.x + GeoAlchemy2, Typer, Pydantic v2, boto3 (new), Loguru (002-static-dataset-publish)
+- PostgreSQL + PostGIS (read-only for this feature), Cloudflare R2 (new, S3-compatible) (002-static-dataset-publish)

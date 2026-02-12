@@ -5,11 +5,83 @@ from pathlib import Path
 
 from geoalchemy2.shape import from_shape
 from loguru import logger
-from sqlalchemy import func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.boundary_loader import load_boundaries
 from voter_api.models.boundary import Boundary
+from voter_api.models.county_district import CountyDistrict
+
+
+def _county_geometry_subquery(county_name: str):
+    """Build a scalar subquery returning the geometry of a named county boundary.
+
+    Used as a spatial fallback for boundary types not covered by the
+    county_districts relation table.
+
+    Args:
+        county_name: County name to look up (e.g., "Bibb", "Fulton").
+
+    Returns:
+        A scalar subquery yielding the county's MULTIPOLYGON geometry,
+        or NULL if no matching county boundary exists.
+    """
+    return (
+        select(Boundary.geometry)
+        .where(
+            Boundary.boundary_type == "county",
+            func.upper(Boundary.name) == func.upper(county_name),
+        )
+        .limit(1)
+        .scalar_subquery()
+    )
+
+
+def _build_county_filter(county_name: str):
+    """Build a hybrid county filter combining relation table, column, and spatial lookups.
+
+    Four-tier OR filter:
+    1. Relation table — matches boundaries via county_districts mapping
+    2. Direct column — matches boundaries with county column set
+    3. County self-match — matches the county boundary itself by name
+    4. Spatial fallback — ST_Intersects for boundaries not matched by the relation table
+
+    Args:
+        county_name: County name to filter by.
+
+    Returns:
+        A SQLAlchemy filter clause.
+    """
+    upper_county = func.upper(county_name)
+
+    # 1. Relation table: boundary exists in county_districts for this county
+    relation_match = exists(
+        select(CountyDistrict.id).where(
+            func.upper(CountyDistrict.county_name) == upper_county,
+            CountyDistrict.boundary_type == Boundary.boundary_type,
+            CountyDistrict.district_identifier == Boundary.boundary_identifier,
+        )
+    )
+
+    # 2. Direct column: boundary has county column set to this county
+    column_match = func.upper(Boundary.county) == upper_county
+
+    # 3. County self-match: the county boundary itself
+    county_self_match = and_(
+        Boundary.boundary_type == "county",
+        func.upper(Boundary.name) == upper_county,
+    )
+
+    # 4. Spatial fallback: for boundaries not matched by the relation table
+    county_geom = _county_geometry_subquery(county_name)
+    spatial_fallback = and_(
+        Boundary.county.is_(None),
+        Boundary.boundary_type != "county",
+        ~relation_match,
+        func.ST_Intersects(Boundary.geometry, county_geom),
+    )
+
+    return or_(relation_match, column_match, county_self_match, spatial_fallback)
 
 
 async def import_boundaries(
@@ -40,21 +112,39 @@ async def import_boundaries(
     for bd in boundary_data:
         geom_wkb = from_shape(bd.geometry, srid=4326)
 
+        # Extract county from properties when caller doesn't supply one
+        effective_county = county
+        if effective_county is None and bd.properties:
+            effective_county = bd.properties.get("CTYNAME") or bd.properties.get("COUNTY")
+
         # Check for existing boundary (upsert)
         result = await session.execute(
             select(Boundary).where(
                 Boundary.boundary_type == boundary_type,
                 Boundary.boundary_identifier == bd.boundary_identifier,
-                Boundary.county == county if county else Boundary.county.is_(None),
+                Boundary.county == effective_county if effective_county else Boundary.county.is_(None),
             )
         )
         existing = result.scalar_one_or_none()
+
+        # Fallback: check for legacy record with NULL county (pre-migration)
+        if existing is None and effective_county is not None:
+            fallback_result = await session.execute(
+                select(Boundary).where(
+                    Boundary.boundary_type == boundary_type,
+                    Boundary.boundary_identifier == bd.boundary_identifier,
+                    Boundary.county.is_(None),
+                )
+            )
+            existing = fallback_result.scalar_one_or_none()
 
         if existing:
             existing.name = bd.name
             existing.geometry = geom_wkb
             existing.properties = bd.properties
             existing.source = source
+            if effective_county:
+                existing.county = effective_county
             imported.append(existing)
         else:
             boundary = Boundary(
@@ -62,7 +152,7 @@ async def import_boundaries(
                 boundary_type=boundary_type,
                 boundary_identifier=bd.boundary_identifier,
                 source=source,
-                county=county,
+                county=effective_county,
                 geometry=geom_wkb,
                 properties=bd.properties,
             )
@@ -70,6 +160,19 @@ async def import_boundaries(
             imported.append(boundary)
 
     await session.commit()
+
+    # Import precinct metadata for county_precinct boundaries
+    if boundary_type == "county_precinct":
+        from voter_api.services.precinct_metadata_service import upsert_precinct_metadata
+
+        meta_count = 0
+        for b in imported:
+            if b.properties:
+                result = await upsert_precinct_metadata(session, b.id, b.properties)
+                if result:
+                    meta_count += 1
+        await session.commit()
+        logger.info(f"Upserted {meta_count} precinct metadata records")
 
     logger.info(f"Imported {len(imported)} boundaries")
     return imported
@@ -89,7 +192,7 @@ async def list_boundaries(
     Args:
         session: Database session.
         boundary_type: Filter by boundary type.
-        county: Filter by county.
+        county: Filter by county using hybrid approach (relation table + spatial).
         source: Filter by source.
         page: Page number.
         page_size: Items per page.
@@ -104,8 +207,9 @@ async def list_boundaries(
         query = query.where(Boundary.boundary_type == boundary_type)
         count_query = count_query.where(Boundary.boundary_type == boundary_type)
     if county:
-        query = query.where(Boundary.county == county)
-        count_query = count_query.where(Boundary.county == county)
+        county_filter = _build_county_filter(county)
+        query = query.where(county_filter)
+        count_query = count_query.where(county_filter)
     if source:
         query = query.where(Boundary.source == source)
         count_query = count_query.where(Boundary.source == source)
@@ -119,6 +223,12 @@ async def list_boundaries(
     return boundaries, total
 
 
+async def list_boundary_types(session: AsyncSession) -> list[str]:
+    """Return distinct boundary_type values, sorted alphabetically."""
+    result = await session.execute(select(Boundary.boundary_type).distinct().order_by(Boundary.boundary_type))
+    return list(result.scalars().all())
+
+
 async def get_boundary(session: AsyncSession, boundary_id: uuid.UUID) -> Boundary | None:
     """Get a boundary by ID."""
     result = await session.execute(select(Boundary).where(Boundary.id == boundary_id))
@@ -130,6 +240,7 @@ async def find_containing_boundaries(
     latitude: float,
     longitude: float,
     boundary_type: str | None = None,
+    county: str | None = None,
 ) -> list[Boundary]:
     """Find all boundaries containing a given point (point-in-polygon).
 
@@ -138,6 +249,7 @@ async def find_containing_boundaries(
         latitude: WGS84 latitude.
         longitude: WGS84 longitude.
         boundary_type: Optional filter by boundary type.
+        county: Optional filter by county using hybrid approach.
 
     Returns:
         List of boundaries containing the point.
@@ -148,6 +260,9 @@ async def find_containing_boundaries(
 
     if boundary_type:
         query = query.where(Boundary.boundary_type == boundary_type)
+
+    if county:
+        query = query.where(_build_county_filter(county))
 
     result = await session.execute(query)
     return list(result.scalars().all())

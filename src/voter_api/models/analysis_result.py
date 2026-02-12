@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Index, String, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,11 +22,13 @@ class AnalysisResult(Base, UUIDMixin):
 
     analysis_run_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
+        ForeignKey("analysis_runs.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     voter_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
+        ForeignKey("voters.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

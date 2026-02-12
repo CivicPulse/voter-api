@@ -78,6 +78,18 @@ def read_shapefile(file_path: Path) -> list[BoundaryData]:
         name = _extract_field(row, ["NAME", "Name", "name", "NAMELSAD", "DISTRICT"])
         identifier = _extract_field(row, ["GEOID", "DISTRICT", "DISTRICTID", "ID", "PREC_ID", "PRECINCT"])
 
+        # Skip rows with no usable identifier (e.g., statewide remainder polygons)
+        if identifier is None:
+            logger.warning("Skipping row with no identifier (likely remainder polygon)")
+            continue
+
+        # Skip remainder polygons: if a district-type column exists but is
+        # NaN/empty for this row, the row is a remainder polygon even if a
+        # generic fallback like "ID" produced an identifier.
+        if _is_remainder_polygon(row, gdf.columns):
+            logger.warning(f"Skipping remainder polygon (district column is NaN, fallback ID={identifier})")
+            continue
+
         boundaries.append(
             BoundaryData(
                 name=name or f"Boundary {len(boundaries) + 1}",
@@ -91,11 +103,35 @@ def read_shapefile(file_path: Path) -> list[BoundaryData]:
     return boundaries
 
 
+def _is_remainder_polygon(row: object, columns: object) -> bool:
+    """Detect remainder polygons where a district column exists but is NaN/empty.
+
+    Some shapefiles include a statewide or county-wide "remainder" polygon
+    alongside real district polygons.  These rows have NaN in the district
+    column but may still have a generic row-number ``ID`` that would otherwise
+    pass the null-identifier check.
+
+    Args:
+        row: A GeoDataFrame row.
+        columns: The column index of the GeoDataFrame.
+
+    Returns:
+        True if the row appears to be a remainder polygon.
+    """
+    district_columns = ["DISTRICT", "DISTRICTID"]
+    for col in district_columns:
+        if col in columns:
+            val = _serialize_value(row[col])  # type: ignore[index]
+            if val is None or str(val).strip() == "":
+                return True
+    return False
+
+
 def _extract_field(row: object, candidates: list[str]) -> str | None:
     """Try to extract a field value from common column name patterns."""
     for col in candidates:
         try:
-            val = row[col]  # type: ignore[index]
+            val = _serialize_value(row[col])  # type: ignore[index]
         except (KeyError, IndexError, TypeError):
             continue
         if val is not None and str(val).strip():

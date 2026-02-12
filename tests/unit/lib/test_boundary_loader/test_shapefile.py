@@ -11,6 +11,7 @@ from shapely.geometry import LineString, MultiPolygon, Polygon
 from voter_api.lib.boundary_loader.shapefile import (
     MAX_SHAPEFILE_SIZE_BYTES,
     _extract_field,
+    _is_remainder_polygon,
     _serialize_value,
     read_shapefile,
 )
@@ -76,7 +77,7 @@ class TestReadShapefile:
     def test_crs_transformation(self, mock_read: object, tmp_path: Path) -> None:
         """Non-4326 CRS is transformed to EPSG:4326."""
         poly = Polygon([(500000, 4000000), (500100, 4000000), (500100, 4000100), (500000, 4000100)])
-        gdf = _make_gdf([poly], {"NAME": ["Projected"]}, crs="EPSG:32617")
+        gdf = _make_gdf([poly], {"NAME": ["Projected"], "GEOID": ["01"]}, crs="EPSG:32617")
         mock_read.return_value = gdf
 
         shp = tmp_path / "test.shp"
@@ -154,8 +155,8 @@ class TestReadShapefile:
         assert boundaries[0].boundary_identifier == "D01"
 
     @patch("voter_api.lib.boundary_loader.shapefile.gpd.read_file")
-    def test_fallback_identifier(self, mock_read: object, tmp_path: Path) -> None:
-        """Identifier falls back to sequential number when no matching columns."""
+    def test_no_identifier_column_skips_row(self, mock_read: object, tmp_path: Path) -> None:
+        """Rows with no identifier column are skipped (remainder polygons)."""
         poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)])
         gdf = _make_gdf([poly], {"NAME": ["Test"], "OTHER_COL": ["value"]})
         mock_read.return_value = gdf
@@ -164,10 +165,7 @@ class TestReadShapefile:
         shp.write_bytes(b"fake")
 
         boundaries = read_shapefile(shp)
-        assert len(boundaries) == 1
-        assert boundaries[0].name == "Test"
-        # No GEOID/DISTRICT/ID column, so falls back to sequential number
-        assert boundaries[0].boundary_identifier == "1"
+        assert len(boundaries) == 0
 
     def test_file_size_limit(self, tmp_path: Path) -> None:
         """Oversized file raises ValueError."""
@@ -179,6 +177,65 @@ class TestReadShapefile:
             mock_stat.return_value.st_size = MAX_SHAPEFILE_SIZE_BYTES + 1
             with pytest.raises(ValueError, match="exceeds maximum size"):
                 read_shapefile(shp)
+
+    @patch("voter_api.lib.boundary_loader.shapefile.gpd.read_file")
+    def test_nan_name_produces_fallback(self, mock_read: object, tmp_path: Path) -> None:
+        """NaN NAME column falls back to generic 'Boundary N' name."""
+        poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)])
+        gdf = _make_gdf([poly], {"NAME": [float("nan")], "GEOID": ["01"]})
+        mock_read.return_value = gdf
+
+        shp = tmp_path / "test.shp"
+        shp.write_bytes(b"fake")
+
+        boundaries = read_shapefile(shp)
+        assert len(boundaries) == 1
+        assert boundaries[0].name == "Boundary 1"
+        assert boundaries[0].boundary_identifier == "01"
+
+    @patch("voter_api.lib.boundary_loader.shapefile.gpd.read_file")
+    def test_nan_identifier_skipped(self, mock_read: object, tmp_path: Path) -> None:
+        """Rows with NaN identifier columns are skipped (remainder polygons)."""
+        polys = [
+            Polygon([(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)]),
+            Polygon([(-86, 30), (-80, 30), (-80, 35), (-86, 35), (-86, 30)]),
+        ]
+        gdf = _make_gdf(
+            polys,
+            {"DISTRICT": ["001", np.nan]},
+        )
+        mock_read.return_value = gdf
+
+        shp = tmp_path / "test.shp"
+        shp.write_bytes(b"fake")
+
+        boundaries = read_shapefile(shp)
+        assert len(boundaries) == 1
+        assert boundaries[0].boundary_identifier == "001"
+
+    @patch("voter_api.lib.boundary_loader.shapefile.gpd.read_file")
+    def test_remainder_polygon_with_id_fallback_skipped(self, mock_read: object, tmp_path: Path) -> None:
+        """Remainder polygon with NaN DISTRICT but valid ID is skipped.
+
+        Reproduces the bibbsb shapefile bug where a statewide remainder polygon
+        (DISTRICT=NaN, ID=6) was imported as a school_board boundary.
+        """
+        polys = [
+            Polygon([(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)]),
+            Polygon([(-86, 30), (-80, 30), (-80, 35), (-86, 35), (-86, 30)]),
+        ]
+        gdf = _make_gdf(
+            polys,
+            {"DISTRICT": ["001", np.nan], "ID": [1, 6]},
+        )
+        mock_read.return_value = gdf
+
+        shp = tmp_path / "test.shp"
+        shp.write_bytes(b"fake")
+
+        boundaries = read_shapefile(shp)
+        assert len(boundaries) == 1
+        assert boundaries[0].boundary_identifier == "001"
 
     @patch("voter_api.lib.boundary_loader.shapefile.gpd.read_file")
     def test_multiple_boundaries(self, mock_read: object, tmp_path: Path) -> None:
@@ -212,10 +269,48 @@ class TestExtractField:
         row = {"NAME": "  ", "GEOID": "42"}
         assert _extract_field(row, ["NAME", "GEOID"]) == "42"
 
+    def test_skips_nan_float(self) -> None:
+        """Skips float NaN values and returns next valid candidate."""
+        row = {"NAME": float("nan"), "GEOID": "42"}
+        assert _extract_field(row, ["NAME", "GEOID"]) == "42"
+
+    def test_skips_numpy_nan(self) -> None:
+        """Skips numpy NaN values and returns next valid candidate."""
+        row = {"NAME": np.float64("nan"), "GEOID": "42"}
+        assert _extract_field(row, ["NAME", "GEOID"]) == "42"
+
     def test_returns_none_when_no_match(self) -> None:
         """Returns None when no candidates match."""
         row = {"OTHER": "val"}
         assert _extract_field(row, ["NAME", "GEOID"]) is None
+
+
+class TestIsRemainderPolygon:
+    """Tests for _is_remainder_polygon helper."""
+
+    def test_nan_district_detected(self) -> None:
+        """Row with NaN DISTRICT is detected as remainder."""
+        row = {"DISTRICT": float("nan"), "ID": 6}
+        columns = ["DISTRICT", "ID", "geometry"]
+        assert _is_remainder_polygon(row, columns) is True
+
+    def test_valid_district_not_detected(self) -> None:
+        """Row with valid DISTRICT is not a remainder."""
+        row = {"DISTRICT": "001", "ID": 1}
+        columns = ["DISTRICT", "ID", "geometry"]
+        assert _is_remainder_polygon(row, columns) is False
+
+    def test_no_district_column_not_detected(self) -> None:
+        """Row without DISTRICT/DISTRICTID columns is not detected."""
+        row = {"GEOID": "13001", "ID": 1}
+        columns = ["GEOID", "ID", "geometry"]
+        assert _is_remainder_polygon(row, columns) is False
+
+    def test_nan_districtid_detected(self) -> None:
+        """Row with NaN DISTRICTID is detected as remainder."""
+        row = {"DISTRICTID": np.float64("nan"), "ID": 6}
+        columns = ["DISTRICTID", "ID", "geometry"]
+        assert _is_remainder_polygon(row, columns) is True
 
 
 class TestSerializeValue:
