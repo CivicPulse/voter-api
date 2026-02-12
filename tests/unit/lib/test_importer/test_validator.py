@@ -97,8 +97,20 @@ class TestValidateBatch:
     def test_batch_separates_valid_and_invalid(self) -> None:
         """Batch validation separates valid from invalid."""
         records = [
-            {"county": "Fulton", "voter_registration_number": "1", "status": "ACTIVE", "last_name": "A", "first_name": "B"},
-            {"county": "", "voter_registration_number": "2", "status": "ACTIVE", "last_name": "C", "first_name": "D"},
+            {
+                "county": "Fulton",
+                "voter_registration_number": "1",
+                "status": "ACTIVE",
+                "last_name": "A",
+                "first_name": "B",
+            },
+            {
+                "county": "",
+                "voter_registration_number": "2",
+                "status": "ACTIVE",
+                "last_name": "C",
+                "first_name": "D",
+            },
         ]
         valid, failed = validate_batch(records)
         assert len(valid) == 1

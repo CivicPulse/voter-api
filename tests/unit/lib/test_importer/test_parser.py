@@ -1,6 +1,5 @@
 """Unit tests for importer parser module."""
 
-import tempfile
 from pathlib import Path
 
 import pandas as pd
@@ -80,8 +79,7 @@ class TestParseCsvChunks:
         """Empty string values are converted to None."""
         f = tmp_path / "voters.csv"
         f.write_text(
-            "County,Voter Registration #,Status,Last Name,First Name,Middle Name\n"
-            "Fulton,12345,ACTIVE,SMITH,JOHN,\n"
+            "County,Voter Registration #,Status,Last Name,First Name,Middle Name\nFulton,12345,ACTIVE,SMITH,JOHN,\n"
         )
         chunks = list(parse_csv_chunks(f, batch_size=10))
         # pandas stores empty-string replacements as NaN internally

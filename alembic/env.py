@@ -14,6 +14,9 @@ from voter_api.models.audit_log import AuditLog  # noqa: F401
 from voter_api.models.base import Base
 
 # Import all models so they are registered with Base.metadata
+from voter_api.models.geocoded_location import GeocodedLocation  # noqa: F401
+from voter_api.models.geocoder_cache import GeocoderCache  # noqa: F401
+from voter_api.models.geocoding_job import GeocodingJob  # noqa: F401
 from voter_api.models.import_job import ImportJob  # noqa: F401
 from voter_api.models.user import User  # noqa: F401
 from voter_api.models.voter import Voter  # noqa: F401

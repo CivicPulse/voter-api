@@ -1,0 +1,94 @@
+"""US Census Bureau geocoder provider.
+
+Uses the Census Geocoding API (https://geocoding.geo.census.gov/geocoder/)
+for address-to-coordinate resolution.
+"""
+
+import httpx
+from loguru import logger
+
+from voter_api.lib.geocoder.base import BaseGeocoder, GeocodingResult
+
+CENSUS_API_URL = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
+DEFAULT_TIMEOUT = 30.0
+
+
+class CensusGeocoder(BaseGeocoder):
+    """US Census Bureau geocoder provider."""
+
+    def __init__(self, timeout: float = DEFAULT_TIMEOUT) -> None:
+        self._timeout = timeout
+
+    @property
+    def provider_name(self) -> str:
+        return "census"
+
+    async def geocode(self, address: str) -> GeocodingResult | None:
+        """Geocode an address using the Census Bureau API.
+
+        Args:
+            address: Full normalized address string.
+
+        Returns:
+            GeocodingResult or None if geocoding failed.
+        """
+        params = {
+            "address": address,
+            "benchmark": "Public_AR_Current",
+            "format": "json",
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.get(CENSUS_API_URL, params=params)
+                response.raise_for_status()
+
+            data = response.json()
+            return self._parse_response(data)
+
+        except httpx.TimeoutException:
+            logger.warning(f"Census geocoder timeout for address: {address[:50]}...")
+            return None
+        except httpx.HTTPStatusError as e:
+            logger.warning(f"Census geocoder HTTP error {e.response.status_code}: {address[:50]}...")
+            return None
+        except Exception:
+            logger.exception(f"Census geocoder unexpected error: {address[:50]}...")
+            return None
+
+    def _parse_response(self, data: dict) -> GeocodingResult | None:
+        """Parse Census API response into a GeocodingResult.
+
+        Args:
+            data: Raw JSON response from Census API.
+
+        Returns:
+            GeocodingResult or None if no match found.
+        """
+        try:
+            result = data.get("result", {})
+            matches = result.get("addressMatches", [])
+
+            if not matches:
+                return None
+
+            best = matches[0]
+            coords = best.get("coordinates", {})
+            lon = coords.get("x")
+            lat = coords.get("y")
+
+            if lat is None or lon is None:
+                return None
+
+            matched_address = best.get("matchedAddress")
+
+            return GeocodingResult(
+                latitude=float(lat),
+                longitude=float(lon),
+                confidence_score=1.0 if best.get("tigerLine") else 0.8,
+                raw_response=data,
+                matched_address=matched_address,
+            )
+        except (KeyError, ValueError, TypeError):
+            logger.warning("Failed to parse Census geocoder response")
+            return None
