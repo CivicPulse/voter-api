@@ -44,7 +44,7 @@ def _build_county_filter(county_name: str):
     1. Relation table — matches boundaries via county_districts mapping
     2. Direct column — matches boundaries with county column set
     3. County self-match — matches the county boundary itself by name
-    4. Spatial fallback — ST_Intersects for boundary types not in county_districts
+    4. Spatial fallback — ST_Intersects for boundaries not matched by the relation table
 
     Args:
         county_name: County name to filter by.
@@ -72,17 +72,12 @@ def _build_county_filter(county_name: str):
         func.upper(Boundary.name) == upper_county,
     )
 
-    # 4. Spatial fallback: for statewide types NOT in county_districts (e.g., PSC, county_precinct)
-    has_relation_entries = exists(
-        select(CountyDistrict.id).where(
-            CountyDistrict.boundary_type == Boundary.boundary_type,
-        )
-    )
+    # 4. Spatial fallback: for boundaries not matched by the relation table
     county_geom = _county_geometry_subquery(county_name)
     spatial_fallback = and_(
         Boundary.county.is_(None),
         Boundary.boundary_type != "county",
-        ~has_relation_entries,
+        ~relation_match,
         func.ST_Intersects(Boundary.geometry, county_geom),
     )
 

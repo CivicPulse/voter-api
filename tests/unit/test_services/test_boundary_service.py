@@ -80,6 +80,23 @@ class TestBuildCountyFilter:
         compiled = _compile_query(f)
         assert "st_centroid" not in compiled.lower()
 
+    def test_spatial_fallback_uses_per_boundary_not_exists(self) -> None:
+        """Spatial fallback should check NOT EXISTS per boundary, not globally per type.
+
+        Ensures boundaries whose identifier doesn't match county_districts
+        still fall through to the ST_Intersects spatial check.
+        """
+        f = _build_county_filter("Bibb")
+        compiled = _compile_query(f)
+        # The NOT EXISTS in the spatial fallback should reference
+        # district_identifier (per-boundary check), not just boundary_type
+        lower = compiled.lower()
+        not_exists_idx = lower.rfind("not (exists")
+        assert not_exists_idx != -1, "Should have a NOT EXISTS clause for spatial fallback"
+        not_exists_clause = lower[not_exists_idx:]
+        assert "district_identifier" in not_exists_clause
+        assert "county_name" in not_exists_clause
+
     def test_filter_uses_case_insensitive_matching(self) -> None:
         f = _build_county_filter("bibb")
         compiled = _compile_query(f)
