@@ -123,16 +123,70 @@ tests/
 
 ## Deployment (Piku)
 
-The app deploys to a piku server via `git push piku main`. Configuration lives in two root files:
+**Production URL**: `https://voteapi.kerryhatcher.com`
+
+The app deploys to a piku server (`hatchweb`) via `git push piku main`. Two git remotes are configured:
+
+- `origin` — GitHub (`CivicPulse/voter-api`)
+- `piku` — `piku@hatchweb.tailb56d83.ts.net:voter-api`
+
+### Configuration files
 
 - **`Procfile`** — defines `release` (Alembic migrations) and `web` (uvicorn ASGI) workers
-- **`ENV`** — piku/nginx settings and app environment variables; secrets should be set on the server via `piku config:set` rather than committed here
+- **`ENV`** — piku/nginx settings and non-secret environment variables; committed to the repo
 
-**Important**: Piku's `deploy_python_with_uv()` detects Python projects via `pyproject.toml` + `uv` in PATH. The `uv` binary must be installed on the server (e.g. `~/.local/bin/uv`) for detection to succeed — without it, piku falls through to "Generic app" and skips dependency installation. The build backend (hatchling, setuptools, etc.) is irrelevant; piku just runs `uv sync`.
+### Secrets
 
-**Python version caveat**: Piku's source hardcodes `--python-preference only-system` in its `uv sync` call, meaning uv will only use system-installed Python interpreters by default. If the server lacks the version specified in `.python-version`, patch piku.py to remove this flag so uv can auto-download the required Python version.
+Set secrets on the server via `piku config:set` — never commit them in `ENV`:
 
-**Secrets**: Set `DATABASE_URL`, `JWT_SECRET_KEY`, and other secrets on the server via `piku config:set` rather than committing them in the `ENV` file.
+```bash
+ssh piku@hatchweb.tailb56d83.ts.net -- config:set voter-api \
+  DATABASE_URL=postgresql+asyncpg://... \
+  JWT_SECRET_KEY=... \
+  UV_PYTHON_DOWNLOADS=auto
+```
+
+### Ingress: Cloudflare Tunnel
+
+External traffic reaches the app via a Cloudflare Tunnel (`hatchweb`), not direct port exposure:
+
+- **Domain**: `voteapi.kerryhatcher.com` (DNS managed by Cloudflare)
+- **Tunnel route**: `HTTP://localhost:80` (Cloudflare terminates TLS at the edge)
+- Piku's Let's Encrypt attempts will fail (ACME HTTP-01 challenge can't reach the server directly); the self-signed cert fallback is harmless since Cloudflare handles TLS
+
+### Server prerequisites (one-time setup)
+
+These were required on the piku server beyond the standard `piku setup`:
+
+1. **uv**: Must be installed at `~/.local/bin/uv` with PATH including that directory. Without `uv` in PATH, piku falls through to "Generic app" and skips dependency installation.
+
+2. **piku.py patch**: Piku's source hardcodes `--python-preference only-system` in its `uv sync` call (line ~779 of `piku.py`). The server has Python 3.12 but the project requires 3.13. The flag was removed via `sed -i "s/uv sync --python-preference only-system/uv sync/" /home/piku/piku.py` so uv auto-downloads Python 3.13. This patch will be lost if piku is updated — re-apply after any `piku update`.
+
+3. **nginx include**: Piku writes nginx configs to `/home/piku/.piku/nginx/` but the system nginx doesn't include that directory by default. Created `/etc/nginx/sites-enabled/piku.conf` containing:
+   ```
+   include /home/piku/.piku/nginx/*.conf;
+   ```
+
+4. **uwsgi linkage**: Piku generates uwsgi worker configs in `/home/piku/.piku/uwsgi-enabled/` but the system uwsgi service watches `/etc/uwsgi/apps-enabled/`. Symlinked the config:
+   ```bash
+   sudo ln -s /home/piku/.piku/uwsgi-enabled/voter-api_web.1.ini /etc/uwsgi/apps-enabled/
+   ```
+   New piku apps will need their uwsgi configs symlinked similarly.
+
+### Deploy flow
+
+On `git push piku main`, piku runs:
+1. `uv sync` — installs dependencies into `/home/piku/.piku/envs/voter-api`
+2. `release` worker — runs `voter-api db upgrade` (Alembic migrations)
+3. `web` worker — spawns `uvicorn --factory voter_api.main:create_app` via uwsgi `attach-daemon`
+
+### Troubleshooting
+
+- **502 Bad Gateway**: Check if uvicorn is running (`ssh piku@... -- ps voter-api`). If uwsgi shows `active (exited)`, restart it: `sudo systemctl restart uwsgi`
+- **"Generic app" on deploy**: `uv` is not in PATH on the server
+- **"No interpreter found for Python 3.13"**: The piku.py patch was lost (re-apply after `piku update`)
+- **Stale venv errors**: Remove and redeploy: `ssh piku@... -- run voter-api -- rm -rf /home/piku/.piku/envs/voter-api` then `ssh piku@... -- deploy voter-api`
+- **View logs**: `ssh piku@hatchweb.tailb56d83.ts.net -- logs voter-api` or check `/home/piku/.piku/logs/voter-api/web.1.log` on the server
 
 <!-- MANUAL ADDITIONS END -->
 
