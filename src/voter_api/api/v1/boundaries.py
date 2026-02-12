@@ -3,6 +3,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from geoalchemy2.shape import to_shape
 from shapely.geometry import mapping
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,8 @@ from voter_api.core.dependencies import get_async_session, get_current_user
 from voter_api.models.user import User
 from voter_api.schemas.boundary import (
     BoundaryDetailResponse,
+    BoundaryFeatureCollection,
+    BoundaryGeoJSONFeature,
     BoundarySummaryResponse,
     PaginatedBoundaryResponse,
 )
@@ -71,6 +74,53 @@ async def containing_point(
     """Find all boundaries containing a given point."""
     boundaries = await find_containing_boundaries(session, latitude, longitude, boundary_type)
     return [BoundarySummaryResponse.model_validate(b) for b in boundaries]
+
+
+@boundaries_router.get(
+    "/geojson",
+    response_model=BoundaryFeatureCollection,
+)
+async def get_boundaries_geojson(
+    boundary_type: str | None = Query(None),
+    county: str | None = Query(None),
+    source: str | None = Query(None),
+    session: AsyncSession = Depends(get_async_session),
+) -> JSONResponse:
+    """Return boundaries as a public GeoJSON FeatureCollection.
+
+    No authentication required. Intended for consumption by map libraries
+    (Leaflet, Mapbox GL, OpenLayers).
+    """
+    boundaries, _ = await list_boundaries(
+        session,
+        boundary_type=boundary_type,
+        county=county,
+        source=source,
+        page=1,
+        page_size=10_000,
+    )
+
+    features: list[dict] = []
+    for b in boundaries:
+        geom_shape = to_shape(b.geometry)
+        feature = BoundaryGeoJSONFeature(
+            id=str(b.id),
+            geometry=mapping(geom_shape),
+            properties={
+                "name": b.name,
+                "boundary_type": b.boundary_type,
+                "boundary_identifier": b.boundary_identifier,
+                "source": b.source,
+                "county": b.county,
+            },
+        )
+        features.append(feature.model_dump())
+
+    collection = BoundaryFeatureCollection(features=features)
+    return JSONResponse(
+        content=collection.model_dump(),
+        media_type="application/geo+json",
+    )
 
 
 @boundaries_router.get(
