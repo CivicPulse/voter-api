@@ -128,7 +128,11 @@ The app deploys to a piku server via `git push piku main`. Configuration lives i
 - **`Procfile`** — defines `release` (Alembic migrations) and `web` (uvicorn ASGI) workers
 - **`ENV`** — piku/nginx settings and app environment variables; secrets should be set on the server via `piku config:set` rather than committed here
 
-**Dependency detection caveat**: Piku detects Python projects via `requirements.txt` or `pyproject.toml`. Its `pyproject.toml` support documents poetry and uv but does not explicitly cover hatchling as a build backend. If piku fails to install dependencies on deploy, generate a `requirements.txt` fallback with `uv export --no-hashes > requirements.txt` and commit it. Piku will prefer `requirements.txt` when present.
+**Important**: Piku's `deploy_python_with_uv()` detects Python projects via `pyproject.toml` + `uv` in PATH. The `uv` binary must be installed on the server (e.g. `~/.local/bin/uv`) for detection to succeed — without it, piku falls through to "Generic app" and skips dependency installation. The build backend (hatchling, setuptools, etc.) is irrelevant; piku just runs `uv sync`.
+
+**Python version caveat**: Piku's source hardcodes `--python-preference only-system` in its `uv sync` call, meaning uv will only use system-installed Python interpreters by default. If the server lacks the version specified in `.python-version`, patch piku.py to remove this flag so uv can auto-download the required Python version.
+
+**Secrets**: Set `DATABASE_URL`, `JWT_SECRET_KEY`, and other secrets on the server via `piku config:set` rather than committing them in the `ENV` file.
 
 <!-- MANUAL ADDITIONS END -->
 

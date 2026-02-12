@@ -5,7 +5,7 @@
 # set via `piku config:set` on the server rather than committed here.
 
 # --- Piku / nginx settings ---
-NGINX_SERVER_NAME=hatchweb.tailb56d83.ts.net
+NGINX_SERVER_NAME=voteapi.kerryhatcher.com
 BIND_ADDRESS=0.0.0.0
 
 # --- Required (set these via piku config:set for secrets) ---
