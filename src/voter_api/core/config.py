@@ -82,6 +82,41 @@ class Settings(BaseSettings):
         description="API version prefix",
     )
 
+    # R2 / S3-Compatible Object Storage
+    r2_enabled: bool = Field(
+        default=False,
+        description="Enable R2/S3 publishing and redirect",
+    )
+    r2_account_id: str | None = Field(
+        default=None,
+        description="Cloudflare R2 account ID",
+    )
+    r2_access_key_id: str | None = Field(
+        default=None,
+        description="R2 API token access key",
+    )
+    r2_secret_access_key: str | None = Field(
+        default=None,
+        description="R2 API token secret key",
+    )
+    r2_bucket: str | None = Field(
+        default=None,
+        description="R2 bucket name",
+    )
+    r2_public_url: str | None = Field(
+        default=None,
+        description="Public URL prefix for R2 (custom domain or r2.dev URL)",
+    )
+    r2_prefix: str = Field(
+        default="",
+        description="Key prefix within the R2 bucket",
+    )
+    r2_manifest_ttl: int = Field(
+        default=300,
+        description="Manifest cache TTL in seconds",
+        gt=0,
+    )
+
     @property
     def cors_origin_list(self) -> list[str]:
         """Parse CORS origins string into a list."""

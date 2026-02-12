@@ -30,6 +30,7 @@ def _register_subcommands() -> None:
     from voter_api.cli.export_cmd import export_app
     from voter_api.cli.geocode_cmd import geocode_app
     from voter_api.cli.import_cmd import import_app
+    from voter_api.cli.publish_cmd import publish_app
     from voter_api.cli.user_cmd import user_app
 
     app.add_typer(db_app, name="db", help="Database migration commands")
@@ -38,6 +39,7 @@ def _register_subcommands() -> None:
     app.add_typer(geocode_app, name="geocode", help="Geocoding commands")
     app.add_typer(analyze_app, name="analyze", help="Location analysis commands")
     app.add_typer(export_app, name="export", help="Data export commands")
+    app.add_typer(publish_app, name="publish", help="Publish static datasets to object storage")
 
 
 _register_subcommands()
