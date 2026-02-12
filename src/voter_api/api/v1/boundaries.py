@@ -24,6 +24,7 @@ from voter_api.services.boundary_service import (
     list_boundaries,
     list_boundary_types,
 )
+from voter_api.services.county_metadata_service import get_county_metadata_by_geoid
 
 boundaries_router = APIRouter(prefix="/boundaries", tags=["boundaries"])
 
@@ -176,5 +177,13 @@ async def get_boundary_detail(
     if include_geometry and boundary.geometry:
         geom_shape = to_shape(boundary.geometry)
         response_data["geometry"] = mapping(geom_shape)
+
+    # Include county metadata for county boundaries
+    if boundary.boundary_type == "county":
+        metadata = await get_county_metadata_by_geoid(session, boundary.boundary_identifier)
+        if metadata:
+            from voter_api.schemas.county_metadata import CountyMetadataResponse
+
+            response_data["county_metadata"] = CountyMetadataResponse.model_validate(metadata)
 
     return BoundaryDetailResponse(**response_data)

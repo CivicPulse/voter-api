@@ -332,6 +332,11 @@ class TestGetBoundaryDetailNoAuth:
             ),
             patch("voter_api.api.v1.boundaries.to_shape") as mock_to_shape,
             patch("voter_api.api.v1.boundaries.mapping") as mock_mapping,
+            patch(
+                "voter_api.api.v1.boundaries.get_county_metadata_by_geoid",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
         ):
             mock_to_shape.return_value = MagicMock()
             mock_mapping.return_value = {
