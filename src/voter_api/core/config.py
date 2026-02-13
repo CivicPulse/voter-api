@@ -75,6 +75,10 @@ class Settings(BaseSettings):
         default="",
         description="Comma-separated list of allowed CORS origins (must be explicitly configured)",
     )
+    cors_origin_regex: str = Field(
+        default="",
+        description="Regex pattern for allowed CORS origins (e.g. https://(.*\\.kerryhatcher\\.com|.*\\.voter-web\\.pages\\.dev))",
+    )
 
     # API
     api_v1_prefix: str = Field(

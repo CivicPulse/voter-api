@@ -17,13 +17,16 @@ def setup_cors(app: FastAPI, settings: Settings) -> None:
         app: The FastAPI application.
         settings: Application settings.
     """
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origin_list,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    kwargs: dict[str, object] = {
+        "allow_credentials": True,
+        "allow_methods": ["*"],
+        "allow_headers": ["*"],
+    }
+    if settings.cors_origin_list:
+        kwargs["allow_origins"] = settings.cors_origin_list
+    if settings.cors_origin_regex.strip():
+        kwargs["allow_origin_regex"] = settings.cors_origin_regex.strip()
+    app.add_middleware(CORSMiddleware, **kwargs)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
