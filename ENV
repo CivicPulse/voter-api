@@ -34,6 +34,7 @@ LOG_LEVEL=INFO
 
 # --- CORS ---
 CORS_ORIGINS=
+CORS_ORIGIN_REGEX=https://(.*\.voter-web\.pages\.dev|.*\.kerryhatcher\.com)
 
 # --- API ---
 API_V1_PREFIX=/api/v1
