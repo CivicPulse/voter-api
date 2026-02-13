@@ -72,3 +72,78 @@ class CacheStatsResponse(BaseModel):
     """Response for geocoding cache statistics."""
 
     providers: list[CacheProviderStats]
+
+
+# --- Single-address geocoding endpoint schemas ---
+
+
+class GeocodeMetadata(BaseModel):
+    """Metadata for a geocode response."""
+
+    cached: bool
+    provider: str
+
+    model_config = {"extra": "allow"}
+
+
+class AddressGeocodeResponse(BaseModel):
+    """Response for GET /geocoding/geocode."""
+
+    formatted_address: str
+    latitude: float
+    longitude: float
+    confidence: float | None = None
+    metadata: GeocodeMetadata
+
+
+class MalformedComponent(BaseModel):
+    """A component detected but improperly formatted."""
+
+    component: str
+    issue: str
+
+
+class ValidationDetail(BaseModel):
+    """Address component validation feedback."""
+
+    present_components: list[str]
+    missing_components: list[str]
+    malformed_components: list[MalformedComponent] = Field(default_factory=list)
+
+
+class AddressSuggestion(BaseModel):
+    """A ranked address suggestion from the canonical store."""
+
+    address: str
+    latitude: float
+    longitude: float
+    confidence_score: float | None = None
+
+
+class AddressVerifyResponse(BaseModel):
+    """Response for GET /geocoding/verify."""
+
+    input_address: str
+    normalized_address: str
+    is_well_formed: bool
+    validation: ValidationDetail
+    suggestions: list[AddressSuggestion] = Field(default_factory=list)
+
+
+class DistrictInfo(BaseModel):
+    """A boundary district containing a queried point."""
+
+    boundary_type: str
+    name: str
+    boundary_identifier: str
+    boundary_id: str
+    metadata: dict = Field(default_factory=dict)
+
+
+class PointLookupResponse(BaseModel):
+    """Response for GET /geocoding/point-lookup."""
+
+    latitude: float
+    longitude: float
+    accuracy: float | None = None
+    districts: list[DistrictInfo] = Field(default_factory=list)

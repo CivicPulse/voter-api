@@ -10,6 +10,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from voter_api.core.config import get_settings
+from voter_api.models.address import Address  # noqa: F401
 from voter_api.models.analysis_result import AnalysisResult  # noqa: F401
 from voter_api.models.analysis_run import AnalysisRun  # noqa: F401
 from voter_api.models.audit_log import AuditLog  # noqa: F401
