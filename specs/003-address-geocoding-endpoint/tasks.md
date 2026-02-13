@@ -81,15 +81,15 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T017 [P] [US5] Create unit tests for `validate_georgia_coordinates()` (inside GA, outside GA, boundary edges) and `meters_to_degrees()` (various latitudes, zero meters, 100m max, accuracy at Georgia latitude range) — file: `tests/unit/lib/test_geocoder/test_point_lookup.py`
-- [ ] T018 [P] [US5] Create integration test stubs for `GET /geocoding/point-lookup`: valid GA coords with loaded boundaries returns districts (200), out-of-GA coords returns 422, accuracy > 100m returns 422, coords with no matching boundaries returns empty list (200), missing params returns 422, unauthenticated returns 401 — file: `tests/integration/test_api/test_point_lookup_endpoint.py`
+- [X] T017 [P] [US5] Create unit tests for `validate_georgia_coordinates()` (inside GA, outside GA, boundary edges) and `meters_to_degrees()` (various latitudes, zero meters, 100m max, accuracy at Georgia latitude range) — file: `tests/unit/lib/test_geocoder/test_point_lookup.py`
+- [X] T018 [P] [US5] Create integration test stubs for `GET /geocoding/point-lookup`: valid GA coords with loaded boundaries returns districts (200), out-of-GA coords returns 422, accuracy > 100m returns 422, coords with no matching boundaries returns empty list (200), missing params returns 422, unauthenticated returns 401 — file: `tests/integration/test_api/test_point_lookup_endpoint.py`
 
 ### Implementation for User Story 5
 
-- [ ] T019 [US5] Add `find_boundaries_at_point(session, lat, lng, accuracy_meters=None) -> list[Boundary]` to BoundaryService — use `ST_Contains(geometry, ST_SetSRID(ST_MakePoint(lng, lat), 4326))` for exact point; when `accuracy_meters` provided, use `ST_DWithin(geometry, point, meters_to_degrees(accuracy_meters, lat))` for expanded search — file: `src/voter_api/services/boundary_service.py`
-- [ ] T020 [US5] Add `GET /geocoding/point-lookup` endpoint with `Depends(get_current_user)` JWT auth, `lat`/`lng` required float query params, optional `accuracy` float query param (`le=100`, reject > 100 with 422 per FR-020), call `validate_georgia_coordinates()` (422 if outside per FR-021), call `find_boundaries_at_point()`, map results to `DistrictInfo` list, return `PointLookupResponse` — file: `src/voter_api/api/v1/geocoding.py`
-- [ ] T021 [US5] Complete integration tests for point-lookup endpoint with all scenarios; include a timing assertion that point-lookup responses complete within 1 second (SC-007) — file: `tests/integration/test_api/test_point_lookup_endpoint.py`
-- [ ] T022 [P] [US5] Add contract tests for point-lookup endpoint validating 200 response against `PointLookupResponse` schema — file: `tests/contract/test_geocoding_contract.py`
+- [X] T019 [US5] Add `find_boundaries_at_point(session, lat, lng, accuracy_meters=None) -> list[Boundary]` to BoundaryService — use `ST_Contains(geometry, ST_SetSRID(ST_MakePoint(lng, lat), 4326))` for exact point; when `accuracy_meters` provided, use `ST_DWithin(geometry, point, meters_to_degrees(accuracy_meters, lat))` for expanded search — file: `src/voter_api/services/boundary_service.py`
+- [X] T020 [US5] Add `GET /geocoding/point-lookup` endpoint with `Depends(get_current_user)` JWT auth, `lat`/`lng` required float query params, optional `accuracy` float query param (`le=100`, reject > 100 with 422 per FR-020), call `validate_georgia_coordinates()` (422 if outside per FR-021), call `find_boundaries_at_point()`, map results to `DistrictInfo` list, return `PointLookupResponse` — file: `src/voter_api/api/v1/geocoding.py`
+- [X] T021 [US5] Complete integration tests for point-lookup endpoint with all scenarios; include a timing assertion that point-lookup responses complete within 1 second (SC-007) — file: `tests/integration/test_api/test_point_lookup_endpoint.py`
+- [X] T022 [P] [US5] Add contract tests for point-lookup endpoint validating 200 response against `PointLookupResponse` schema — file: `tests/contract/test_geocoding_contract.py`
 
 **Checkpoint**: Both P1 stories complete — MVP delivered. Geocode + point-lookup form the end-to-end "address lookup" flow for the frontend.
 

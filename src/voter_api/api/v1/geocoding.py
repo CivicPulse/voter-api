@@ -7,13 +7,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.background import task_runner
 from voter_api.core.dependencies import get_async_session, get_current_user, require_role
+from voter_api.lib.geocoder.point_lookup import validate_georgia_coordinates
 from voter_api.models.user import User
 from voter_api.schemas.geocoding import (
     AddressGeocodeResponse,
     BatchGeocodingRequest,
     CacheStatsResponse,
+    DistrictInfo,
     GeocodingJobResponse,
+    PointLookupResponse,
 )
+from voter_api.services.boundary_service import find_boundaries_at_point
 from voter_api.services.geocoding_service import (
     create_geocoding_job,
     geocode_single_address,
@@ -62,6 +66,55 @@ async def geocode_address(
         )
 
     return result
+
+
+@geocoding_router.get(
+    "/point-lookup",
+    response_model=PointLookupResponse,
+)
+async def point_lookup_districts(
+    lat: float = Query(..., description="WGS84 latitude"),  # noqa: B008
+    lng: float = Query(..., description="WGS84 longitude"),  # noqa: B008
+    accuracy: float | None = Query(  # noqa: B008
+        None, le=100, description="GPS accuracy radius in meters (max 100)"
+    ),
+    session: AsyncSession = Depends(get_async_session),  # noqa: B008
+    _current_user: User = Depends(get_current_user),  # noqa: B008
+) -> PointLookupResponse:
+    """Look up boundary districts for a geographic point."""
+    if accuracy is not None and accuracy > 100:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Accuracy must not exceed 100 meters.",
+        )
+
+    try:
+        validate_georgia_coordinates(lat, lng)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
+
+    boundaries = await find_boundaries_at_point(session, lat, lng, accuracy)
+
+    districts = [
+        DistrictInfo(
+            boundary_type=b.boundary_type,
+            name=b.name,
+            boundary_identifier=b.boundary_identifier,
+            boundary_id=str(b.id),
+            metadata=b.properties or {},
+        )
+        for b in boundaries
+    ]
+
+    return PointLookupResponse(
+        latitude=lat,
+        longitude=lng,
+        accuracy=accuracy,
+        districts=districts,
+    )
 
 
 @geocoding_router.post(
