@@ -378,6 +378,7 @@ components:
         - name
         - boundary_identifier
         - boundary_id
+        - metadata
       properties:
         boundary_type:
           type: string
