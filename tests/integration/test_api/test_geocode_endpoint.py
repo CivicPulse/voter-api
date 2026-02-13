@@ -114,3 +114,57 @@ class TestGeocodeEndpoint:
         client = AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False)
         resp = await client.get("/api/v1/geocoding/geocode?address=100+Main+St")
         assert resp.status_code == 401
+
+
+class TestGeocodeCacheBehavior:
+    """Tests for US2: cached results returned with metadata.cached=true."""
+
+    @pytest.mark.asyncio
+    async def test_cached_result_has_cached_true(self, client) -> None:
+        """Cached result has metadata.cached=true."""
+        from voter_api.schemas.geocoding import AddressGeocodeResponse, GeocodeMetadata
+
+        cached_response = AddressGeocodeResponse(
+            formatted_address="100 PEACHTREE ST NW, ATLANTA, GA 30303",
+            latitude=33.7589985,
+            longitude=-84.3879824,
+            confidence=1.0,
+            metadata=GeocodeMetadata(cached=True, provider="census"),
+        )
+        with patch(
+            "voter_api.api.v1.geocoding.geocode_single_address",
+            new_callable=AsyncMock,
+            return_value=cached_response,
+        ):
+            resp = await client.get(
+                "/api/v1/geocoding/geocode?address=100+Peachtree+St+NW,+Atlanta,+GA+30303"
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["metadata"]["cached"] is True
+
+    @pytest.mark.asyncio
+    async def test_uncached_result_has_cached_false(self, client) -> None:
+        """Fresh result has metadata.cached=false."""
+        from voter_api.schemas.geocoding import AddressGeocodeResponse, GeocodeMetadata
+
+        fresh_response = AddressGeocodeResponse(
+            formatted_address="100 PEACHTREE ST NW, ATLANTA, GA 30303",
+            latitude=33.7589985,
+            longitude=-84.3879824,
+            confidence=1.0,
+            metadata=GeocodeMetadata(cached=False, provider="census"),
+        )
+        with patch(
+            "voter_api.api.v1.geocoding.geocode_single_address",
+            new_callable=AsyncMock,
+            return_value=fresh_response,
+        ):
+            resp = await client.get(
+                "/api/v1/geocoding/geocode?address=100+Peachtree+St+NW,+Atlanta,+GA+30303"
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["metadata"]["cached"] is False

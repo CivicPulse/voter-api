@@ -107,11 +107,11 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T023 [P] [US2] Add cache-behavior integration tests: geocode address then submit same address, verify `metadata.cached=true` on second response, verify no second provider call (mock provider), verify cached response time < 500ms (SC-002), verify new results stored in cache — file: `tests/integration/test_api/test_geocode_endpoint.py`
+- [X] T023 [P] [US2] Add cache-behavior integration tests: geocode address then submit same address, verify `metadata.cached=true` on second response, verify no second provider call (mock provider), verify cached response time < 500ms (SC-002), verify new results stored in cache — file: `tests/integration/test_api/test_geocode_endpoint.py`
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Verify and ensure `geocode_single_address()` correctly sets `metadata.cached=true` on cache hit (skips provider call) and `metadata.cached=false` on cache miss (calls provider, stores result); fix if not already correct — file: `src/voter_api/services/geocoding_service.py`
+- [X] T024 [US2] Verify and ensure `geocode_single_address()` correctly sets `metadata.cached=true` on cache hit (skips provider call) and `metadata.cached=false` on cache miss (calls provider, stores result); fix if not already correct — file: `src/voter_api/services/geocoding_service.py`
 
 **Checkpoint**: Cache behavior validated — repeat lookups skip external provider, metadata accurately reflects source.
 
