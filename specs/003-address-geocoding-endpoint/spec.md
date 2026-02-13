@@ -151,7 +151,7 @@ As an authenticated API consumer, I want to submit geographic coordinates and re
 - **FR-011**: System MUST expose a separate address verification endpoint that accepts a partial or malformed freeform address string and returns ranked address suggestions.
 - **FR-012**: The verification endpoint MUST perform local validation to determine whether the submitted address is well-formed — checking for required components (street number, street name, city, state, ZIP) and reporting which are present, missing, or malformed.
 - **FR-013**: The verification endpoint MUST normalize the submitted address using existing USPS Publication 28 rules (e.g., STREET→ST, ROAD→RD, NORTH→N) and return the normalized form in the response.
-- **FR-014**: The verification endpoint MUST search the existing geocoder cache for addresses matching the submitted input and return up to 10 ranked suggestions.
+- **FR-014**: The verification endpoint MUST search the canonical address store (`addresses` table, joined with geocoder cache for coordinates) for addresses matching the submitted input and return up to 10 ranked suggestions.
 - **FR-015**: The verification endpoint MUST be designed with a pluggable suggestion source so that a third-party autocomplete provider (e.g., Google Places) can be added in a future iteration without changing the consumer-facing API contract.
 - **FR-016**: The verification endpoint MUST require valid JWT authentication, consistent with the geocoding endpoint.
 - **FR-017**: The verification endpoint MUST require a minimum of 5 characters of input before returning suggestions. Inputs shorter than 5 characters MUST return only local validation feedback with an empty suggestions list.

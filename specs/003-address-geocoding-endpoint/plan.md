@@ -89,7 +89,7 @@ tests/
 │       ├── test_verify.py           # NEW: Address verification tests
 │       └── test_point_lookup.py     # NEW: Georgia bbox + meter-to-degree tests
 ├── integration/
-│   └── api/v1/
+│   └── test_api/
 │       ├── test_geocode_endpoint.py    # NEW: Geocode endpoint integration tests
 │       ├── test_verify_endpoint.py     # NEW: Verify endpoint integration tests
 │       └── test_point_lookup_endpoint.py # NEW: Point-lookup endpoint integration tests

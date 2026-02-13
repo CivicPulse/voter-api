@@ -57,14 +57,14 @@
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
 - [ ] T010 [P] [US1] Add unit tests for `normalize_freeform_address()` (various casings, extra whitespace, USPS abbreviations, empty string, whitespace-only, 500-char boundary) and `parse_address_components()` (full Georgia address, partial address, address with unit/apt, edge cases) — file: `tests/unit/lib/test_geocoder/test_address.py`
-- [ ] T011 [P] [US1] Create integration test stubs for `GET /geocoding/geocode` endpoint: authenticated valid address returns 200 with required fields, unauthenticated returns 401, geocoded result outside Georgia returns 422 (FR-023) — file: `tests/integration/api/v1/test_geocode_endpoint.py`
+- [ ] T011 [P] [US1] Create integration test stubs for `GET /geocoding/geocode` endpoint: authenticated valid address returns 200 with required fields, unauthenticated returns 401, geocoded result outside Georgia returns 422 (FR-023) — file: `tests/integration/test_api/test_geocode_endpoint.py`
 
 ### Implementation for User Story 1
 
 - [ ] T012 [US1] Create AddressService with `upsert_from_geocode(normalized_address, components, session) -> Address` (ON CONFLICT DO UPDATE SET updated_at=now(), RETURNING id) and `get_by_normalized(normalized_address, session) -> Address | None` — file: `src/voter_api/services/address_service.py`
 - [ ] T013 [US1] Add `geocode_single_address(session, address_string) -> AddressGeocodeResponse` to GeocodingService — normalize input via `normalize_freeform_address()`, check geocoder cache, on miss call provider, on success parse components + upsert Address row via AddressService + store cache entry with `address_id` FK, validate result coordinates against Georgia bbox (FR-023), set `metadata.cached` flag, return `AddressGeocodeResponse` — file: `src/voter_api/services/geocoding_service.py`
 - [ ] T014 [US1] Add `GET /geocoding/geocode` endpoint with `Depends(get_current_user)` JWT auth, `address` query parameter (`Query`, `min_length=1`, `max_length=500`, strip whitespace), reject empty/whitespace-only with 422 (FR-007), call `geocode_single_address()`, return `AddressGeocodeResponse` (200) — file: `src/voter_api/api/v1/geocoding.py`
-- [ ] T015 [US1] Complete integration tests for geocode endpoint: valid address (200), empty address (422), whitespace-only (422), address > 500 chars (422), out-of-Georgia result (422), and create `__init__.py` for `tests/integration/api/v1/` — file: `tests/integration/api/v1/test_geocode_endpoint.py`
+- [ ] T015 [US1] Complete integration tests for geocode endpoint: valid address (200), empty address (422), whitespace-only (422), address > 500 chars (422), out-of-Georgia result (422) — file: `tests/integration/test_api/test_geocode_endpoint.py`
 - [ ] T016 [P] [US1] Create contract tests validating geocode 200 response against `AddressGeocodeResponse` schema from `contracts/openapi.yaml` — file: `tests/contract/test_geocoding_contract.py`
 
 **Checkpoint**: Geocode endpoint fully functional — uncached addresses geocoded via Census provider, results cached with Address row upsert. Test with Swagger UI or curl per quickstart.md.
@@ -82,13 +82,13 @@
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
 - [ ] T017 [P] [US5] Create unit tests for `validate_georgia_coordinates()` (inside GA, outside GA, boundary edges) and `meters_to_degrees()` (various latitudes, zero meters, 100m max, accuracy at Georgia latitude range) — file: `tests/unit/lib/test_geocoder/test_point_lookup.py`
-- [ ] T018 [P] [US5] Create integration test stubs for `GET /geocoding/point-lookup`: valid GA coords with loaded boundaries returns districts (200), out-of-GA coords returns 422, accuracy > 100m returns 422, coords with no matching boundaries returns empty list (200), missing params returns 422, unauthenticated returns 401 — file: `tests/integration/api/v1/test_point_lookup_endpoint.py`
+- [ ] T018 [P] [US5] Create integration test stubs for `GET /geocoding/point-lookup`: valid GA coords with loaded boundaries returns districts (200), out-of-GA coords returns 422, accuracy > 100m returns 422, coords with no matching boundaries returns empty list (200), missing params returns 422, unauthenticated returns 401 — file: `tests/integration/test_api/test_point_lookup_endpoint.py`
 
 ### Implementation for User Story 5
 
 - [ ] T019 [US5] Add `find_boundaries_at_point(session, lat, lng, accuracy_meters=None) -> list[Boundary]` to BoundaryService — use `ST_Contains(geometry, ST_SetSRID(ST_MakePoint(lng, lat), 4326))` for exact point; when `accuracy_meters` provided, use `ST_DWithin(geometry, point, meters_to_degrees(accuracy_meters, lat))` for expanded search — file: `src/voter_api/services/boundary_service.py`
 - [ ] T020 [US5] Add `GET /geocoding/point-lookup` endpoint with `Depends(get_current_user)` JWT auth, `lat`/`lng` required float query params, optional `accuracy` float query param (`le=100`, reject > 100 with 422 per FR-020), call `validate_georgia_coordinates()` (422 if outside per FR-021), call `find_boundaries_at_point()`, map results to `DistrictInfo` list, return `PointLookupResponse` — file: `src/voter_api/api/v1/geocoding.py`
-- [ ] T021 [US5] Complete integration tests for point-lookup endpoint with all scenarios — file: `tests/integration/api/v1/test_point_lookup_endpoint.py`
+- [ ] T021 [US5] Complete integration tests for point-lookup endpoint with all scenarios; include a timing assertion that point-lookup responses complete within 1 second (SC-007) — file: `tests/integration/test_api/test_point_lookup_endpoint.py`
 - [ ] T022 [P] [US5] Add contract tests for point-lookup endpoint validating 200 response against `PointLookupResponse` schema — file: `tests/contract/test_geocoding_contract.py`
 
 **Checkpoint**: Both P1 stories complete — MVP delivered. Geocode + point-lookup form the end-to-end "address lookup" flow for the frontend.
@@ -107,7 +107,7 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T023 [P] [US2] Add cache-behavior integration tests: geocode address then submit same address, verify `metadata.cached=true` on second response, verify no second provider call (mock provider), verify cached response time < 500ms (SC-002), verify new results stored in cache — file: `tests/integration/api/v1/test_geocode_endpoint.py`
+- [ ] T023 [P] [US2] Add cache-behavior integration tests: geocode address then submit same address, verify `metadata.cached=true` on second response, verify no second provider call (mock provider), verify cached response time < 500ms (SC-002), verify new results stored in cache — file: `tests/integration/test_api/test_geocode_endpoint.py`
 
 ### Implementation for User Story 2
 
@@ -128,16 +128,16 @@
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
 - [ ] T025 [P] [US4] Create unit tests for `validate_address_components()`: well-formed address reports all present, partial address reports missing components, malformed ZIP detected, USPS abbreviation normalization applied; and `parse_freeform_address()`: full address, partial, edge cases (PO Box, no street number) — file: `tests/unit/lib/test_geocoder/test_verify.py`
-- [ ] T026 [P] [US4] Create integration test stubs for `GET /geocoding/verify`: partial address returns suggestions (200), malformed address returns normalized form + validation (200), input < 5 chars returns empty suggestions (200, FR-017), well-formed address confirms completeness (200), empty address (422), unauthenticated (401), empty cache returns empty suggestions (200) — file: `tests/integration/api/v1/test_verify_endpoint.py`
+- [ ] T026 [P] [US4] Create integration test stubs for `GET /geocoding/verify`: partial address returns suggestions (200), malformed address returns normalized form + validation (200), input < 5 chars returns empty suggestions (200, FR-017), well-formed address confirms completeness (200), empty address (422), unauthenticated (401), empty cache returns empty suggestions (200) — file: `tests/integration/test_api/test_verify_endpoint.py`
 
 ### Implementation for User Story 4
 
 - [ ] T027 [P] [US4] Create verify.py library module with: `AddressComponents` dataclass (street_number, pre_direction, street_name, street_type, post_direction, apt_unit, city, state, zipcode), `ValidationFeedback` dataclass (present_components, missing_components, malformed_components, is_well_formed), `parse_freeform_address(address: str) -> AddressComponents`, `validate_address_components(components: AddressComponents) -> ValidationFeedback` — checks required fields (street_number, street_name, city, state, zip), validates ZIP format (5-digit or ZIP+4), and `BaseSuggestionSource` ABC with `async search(query, limit) -> list` for pluggable providers (FR-015) — file: `src/voter_api/lib/geocoder/verify.py`
-- [ ] T028 [US4] Add `prefix_search(session, normalized_prefix, limit=10) -> list[AddressSuggestion]` to AddressService — query `addresses` table with `normalized_address LIKE :prefix || '%'` using `text_pattern_ops` index, JOIN `geocoder_cache` for coordinates and confidence_score, ORDER BY `normalized_address`, LIMIT 10, return list of AddressSuggestion per data-model.md query pattern — file: `src/voter_api/services/address_service.py`
+- [ ] T028 [US4] Add `prefix_search(session, normalized_prefix, limit=10) -> list[AddressSuggestion]` to AddressService — query `addresses` table with `normalized_address LIKE :prefix || '%'` using `text_pattern_ops` index, JOIN `geocoder_cache` for coordinates and confidence_score, use DISTINCT ON to pick the highest-confidence provider result per address, ORDER BY `normalized_address`, LIMIT 10, return list of AddressSuggestion per data-model.md query pattern — file: `src/voter_api/services/address_service.py`
 - [ ] T029 [US4] Create `CacheSuggestionSource(BaseSuggestionSource)` in verify module that wraps `AddressService.prefix_search()` to provide suggestions from the canonical address store (depends on T027, T028) — file: `src/voter_api/lib/geocoder/verify.py`
 - [ ] T030 [US4] Add `verify_address(session, address_string) -> AddressVerifyResponse` to GeocodingService — normalize via `normalize_freeform_address()`, parse via `parse_freeform_address()`, validate via `validate_address_components()`, if input >= 5 chars run `prefix_search()` else return empty suggestions list (FR-017), assemble and return `AddressVerifyResponse` — file: `src/voter_api/services/geocoding_service.py`
 - [ ] T031 [US4] Add `GET /geocoding/verify` endpoint with `Depends(get_current_user)` JWT auth, `address` query param (`Query`, `min_length=1`, `max_length=500`), call `verify_address()`, return `AddressVerifyResponse` (200), return 422 on empty/too-long validation error — file: `src/voter_api/api/v1/geocoding.py`
-- [ ] T032 [US4] Complete integration tests for verify endpoint with all scenarios — file: `tests/integration/api/v1/test_verify_endpoint.py`
+- [ ] T032 [US4] Complete integration tests for verify endpoint with all scenarios; include a timing assertion that verify responses complete within 500ms (SC-005) — file: `tests/integration/test_api/test_verify_endpoint.py`
 - [ ] T033 [P] [US4] Add contract tests for verify endpoint validating 200 response against `AddressVerifyResponse` schema — file: `tests/contract/test_geocoding_contract.py`
 - [ ] T034 [US4] Export `parse_freeform_address`, `validate_address_components`, `BaseSuggestionSource`, `CacheSuggestionSource` from `src/voter_api/lib/geocoder/__init__.py`
 
@@ -158,7 +158,7 @@
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
 - [ ] T035 [P] [US3] Add unit tests for CensusGeocoder error differentiation: `httpx.TimeoutException` raises `GeocodingProviderError`, `httpx.HTTPStatusError` raises `GeocodingProviderError`, successful response with empty `addressMatches` returns `None`, successful response with matches returns `GeocodingResult` — file: `tests/unit/lib/test_geocoder/test_census.py`
-- [ ] T036 [P] [US3] Add integration tests for geocode endpoint error paths: empty address returns 422, whitespace-only returns 422, address > 500 chars returns 422, unmatchable address returns 404 with descriptive message, provider timeout returns 502 with retry suggestion — file: `tests/integration/api/v1/test_geocode_endpoint.py`
+- [ ] T036 [P] [US3] Add integration tests for geocode endpoint error paths: empty address returns 422, whitespace-only returns 422, address > 500 chars returns 422, unmatchable address returns 404 with descriptive message, provider timeout returns 502 with retry suggestion — file: `tests/integration/test_api/test_geocode_endpoint.py`
 
 ### Implementation for User Story 3
 
@@ -180,7 +180,7 @@
 - [ ] T043 [P] Run `uv run ruff check .` and `uv run ruff format --check .` on all modified and new files — fix any violations
 - [ ] T044 Run full test suite with coverage: `uv run pytest --cov=voter_api --cov-report=term-missing` — verify 90% threshold met
 - [ ] T045 Run quickstart.md validation — verify all curl examples from `specs/003-address-geocoding-endpoint/quickstart.md` work correctly against running dev server
-- [ ] T046 Define post-import address processing pipeline — create a service method (or CLI command) that picks up voters with `residence_address_id IS NULL`, normalizes their inline address components via `reconstruct_address()`, attempts geocoding via the existing provider infrastructure, and on success upserts into the `addresses` table and sets the voter FK. Failed/un-geocodable addresses leave the FK as NULL for manual review. Should build on existing batch geocoding patterns. Idempotent and safe to re-run. Include unit/integration tests. — files: `src/voter_api/services/address_service.py` or `src/voter_api/services/geocoding_service.py`, tests TBD
+- [ ] T046 Define post-import address processing pipeline — create a service method (or CLI command) that picks up voters with `residence_address_id IS NULL`, normalizes their inline address components via `reconstruct_address()`, attempts geocoding via the existing provider infrastructure, and on success upserts into the `addresses` table and sets the voter FK. Failed/un-geocodable addresses leave the FK as NULL for manual review. Should build on existing batch geocoding patterns. Idempotent and safe to re-run. Include unit/integration tests. — files: `src/voter_api/services/address_service.py`, `tests/unit/test_services/test_address_service.py`, `tests/integration/test_api/test_address_backfill.py`
 
 ---
 
@@ -304,9 +304,9 @@ With multiple developers after Phase 2:
 | `tests/unit/lib/test_geocoder/test_point_lookup.py` | 4 | NEW |
 | `tests/unit/lib/test_geocoder/test_verify.py` | 6 | NEW |
 | `tests/unit/lib/test_geocoder/test_census.py` | 7 | MODIFY |
-| `tests/integration/api/v1/test_geocode_endpoint.py` | 3, 5, 7 | NEW |
-| `tests/integration/api/v1/test_point_lookup_endpoint.py` | 4 | NEW |
-| `tests/integration/api/v1/test_verify_endpoint.py` | 6 | NEW |
+| `tests/integration/test_api/test_geocode_endpoint.py` | 3, 5, 7 | NEW |
+| `tests/integration/test_api/test_point_lookup_endpoint.py` | 4 | NEW |
+| `tests/integration/test_api/test_verify_endpoint.py` | 6 | NEW |
 | `tests/contract/test_geocoding_contract.py` | 3, 4, 6 | NEW |
 
 ---
@@ -321,5 +321,4 @@ With multiple developers after Phase 2:
 - Stop at any checkpoint to validate the story independently
 - The `addresses` table is the key architectural addition — canonical address store referenced by geocoder_cache (FK) and voters (FK)
 - Voter `residence_address_id` is set via post-import processing (T046), NOT during CSV import — the addresses table is a validated store; raw voter data must be normalized and geocoded before linking
-- Prefix search for autocomplete queries the `addresses` table (not `geocoder_cache`) per data-model.md
 - Prefix search for autocomplete queries the `addresses` table (not `geocoder_cache`) per data-model.md

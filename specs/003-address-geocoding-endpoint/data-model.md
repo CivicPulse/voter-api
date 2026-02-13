@@ -138,17 +138,16 @@ CREATE INDEX ix_voters_residence_address_id ON voters (residence_address_id);
 
 **Migration type**: Alembic revision. Non-destructive — adds a new table and nullable columns. Safe to run on a live database.
 
-### Migration 2: Backfill (data migration)
+### Migration 2: Geocoder Cache Backfill (data migration)
 
-A separate Alembic data migration or CLI command that:
+A separate Alembic data migration that backfills geocoder cache address links:
 
 1. Iterates unique `normalized_address` values in `geocoder_cache`
 2. Parses components from the normalized string (best-effort)
 3. Inserts into `addresses` table
 4. Updates `geocoder_cache.address_id` to link to the new address row
-5. For voters: reconstructs normalized address from inline components, upserts into `addresses`, sets `residence_address_id`
 
-This runs as a background task and is idempotent (safe to re-run).
+This is idempotent (safe to re-run). Does NOT backfill voters — voter `residence_address_id` is set by the post-import address processing pipeline (a separate service method or CLI command) because raw voter addresses require normalization and geocoding before linking to the canonical address store. See "Post-Import Address Processing" in Data Flow below.
 
 ## Query Patterns
 
@@ -177,11 +176,13 @@ ON CONFLICT (provider, normalized_address) DO NOTHING;
 
 ```sql
 -- Prefix search on addresses table (replaces geocoder_cache search)
-SELECT a.normalized_address, gc.latitude, gc.longitude, gc.confidence_score
+-- Uses DISTINCT ON to pick the highest-confidence provider result per address
+SELECT DISTINCT ON (a.normalized_address)
+    a.normalized_address, gc.latitude, gc.longitude, gc.confidence_score
 FROM addresses a
 JOIN geocoder_cache gc ON gc.address_id = a.id
 WHERE a.normalized_address LIKE :prefix || '%'
-ORDER BY a.normalized_address
+ORDER BY a.normalized_address, gc.confidence_score DESC NULLS LAST
 LIMIT 10;
 ```
 

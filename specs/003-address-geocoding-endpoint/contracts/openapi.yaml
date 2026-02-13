@@ -82,7 +82,7 @@ paths:
         Accepts a partial or malformed freeform address and returns:
         - The normalized form (USPS Pub 28 abbreviations applied)
         - Validation feedback (which components are present/missing/malformed)
-        - Up to 10 ranked address suggestions from the geocoder cache
+        - Up to 10 ranked address suggestions from the canonical address store
 
         Requires a minimum of 5 characters for suggestion search. Inputs
         shorter than 5 characters return only local validation feedback
@@ -326,7 +326,7 @@ components:
       properties:
         address:
           type: string
-          description: Full normalized address from the geocoder cache
+          description: Full normalized address from the canonical address store
           example: "100 PEACHTREE ST NW, ATLANTA, GA 30303"
         latitude:
           type: number
