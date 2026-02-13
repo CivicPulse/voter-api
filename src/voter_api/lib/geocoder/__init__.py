@@ -16,6 +16,8 @@ Public API:
     - BaseSuggestionSource: Abstract interface for suggestion providers
 """
 
+from typing import Any
+
 from voter_api.lib.geocoder.address import (
     AddressComponents,
     normalize_freeform_address,
@@ -37,11 +39,13 @@ _PROVIDERS: dict[str, type[BaseGeocoder]] = {
 }
 
 
-def get_geocoder(provider: str = "census") -> BaseGeocoder:
+def get_geocoder(provider: str = "census", **kwargs: Any) -> BaseGeocoder:
     """Get a geocoder instance by provider name.
 
     Args:
         provider: Provider name (e.g., "census").
+        **kwargs: Additional arguments forwarded to the provider constructor
+            (e.g., ``timeout=2.0``).
 
     Returns:
         An instance of the requested geocoder provider.
@@ -53,7 +57,7 @@ def get_geocoder(provider: str = "census") -> BaseGeocoder:
     if cls is None:
         msg = f"Unknown geocoder provider: {provider!r}. Available: {list(_PROVIDERS.keys())}"
         raise ValueError(msg)
-    return cls()
+    return cls(**kwargs)
 
 
 __all__ = [

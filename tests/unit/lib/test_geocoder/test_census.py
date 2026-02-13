@@ -173,6 +173,13 @@ class TestGetGeocoder:
         geocoder = get_geocoder("census")
         assert geocoder.provider_name == "census"
 
+    def test_kwargs_passed_to_provider(self) -> None:
+        """Factory forwards kwargs to provider constructor."""
+        from voter_api.lib.geocoder import get_geocoder
+
+        geocoder = get_geocoder("census", timeout=2.0)
+        assert geocoder._timeout == 2.0
+
     def test_unknown_provider(self) -> None:
         """Unknown provider raises ValueError."""
         import pytest

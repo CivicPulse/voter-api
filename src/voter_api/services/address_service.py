@@ -41,6 +41,8 @@ async def upsert_from_geocode(
             **{k: v for k, v in components.items() if v is not None},
         )
         .on_conflict_do_update(
+            # First-write-wins: only bump updated_at to record re-observation.
+            # Components intentionally NOT updated — first geocode parse is canonical.
             constraint="uq_address_normalized",
             set_={"updated_at": Address.updated_at.default.arg},
         )
@@ -198,7 +200,7 @@ async def backfill_voter_addresses(
                 voter.residence_address_id = address_row.id
                 linked += 1
             except Exception:
-                logger.warning(f"Failed to upsert address for voter {voter.id}")
+                logger.exception(f"Failed to upsert address for voter {voter.id}")
                 skipped += 1
 
         await session.commit()

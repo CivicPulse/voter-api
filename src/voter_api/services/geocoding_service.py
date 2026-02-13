@@ -68,8 +68,7 @@ async def geocode_single_address(
     if not normalized:
         return None
 
-    geocoder = get_geocoder(_SINGLE_PROVIDER)
-    geocoder._timeout = _SINGLE_TIMEOUT  # Override to 2s for single-address path
+    geocoder = get_geocoder(_SINGLE_PROVIDER, timeout=_SINGLE_TIMEOUT)
 
     # Cache lookup
     cached = await cache_lookup(session, geocoder.provider_name, normalized)
@@ -87,6 +86,7 @@ async def geocode_single_address(
         )
 
     # Cache miss — call provider with single retry (2 attempts max)
+    result: GeocodingResult | None = None
     last_error: GeocodingProviderError | None = None
     for attempt in range(_SINGLE_MAX_ATTEMPTS):
         try:
@@ -98,9 +98,6 @@ async def geocode_single_address(
                 logger.debug(f"Single geocode retry {attempt + 1}/{_SINGLE_MAX_ATTEMPTS}: {e}")
                 continue
             raise last_error from e
-    else:
-        # All attempts exhausted without success or exception
-        return None
 
     if result is None:
         return None
