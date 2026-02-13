@@ -1,4 +1,4 @@
-"""Geocoding service — orchestrates batch geocoding, manual entries, and primary designation."""
+"""Geocoding service — orchestrates batch/single geocoding, manual entries, and primary designation."""
 
 import asyncio
 import uuid
@@ -14,16 +14,102 @@ from voter_api.lib.geocoder import (
     cache_lookup,
     cache_store,
     get_geocoder,
+    normalize_freeform_address,
+    parse_address_components,
     reconstruct_address,
 )
 from voter_api.lib.geocoder.base import GeocodingResult
+from voter_api.lib.geocoder.point_lookup import validate_georgia_coordinates
 from voter_api.models.geocoded_location import GeocodedLocation
 from voter_api.models.geocoder_cache import GeocoderCache
 from voter_api.models.geocoding_job import GeocodingJob
 from voter_api.models.voter import Voter
+from voter_api.schemas.geocoding import AddressGeocodeResponse, GeocodeMetadata
+from voter_api.services.address_service import upsert_from_geocode
 
 MAX_RETRIES = 3
 RETRY_BASE_DELAY = 60.0  # seconds
+
+# Provider name and timeout for single-address endpoint
+_SINGLE_PROVIDER = "census"
+
+
+async def geocode_single_address(
+    session: AsyncSession,
+    address_string: str,
+) -> AddressGeocodeResponse | None:
+    """Geocode a single freeform address string.
+
+    Normalizes input, checks cache, calls provider on miss, upserts
+    address row and cache entry on success.
+
+    Args:
+        session: Database session.
+        address_string: Raw freeform address from the consumer.
+
+    Returns:
+        AddressGeocodeResponse on success, None if provider returns no match.
+
+    Raises:
+        ValueError: If geocoded coordinates are outside Georgia.
+    """
+    normalized = normalize_freeform_address(address_string)
+    if not normalized:
+        return None
+
+    geocoder = get_geocoder(_SINGLE_PROVIDER)
+
+    # Cache lookup
+    cached = await cache_lookup(session, geocoder.provider_name, normalized)
+    if cached:
+        # Validate Georgia coordinates even for cached results
+        validate_georgia_coordinates(cached.latitude, cached.longitude)
+
+        formatted = cached.matched_address or normalized
+        return AddressGeocodeResponse(
+            formatted_address=formatted,
+            latitude=cached.latitude,
+            longitude=cached.longitude,
+            confidence=cached.confidence_score,
+            metadata=GeocodeMetadata(cached=True, provider=geocoder.provider_name),
+        )
+
+    # Cache miss — call provider
+    result = await geocoder.geocode(normalized)
+    if result is None:
+        return None
+
+    # Validate Georgia coordinates
+    validate_georgia_coordinates(result.latitude, result.longitude)
+
+    # Parse components and upsert Address row
+    components = parse_address_components(normalized)
+    address_row = await upsert_from_geocode(session, normalized, components.to_dict())
+
+    # Store in cache with address_id FK
+    await cache_store(session, geocoder.provider_name, normalized, result)
+    # Update the cache entry with address_id
+    cache_result = await session.execute(
+        select(GeocoderCache).where(
+            GeocoderCache.provider == geocoder.provider_name,
+            GeocoderCache.normalized_address == normalized,
+        )
+    )
+    cache_entry = cache_result.scalar_one_or_none()
+    if cache_entry:
+        cache_entry.address_id = address_row.id
+        await session.flush()
+
+    await session.commit()
+
+    formatted = result.matched_address or normalized
+    return AddressGeocodeResponse(
+        formatted_address=formatted,
+        latitude=result.latitude,
+        longitude=result.longitude,
+        confidence=result.confidence_score,
+        metadata=GeocodeMetadata(cached=False, provider=geocoder.provider_name),
+    )
 
 
 async def create_geocoding_job(
