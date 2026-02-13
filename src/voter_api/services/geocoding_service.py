@@ -18,7 +18,7 @@ from voter_api.lib.geocoder import (
     parse_address_components,
     reconstruct_address,
 )
-from voter_api.lib.geocoder.base import GeocodingResult
+from voter_api.lib.geocoder.base import GeocodingProviderError, GeocodingResult
 from voter_api.lib.geocoder.point_lookup import validate_georgia_coordinates
 from voter_api.lib.geocoder.verify import validate_address_components
 from voter_api.models.geocoded_location import GeocodedLocation
@@ -39,6 +39,8 @@ RETRY_BASE_DELAY = 60.0  # seconds
 
 # Provider name and timeout for single-address endpoint
 _SINGLE_PROVIDER = "census"
+_SINGLE_TIMEOUT = 2.0  # 2s per attempt, 4s total budget (2 attempts max) per FR-009
+_SINGLE_MAX_ATTEMPTS = 2
 
 
 async def geocode_single_address(
@@ -47,7 +49,8 @@ async def geocode_single_address(
 ) -> AddressGeocodeResponse | None:
     """Geocode a single freeform address string.
 
-    Normalizes input, checks cache, calls provider on miss, upserts
+    Normalizes input, checks cache, calls provider on miss with retry
+    (2 attempts, 2s timeout each, 4s total budget per FR-009), upserts
     address row and cache entry on success.
 
     Args:
@@ -59,12 +62,14 @@ async def geocode_single_address(
 
     Raises:
         ValueError: If geocoded coordinates are outside Georgia.
+        GeocodingProviderError: If provider fails after all retry attempts.
     """
     normalized = normalize_freeform_address(address_string)
     if not normalized:
         return None
 
     geocoder = get_geocoder(_SINGLE_PROVIDER)
+    geocoder._timeout = _SINGLE_TIMEOUT  # Override to 2s for single-address path
 
     # Cache lookup
     cached = await cache_lookup(session, geocoder.provider_name, normalized)
@@ -81,8 +86,22 @@ async def geocode_single_address(
             metadata=GeocodeMetadata(cached=True, provider=geocoder.provider_name),
         )
 
-    # Cache miss — call provider
-    result = await geocoder.geocode(normalized)
+    # Cache miss — call provider with single retry (2 attempts max)
+    last_error: GeocodingProviderError | None = None
+    for attempt in range(_SINGLE_MAX_ATTEMPTS):
+        try:
+            result = await geocoder.geocode(normalized)
+            break
+        except GeocodingProviderError as e:
+            last_error = e
+            if attempt < _SINGLE_MAX_ATTEMPTS - 1:
+                logger.debug(f"Single geocode retry {attempt + 1}/{_SINGLE_MAX_ATTEMPTS}: {e}")
+                continue
+            raise last_error from e
+    else:
+        # All attempts exhausted without success or exception
+        return None
+
     if result is None:
         return None
 
@@ -349,6 +368,9 @@ async def _geocode_with_retry(
 ) -> GeocodingResult | None:
     """Geocode with rate limiting and exponential backoff retry.
 
+    Catches GeocodingProviderError to maintain batch pipeline resilience —
+    provider transport errors are logged and retried rather than aborting.
+
     Args:
         geocoder: Geocoder provider instance.
         address: Normalized address string.
@@ -358,10 +380,13 @@ async def _geocode_with_retry(
         GeocodingResult or None after all retries exhausted.
     """
     for attempt in range(MAX_RETRIES):
-        async with semaphore:
-            result = await geocoder.geocode(address)  # type: ignore[union-attr]
-            if result is not None:
-                return result
+        try:
+            async with semaphore:
+                result = await geocoder.geocode(address)  # type: ignore[union-attr]
+                if result is not None:
+                    return result
+        except GeocodingProviderError as e:
+            logger.warning(f"Batch geocode provider error (attempt {attempt + 1}/{MAX_RETRIES}): {e}")
 
         if attempt < MAX_RETRIES - 1:
             delay = RETRY_BASE_DELAY * (2**attempt)

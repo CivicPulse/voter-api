@@ -22,7 +22,7 @@ from voter_api.lib.geocoder.address import (
     parse_address_components,
     reconstruct_address,
 )
-from voter_api.lib.geocoder.base import BaseGeocoder, GeocodingResult
+from voter_api.lib.geocoder.base import BaseGeocoder, GeocodingProviderError, GeocodingResult
 from voter_api.lib.geocoder.cache import cache_lookup, cache_store
 from voter_api.lib.geocoder.census import CensusGeocoder
 from voter_api.lib.geocoder.point_lookup import (
@@ -60,6 +60,7 @@ __all__ = [
     "AddressComponents",
     "BaseGeocoder",
     "BaseSuggestionSource",
+    "GeocodingProviderError",
     "CensusGeocoder",
     "GeocodingResult",
     "cache_lookup",

@@ -8,7 +8,7 @@ from httpx import ASGITransport, AsyncClient
 
 from voter_api.api.v1.geocoding import geocoding_router
 from voter_api.core.dependencies import get_async_session, get_current_user
-from voter_api.lib.geocoder.base import GeocodingResult
+from voter_api.lib.geocoder.base import GeocodingProviderError, GeocodingResult
 
 
 @pytest.fixture
@@ -164,3 +164,37 @@ class TestGeocodeCacheBehavior:
         assert resp.status_code == 200
         data = resp.json()
         assert data["metadata"]["cached"] is False
+
+
+class TestGeocodeErrorPaths:
+    """Tests for US3: graceful geocoding failure handling."""
+
+    @pytest.mark.asyncio
+    async def test_unmatchable_address_returns_404(self, client) -> None:
+        """Address that cannot be geocoded returns 404 with descriptive message."""
+        with patch(
+            "voter_api.api.v1.geocoding.geocode_single_address",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            resp = await client.get("/api/v1/geocoding/geocode?address=99999+Nonexistent+Rd,+Nowhere,+GA+00000")
+
+        assert resp.status_code == 404
+        data = resp.json()
+        assert "detail" in data
+        assert "could not be geocoded" in data["detail"]
+
+    @pytest.mark.asyncio
+    async def test_provider_timeout_returns_502(self, client) -> None:
+        """Provider timeout returns 502 with retry suggestion."""
+        with patch(
+            "voter_api.api.v1.geocoding.geocode_single_address",
+            new_callable=AsyncMock,
+            side_effect=GeocodingProviderError("census", "Geocoding request timed out"),
+        ):
+            resp = await client.get("/api/v1/geocoding/geocode?address=100+Peachtree+St+NW,+Atlanta,+GA+30303")
+
+        assert resp.status_code == 502
+        data = resp.json()
+        assert "detail" in data
+        assert "temporarily unavailable" in data["detail"].lower() or "retry" in data["detail"].lower()

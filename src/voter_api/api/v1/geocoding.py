@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.background import task_runner
 from voter_api.core.dependencies import get_async_session, get_current_user, require_role
+from voter_api.lib.geocoder.base import GeocodingProviderError
 from voter_api.lib.geocoder.point_lookup import validate_georgia_coordinates
 from voter_api.models.user import User
 from voter_api.schemas.geocoding import (
@@ -59,6 +60,11 @@ async def geocode_address(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e),
+        ) from e
+    except GeocodingProviderError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Geocoding provider is temporarily unavailable. Please retry later.",
         ) from e
 
     if result is None:

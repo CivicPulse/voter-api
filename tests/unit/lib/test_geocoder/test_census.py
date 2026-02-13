@@ -1,5 +1,11 @@
 """Unit tests for Census Bureau geocoder provider."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import httpx
+import pytest
+
+from voter_api.lib.geocoder.base import GeocodingProviderError
 from voter_api.lib.geocoder.census import CensusGeocoder
 
 
@@ -68,6 +74,93 @@ class TestCensusResponseParsing:
         result = self.geocoder._parse_response(data)
         assert result is not None
         assert result.confidence_score == 0.8
+
+
+class TestCensusGeocoderErrorDifferentiation:
+    """Tests for CensusGeocoder error differentiation (US3)."""
+
+    @pytest.mark.asyncio
+    async def test_timeout_raises_provider_error(self) -> None:
+        """httpx.TimeoutException raises GeocodingProviderError."""
+        geocoder = CensusGeocoder(timeout=0.1)
+        with (
+            patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get,
+            pytest.raises(GeocodingProviderError, match="census") as exc_info,
+        ):
+            mock_get.side_effect = httpx.TimeoutException("Connection timed out")
+            await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
+
+        assert exc_info.value.provider_name == "census"
+
+    @pytest.mark.asyncio
+    async def test_http_status_error_raises_provider_error(self) -> None:
+        """httpx.HTTPStatusError raises GeocodingProviderError."""
+        geocoder = CensusGeocoder()
+        mock_response = httpx.Response(status_code=500, request=httpx.Request("GET", "http://test"))
+        with (
+            patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get,
+            pytest.raises(GeocodingProviderError) as exc_info,
+        ):
+            mock_get.side_effect = httpx.HTTPStatusError(
+                "Server error", request=mock_response.request, response=mock_response
+            )
+            await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
+
+        assert exc_info.value.provider_name == "census"
+        assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_connection_error_raises_provider_error(self) -> None:
+        """Connection error raises GeocodingProviderError."""
+        geocoder = CensusGeocoder()
+        with (
+            patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get,
+            pytest.raises(GeocodingProviderError) as exc_info,
+        ):
+            mock_get.side_effect = httpx.ConnectError("Connection refused")
+            await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
+
+        assert exc_info.value.provider_name == "census"
+
+    @pytest.mark.asyncio
+    async def test_empty_matches_returns_none(self) -> None:
+        """Successful response with empty addressMatches returns None."""
+        geocoder = CensusGeocoder()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": {"addressMatches": []}}
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_response):
+            result = await geocoder.geocode("99999 NONEXISTENT RD, NOWHERE, GA 00000")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_successful_match_returns_result(self) -> None:
+        """Successful response with matches returns GeocodingResult."""
+        geocoder = CensusGeocoder()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "result": {
+                "addressMatches": [
+                    {
+                        "matchedAddress": "123 MAIN ST, ATLANTA, GA, 30303",
+                        "coordinates": {"x": -84.388, "y": 33.749},
+                        "tigerLine": {"tigerLineId": "12345"},
+                    }
+                ]
+            }
+        }
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_response):
+            result = await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
+
+        assert result is not None
+        assert result.latitude == 33.749
+        assert result.longitude == -84.388
 
 
 class TestGetGeocoder:

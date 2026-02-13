@@ -15,6 +15,25 @@ class GeocodingResult:
     matched_address: str | None = None
 
 
+class GeocodingProviderError(Exception):
+    """Raised when a geocoding provider experiences a transport or service error.
+
+    Distinguishes provider failures (timeout, HTTP error, connection error)
+    from a successful response with no match (which returns None).
+
+    Args:
+        provider_name: Name of the failing provider.
+        message: Human-readable error description.
+        status_code: Optional HTTP status code from the provider.
+    """
+
+    def __init__(self, provider_name: str, message: str, status_code: int | None = None) -> None:
+        self.provider_name = provider_name
+        self.message = message
+        self.status_code = status_code
+        super().__init__(f"{provider_name}: {message}")
+
+
 class BaseGeocoder(ABC):
     """Abstract geocoder interface. All providers must implement this."""
 
