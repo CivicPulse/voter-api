@@ -12,6 +12,11 @@
 - Q: Should the endpoint allow consumers to choose a geocoding provider, or always use the system default? → A: Provider-agnostic. The endpoint abstracts away provider selection entirely — no provider parameter. The system internally decides the best provider and returns the most accurate result. The consumer only sends an address and receives coordinates.
 - Q: Should freeform address input be normalized before cache lookup, or used as-is? → A: Normalize before cache lookup — uppercase, trim whitespace, collapse multiple spaces. This ensures consistent cache hits regardless of consumer input formatting.
 - Q: What should the maximum address length be? → A: 500 characters.
+- Q: Where should address verification/autocomplete suggestions come from? → A: Initially from the existing geocoder cache (prefix-match against previously geocoded addresses). Third-party API (e.g., Google Places) will be added later. Additionally, local validation logic MUST check whether the address is well-formed (has all required fields) and normalize abbreviations (road→RD, street→ST, etc.) using existing USPS Pub 28 rules.
+- Q: Should the verification endpoint require JWT authentication or be public for autocomplete use? → A: Require JWT authentication, same as the geocoding endpoint. Prevents abuse and data exposure from the voter address cache.
+- Q: What is the maximum acceptable response time for the verification endpoint? → A: 500 milliseconds.
+- Q: How many address suggestions should the verification endpoint return at most? → A: 10.
+- Q: What is the minimum number of characters required before the verification endpoint returns suggestions? → A: 5 characters.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -62,6 +67,23 @@ As an API consumer, I want to receive clear, actionable error responses when geo
 
 ---
 
+### User Story 4 - Verify and Autocomplete an Address (Priority: P2)
+
+As an API consumer, I want to submit a partial or malformed address and receive ranked suggestions of matching addresses so that I can verify address correctness, present autocomplete options to end users as they type, and correct malformed input before geocoding.
+
+**Why this priority**: Address verification complements the geocoding endpoint and enables a better user experience. Developers building forms can offer autocomplete suggestions, and programmatic consumers can validate and correct addresses before submitting them for geocoding.
+
+**Independent Test**: Can be fully tested by sending a partial address string (e.g., "100 Peach") and verifying the response contains a ranked list of matching address suggestions. Can also be tested by sending a malformed address (e.g., missing ZIP code) and verifying the response includes validation feedback indicating which fields are missing or malformed.
+
+**Acceptance Scenarios**:
+
+1. **Given** an authenticated user, **When** they submit a partial address string (e.g., "100 Peachtree"), **Then** they receive a ranked list of matching address suggestions from previously geocoded addresses in the cache.
+2. **Given** an authenticated user, **When** they submit a malformed address (e.g., "100 main street" with unabbreviated street type and no city/state/ZIP), **Then** the response includes the normalized form ("100 MAIN ST") and indicates which address components are missing.
+3. **Given** an authenticated user, **When** they submit an address that has no matches in the cache, **Then** the response returns an empty suggestions list along with any local validation feedback.
+4. **Given** an authenticated user, **When** they submit a well-formed complete address, **Then** the response confirms the address is well-formed, returns the normalized version, and includes any matching cached suggestions.
+
+---
+
 ### Edge Cases
 
 - What happens when the address string contains only whitespace or special characters? The system returns HTTP 422 with a validation error.
@@ -70,6 +92,10 @@ As an API consumer, I want to receive clear, actionable error responses when geo
 - What happens when the address is extremely long (thousands of characters)? The system rejects it with HTTP 422 if it exceeds 500 characters.
 - What happens when the same address is submitted concurrently by multiple users? Both requests may call the provider, and both will attempt to cache the result. The second cache write is idempotent and does not cause errors.
 - What happens when the JWT token has expired? The system returns HTTP 401 Unauthorized, consistent with all other authenticated endpoints.
+- What happens when a verification request contains fewer than 5 characters? The system returns only local validation feedback with an empty suggestions list.
+- What happens when a verification request contains only a street number with no street name? The system returns validation feedback indicating the street name is required, with no suggestions.
+- What happens when the cache contains thousands of potential matches for a very short prefix? The system returns only the top 10 ranked results.
+- What happens when the cache is empty (no previously geocoded addresses)? The verification endpoint returns only local validation feedback with an empty suggestions list.
 
 ## Requirements *(mandatory)*
 
@@ -85,6 +111,13 @@ As an API consumer, I want to receive clear, actionable error responses when geo
 - **FR-008**: System MUST return HTTP 200 with null coordinates and an explanatory message when the provider cannot match the submitted address.
 - **FR-009**: System MUST return HTTP 502 with a descriptive error message when the external geocoding provider is unreachable or returns an unexpected error.
 - **FR-010**: System MUST respect the existing global rate limiting (60 requests per minute per IP) applied to all API endpoints.
+- **FR-011**: System MUST expose a separate address verification endpoint that accepts a partial or malformed freeform address string and returns ranked address suggestions.
+- **FR-012**: The verification endpoint MUST perform local validation to determine whether the submitted address is well-formed — checking for required components (street number, street name, city, state, ZIP) and reporting which are present, missing, or malformed.
+- **FR-013**: The verification endpoint MUST normalize the submitted address using existing USPS Publication 28 rules (e.g., STREET→ST, ROAD→RD, NORTH→N) and return the normalized form in the response.
+- **FR-014**: The verification endpoint MUST search the existing geocoder cache for addresses matching the submitted input and return up to 10 ranked suggestions.
+- **FR-015**: The verification endpoint MUST be designed with a pluggable suggestion source so that a third-party autocomplete provider (e.g., Google Places) can be added in a future iteration without changing the consumer-facing API contract.
+- **FR-016**: The verification endpoint MUST require valid JWT authentication, consistent with the geocoding endpoint.
+- **FR-017**: The verification endpoint MUST require a minimum of 5 characters of input before returning suggestions. Inputs shorter than 5 characters MUST return only local validation feedback with an empty suggestions list.
 
 ### Key Entities
 
@@ -106,3 +139,5 @@ As an API consumer, I want to receive clear, actionable error responses when geo
 - **SC-002**: Cached addresses return results in under 500 milliseconds.
 - **SC-003**: 100% of geocoding requests from authenticated users either succeed with coordinates or return a clear, documented error response (no silent failures or ambiguous errors).
 - **SC-004**: The endpoint handles at least 60 concurrent requests per minute without degradation, consistent with the global rate limit.
+- **SC-005**: The verification endpoint returns suggestions and validation feedback within 500 milliseconds for any input.
+- **SC-006**: Malformed addresses receive clear validation feedback identifying all missing or incorrect components.
