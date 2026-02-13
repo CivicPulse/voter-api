@@ -21,7 +21,7 @@ class TestSettings:
         """Default values are applied correctly."""
         monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://localhost/db")
         monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key-that-is-at-least-32-characters-long")
-        settings = Settings()  # type: ignore[call-arg]
+        settings = Settings(_env_file=None)  # type: ignore[call-arg]
         assert settings.jwt_algorithm == "HS256"
         assert settings.jwt_access_token_expire_minutes == 30
         assert settings.jwt_refresh_token_expire_days == 7
