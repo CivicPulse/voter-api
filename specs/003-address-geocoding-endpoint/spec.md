@@ -17,6 +17,10 @@
 - Q: What is the maximum acceptable response time for the verification endpoint? → A: 500 milliseconds.
 - Q: How many address suggestions should the verification endpoint return at most? → A: 10.
 - Q: What is the minimum number of characters required before the verification endpoint returns suggestions? → A: 5 characters.
+- Q: Should the point-lookup endpoint (spatial point-in-polygon query for boundary districts) be included in this feature or split into a separate spec? → A: Include in this feature. All three endpoints (verify, geocode, point-lookup) ship together as a cohesive "address lookup" feature. The frontend (CivicPulse/voter-web) is building against this contract (issue #7).
+- Q: When the geocode endpoint receives an unmatchable address, what HTTP status should be returned? → A: HTTP 404. Semantically correct ("location not found") and aligns with the frontend contract.
+- Q: Should the endpoints use GET with query parameters or POST with JSON body? → A: GET with query parameters for all three endpoints. Semantically correct (read-only, idempotent), enables HTTP-level caching, and aligns with the frontend contract.
+- Q: Should the geocode response include confidence_score, a metadata object, or both? → A: Both. Top-level `confidence` field (core to geocoding, useful for programmatic decisions) plus a `metadata` object for future extensibility.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -26,11 +30,11 @@ As an authenticated API consumer, I want to submit a street address and receive 
 
 **Why this priority**: This is the core value of the feature. Without the ability to geocode a single address on demand, none of the other stories are relevant. Currently geocoding is only available as an internal batch operation on voter records — this story makes geocoding a first-class, user-facing capability.
 
-**Independent Test**: Can be fully tested by sending a POST request with a valid address string and verifying the response contains latitude, longitude, confidence score, and matched address.
+**Independent Test**: Can be fully tested by sending a GET request with an address query parameter and verifying the response contains latitude, longitude, confidence score, and matched address.
 
 **Acceptance Scenarios**:
 
-1. **Given** an authenticated user with any role (viewer, analyst, or admin), **When** they submit a valid street address (e.g., "100 Peachtree St NW, Atlanta, GA 30303"), **Then** they receive a response containing latitude, longitude, confidence score, and the matched/normalized address.
+1. **Given** an authenticated user with any role (viewer, analyst, or admin), **When** they submit a valid street address (e.g., "100 Peachtree St NW, Atlanta, GA 30303"), **Then** they receive a response containing `formatted_address`, `latitude`, `longitude`, `confidence`, and `metadata`.
 2. **Given** an authenticated user, **When** they submit a valid address that the provider successfully matches, **Then** the response status is HTTP 200 and the coordinates are non-null.
 3. **Given** an unauthenticated request (no JWT or invalid JWT), **When** a geocoding request is submitted, **Then** the system returns HTTP 401 Unauthorized.
 
@@ -62,7 +66,7 @@ As an API consumer, I want to receive clear, actionable error responses when geo
 **Acceptance Scenarios**:
 
 1. **Given** an authenticated user, **When** they submit an empty or whitespace-only address string, **Then** the system returns HTTP 422 with a validation error explaining the address field is required and must not be blank.
-2. **Given** an authenticated user, **When** they submit an address that the geocoding provider cannot match to a location, **Then** the system returns HTTP 200 with null coordinates and a message indicating the address could not be geocoded.
+2. **Given** an authenticated user, **When** they submit an address that the geocoding provider cannot match to a location, **Then** the system returns HTTP 404 with a message indicating the address could not be geocoded.
 3. **Given** an authenticated user, **When** the external geocoding provider is unavailable or times out, **Then** the system returns HTTP 502 with a message indicating a temporary upstream failure and suggesting a retry.
 
 ---
@@ -84,6 +88,24 @@ As an API consumer, I want to submit a partial or malformed address and receive 
 
 ---
 
+### User Story 5 - Point Lookup for Boundary Districts (Priority: P1)
+
+As an authenticated API consumer, I want to submit geographic coordinates and receive a list of all boundary districts containing that point so that I can identify every district (precinct, county, congressional, state senate/house, commission, school) a location falls within.
+
+**Why this priority**: This is co-P1 with geocoding because it completes the end-to-end "address lookup" flow. The frontend uses this for both address-based lookups (after geocoding) and GPS-based lookups (directly from browser geolocation). Without this endpoint, geocoded coordinates have no actionable context.
+
+**Independent Test**: Can be fully tested by submitting a known Georgia coordinate (e.g., downtown Atlanta) and verifying the response contains the correct precinct, county, congressional district, state senate district, state house district, and any other boundary types that contain that point.
+
+**Acceptance Scenarios**:
+
+1. **Given** an authenticated user, **When** they submit valid coordinates within Georgia (e.g., lat=33.749, lng=-84.388), **Then** they receive a list of all boundary districts containing that point, each with boundary type, name, identifier, ID, and metadata.
+2. **Given** an authenticated user, **When** they submit coordinates outside the Georgia service area, **Then** the system returns HTTP 422 indicating the location is outside the supported area.
+3. **Given** an authenticated user using GPS with limited accuracy, **When** they submit coordinates with an accuracy radius that spans multiple boundaries of the same type, **Then** the system returns all potentially matching boundaries.
+4. **Given** an authenticated user, **When** they submit coordinates that fall within no loaded boundaries, **Then** the system returns an empty districts list.
+5. **Given** an unauthenticated request, **When** a point lookup is submitted, **Then** the system returns HTTP 401 Unauthorized.
+
+---
+
 ### Edge Cases
 
 - What happens when the address string contains only whitespace or special characters? The system returns HTTP 422 with a validation error.
@@ -96,19 +118,23 @@ As an API consumer, I want to submit a partial or malformed address and receive 
 - What happens when a verification request contains only a street number with no street name? The system returns validation feedback indicating the street name is required, with no suggestions.
 - What happens when the cache contains thousands of potential matches for a very short prefix? The system returns only the top 10 ranked results.
 - What happens when the cache is empty (no previously geocoded addresses)? The verification endpoint returns only local validation feedback with an empty suggestions list.
+- What happens when coordinates are on the exact edge of a boundary? The system uses standard PostGIS point-in-polygon containment rules (ST_Contains/ST_Within) — the point is included if it is on or inside the boundary.
+- What happens when no boundaries have been loaded into the database? The point-lookup endpoint returns an empty districts list.
+- What happens when the GPS accuracy radius is extremely large (e.g., 10km)? The system returns all boundaries intersecting the accuracy circle, which may be many. No artificial limit is applied — the consumer is responsible for interpreting accuracy.
+- What happens when lat/lng parameters are missing or non-numeric? The system returns HTTP 422 with a validation error.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: System MUST accept a single freeform address string as input (e.g., "123 Main St, Atlanta, GA 30303").
-- **FR-002**: System MUST return latitude, longitude, confidence score, and matched/normalized address in the response when geocoding succeeds. The provider used is an internal implementation detail and MUST NOT be exposed to the consumer.
+- **FR-001**: All endpoints MUST use GET with query parameters. The geocode and verify endpoints accept an `address` query parameter; the point-lookup endpoint accepts `lat`, `lng`, and optional `accuracy` query parameters.
+- **FR-002**: System MUST return `formatted_address`, `latitude`, `longitude`, `confidence` (score), and a flexible `metadata` object in the geocode response when geocoding succeeds. The provider used is an internal implementation detail and MUST NOT be exposed to the consumer.
 - **FR-003**: System MUST require valid JWT authentication for all geocoding requests. Any authenticated role (viewer, analyst, admin) is permitted — no role-based restriction.
 - **FR-004**: System MUST use the existing geocoder provider infrastructure to perform address geocoding. The provider is selected internally by the system — no consumer-facing provider parameter is exposed.
 - **FR-005**: System MUST normalize the freeform address input (uppercase, trim whitespace, collapse multiple spaces) before cache lookup and provider calls. If a cached result exists for the normalized address, it MUST be returned without making an external call.
 - **FR-006**: System MUST store new geocoding results in the cache after a successful provider call so that future lookups for the same address are served from cache.
 - **FR-007**: System MUST return HTTP 422 with a descriptive validation error when the submitted address is empty, whitespace-only, or exceeds 500 characters.
-- **FR-008**: System MUST return HTTP 200 with null coordinates and an explanatory message when the provider cannot match the submitted address.
+- **FR-008**: System MUST return HTTP 404 with a descriptive message when the provider cannot match the submitted address to a location.
 - **FR-009**: System MUST return HTTP 502 with a descriptive error message when the external geocoding provider is unreachable or returns an unexpected error.
 - **FR-010**: System MUST respect the existing global rate limiting (60 requests per minute per IP) applied to all API endpoints.
 - **FR-011**: System MUST expose a separate address verification endpoint that accepts a partial or malformed freeform address string and returns ranked address suggestions.
@@ -118,10 +144,17 @@ As an API consumer, I want to submit a partial or malformed address and receive 
 - **FR-015**: The verification endpoint MUST be designed with a pluggable suggestion source so that a third-party autocomplete provider (e.g., Google Places) can be added in a future iteration without changing the consumer-facing API contract.
 - **FR-016**: The verification endpoint MUST require valid JWT authentication, consistent with the geocoding endpoint.
 - **FR-017**: The verification endpoint MUST require a minimum of 5 characters of input before returning suggestions. Inputs shorter than 5 characters MUST return only local validation feedback with an empty suggestions list.
+- **FR-018**: System MUST expose a point-lookup endpoint that accepts latitude and longitude coordinates and returns all boundary districts containing that point (point-in-polygon spatial query).
+- **FR-019**: The point-lookup response MUST include for each matching boundary: boundary type, name, boundary identifier, boundary ID, and a flexible metadata object with type-specific attributes (e.g., FIPS code for counties, precinct IDs for precincts).
+- **FR-020**: The point-lookup endpoint MUST accept an optional accuracy parameter (in meters) representing GPS accuracy radius. When provided, the system MUST return all boundaries intersecting the accuracy circle, not just those containing the exact point.
+- **FR-021**: The point-lookup endpoint MUST return HTTP 422 when coordinates fall outside the Georgia service area.
+- **FR-022**: The point-lookup endpoint MUST require valid JWT authentication, consistent with the other endpoints.
+- **FR-023**: The geocode endpoint MUST return HTTP 422 when a geocoded address resolves to coordinates outside the Georgia service area.
 
 ### Key Entities
 
-- **Geocoder Cache** *(existing)*: Stores previously geocoded results keyed by provider name and normalized address. This feature reuses the existing cache — no new database entities are introduced.
+- **Geocoder Cache** *(existing)*: Stores previously geocoded results keyed by provider name and normalized address. Reused by the geocode and verify endpoints — no new database entities are introduced.
+- **Boundary** *(existing)*: Geospatial boundary polygons with type, name, identifier, and metadata. The point-lookup endpoint queries boundaries using PostGIS spatial operations.
 
 ## Assumptions
 
@@ -141,3 +174,5 @@ As an API consumer, I want to submit a partial or malformed address and receive 
 - **SC-004**: The endpoint handles at least 60 concurrent requests per minute without degradation, consistent with the global rate limit.
 - **SC-005**: The verification endpoint returns suggestions and validation feedback within 500 milliseconds for any input.
 - **SC-006**: Malformed addresses receive clear validation feedback identifying all missing or incorrect components.
+- **SC-007**: The point-lookup endpoint returns all matching boundary districts within 1 second for any valid Georgia coordinate.
+- **SC-008**: The point-lookup endpoint correctly identifies all boundary types (precinct, county, congressional, state senate, state house, commission, school) that contain a given point.
