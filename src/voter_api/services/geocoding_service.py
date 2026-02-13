@@ -20,12 +20,19 @@ from voter_api.lib.geocoder import (
 )
 from voter_api.lib.geocoder.base import GeocodingResult
 from voter_api.lib.geocoder.point_lookup import validate_georgia_coordinates
+from voter_api.lib.geocoder.verify import validate_address_components
 from voter_api.models.geocoded_location import GeocodedLocation
 from voter_api.models.geocoder_cache import GeocoderCache
 from voter_api.models.geocoding_job import GeocodingJob
 from voter_api.models.voter import Voter
-from voter_api.schemas.geocoding import AddressGeocodeResponse, GeocodeMetadata
-from voter_api.services.address_service import upsert_from_geocode
+from voter_api.schemas.geocoding import (
+    AddressGeocodeResponse,
+    AddressVerifyResponse,
+    GeocodeMetadata,
+    MalformedComponent,
+    ValidationDetail,
+)
+from voter_api.services.address_service import prefix_search, upsert_from_geocode
 
 MAX_RETRIES = 3
 RETRY_BASE_DELAY = 60.0  # seconds
@@ -109,6 +116,46 @@ async def geocode_single_address(
         longitude=result.longitude,
         confidence=result.confidence_score,
         metadata=GeocodeMetadata(cached=False, provider=geocoder.provider_name),
+    )
+
+
+async def verify_address(
+    session: AsyncSession,
+    address_string: str,
+) -> AddressVerifyResponse:
+    """Verify and autocomplete a freeform address.
+
+    Normalizes input, parses components, validates completeness,
+    and returns suggestions from the canonical address store.
+
+    Args:
+        session: Database session.
+        address_string: Raw freeform address from the consumer.
+
+    Returns:
+        AddressVerifyResponse with validation and suggestions.
+    """
+    normalized = normalize_freeform_address(address_string)
+    components = parse_address_components(address_string)
+    feedback = validate_address_components(components)
+
+    # Get suggestions if input is long enough
+    suggestions = []
+    if normalized and len(normalized) >= 5:
+        suggestions = await prefix_search(session, normalized, limit=10)
+
+    return AddressVerifyResponse(
+        input_address=address_string,
+        normalized_address=normalized,
+        is_well_formed=feedback.is_well_formed,
+        validation=ValidationDetail(
+            present_components=feedback.present_components,
+            missing_components=feedback.missing_components,
+            malformed_components=[
+                MalformedComponent(component=m.component, issue=m.issue) for m in feedback.malformed_components
+            ],
+        ),
+        suggestions=suggestions,
     )
 
 

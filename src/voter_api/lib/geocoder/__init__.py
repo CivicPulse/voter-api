@@ -5,6 +5,7 @@ Public API:
     - normalize_freeform_address: Normalize a freeform address string
     - parse_address_components: Parse freeform string into components
     - AddressComponents: Parsed address component dataclass
+    - validate_address_components: Validate parsed components for completeness
     - validate_georgia_coordinates: Validate coords are in Georgia
     - meters_to_degrees: Convert meters to degrees at a latitude
     - BaseGeocoder: Abstract provider interface
@@ -12,6 +13,7 @@ Public API:
     - CensusGeocoder: US Census Bureau provider
     - cache_lookup / cache_store: Database caching functions
     - get_geocoder: Provider factory/registry
+    - BaseSuggestionSource: Abstract interface for suggestion providers
 """
 
 from voter_api.lib.geocoder.address import (
@@ -27,6 +29,7 @@ from voter_api.lib.geocoder.point_lookup import (
     meters_to_degrees,
     validate_georgia_coordinates,
 )
+from voter_api.lib.geocoder.verify import BaseSuggestionSource, validate_address_components
 
 # Provider registry
 _PROVIDERS: dict[str, type[BaseGeocoder]] = {
@@ -56,6 +59,7 @@ def get_geocoder(provider: str = "census") -> BaseGeocoder:
 __all__ = [
     "AddressComponents",
     "BaseGeocoder",
+    "BaseSuggestionSource",
     "CensusGeocoder",
     "GeocodingResult",
     "cache_lookup",
@@ -65,5 +69,6 @@ __all__ = [
     "normalize_freeform_address",
     "parse_address_components",
     "reconstruct_address",
+    "validate_address_components",
     "validate_georgia_coordinates",
 ]

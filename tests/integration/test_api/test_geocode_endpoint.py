@@ -136,9 +136,7 @@ class TestGeocodeCacheBehavior:
             new_callable=AsyncMock,
             return_value=cached_response,
         ):
-            resp = await client.get(
-                "/api/v1/geocoding/geocode?address=100+Peachtree+St+NW,+Atlanta,+GA+30303"
-            )
+            resp = await client.get("/api/v1/geocoding/geocode?address=100+Peachtree+St+NW,+Atlanta,+GA+30303")
 
         assert resp.status_code == 200
         data = resp.json()
@@ -161,9 +159,7 @@ class TestGeocodeCacheBehavior:
             new_callable=AsyncMock,
             return_value=fresh_response,
         ):
-            resp = await client.get(
-                "/api/v1/geocoding/geocode?address=100+Peachtree+St+NW,+Atlanta,+GA+30303"
-            )
+            resp = await client.get("/api/v1/geocoding/geocode?address=100+Peachtree+St+NW,+Atlanta,+GA+30303")
 
         assert resp.status_code == 200
         data = resp.json()

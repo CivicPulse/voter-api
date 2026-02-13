@@ -11,6 +11,7 @@ from voter_api.lib.geocoder.point_lookup import validate_georgia_coordinates
 from voter_api.models.user import User
 from voter_api.schemas.geocoding import (
     AddressGeocodeResponse,
+    AddressVerifyResponse,
     BatchGeocodingRequest,
     CacheStatsResponse,
     DistrictInfo,
@@ -24,6 +25,7 @@ from voter_api.services.geocoding_service import (
     get_cache_stats,
     get_geocoding_job,
     process_geocoding_job,
+    verify_address,
 )
 
 geocoding_router = APIRouter(prefix="/geocoding", tags=["geocoding"])
@@ -66,6 +68,31 @@ async def geocode_address(
         )
 
     return result
+
+
+@geocoding_router.get(
+    "/verify",
+    response_model=AddressVerifyResponse,
+)
+async def verify_address_endpoint(
+    address: str = Query(  # noqa: B008
+        ...,
+        min_length=1,
+        max_length=500,
+        description="Freeform street address to verify (1-500 characters)",
+    ),
+    session: AsyncSession = Depends(get_async_session),  # noqa: B008
+    _current_user: User = Depends(get_current_user),  # noqa: B008
+) -> AddressVerifyResponse:
+    """Verify and autocomplete a freeform address."""
+    stripped = address.strip()
+    if not stripped:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Address must not be empty or whitespace-only.",
+        )
+
+    return await verify_address(session, stripped)
 
 
 @geocoding_router.get(

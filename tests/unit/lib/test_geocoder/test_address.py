@@ -1,7 +1,5 @@
 """Unit tests for geocoder address reconstruction, normalization, and parsing."""
 
-import pytest
-
 from voter_api.lib.geocoder.address import (
     AddressComponents,
     normalize_directional,
