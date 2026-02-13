@@ -1,0 +1,435 @@
+openapi: "3.1.0"
+info:
+  title: voter-api Address Geocoding Endpoints
+  version: 0.1.0
+  description: |
+    Three authenticated GET endpoints for on-demand address geocoding,
+    address verification/autocomplete, and point-in-polygon district lookup.
+    Part of feature 003-address-geocoding-endpoint.
+
+servers:
+  - url: /api/v1
+    description: API v1 prefix
+
+security:
+  - bearerAuth: []
+
+paths:
+  /geocoding/geocode:
+    get:
+      operationId: geocodeAddress
+      summary: Geocode a single address
+      description: |
+        Accepts a freeform street address and returns geographic coordinates
+        with a confidence score. Uses the existing geocoder cache for fast
+        repeat lookups and falls back to the Census Bureau provider for
+        uncached addresses. Requires JWT authentication.
+      tags:
+        - geocoding
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: address
+          in: query
+          required: true
+          description: Freeform street address to geocode (1-500 characters)
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 500
+          example: "100 Peachtree St NW, Atlanta, GA 30303"
+      responses:
+        "200":
+          description: Address successfully geocoded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddressGeocodeResponse"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Address could not be matched to a location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Address could not be geocoded. The provider could not match the submitted address to a location."
+        "422":
+          description: Validation error (empty address, too long, or result outside Georgia)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+        "502":
+          description: External geocoding provider is unreachable or returned an error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Geocoding provider is temporarily unavailable. Please retry later."
+
+  /geocoding/verify:
+    get:
+      operationId: verifyAddress
+      summary: Verify and autocomplete an address
+      description: |
+        Accepts a partial or malformed freeform address and returns:
+        - The normalized form (USPS Pub 28 abbreviations applied)
+        - Validation feedback (which components are present/missing/malformed)
+        - Up to 10 ranked address suggestions from the geocoder cache
+
+        Requires a minimum of 5 characters for suggestion search. Inputs
+        shorter than 5 characters return only local validation feedback
+        with an empty suggestions list. Requires JWT authentication.
+      tags:
+        - geocoding
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: address
+          in: query
+          required: true
+          description: Partial or complete address string (1-500 characters)
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 500
+          example: "100 Peachtree"
+      responses:
+        "200":
+          description: Verification results with suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddressVerifyResponse"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error (empty address or too long)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+
+  /geocoding/point-lookup:
+    get:
+      operationId: pointLookup
+      summary: Look up boundary districts for a geographic point
+      description: |
+        Accepts latitude and longitude coordinates and returns all boundary
+        districts containing that point (point-in-polygon spatial query).
+        Optionally accepts a GPS accuracy radius to return all boundaries
+        intersecting the accuracy circle. Requires JWT authentication.
+        Coordinates must be within the Georgia service area.
+      tags:
+        - geocoding
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          description: WGS84 latitude
+          schema:
+            type: number
+            format: double
+            minimum: -90
+            maximum: 90
+          example: 33.749
+        - name: lng
+          in: query
+          required: true
+          description: WGS84 longitude
+          schema:
+            type: number
+            format: double
+            minimum: -180
+            maximum: 180
+          example: -84.388
+        - name: accuracy
+          in: query
+          required: false
+          description: GPS accuracy radius in meters (max 100). When provided, returns all boundaries intersecting the accuracy circle.
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            maximum: 100
+          example: 50.0
+      responses:
+        "200":
+          description: List of boundary districts containing the point
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PointLookupResponse"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Coordinates outside Georgia service area or invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Coordinates are outside the Georgia service area."
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AddressGeocodeResponse:
+      type: object
+      required:
+        - formatted_address
+        - latitude
+        - longitude
+        - confidence
+        - metadata
+      properties:
+        formatted_address:
+          type: string
+          description: Provider-matched or normalized address string
+          example: "100 PEACHTREE ST NW, ATLANTA, GA 30303"
+        latitude:
+          type: number
+          format: double
+          description: WGS84 latitude
+          example: 33.7589985
+        longitude:
+          type: number
+          format: double
+          description: WGS84 longitude
+          example: -84.3879824
+        confidence:
+          type: number
+          format: double
+          nullable: true
+          description: Geocoding confidence score (0.0-1.0)
+          example: 1.0
+        metadata:
+          type: object
+          description: Extensible metadata object for future fields
+          properties:
+            cached:
+              type: boolean
+              description: Whether the result was served from cache
+            provider:
+              type: string
+              description: Internal geocoding provider used (informational)
+          additionalProperties: true
+
+    AddressVerifyResponse:
+      type: object
+      required:
+        - input_address
+        - normalized_address
+        - is_well_formed
+        - validation
+        - suggestions
+      properties:
+        input_address:
+          type: string
+          description: The original address string submitted by the consumer
+          example: "100 peachtree street, atlanta"
+        normalized_address:
+          type: string
+          description: USPS Pub 28 normalized form of the input address
+          example: "100 PEACHTREE ST, ATLANTA"
+        is_well_formed:
+          type: boolean
+          description: Whether the address has all required components
+          example: false
+        validation:
+          $ref: "#/components/schemas/ValidationDetail"
+        suggestions:
+          type: array
+          description: Ranked list of matching address suggestions (max 10)
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/AddressSuggestion"
+
+    ValidationDetail:
+      type: object
+      required:
+        - present_components
+        - missing_components
+      properties:
+        present_components:
+          type: array
+          description: Address components that were detected
+          items:
+            type: string
+            enum:
+              - street_number
+              - street_name
+              - street_type
+              - pre_direction
+              - post_direction
+              - unit
+              - city
+              - state
+              - zip
+          example: ["street_number", "street_name", "street_type", "city"]
+        missing_components:
+          type: array
+          description: Required components that are missing
+          items:
+            type: string
+            enum:
+              - street_number
+              - street_name
+              - city
+              - state
+              - zip
+          example: ["state", "zip"]
+        malformed_components:
+          type: array
+          description: Components detected but improperly formatted
+          items:
+            type: object
+            required:
+              - component
+              - issue
+            properties:
+              component:
+                type: string
+                example: "zip"
+              issue:
+                type: string
+                example: "ZIP code must be 5 digits or ZIP+4 format"
+
+    AddressSuggestion:
+      type: object
+      required:
+        - address
+        - latitude
+        - longitude
+      properties:
+        address:
+          type: string
+          description: Full normalized address from the geocoder cache
+          example: "100 PEACHTREE ST NW, ATLANTA, GA 30303"
+        latitude:
+          type: number
+          format: double
+          example: 33.7589985
+        longitude:
+          type: number
+          format: double
+          example: -84.3879824
+        confidence_score:
+          type: number
+          format: double
+          nullable: true
+          example: 1.0
+
+    PointLookupResponse:
+      type: object
+      required:
+        - latitude
+        - longitude
+        - districts
+      properties:
+        latitude:
+          type: number
+          format: double
+          description: The queried latitude
+          example: 33.749
+        longitude:
+          type: number
+          format: double
+          description: The queried longitude
+          example: -84.388
+        accuracy:
+          type: number
+          format: double
+          nullable: true
+          description: The accuracy radius in meters (if provided)
+          example: 50.0
+        districts:
+          type: array
+          description: All boundary districts containing the point
+          items:
+            $ref: "#/components/schemas/DistrictInfo"
+
+    DistrictInfo:
+      type: object
+      required:
+        - boundary_type
+        - name
+        - boundary_identifier
+        - boundary_id
+      properties:
+        boundary_type:
+          type: string
+          description: Type of boundary (e.g., county, congressional, county_precinct)
+          example: "congressional"
+        name:
+          type: string
+          description: Human-readable boundary name
+          example: "Congressional District 5"
+        boundary_identifier:
+          type: string
+          description: Official boundary identifier
+          example: "05"
+        boundary_id:
+          type: string
+          format: uuid
+          description: Internal boundary record UUID
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        metadata:
+          type: object
+          description: Type-specific attributes (FIPS codes, precinct IDs, etc.)
+          additionalProperties: true
+          example:
+            FIPS: "13121"
+            STATEFP: "13"
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+
+    ValidationErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: object
+                properties:
+                  loc:
+                    type: array
+                    items:
+                      type: string
+                  msg:
+                    type: string
+                  type:
+                    type: string

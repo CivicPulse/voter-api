@@ -21,6 +21,17 @@
 - Q: When the geocode endpoint receives an unmatchable address, what HTTP status should be returned? → A: HTTP 404. Semantically correct ("location not found") and aligns with the frontend contract.
 - Q: Should the endpoints use GET with query parameters or POST with JSON body? → A: GET with query parameters for all three endpoints. Semantically correct (read-only, idempotent), enables HTTP-level caching, and aligns with the frontend contract.
 - Q: Should the geocode response include confidence_score, a metadata object, or both? → A: Both. Top-level `confidence` field (core to geocoding, useful for programmatic decisions) plus a `metadata` object for future extensibility.
+- Q: Should the geocode response metadata include the provider name, given FR-002 says "MUST NOT be exposed"? → A: Yes. The intent of FR-002 is that consumers cannot choose/select a provider — there is no provider input parameter. Including the provider name in the response metadata for informational/debugging purposes is acceptable. FR-002 language updated accordingly.
+- Q: Should there be a maximum allowed value for the accuracy parameter on the point-lookup endpoint? → A: Yes. Cap at 100 meters. Reject with HTTP 422 if the value exceeds 100.
+- Q: When serving from cache, what should `formatted_address` contain? → A: Return the `normalized_address` directly from the cache as `formatted_address`. No title-casing or reformatting — the normalized form (uppercased, USPS-abbreviated) is the canonical representation.
+- Q: How should the Georgia service area be defined for coordinate validation? → A: Static bounding box (lat/lng min/max rectangle enclosing Georgia). Simple, fast, and sufficient for rejecting obviously out-of-state coordinates.
+- Q: Should cached geocoding results have a TTL / expiration policy? → A: No expiration for now — cached results persist indefinitely. The existing `cached_at` timestamp on `geocoder_cache` is sufficient for a future invalidation feature. No TTL logic needed in this iteration.
+- Q: Should the system retry failed geocoding provider calls before returning 502? → A: Single retry with short timeout (~2s per attempt, ~4s total budget). Recovers from transient network blips while staying within the 5-second latency target.
+- Q: How should the new dedicated `addresses` table relate to `geocoder_cache`? → A: FK reference. Keep geocoder_cache separate but add a FK to `addresses`. The address table stores the canonical address identity; geocoder_cache stores provider-specific geocoding results linked to it via foreign key. One address can have results from multiple providers.
+- Q: Should voter records be updated to FK-reference the new `addresses` table in this feature? → A: Two-phase pipeline. Add `residence_address_id` FK to the voters table now (nullable), but always keep the inline address fields as well — they represent the government-sourced truth from the GA Secretary of State voter file. The inline fields are permanent, not a migration artifact. The FK is NOT set during CSV import (phase 1) because raw voter data is frequently malformed and the `addresses` table is a canonical, validated store. Instead, the FK is set during post-import processing (phase 2) after the address has been normalized and successfully geocoded. This prevents garbage/un-geocodable entries from polluting the addresses table.
+- Q: What should the `addresses` table store — freeform string, parsed components, or both? → A: Both. Store parsed component fields (street_number, street_name, street_type, city, state, zip, etc.) plus a computed/stored `normalized_address` string for cache lookups and provider calls. The normalized string is derived from the components.
+- Q: How should address uniqueness/deduplication be determined? → A: By normalized address string. UNIQUE constraint on `normalized_address`. The normalized form (uppercased, USPS-abbreviated, whitespace-collapsed) ensures variant spellings of the same address resolve to a single canonical row.
+- Q: When should address rows be created from the geocode API endpoint? → A: On successful geocode only. The address row is upserted after the provider returns a successful result, then the geocoder_cache entry is linked to it. Failed/unmatchable addresses never get an address row, preventing junk/typo entries from polluting the table.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -120,7 +131,7 @@ As an authenticated API consumer, I want to submit geographic coordinates and re
 - What happens when the cache is empty (no previously geocoded addresses)? The verification endpoint returns only local validation feedback with an empty suggestions list.
 - What happens when coordinates are on the exact edge of a boundary? The system uses standard PostGIS point-in-polygon containment rules (ST_Contains/ST_Within) — the point is included if it is on or inside the boundary.
 - What happens when no boundaries have been loaded into the database? The point-lookup endpoint returns an empty districts list.
-- What happens when the GPS accuracy radius is extremely large (e.g., 10km)? The system returns all boundaries intersecting the accuracy circle, which may be many. No artificial limit is applied — the consumer is responsible for interpreting accuracy.
+- What happens when the GPS accuracy radius exceeds 100 meters? The system returns HTTP 422 rejecting the request. The maximum allowed accuracy value is 100 meters.
 - What happens when lat/lng parameters are missing or non-numeric? The system returns HTTP 422 with a validation error.
 
 ## Requirements *(mandatory)*
@@ -128,14 +139,14 @@ As an authenticated API consumer, I want to submit geographic coordinates and re
 ### Functional Requirements
 
 - **FR-001**: All endpoints MUST use GET with query parameters. The geocode and verify endpoints accept an `address` query parameter; the point-lookup endpoint accepts `lat`, `lng`, and optional `accuracy` query parameters.
-- **FR-002**: System MUST return `formatted_address`, `latitude`, `longitude`, `confidence` (score), and a flexible `metadata` object in the geocode response when geocoding succeeds. The provider used is an internal implementation detail and MUST NOT be exposed to the consumer.
+- **FR-002**: System MUST return `formatted_address`, `latitude`, `longitude`, `confidence` (score), and a flexible `metadata` object in the geocode response when geocoding succeeds. The consumer MUST NOT be able to select or influence which provider is used (no provider input parameter). The provider name MAY be included in the response `metadata` object for informational/debugging purposes.
 - **FR-003**: System MUST require valid JWT authentication for all geocoding requests. Any authenticated role (viewer, analyst, admin) is permitted — no role-based restriction.
 - **FR-004**: System MUST use the existing geocoder provider infrastructure to perform address geocoding. The provider is selected internally by the system — no consumer-facing provider parameter is exposed.
 - **FR-005**: System MUST normalize the freeform address input (uppercase, trim whitespace, collapse multiple spaces) before cache lookup and provider calls. If a cached result exists for the normalized address, it MUST be returned without making an external call.
-- **FR-006**: System MUST store new geocoding results in the cache after a successful provider call so that future lookups for the same address are served from cache.
+- **FR-006**: System MUST store new geocoding results in the cache after a successful provider call so that future lookups for the same address are served from cache. On a successful geocode, the system MUST upsert a canonical address row in the `addresses` table and link the geocoder_cache entry to it via FK. Failed or unmatchable addresses MUST NOT create address rows.
 - **FR-007**: System MUST return HTTP 422 with a descriptive validation error when the submitted address is empty, whitespace-only, or exceeds 500 characters.
 - **FR-008**: System MUST return HTTP 404 with a descriptive message when the provider cannot match the submitted address to a location.
-- **FR-009**: System MUST return HTTP 502 with a descriptive error message when the external geocoding provider is unreachable or returns an unexpected error.
+- **FR-009**: System MUST retry once (single retry) with a ~2-second timeout per attempt before returning HTTP 502. If both attempts fail, the system MUST return HTTP 502 with a descriptive error message indicating a temporary upstream failure and suggesting a retry. Total provider call budget MUST NOT exceed ~4 seconds to stay within the 5-second latency target (SC-001).
 - **FR-010**: System MUST respect the existing global rate limiting (60 requests per minute per IP) applied to all API endpoints.
 - **FR-011**: System MUST expose a separate address verification endpoint that accepts a partial or malformed freeform address string and returns ranked address suggestions.
 - **FR-012**: The verification endpoint MUST perform local validation to determine whether the submitted address is well-formed — checking for required components (street number, street name, city, state, ZIP) and reporting which are present, missing, or malformed.
@@ -146,23 +157,26 @@ As an authenticated API consumer, I want to submit geographic coordinates and re
 - **FR-017**: The verification endpoint MUST require a minimum of 5 characters of input before returning suggestions. Inputs shorter than 5 characters MUST return only local validation feedback with an empty suggestions list.
 - **FR-018**: System MUST expose a point-lookup endpoint that accepts latitude and longitude coordinates and returns all boundary districts containing that point (point-in-polygon spatial query).
 - **FR-019**: The point-lookup response MUST include for each matching boundary: boundary type, name, boundary identifier, boundary ID, and a flexible metadata object with type-specific attributes (e.g., FIPS code for counties, precinct IDs for precincts).
-- **FR-020**: The point-lookup endpoint MUST accept an optional accuracy parameter (in meters) representing GPS accuracy radius. When provided, the system MUST return all boundaries intersecting the accuracy circle, not just those containing the exact point.
-- **FR-021**: The point-lookup endpoint MUST return HTTP 422 when coordinates fall outside the Georgia service area.
+- **FR-020**: The point-lookup endpoint MUST accept an optional accuracy parameter (in meters) representing GPS accuracy radius, with a maximum allowed value of 100 meters. Values exceeding 100 MUST be rejected with HTTP 422. When provided, the system MUST return all boundaries intersecting the accuracy circle, not just those containing the exact point.
+- **FR-021**: The point-lookup endpoint MUST return HTTP 422 when coordinates fall outside the Georgia service area. The Georgia service area is defined as a static bounding box: latitude 30.36°N to 35.00°N, longitude 85.61°W to 80.84°W.
 - **FR-022**: The point-lookup endpoint MUST require valid JWT authentication, consistent with the other endpoints.
-- **FR-023**: The geocode endpoint MUST return HTTP 422 when a geocoded address resolves to coordinates outside the Georgia service area.
+- **FR-023**: The geocode endpoint MUST return HTTP 422 when a geocoded address resolves to coordinates outside the Georgia service area (static bounding box: lat 30.36–35.00°N, lng 85.61–80.84°W).
 
 ### Key Entities
 
-- **Geocoder Cache** *(existing)*: Stores previously geocoded results keyed by provider name and normalized address. Reused by the geocode and verify endpoints — no new database entities are introduced.
+- **Address** *(new)*: Dedicated canonical address store. Each unique address gets a single row in the `addresses` table, serving as the authoritative record for that address. Stores both parsed component fields (street_number, street_name, street_type, pre_direction, post_direction, apt_unit, city, state, zipcode) and a computed/stored `normalized_address` string for cache lookups and provider calls. Other entities (voters, geocoder cache) reference addresses via FK. Address data persists even if referencing entities are removed.
+- **Voter** *(existing, modified)*: Adds a `residence_address_id` FK to the `addresses` table. The inline residence address fields (street_number, street_name, city, etc.) are permanently retained as the government-sourced truth from the GA Secretary of State voter file. The FK is NOT populated during CSV import — raw voter data is frequently malformed and the `addresses` table is a canonical, validated store. Instead, the FK is set during post-import processing after the address has been normalized and successfully geocoded. Voters with `residence_address_id IS NULL` indicate addresses that have not yet been validated/geocoded.
+- **Geocoder Cache** *(existing, modified)*: Stores provider-specific geocoding results. Modified to add a FK to the `addresses` table, linking each cached result to a canonical address. Reused by the geocode and verify endpoints.
 - **Boundary** *(existing)*: Geospatial boundary polygons with type, name, identifier, and metadata. The point-lookup endpoint queries boundaries using PostGIS spatial operations.
 
 ## Assumptions
 
-- The existing geocoder cache table and cache lookup/store functions are sufficient for this feature without modification.
+- A new dedicated `addresses` table is introduced as the canonical address store. The existing `geocoder_cache` table is modified to reference it via FK. Cache lookup/store functions will be updated to work through the address entity.
 - The system internally manages provider selection. If additional providers are added in the future, the system can switch or prioritize providers without any change to the consumer-facing API.
 - Freeform address input is normalized (uppercase, trim, collapse whitespace) before cache lookup, ensuring consistent cache hits regardless of consumer input formatting. This normalization is compatible with the existing batch pipeline's cache keys.
 - The existing global rate limit (60 req/min per IP) provides sufficient protection against abuse. Per-endpoint rate limiting is not required at this time.
 - This endpoint is for single-address geocoding only. Batch geocoding of arbitrary addresses (not voter records) is out of scope and can be added in a future iteration if needed.
+- Cached geocoding results do not expire in this iteration. The existing `cached_at` timestamp on `geocoder_cache` supports future time-based invalidation if needed.
 
 ## Success Criteria *(mandatory)*
 
