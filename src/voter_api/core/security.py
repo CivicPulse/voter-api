@@ -17,9 +17,15 @@ def hash_password(password: str) -> str:
 
     Returns:
         The bcrypt-hashed password string.
+
+    Raises:
+        ValueError: If the password is longer than 72 bytes (bcrypt limit).
     """
+    encoded = password.encode("utf-8")
+    if len(encoded) > 72:
+        raise ValueError("password cannot be longer than 72 bytes")
     salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    return bcrypt.hashpw(encoded, salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
