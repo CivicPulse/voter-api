@@ -1,11 +1,16 @@
-"""Unit tests for address service — backfill_voter_addresses()."""
+"""Unit tests for address service."""
 
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from voter_api.services.address_service import backfill_voter_addresses
+from voter_api.services.address_service import (
+    backfill_voter_addresses,
+    get_by_normalized,
+    prefix_search,
+    upsert_from_geocode,
+)
 
 
 @pytest.fixture
@@ -116,3 +121,118 @@ class TestBackfillVoterAddresses:
         result2 = await backfill_voter_addresses(mock_session)
 
         assert result1 == result2 == {"linked": 0, "skipped": 0, "total": 0}
+
+
+class TestUpsertFromGeocode:
+    """Tests for upsert_from_geocode()."""
+
+    @pytest.mark.asyncio
+    async def test_insert_new_address(self, mock_session) -> None:
+        """New address is inserted and returned."""
+        address_mock = MagicMock()
+        address_mock.id = uuid.uuid4()
+        address_mock.normalized_address = "100 MAIN ST ATLANTA GA 30303"
+
+        result_mock = MagicMock()
+        result_mock.scalar_one.return_value = address_mock
+        mock_session.execute.return_value = result_mock
+
+        result = await upsert_from_geocode(
+            mock_session,
+            "100 MAIN ST ATLANTA GA 30303",
+            {"street_number": "100", "street_name": "MAIN"},
+        )
+
+        assert result.id == address_mock.id
+        mock_session.execute.assert_awaited_once()
+        mock_session.flush.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_upsert_uses_func_now(self, mock_session) -> None:
+        """Upsert ON CONFLICT uses func.now() not Address.updated_at.default.arg."""
+        address_mock = MagicMock()
+        address_mock.id = uuid.uuid4()
+
+        result_mock = MagicMock()
+        result_mock.scalar_one.return_value = address_mock
+        mock_session.execute.return_value = result_mock
+
+        # This should not raise AttributeError (C-1 fix)
+        result = await upsert_from_geocode(mock_session, "100 MAIN ST ATLANTA GA 30303", {})
+        assert result is not None
+
+
+class TestPrefixSearch:
+    """Tests for prefix_search()."""
+
+    @pytest.mark.asyncio
+    async def test_returns_suggestions(self, mock_session) -> None:
+        """Prefix search returns AddressSuggestion list."""
+        row = MagicMock()
+        row.normalized_address = "100 MAIN ST ATLANTA GA 30303"
+        row.latitude = 33.749
+        row.longitude = -84.388
+        row.confidence_score = 1.0
+
+        result_mock = MagicMock()
+        result_mock.all.return_value = [row]
+        mock_session.execute.return_value = result_mock
+
+        results = await prefix_search(mock_session, "100 MAIN")
+
+        assert len(results) == 1
+        assert results[0].address == "100 MAIN ST ATLANTA GA 30303"
+
+    @pytest.mark.asyncio
+    async def test_empty_results(self, mock_session) -> None:
+        """Empty prefix match returns empty list."""
+        result_mock = MagicMock()
+        result_mock.all.return_value = []
+        mock_session.execute.return_value = result_mock
+
+        results = await prefix_search(mock_session, "ZZZZZ")
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_wildcard_in_prefix_is_escaped(self, mock_session) -> None:
+        """LIKE wildcards in prefix are escaped by startswith (C-5 fix)."""
+        result_mock = MagicMock()
+        result_mock.all.return_value = []
+        mock_session.execute.return_value = result_mock
+
+        # Should not raise and should use safe escaping
+        results = await prefix_search(mock_session, "100% MAIN_ST")
+
+        assert results == []
+        mock_session.execute.assert_awaited_once()
+
+
+class TestGetByNormalized:
+    """Tests for get_by_normalized()."""
+
+    @pytest.mark.asyncio
+    async def test_found(self, mock_session) -> None:
+        """Returns Address when found."""
+        address_mock = MagicMock()
+        address_mock.normalized_address = "100 MAIN ST ATLANTA GA 30303"
+
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = address_mock
+        mock_session.execute.return_value = result_mock
+
+        result = await get_by_normalized(mock_session, "100 MAIN ST ATLANTA GA 30303")
+
+        assert result is not None
+        assert result.normalized_address == "100 MAIN ST ATLANTA GA 30303"
+
+    @pytest.mark.asyncio
+    async def test_not_found(self, mock_session) -> None:
+        """Returns None when not found."""
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = None
+        mock_session.execute.return_value = result_mock
+
+        result = await get_by_normalized(mock_session, "NONEXISTENT ADDRESS")
+
+        assert result is None

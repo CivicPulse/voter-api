@@ -83,7 +83,12 @@ def validate_address_components(components: AddressComponents) -> ValidationFeed
 
 
 class BaseSuggestionSource(ABC):
-    """Abstract interface for pluggable address suggestion providers."""
+    """Abstract interface for pluggable address suggestion providers.
+
+    Extension point for adding new suggestion backends (e.g., external APIs,
+    USPS database). Concrete implementation: ``CacheSuggestionSource`` in
+    ``voter_api.services.address_service``.
+    """
 
     @abstractmethod
     async def search(self, query: str, limit: int = 10) -> list:

@@ -3,6 +3,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.background import task_runner
@@ -14,7 +15,6 @@ from voter_api.schemas.geocoding import (
     AddressGeocodeResponse,
     AddressVerifyResponse,
     BatchGeocodingRequest,
-    CacheProviderStats,
     CacheStatsResponse,
     DistrictInfo,
     GeocodingJobResponse,
@@ -99,7 +99,19 @@ async def verify_address_endpoint(
             detail="Address must not be empty or whitespace-only.",
         )
 
-    return await verify_address(session, stripped)
+    try:
+        return await verify_address(session, stripped)
+    except GeocodingProviderError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Address verification provider is temporarily unavailable.",
+        ) from e
+    except Exception as e:
+        logger.error(f"Unexpected error during address verification: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during address verification.",
+        ) from e
 
 
 @geocoding_router.get(
@@ -116,12 +128,6 @@ async def point_lookup_districts(
     _current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> PointLookupResponse:
     """Look up boundary districts for a geographic point."""
-    if accuracy is not None and accuracy > 100:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Accuracy must not exceed 100 meters.",
-        )
-
     try:
         validate_georgia_coordinates(lat, lng)
     except ValueError as e:
@@ -130,14 +136,21 @@ async def point_lookup_districts(
             detail=str(e),
         ) from e
 
-    boundaries = await find_boundaries_at_point(session, lat, lng, accuracy)
+    try:
+        boundaries = await find_boundaries_at_point(session, lat, lng, accuracy)
+    except Exception as e:
+        logger.error(f"Unexpected error during point lookup: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during point lookup.",
+        ) from e
 
     districts = [
         DistrictInfo(
             boundary_type=b.boundary_type,
             name=b.name,
             boundary_identifier=b.boundary_identifier,
-            boundary_id=str(b.id),
+            boundary_id=b.id,
             metadata=b.properties or {},
         )
         for b in boundaries
@@ -180,6 +193,8 @@ async def trigger_batch_geocoding(
             bg_job = await get_geocoding_job(bg_session, job.id)
             if bg_job:
                 await process_geocoding_job(bg_session, bg_job)
+            else:
+                logger.error(f"Background geocoding job {job.id} not found")
 
     task_runner.submit_task(_run_geocoding())
 
@@ -212,4 +227,4 @@ async def get_cache_statistics(
 ) -> CacheStatsResponse:
     """Get per-provider geocoding cache statistics."""
     stats = await get_cache_stats(session)
-    return CacheStatsResponse(providers=[CacheProviderStats(**s) for s in stats])
+    return CacheStatsResponse(providers=stats)

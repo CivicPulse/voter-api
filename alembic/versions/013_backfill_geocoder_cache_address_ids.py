@@ -11,6 +11,7 @@ the address_id FK on geocoder_cache rows. Safe to re-run.
 
 from collections.abc import Sequence
 
+import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -21,29 +22,42 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # Insert unique normalized addresses from geocoder_cache into addresses table,
+    """Backfill addresses table from geocoder_cache and link FK.
+
+    Uses raw SQL because this is a data-only migration operating on existing
+    tables — no ORM models are needed. This is an intentional exception to
+    the "no raw SQL" convention documented in CLAUDE.md.
+    """
+    bind = op.get_bind()
+
+    # Insert DISTINCT normalized addresses from geocoder_cache into addresses table,
     # skipping any that already exist (ON CONFLICT DO NOTHING).
-    op.execute(
-        """
+    result = bind.execute(
+        sa.text("""
         INSERT INTO addresses (id, normalized_address, created_at, updated_at)
-        SELECT gen_random_uuid(), gc.normalized_address, now(), now()
-        FROM geocoder_cache gc
-        WHERE gc.address_id IS NULL
-          AND gc.normalized_address IS NOT NULL
+        SELECT gen_random_uuid(), sub.normalized_address, now(), now()
+        FROM (
+            SELECT DISTINCT gc.normalized_address
+            FROM geocoder_cache gc
+            WHERE gc.address_id IS NULL
+              AND gc.normalized_address IS NOT NULL
+        ) sub
         ON CONFLICT (normalized_address) DO NOTHING
-        """
+        """)
     )
+    print(f"  -> Inserted {result.rowcount} new address rows")  # noqa: T201
 
     # Set address_id FK on geocoder_cache rows that are still NULL
-    op.execute(
-        """
+    result = bind.execute(
+        sa.text("""
         UPDATE geocoder_cache gc
         SET address_id = a.id
         FROM addresses a
         WHERE gc.normalized_address = a.normalized_address
           AND gc.address_id IS NULL
-        """
+        """)
     )
+    print(f"  -> Updated {result.rowcount} geocoder_cache rows with address_id")  # noqa: T201
 
 
 def downgrade() -> None:

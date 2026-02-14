@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -35,7 +36,7 @@ class BatchGeocodingRequest(BaseModel):
     """Request to trigger a batch geocoding job."""
 
     county: str | None = None
-    provider: str = "census"
+    provider: Literal["census"] = "census"
     force_regeocode: bool = False
 
 
@@ -90,8 +91,8 @@ class AddressGeocodeResponse(BaseModel):
     """Response for GET /geocoding/geocode."""
 
     formatted_address: str
-    latitude: float
-    longitude: float
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
     confidence: float | None = None
     metadata: GeocodeMetadata
 
@@ -136,14 +137,14 @@ class DistrictInfo(BaseModel):
     boundary_type: str
     name: str
     boundary_identifier: str
-    boundary_id: str
+    boundary_id: uuid.UUID
     metadata: dict = Field(default_factory=dict)
 
 
 class PointLookupResponse(BaseModel):
     """Response for GET /geocoding/point-lookup."""
 
-    latitude: float
-    longitude: float
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
     accuracy: float | None = None
     districts: list[DistrictInfo] = Field(default_factory=list)

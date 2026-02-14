@@ -55,9 +55,26 @@ class TestCensusResponseParsing:
         assert self.geocoder._parse_response(data) is None
 
     def test_malformed_response(self) -> None:
-        """Malformed response returns None."""
+        """Malformed response raises GeocodingProviderError."""
+        # Responses that cause parse errors raise GeocodingProviderError
+        # Empty dict and dict with empty result both have no matches, returning None
         assert self.geocoder._parse_response({}) is None
         assert self.geocoder._parse_response({"result": {}}) is None
+
+    def test_parse_error_raises_provider_error(self) -> None:
+        """Response causing parse errors raises GeocodingProviderError."""
+        # Data with coordinates that can't be cast to float triggers ValueError
+        data = {
+            "result": {
+                "addressMatches": [
+                    {
+                        "coordinates": {"x": "not-a-number", "y": 33.0},
+                    }
+                ]
+            }
+        }
+        with pytest.raises(GeocodingProviderError, match="census"):
+            self.geocoder._parse_response(data)
 
     def test_no_tigerline_lower_confidence(self) -> None:
         """Result without tigerLine gets lower confidence."""

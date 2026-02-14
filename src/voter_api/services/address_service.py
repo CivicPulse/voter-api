@@ -3,6 +3,7 @@
 from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.geocoder import (
@@ -44,7 +45,7 @@ async def upsert_from_geocode(
             # First-write-wins: only bump updated_at to record re-observation.
             # Components intentionally NOT updated — first geocode parse is canonical.
             constraint="uq_address_normalized",
-            set_={"updated_at": Address.updated_at.default.arg},
+            set_={"updated_at": func.now()},
         )
         .returning(Address)
     )
@@ -98,7 +99,7 @@ async def prefix_search(
             GeocoderCache.confidence_score,
         )
         .join(GeocoderCache, GeocoderCache.address_id == Address.id)
-        .where(Address.normalized_address.like(f"{normalized_prefix}%"))
+        .where(Address.normalized_address.startswith(normalized_prefix))
         .order_by(Address.normalized_address, GeocoderCache.confidence_score.desc().nullslast())
         .distinct(Address.normalized_address)
         .limit(limit)
@@ -199,8 +200,9 @@ async def backfill_voter_addresses(
                 address_row = await upsert_from_geocode(session, normalized, components.to_dict())
                 voter.residence_address_id = address_row.id
                 linked += 1
-            except Exception:
-                logger.exception(f"Failed to upsert address for voter {voter.id}")
+            except (IntegrityError, DataError) as e:
+                logger.warning(f"Failed to upsert address for voter {voter.id}: {e}")
+                await session.rollback()
                 skipped += 1
 
         await session.commit()

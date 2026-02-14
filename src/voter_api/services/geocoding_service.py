@@ -28,6 +28,7 @@ from voter_api.models.voter import Voter
 from voter_api.schemas.geocoding import (
     AddressGeocodeResponse,
     AddressVerifyResponse,
+    CacheProviderStats,
     GeocodeMetadata,
     MalformedComponent,
     ValidationDetail,
@@ -39,7 +40,7 @@ RETRY_BASE_DELAY = 60.0  # seconds
 
 # Provider name and timeout for single-address endpoint
 _SINGLE_PROVIDER = "census"
-_SINGLE_TIMEOUT = 2.0  # 2s per attempt, 4s total budget (2 attempts max) per FR-009
+_SINGLE_TIMEOUT = 2.0  # 2s per attempt, max 2 attempts per FR-009
 _SINGLE_MAX_ATTEMPTS = 2
 
 
@@ -102,26 +103,12 @@ async def geocode_single_address(
     if result is None:
         return None
 
-    # Validate Georgia coordinates
     validate_georgia_coordinates(result.latitude, result.longitude)
 
-    # Parse components and upsert Address row
     components = parse_address_components(normalized)
     address_row = await upsert_from_geocode(session, normalized, components.to_dict())
 
-    # Store in cache with address_id FK
-    await cache_store(session, geocoder.provider_name, normalized, result)
-    # Update the cache entry with address_id
-    cache_result = await session.execute(
-        select(GeocoderCache).where(
-            GeocoderCache.provider == geocoder.provider_name,
-            GeocoderCache.normalized_address == normalized,
-        )
-    )
-    cache_entry = cache_result.scalar_one_or_none()
-    if cache_entry:
-        cache_entry.address_id = address_row.id
-        await session.flush()
+    await cache_store(session, geocoder.provider_name, normalized, result, address_id=address_row.id)
 
     await session.commit()
 
@@ -250,10 +237,12 @@ async def process_geocoding_job(
 
         if not job.force_regeocode:
             # Only voters without a geocoded location from this provider
-            geocoded_voter_ids = (
-                select(GeocodedLocation.voter_id).where(GeocodedLocation.source_type == job.provider).scalar_subquery()
-            )
-            query = query.where(~Voter.id.in_(geocoded_voter_ids))
+            geocoded_subq = select(GeocodedLocation.voter_id).where(GeocodedLocation.source_type == job.provider)
+            if job.county:
+                geocoded_subq = geocoded_subq.join(Voter, GeocodedLocation.voter_id == Voter.id).where(
+                    Voter.county == job.county
+                )
+            query = query.where(~Voter.id.in_(geocoded_subq.scalar_subquery()))
 
         query = query.order_by(Voter.id)
 
@@ -263,11 +252,14 @@ async def process_geocoding_job(
         job.total_records = total
         await session.commit()
 
-        # Process in batches with offset-based pagination
+        # Process in batches with keyset pagination
         offset = job.last_processed_voter_offset or 0
+        last_voter_id: uuid.UUID | None = None
 
         while offset < total:
-            batch_query = query.offset(offset).limit(batch_size)
+            batch_query = query.limit(batch_size)
+            if last_voter_id is not None:
+                batch_query = batch_query.where(Voter.id > last_voter_id)
             result = await session.execute(batch_query)
             voters = list(result.scalars().all())
 
@@ -307,7 +299,18 @@ async def process_geocoding_job(
                     continue
 
                 # Geocode with rate limiting and retry
-                geo_result = await _geocode_with_retry(geocoder, address, semaphore)
+                try:
+                    geo_result = await _geocode_with_retry(geocoder, address, semaphore)
+                except GeocodingProviderError as e:
+                    failed_count += 1
+                    errors.append(
+                        {
+                            "voter_id": str(voter.id),
+                            "error": f"Provider error after retries: {e}",
+                        }
+                    )
+                    processed += 1
+                    continue
 
                 if geo_result:
                     await cache_store(session, geocoder.provider_name, address, geo_result)
@@ -326,6 +329,8 @@ async def process_geocoding_job(
 
             await session.commit()
 
+            if voters:
+                last_voter_id = voters[-1].id
             offset += len(voters)
             job.last_processed_voter_offset = offset
             job.processed = processed
@@ -349,10 +354,14 @@ async def process_geocoding_job(
             f"{failed_count} failed, {cache_hits} cache hits"
         )
 
-    except Exception:
+    except Exception as e:
+        errors.append({"error": f"Job failed: {e}"})
         job.status = "failed"
         job.error_log = errors if errors else None
-        await session.commit()
+        try:
+            await session.commit()
+        except Exception:
+            logger.exception("Failed to persist job failure status")
         raise
 
     return job
@@ -365,8 +374,10 @@ async def _geocode_with_retry(
 ) -> GeocodingResult | None:
     """Geocode with rate limiting and exponential backoff retry.
 
-    Catches GeocodingProviderError to maintain batch pipeline resilience —
-    provider transport errors are logged and retried rather than aborting.
+    Retries on GeocodingProviderError with exponential backoff
+    (delays: 60s, 120s between attempts). Returns None only for
+    genuine no-match; raises GeocodingProviderError if all retries
+    exhausted due to provider errors.
 
     Args:
         geocoder: Geocoder provider instance.
@@ -374,22 +385,31 @@ async def _geocode_with_retry(
         semaphore: Rate limiter.
 
     Returns:
-        GeocodingResult or None after all retries exhausted.
+        GeocodingResult on success, None for genuine no-match.
+
+    Raises:
+        GeocodingProviderError: If all retry attempts fail due to provider errors.
     """
+    last_error: GeocodingProviderError | None = None
     for attempt in range(MAX_RETRIES):
         try:
             async with semaphore:
                 result = await geocoder.geocode(address)
                 if result is not None:
                     return result
+                # Provider returned None (genuine no-match) — no point retrying
+                return None
         except GeocodingProviderError as e:
+            last_error = e
             logger.warning(f"Batch geocode provider error (attempt {attempt + 1}/{MAX_RETRIES}): {e}")
 
         if attempt < MAX_RETRIES - 1:
             delay = RETRY_BASE_DELAY * (2**attempt)
-            logger.debug(f"Geocoding retry {attempt + 1}/{MAX_RETRIES} in {delay}s")
+            logger.debug(f"Geocoding retry {attempt + 1}/{MAX_RETRIES}, backoff {delay}s")
             await asyncio.sleep(delay)
 
+    if last_error is not None:
+        raise last_error
     return None
 
 
@@ -558,7 +578,7 @@ async def get_voter_locations(session: AsyncSession, voter_id: uuid.UUID) -> lis
     return list(result.scalars().all())
 
 
-async def get_cache_stats(session: AsyncSession) -> list[dict]:
+async def get_cache_stats(session: AsyncSession) -> list[CacheProviderStats]:
     """Get per-provider cache statistics."""
     result = await session.execute(
         select(
@@ -569,11 +589,11 @@ async def get_cache_stats(session: AsyncSession) -> list[dict]:
         ).group_by(GeocoderCache.provider)
     )
     return [
-        {
-            "provider": row.provider,
-            "cached_count": row.cached_count,
-            "oldest_entry": row.oldest_entry,
-            "newest_entry": row.newest_entry,
-        }
+        CacheProviderStats(
+            provider=row.provider,
+            cached_count=row.cached_count,
+            oldest_entry=row.oldest_entry,
+            newest_entry=row.newest_entry,
+        )
         for row in result.all()
     ]

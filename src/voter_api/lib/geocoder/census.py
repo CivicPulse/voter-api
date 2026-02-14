@@ -60,9 +60,9 @@ class CensusGeocoder(BaseGeocoder):
         except httpx.ConnectError as e:
             logger.warning("Census geocoder connection error")
             raise GeocodingProviderError("census", "Connection to geocoding provider failed") from e
-        except Exception:
+        except Exception as e:
             logger.exception("Census geocoder unexpected error")
-            return None
+            raise GeocodingProviderError("census", f"Unexpected error: {e}") from e
 
     def _parse_response(self, data: dict) -> GeocodingResult | None:
         """Parse Census API response into a GeocodingResult.
@@ -90,6 +90,7 @@ class CensusGeocoder(BaseGeocoder):
 
             matched_address = best.get("matchedAddress")
 
+            # tigerLine presence indicates a TIGER/Line match — higher confidence
             return GeocodingResult(
                 latitude=float(lat),
                 longitude=float(lon),
@@ -97,6 +98,6 @@ class CensusGeocoder(BaseGeocoder):
                 raw_response=data,
                 matched_address=matched_address,
             )
-        except (KeyError, ValueError, TypeError):
-            logger.warning("Failed to parse Census geocoder response")
-            return None
+        except (KeyError, ValueError, TypeError) as e:
+            logger.warning(f"Failed to parse Census geocoder response: {e}")
+            raise GeocodingProviderError("census", f"Failed to parse response: {e}") from e

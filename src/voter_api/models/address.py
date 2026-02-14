@@ -23,8 +23,8 @@ class Address(Base, UUIDMixin, TimestampMixin):
     zipcode: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     # Relationships
-    geocoder_cache_entries = relationship("GeocoderCache", back_populates="address", lazy="selectin")
-    voters = relationship("Voter", back_populates="residence_address", lazy="selectin")
+    geocoder_cache_entries = relationship("GeocoderCache", back_populates="address", lazy="raise")
+    voters = relationship("Voter", back_populates="residence_address", lazy="raise")
 
     __table_args__ = (
         UniqueConstraint("normalized_address", name="uq_address_normalized"),

@@ -21,6 +21,7 @@ class GeocoderCache(Base, UUIDMixin):
     longitude: Mapped[float] = mapped_column(Double, nullable=False)
     confidence_score: Mapped[float | None] = mapped_column(Double, nullable=True)
     raw_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    matched_address: Mapped[str | None] = mapped_column(String, nullable=True)
     cached_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     # FK to canonical address store (nullable for backward compatibility)
