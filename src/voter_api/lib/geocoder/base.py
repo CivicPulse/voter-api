@@ -14,6 +14,36 @@ class GeocodingResult:
     raw_response: dict | None = None
     matched_address: str | None = None
 
+    def __post_init__(self) -> None:
+        if not (-90 <= self.latitude <= 90):
+            msg = f"latitude must be between -90 and 90, got {self.latitude}"
+            raise ValueError(msg)
+        if not (-180 <= self.longitude <= 180):
+            msg = f"longitude must be between -180 and 180, got {self.longitude}"
+            raise ValueError(msg)
+        if self.confidence_score is not None and not (0 <= self.confidence_score <= 1):
+            msg = f"confidence_score must be between 0 and 1, got {self.confidence_score}"
+            raise ValueError(msg)
+
+
+class GeocodingProviderError(Exception):
+    """Raised when a geocoding provider experiences a transport or service error.
+
+    Distinguishes provider failures (timeout, HTTP error, connection error)
+    from a successful response with no match (which returns None).
+
+    Args:
+        provider_name: Name of the failing provider.
+        message: Human-readable error description.
+        status_code: Optional HTTP status code from the provider.
+    """
+
+    def __init__(self, provider_name: str, message: str, status_code: int | None = None) -> None:
+        self.provider_name = provider_name
+        self.message = message
+        self.status_code = status_code
+        super().__init__(f"{provider_name}: {message}")
+
 
 class BaseGeocoder(ABC):
     """Abstract geocoder interface. All providers must implement this."""

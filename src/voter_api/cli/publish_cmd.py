@@ -77,6 +77,9 @@ async def _datasets_command(
     settings = get_settings()
     client = _create_r2_client_from_settings(settings)
 
+    # Narrow type — _create_r2_client_from_settings already validates these are set
+    assert settings.r2_bucket is not None
+
     # Validate bucket access before doing any work
     try:
         validate_config(client, settings.r2_bucket)
@@ -144,6 +147,7 @@ async def _status_command() -> None:
         return
 
     client = _create_r2_client_from_settings(settings)
+    assert settings.r2_bucket is not None
     manifest_key = f"{settings.r2_prefix}manifest.json".lstrip("/")
 
     try:

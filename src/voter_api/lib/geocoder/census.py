@@ -7,7 +7,7 @@ for address-to-coordinate resolution.
 import httpx
 from loguru import logger
 
-from voter_api.lib.geocoder.base import BaseGeocoder, GeocodingResult
+from voter_api.lib.geocoder.base import BaseGeocoder, GeocodingProviderError, GeocodingResult
 
 CENSUS_API_URL = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
 DEFAULT_TIMEOUT = 30.0
@@ -30,7 +30,10 @@ class CensusGeocoder(BaseGeocoder):
             address: Full normalized address string.
 
         Returns:
-            GeocodingResult or None if geocoding failed.
+            GeocodingResult or None if the provider responded but found no match.
+
+        Raises:
+            GeocodingProviderError: On transport or service errors (timeout, HTTP error, connection).
         """
         params = {
             "address": address,
@@ -46,15 +49,20 @@ class CensusGeocoder(BaseGeocoder):
             data = response.json()
             return self._parse_response(data)
 
-        except httpx.TimeoutException:
+        except httpx.TimeoutException as e:
             logger.warning("Census geocoder timeout for address (redacted)")
-            return None
+            raise GeocodingProviderError("census", "Geocoding request timed out") from e
         except httpx.HTTPStatusError as e:
             logger.warning(f"Census geocoder HTTP error {e.response.status_code}")
-            return None
-        except Exception:
+            raise GeocodingProviderError(
+                "census", f"Provider returned HTTP {e.response.status_code}", status_code=e.response.status_code
+            ) from e
+        except httpx.ConnectError as e:
+            logger.warning("Census geocoder connection error")
+            raise GeocodingProviderError("census", "Connection to geocoding provider failed") from e
+        except Exception as e:
             logger.exception("Census geocoder unexpected error")
-            return None
+            raise GeocodingProviderError("census", f"Unexpected error: {e}") from e
 
     def _parse_response(self, data: dict) -> GeocodingResult | None:
         """Parse Census API response into a GeocodingResult.
@@ -82,6 +90,7 @@ class CensusGeocoder(BaseGeocoder):
 
             matched_address = best.get("matchedAddress")
 
+            # tigerLine presence indicates a TIGER/Line match — higher confidence
             return GeocodingResult(
                 latitude=float(lat),
                 longitude=float(lon),
@@ -89,6 +98,6 @@ class CensusGeocoder(BaseGeocoder):
                 raw_response=data,
                 matched_address=matched_address,
             )
-        except (KeyError, ValueError, TypeError):
-            logger.warning("Failed to parse Census geocoder response")
-            return None
+        except (KeyError, ValueError, TypeError) as e:
+            logger.warning(f"Failed to parse Census geocoder response: {e}")
+            raise GeocodingProviderError("census", f"Failed to parse response: {e}") from e

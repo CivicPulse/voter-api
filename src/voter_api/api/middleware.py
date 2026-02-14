@@ -2,10 +2,12 @@
 
 import time
 from collections import defaultdict
+from typing import Any
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.types import ASGIApp
 
 from voter_api.core.config import Settings
 
@@ -17,7 +19,7 @@ def setup_cors(app: FastAPI, settings: Settings) -> None:
         app: The FastAPI application.
         settings: Application settings.
     """
-    kwargs: dict[str, object] = {
+    kwargs: dict[str, Any] = {
         "allow_credentials": True,
         "allow_methods": ["*"],
         "allow_headers": ["*"],
@@ -56,7 +58,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     Limits requests per IP address with a sliding window approach.
     """
 
-    def __init__(self, app: FastAPI, requests_per_minute: int = 60) -> None:
+    def __init__(self, app: ASGIApp, requests_per_minute: int = 60) -> None:
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
         self._request_counts: dict[str, list[float]] = defaultdict(list)

@@ -3,9 +3,10 @@
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.exporter import export_voters
@@ -103,7 +104,7 @@ async def process_export(
 EXPORT_STREAM_BATCH_SIZE = 1000
 
 
-def _build_export_query(filters: dict) -> select:
+def _build_export_query(filters: dict) -> Select[Any]:
     """Build the SQLAlchemy query for export with applied filters.
 
     Args:

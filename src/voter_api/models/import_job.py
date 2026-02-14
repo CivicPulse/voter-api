@@ -30,7 +30,7 @@ class ImportJob(Base, UUIDMixin):
     records_soft_deleted: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Error tracking
-    error_log: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    error_log: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
 
     # Checkpoint for resume
     last_processed_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)

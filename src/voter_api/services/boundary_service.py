@@ -2,6 +2,7 @@
 
 import uuid
 from pathlib import Path
+from typing import Any
 
 from geoalchemy2.shape import from_shape
 from loguru import logger
@@ -13,7 +14,7 @@ from voter_api.models.boundary import Boundary
 from voter_api.models.county_district import CountyDistrict
 
 
-def _county_geometry_subquery(county_name: str):
+def _county_geometry_subquery(county_name: str) -> Any:
     """Build a scalar subquery returning the geometry of a named county boundary.
 
     Used as a spatial fallback for boundary types not covered by the
@@ -37,7 +38,7 @@ def _county_geometry_subquery(county_name: str):
     )
 
 
-def _build_county_filter(county_name: str):
+def _build_county_filter(county_name: str) -> Any:
     """Build a hybrid county filter combining relation table, column, and spatial lookups.
 
     Four-tier OR filter:
@@ -168,8 +169,8 @@ async def import_boundaries(
         meta_count = 0
         for b in imported:
             if b.properties:
-                result = await upsert_precinct_metadata(session, b.id, b.properties)
-                if result:
+                meta = await upsert_precinct_metadata(session, b.id, b.properties)
+                if meta:
                     meta_count += 1
         await session.commit()
         logger.info(f"Upserted {meta_count} precinct metadata records")
@@ -263,6 +264,41 @@ async def find_containing_boundaries(
 
     if county:
         query = query.where(_build_county_filter(county))
+
+    result = await session.execute(query)
+    return list(result.scalars().all())
+
+
+async def find_boundaries_at_point(
+    session: AsyncSession,
+    lat: float,
+    lng: float,
+    accuracy_meters: float | None = None,
+) -> list[Boundary]:
+    """Find all boundaries containing a point, optionally with accuracy radius.
+
+    Uses ST_Contains for exact point matching. When accuracy_meters is provided,
+    uses ST_DWithin with a degree-converted radius for expanded search.
+
+    Args:
+        session: Database session.
+        lat: WGS84 latitude.
+        lng: WGS84 longitude.
+        accuracy_meters: Optional GPS accuracy radius in meters.
+
+    Returns:
+        List of boundaries containing/intersecting the point.
+    """
+    point_wkt = f"SRID=4326;POINT({lng} {lat})"
+    point_geom = func.ST_GeomFromEWKT(point_wkt)
+
+    if accuracy_meters is not None and accuracy_meters > 0:
+        from voter_api.lib.geocoder.point_lookup import meters_to_degrees
+
+        radius_deg = meters_to_degrees(accuracy_meters, lat)
+        query = select(Boundary).where(func.ST_DWithin(Boundary.geometry, point_geom, radius_deg))
+    else:
+        query = select(Boundary).where(func.ST_Contains(Boundary.geometry, point_geom))
 
     result = await session.execute(query)
     return list(result.scalars().all())

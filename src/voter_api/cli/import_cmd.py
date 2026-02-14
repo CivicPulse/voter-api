@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 
 import typer
+from sqlalchemy.ext.asyncio import AsyncSession
 
 import_app = typer.Typer()
 
@@ -336,7 +337,7 @@ def _filter_by_state_fips(shp_path: Path, state_fips: str) -> tuple[list, list[d
 
 
 async def _import_filtered_boundaries(
-    session: object,
+    session: AsyncSession,
     boundary_data: list,
     boundary_type: str,
     source: str,

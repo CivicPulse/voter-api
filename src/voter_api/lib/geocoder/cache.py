@@ -1,5 +1,6 @@
 """Per-provider database caching layer for geocoding results."""
 
+import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import select
@@ -39,6 +40,7 @@ async def cache_lookup(
         longitude=entry.longitude,
         confidence_score=entry.confidence_score,
         raw_response=entry.raw_response,
+        matched_address=entry.matched_address,
     )
 
 
@@ -47,6 +49,8 @@ async def cache_store(
     provider: str,
     normalized_address: str,
     result: GeocodingResult,
+    *,
+    address_id: uuid.UUID | None = None,
 ) -> None:
     """Store a geocoding result in the cache.
 
@@ -55,6 +59,7 @@ async def cache_store(
         provider: Provider name.
         normalized_address: Normalized address string (cache key).
         result: Geocoding result to cache.
+        address_id: Optional FK to the canonical address record.
     """
     entry = GeocoderCache(
         provider=provider,
@@ -63,6 +68,8 @@ async def cache_store(
         longitude=result.longitude,
         confidence_score=result.confidence_score,
         raw_response=result.raw_response,
+        matched_address=result.matched_address,
+        address_id=address_id,
         cached_at=datetime.now(UTC),
     )
     session.add(entry)

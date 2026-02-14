@@ -3,7 +3,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Index, Integer, String
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -92,7 +92,13 @@ class Voter(Base, UUIDMixin, TimestampMixin):
     last_seen_in_import_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     first_seen_in_import_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
+    # FK to canonical address store (nullable — set during post-import processing)
+    residence_address_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("addresses.id"), nullable=True, index=True
+    )
+
     # Relationships
     geocoded_locations = relationship("GeocodedLocation", back_populates="voter", lazy="selectin")
+    residence_address = relationship("Address", back_populates="voters")
 
     __table_args__ = (Index("ix_voters_name_search", "last_name", "first_name"),)

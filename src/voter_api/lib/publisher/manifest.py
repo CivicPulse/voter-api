@@ -107,7 +107,9 @@ class ManifestCache:
             return None
         # Convert monotonic offset to approximate wall-clock time
         elapsed = time.monotonic() - self._cached_at
-        return datetime.now(tz=UTC) - __import__("datetime").timedelta(seconds=elapsed)
+        from datetime import timedelta
+
+        return datetime.now(tz=UTC) - timedelta(seconds=elapsed)
 
     def get_data_unchecked(self) -> ManifestData | None:
         """Return cached data regardless of TTL (for stale-while-revalidate).

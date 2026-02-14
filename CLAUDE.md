@@ -202,6 +202,7 @@ Piku picks a new random port on each deploy. The `piku-uwsgi` emperor auto-resta
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes
+- 003-address-geocoding-endpoint: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, httpx, Alembic
 - 002-static-dataset-publish: Added Python 3.13 + FastAPI, SQLAlchemy 2.x + GeoAlchemy2, Typer, Pydantic v2, boto3 (new), Loguru
 
 ### 002-static-dataset-publish
@@ -209,10 +210,11 @@ Piku picks a new random port on each deploy. The `piku-uwsgi` emperor auto-resta
 **County Metadata** — Census TIGER/Line attributes are stored in a dedicated `county_metadata` table (migration 011), keyed by FIPS GEOID. Populated automatically during `import all-boundaries` from the same county shapefile. The boundary detail endpoint (`GET /api/v1/boundaries/{id}`) includes a `county_metadata` field when `boundary_type == "county"`, with typed fields like FIPS codes, statistical area codes, land/water area, and computed km² values. Designed as the join point for future Census ACS demographic enrichment.
 
 Key files:
+- `src/voter_api/models/county_metadata.py`
+- `src/voter_api/services/county_metadata_service.py`
 
-- `src/voter_api/models/county_metadata.py` — ORM model (18 typed columns)
-- `src/voter_api/services/county_metadata_service.py` — import (upsert by GEOID) and query
 
 ## Active Technologies
+- Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, httpx, Alembic (003-address-geocoding-endpoint)
+- PostgreSQL 15+ / PostGIS 3.x (existing `geocoder_cache`, `boundaries`, `voters` tables; new `addresses` table) (003-address-geocoding-endpoint)
 - Python 3.13 + FastAPI, SQLAlchemy 2.x + GeoAlchemy2, Typer, Pydantic v2, boto3 (new), Loguru (002-static-dataset-publish)
-- PostgreSQL + PostGIS (read-only for this feature), Cloudflare R2 (new, S3-compatible) (002-static-dataset-publish)
