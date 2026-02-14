@@ -1,6 +1,7 @@
 """Tests for CORS, security headers, and rate limiting middleware."""
 
 import time
+from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI
@@ -94,21 +95,19 @@ class TestRateLimitMiddleware:
     def test_rate_limit_window_expires(self) -> None:
         """Old requests outside the 60s window are cleaned up."""
         app = _create_test_app()
-        middleware = RateLimitMiddleware(app, requests_per_minute=2)
+        app.add_middleware(RateLimitMiddleware, requests_per_minute=2)
+        client = TestClient(app)
 
-        # Simulate old timestamps
-        ip = "127.0.0.1"
-        now = time.time()
-        middleware._request_counts[ip] = [now - 120, now - 90]  # Old entries
+        base_time = time.time()
 
-        client = TestClient(_create_test_app_with_rate_limit(2))
-        # After cleanup, the old entries should be removed
-        response = client.get("/test")
-        assert response.status_code == 200
+        # Make 2 requests at base_time (fills the limit)
+        with patch("voter_api.api.middleware.time.time", return_value=base_time):
+            assert client.get("/test").status_code == 200
+            assert client.get("/test").status_code == 200
+            # Third request should be blocked
+            assert client.get("/test").status_code == 429
 
-
-def _create_test_app_with_rate_limit(rpm: int) -> FastAPI:
-    """Create app with rate limiting."""
-    app = _create_test_app()
-    app.add_middleware(RateLimitMiddleware, requests_per_minute=rpm)
-    return app
+        # Advance time by 61 seconds — old entries should be cleaned up
+        with patch("voter_api.api.middleware.time.time", return_value=base_time + 61):
+            response = client.get("/test")
+            assert response.status_code == 200

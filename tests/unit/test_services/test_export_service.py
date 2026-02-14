@@ -218,6 +218,7 @@ class TestProcessExport:
         with (
             patch(
                 "voter_api.services.export_service._fetch_export_records",
+                new_callable=AsyncMock,
                 return_value=[{"name": "test"}],
             ),
             patch(
@@ -238,6 +239,7 @@ class TestProcessExport:
         with (
             patch(
                 "voter_api.services.export_service._fetch_export_records",
+                new_callable=AsyncMock,
                 side_effect=RuntimeError("DB error"),
             ),
             pytest.raises(RuntimeError),
@@ -260,6 +262,7 @@ class TestProcessExport:
             with (
                 patch(
                     "voter_api.services.export_service._fetch_export_records",
+                    new_callable=AsyncMock,
                     return_value=[],
                 ),
                 patch(

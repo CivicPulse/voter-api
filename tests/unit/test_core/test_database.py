@@ -19,14 +19,13 @@ class TestGetEngine:
         finally:
             db_module._engine = original_engine
 
-    def test_returns_engine_when_initialized(self) -> None:
+    @pytest.mark.asyncio
+    async def test_returns_engine_when_initialized(self) -> None:
         engine = init_engine("sqlite+aiosqlite:///:memory:")
         try:
             assert get_engine() is engine
         finally:
-            import asyncio
-
-            asyncio.get_event_loop().run_until_complete(dispose_engine())
+            await dispose_engine()
 
 
 class TestGetSessionFactory:
@@ -45,16 +44,15 @@ class TestGetSessionFactory:
 class TestInitEngine:
     """Tests for init_engine."""
 
-    def test_creates_engine_and_factory(self) -> None:
+    @pytest.mark.asyncio
+    async def test_creates_engine_and_factory(self) -> None:
         engine = init_engine("sqlite+aiosqlite:///:memory:")
         try:
             assert engine is not None
             factory = get_session_factory()
             assert factory is not None
         finally:
-            import asyncio
-
-            asyncio.get_event_loop().run_until_complete(dispose_engine())
+            await dispose_engine()
 
 
 class TestDisposeEngine:

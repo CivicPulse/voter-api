@@ -226,6 +226,7 @@ class TestVerifyAddress:
         )
         with patch(
             "voter_api.services.geocoding_service.prefix_search",
+            new_callable=AsyncMock,
             return_value=[suggestion],
         ):
             result = await verify_address(session, "123 Main St, Atlanta, GA 30301")

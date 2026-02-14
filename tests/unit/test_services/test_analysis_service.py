@@ -280,12 +280,19 @@ class TestProcessAnalysisRun:
         comparison_result.mismatch_details = None
 
         with (
-            patch("voter_api.services.analysis_service.find_voter_boundaries", return_value={"congressional": "05"}),
+            patch(
+                "voter_api.services.analysis_service.find_voter_boundaries",
+                new_callable=AsyncMock,
+                return_value={"congressional": "05"},
+            ),
             patch(
                 "voter_api.services.analysis_service.extract_registered_boundaries",
                 return_value={"congressional": "05"},
             ),
-            patch("voter_api.services.analysis_service.compare_boundaries", return_value=comparison_result),
+            patch(
+                "voter_api.services.analysis_service.compare_boundaries",
+                return_value=comparison_result,
+            ),
         ):
             await process_analysis_run(session, run, batch_size=10)
 
@@ -333,12 +340,19 @@ class TestProcessAnalysisRun:
         comparison_result.mismatch_details = [{"type": "congressional", "registered": "05", "determined": "06"}]
 
         with (
-            patch("voter_api.services.analysis_service.find_voter_boundaries", return_value={"congressional": "06"}),
+            patch(
+                "voter_api.services.analysis_service.find_voter_boundaries",
+                new_callable=AsyncMock,
+                return_value={"congressional": "06"},
+            ),
             patch(
                 "voter_api.services.analysis_service.extract_registered_boundaries",
                 return_value={"congressional": "05"},
             ),
-            patch("voter_api.services.analysis_service.compare_boundaries", return_value=comparison_result),
+            patch(
+                "voter_api.services.analysis_service.compare_boundaries",
+                return_value=comparison_result,
+            ),
         ):
             await process_analysis_run(session, run, batch_size=10)
 
