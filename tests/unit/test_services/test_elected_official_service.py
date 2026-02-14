@@ -12,6 +12,7 @@ from voter_api.services.elected_official_service import (
     _find_matching_official,
     _promote_source_fields,
     approve_official,
+    auto_create_officials_from_sources,
     create_official,
     delete_official,
     get_official,
@@ -79,6 +80,24 @@ class TestListOfficials:
         data_query = _compile_query(calls[1][0][0])
         assert "20" in data_query  # offset
         assert "10" in data_query  # limit
+
+    @pytest.mark.asyncio
+    async def test_district_identifier_filter(self) -> None:
+        """Filters by district_identifier when provided."""
+        session = _mock_session()
+        await list_officials(session, district_identifier="5")
+        calls = session.execute.call_args_list
+        queries = [_compile_query(call[0][0]) for call in calls]
+        assert any("district_identifier" in q.lower() and "'5'" in q for q in queries)
+
+    @pytest.mark.asyncio
+    async def test_status_filter(self) -> None:
+        """Filters by status when provided."""
+        session = _mock_session()
+        await list_officials(session, status="approved")
+        calls = session.execute.call_args_list
+        queries = [_compile_query(call[0][0]) for call in calls]
+        assert any("approved" in q.lower() for q in queries)
 
 
 class TestGetOfficial:
@@ -352,6 +371,92 @@ class TestUpsertSourceRecords:
         assert existing.full_name == "Nikema Williams Updated"
         assert existing.party == "Democratic"
         assert existing.is_current is True
+
+
+class TestAutoCreateOfficialsFromSources:
+    """Tests for auto_create_officials_from_sources."""
+
+    @pytest.mark.asyncio
+    async def test_creates_official_from_unlinked_source(self) -> None:
+        """Creates a new official from an unlinked source record."""
+        source = MagicMock()
+        source.source_name = "open_states"
+        source.source_record_id = "ocd-person/123"
+        source.boundary_type = "state_senate"
+        source.district_identifier = "39"
+        source.full_name = "Sally Harrell"
+        source.first_name = "Sally"
+        source.last_name = "Harrell"
+        source.party = "Democratic"
+        source.title = "State Senator"
+        source.photo_url = None
+        source.term_start_date = None
+        source.term_end_date = None
+        source.website = None
+        source.email = None
+        source.phone = None
+        source.office_address = None
+        source.elected_official_id = None
+
+        session = AsyncMock()
+        # First call: find unlinked sources
+        unlinked_result = MagicMock()
+        unlinked_result.scalars.return_value.all.return_value = [source]
+        # Second call: _find_matching_official returns None (no existing official)
+        no_match_result = MagicMock()
+        no_match_result.scalar_one_or_none.return_value = None
+
+        session.execute.side_effect = [unlinked_result, no_match_result]
+        session.flush = AsyncMock()
+        session.commit = AsyncMock()
+
+        result = await auto_create_officials_from_sources(session, "state_senate", "39")
+        assert len(result) == 1
+        session.add.assert_called_once()
+        session.flush.assert_awaited_once()
+        session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_links_to_existing_official(self) -> None:
+        """Links unlinked source to existing official instead of creating duplicate."""
+        existing_official = MagicMock()
+        existing_official.id = uuid.uuid4()
+
+        source = MagicMock()
+        source.source_name = "open_states"
+        source.source_record_id = "ocd-person/123"
+        source.boundary_type = "state_senate"
+        source.district_identifier = "39"
+        source.full_name = "Sally Harrell"
+        source.elected_official_id = None
+
+        session = AsyncMock()
+        # First call: find unlinked sources
+        unlinked_result = MagicMock()
+        unlinked_result.scalars.return_value.all.return_value = [source]
+        # Second call: _find_matching_official returns existing official
+        match_result = MagicMock()
+        match_result.scalar_one_or_none.return_value = existing_official
+
+        session.execute.side_effect = [unlinked_result, match_result]
+        session.commit = AsyncMock()
+
+        result = await auto_create_officials_from_sources(session, "state_senate", "39")
+        assert len(result) == 0  # No new officials created
+        assert source.elected_official_id == existing_official.id
+
+    @pytest.mark.asyncio
+    async def test_no_unlinked_sources(self) -> None:
+        """Returns empty list when no unlinked sources exist."""
+        session = AsyncMock()
+        empty_result = MagicMock()
+        empty_result.scalars.return_value.all.return_value = []
+        session.execute.return_value = empty_result
+        session.commit = AsyncMock()
+
+        result = await auto_create_officials_from_sources(session, "congressional", "5")
+        assert result == []
+        session.commit.assert_awaited_once()
 
 
 class TestFindMatchingOfficial:
