@@ -62,9 +62,7 @@ def upgrade() -> None:
     op.create_unique_constraint(
         "uq_official_district_name", "elected_officials", ["boundary_type", "district_identifier", "full_name"]
     )
-    op.create_check_constraint(
-        "ck_official_status", "elected_officials", "status IN ('auto', 'approved', 'manual')"
-    )
+    op.create_check_constraint("ck_official_status", "elected_officials", "status IN ('auto', 'approved', 'manual')")
 
     op.create_table(
         "elected_official_sources",
