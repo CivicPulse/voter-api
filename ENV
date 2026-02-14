@@ -5,7 +5,7 @@
 # set via `piku config:set` on the server rather than committed here.
 
 # --- Piku / nginx settings ---
-NGINX_SERVER_NAME=voteapi.kerryhatcher.com
+NGINX_SERVER_NAME=voteapi.civpulse.org
 NGINX_CLOUDFLARE_ACL=true
 BIND_ADDRESS=0.0.0.0
 
@@ -34,7 +34,7 @@ LOG_LEVEL=INFO
 
 # --- CORS ---
 CORS_ORIGINS=
-CORS_ORIGIN_REGEX=https://(.*\.voter-web\.pages\.dev|.*\.kerryhatcher\.com)
+CORS_ORIGIN_REGEX=https://(.*\.voter-web\.pages\.dev|.*\.civpulse\.org|.*\.kerryhatcher\.com)
 
 # --- API ---
 API_V1_PREFIX=/api/v1

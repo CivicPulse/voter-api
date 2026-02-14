@@ -123,7 +123,8 @@ tests/
 
 ## Deployment (Piku)
 
-**Production URL**: `https://voteapi.kerryhatcher.com`
+**Production URL**: `https://voteapi.civpulse.org`
+**Legacy URL**: `https://voteapi.kerryhatcher.com` (still functional via CORS regex)
 
 The app deploys to a piku server (`hatchweb`) via `git push piku main`. Two git remotes are configured:
 
@@ -150,7 +151,7 @@ ssh piku@hatchweb.tailb56d83.ts.net -- config:set voter-api \
 
 External traffic reaches the app via a Cloudflare Tunnel (`hatchweb`), not direct port exposure:
 
-- **Domain**: `voteapi.kerryhatcher.com` (DNS managed by Cloudflare)
+- **Domains**: `voteapi.civpulse.org` (primary), `voteapi.kerryhatcher.com` (legacy) — both DNS managed by Cloudflare
 - **Tunnel route**: `HTTP://localhost:80` (Cloudflare terminates TLS at the edge)
 - Let's Encrypt certs are issued via ACME HTTP-01 through the tunnel. Piku also generates SSL listeners on port 443 — if another site on the server defines conflicting SSL protocol options (e.g. `ssl` vs `ssl http2`), piku's nginx config test will fail and delete the config. The hatchertechnology.com site was disabled to resolve this
 
