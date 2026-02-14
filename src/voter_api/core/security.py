@@ -23,7 +23,10 @@ def hash_password(password: str) -> str:
     """
     encoded = password.encode("utf-8")
     if len(encoded) > 72:
-        raise ValueError("password cannot be longer than 72 bytes")
+        raise ValueError(
+            f"Password exceeds bcrypt's 72-byte limit (currently {len(encoded)} bytes). "
+            "Please use a shorter password."
+        )
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(encoded, salt).decode("utf-8")
 

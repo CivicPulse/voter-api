@@ -126,7 +126,7 @@ class TestPasswordSecurity:
     def test_long_password_raises_error(self) -> None:
         """Bcrypt rejects passwords over 72 bytes."""
         long_pw = "A" * 100
-        with pytest.raises(ValueError, match="password cannot be longer than 72 bytes"):
+        with pytest.raises(ValueError, match=r"Password exceeds bcrypt's 72-byte limit.*currently 100 bytes"):
             hash_password(long_pw)
 
     def test_72_byte_password_works(self) -> None:
