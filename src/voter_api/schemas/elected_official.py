@@ -2,10 +2,13 @@
 
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from voter_api.schemas.common import PaginationMeta
+
+VALID_OFFICIAL_STATUSES = Literal["auto", "approved", "manual"]
 
 # ---------------------------------------------------------------------------
 # Source schemas
@@ -56,7 +59,7 @@ class ElectedOfficialSummaryResponse(BaseModel):
     party: str | None = None
     title: str | None = None
     photo_url: str | None = None
-    status: str
+    status: VALID_OFFICIAL_STATUSES
     created_at: datetime
 
 

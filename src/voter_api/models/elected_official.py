@@ -15,7 +15,7 @@ Admin approval workflow:
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -76,6 +76,7 @@ class ElectedOfficial(Base, UUIDMixin):
 
     __table_args__ = (
         UniqueConstraint("boundary_type", "district_identifier", "full_name", name="uq_official_district_name"),
+        CheckConstraint("status IN ('auto', 'approved', 'manual')", name="ck_official_status"),
         Index("ix_elected_officials_district", "boundary_type", "district_identifier"),
         Index("ix_elected_officials_name", "last_name", "first_name"),
     )

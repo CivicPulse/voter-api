@@ -187,6 +187,28 @@ class TestUpdateOfficial:
         # party should NOT be changed because value is None
         assert official.party == "Democratic"
 
+    @pytest.mark.asyncio
+    async def test_rejects_non_allowlisted_fields(self) -> None:
+        """Fields not in _UPDATABLE_FIELDS are silently ignored (mass-assignment guard)."""
+        session = _mock_session()
+        session.refresh = AsyncMock()
+
+        official = MagicMock()
+        official.status = "auto"
+        official.approved_by_id = None
+        official.id = uuid.uuid4()
+        original_id = official.id
+
+        await update_official(
+            session,
+            official,
+            {"status": "approved", "approved_by_id": uuid.uuid4(), "id": uuid.uuid4()},
+        )
+        # Internal fields must NOT be modified via update_official
+        assert official.status == "auto"
+        assert official.approved_by_id is None
+        assert official.id == original_id
+
 
 class TestDeleteOfficial:
     """Tests for delete_official."""

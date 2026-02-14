@@ -116,6 +116,39 @@ class TestElectedOfficialSummaryResponse:
         assert resp.boundary_type == "congressional"
         assert resp.status == "approved"
 
+    def test_invalid_status_rejected(self) -> None:
+        """Invalid status value is rejected by Literal validation."""
+        obj = MagicMock()
+        obj.id = uuid.uuid4()
+        obj.boundary_type = "congressional"
+        obj.district_identifier = "5"
+        obj.full_name = "Nikema Williams"
+        obj.party = "Democratic"
+        obj.title = None
+        obj.photo_url = None
+        obj.status = "invalid_status"
+        obj.created_at = datetime.now(UTC)
+
+        with pytest.raises(ValidationError, match="status"):
+            ElectedOfficialSummaryResponse.model_validate(obj)
+
+    def test_all_valid_statuses_accepted(self) -> None:
+        """All three valid status values are accepted."""
+        for valid_status in ("auto", "approved", "manual"):
+            obj = MagicMock()
+            obj.id = uuid.uuid4()
+            obj.boundary_type = "congressional"
+            obj.district_identifier = "5"
+            obj.full_name = "Test Official"
+            obj.party = None
+            obj.title = None
+            obj.photo_url = None
+            obj.status = valid_status
+            obj.created_at = datetime.now(UTC)
+
+            resp = ElectedOfficialSummaryResponse.model_validate(obj)
+            assert resp.status == valid_status
+
 
 class TestElectedOfficialDetailResponse:
     """Tests for ElectedOfficialDetailResponse."""

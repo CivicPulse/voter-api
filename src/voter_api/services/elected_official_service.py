@@ -10,6 +10,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from voter_api.lib.officials.base import OfficialRecord
 from voter_api.models.elected_official import ElectedOfficial, ElectedOfficialSource
 
+# Fields that may be set via the update endpoint.  Anything outside this set
+# is silently ignored, preventing mass-assignment of internal fields such as
+# ``status``, ``approved_by_id``, or ``id``.
+_UPDATABLE_FIELDS: frozenset[str] = frozenset(
+    {
+        "full_name",
+        "first_name",
+        "last_name",
+        "party",
+        "title",
+        "photo_url",
+        "term_start_date",
+        "term_end_date",
+        "last_election_date",
+        "next_election_date",
+        "website",
+        "email",
+        "phone",
+        "office_address",
+        "external_ids",
+    }
+)
+
 # ---------------------------------------------------------------------------
 # Read operations (public)
 # ---------------------------------------------------------------------------
@@ -177,7 +200,7 @@ async def update_official(
         The updated ElectedOfficial.
     """
     for field_name, value in updates.items():
-        if value is not None and hasattr(official, field_name):
+        if value is not None and field_name in _UPDATABLE_FIELDS:
             setattr(official, field_name, value)
     await session.commit()
     await session.refresh(official)

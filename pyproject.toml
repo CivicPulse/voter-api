@@ -39,6 +39,7 @@ dev = [
     "pip-audit>=2.7.0",
     "aiosqlite>=0.22.1",
     "moto[s3]>=5.1.21",
+    "bandit>=1.9.3",
 ]
 
 [project.scripts]
