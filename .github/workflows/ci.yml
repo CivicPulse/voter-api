@@ -56,7 +56,7 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --dev
-      - run: uv run pytest --cov=voter_api --cov-report=term-missing --cov-fail-under=50
+      - run: uv run pytest --cov=voter_api --cov-report=term-missing --cov-fail-under=70
 
   audit:
     runs-on: ubuntu-latest
