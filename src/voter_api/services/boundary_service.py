@@ -2,6 +2,7 @@
 
 import uuid
 from pathlib import Path
+from typing import Any
 
 from geoalchemy2.shape import from_shape
 from loguru import logger
@@ -13,7 +14,7 @@ from voter_api.models.boundary import Boundary
 from voter_api.models.county_district import CountyDistrict
 
 
-def _county_geometry_subquery(county_name: str):
+def _county_geometry_subquery(county_name: str) -> Any:
     """Build a scalar subquery returning the geometry of a named county boundary.
 
     Used as a spatial fallback for boundary types not covered by the
@@ -37,7 +38,7 @@ def _county_geometry_subquery(county_name: str):
     )
 
 
-def _build_county_filter(county_name: str):
+def _build_county_filter(county_name: str) -> Any:
     """Build a hybrid county filter combining relation table, column, and spatial lookups.
 
     Four-tier OR filter:
@@ -168,8 +169,8 @@ async def import_boundaries(
         meta_count = 0
         for b in imported:
             if b.properties:
-                result = await upsert_precinct_metadata(session, b.id, b.properties)
-                if result:
+                meta = await upsert_precinct_metadata(session, b.id, b.properties)
+                if meta:
                     meta_count += 1
         await session.commit()
         logger.info(f"Upserted {meta_count} precinct metadata records")

@@ -14,6 +14,7 @@ from voter_api.schemas.geocoding import (
     AddressGeocodeResponse,
     AddressVerifyResponse,
     BatchGeocodingRequest,
+    CacheProviderStats,
     CacheStatsResponse,
     DistrictInfo,
     GeocodingJobResponse,
@@ -211,4 +212,4 @@ async def get_cache_statistics(
 ) -> CacheStatsResponse:
     """Get per-provider geocoding cache statistics."""
     stats = await get_cache_stats(session)
-    return CacheStatsResponse(providers=stats)
+    return CacheStatsResponse(providers=[CacheProviderStats(**s) for s in stats])

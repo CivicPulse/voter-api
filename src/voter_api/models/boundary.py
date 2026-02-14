@@ -1,6 +1,7 @@
 """Boundary model — political/administrative district and precinct boundaries."""
 
 from datetime import date, datetime
+from typing import Any
 
 from geoalchemy2 import Geometry
 from sqlalchemy import Date, DateTime, Index, String, UniqueConstraint, func
@@ -41,7 +42,7 @@ class Boundary(Base, UUIDMixin):
     boundary_identifier: Mapped[str] = mapped_column(String(50), nullable=False)
     source: Mapped[str] = mapped_column(String(20), nullable=False)
     county: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
-    geometry: Mapped[object] = mapped_column(
+    geometry: Mapped[Any] = mapped_column(
         Geometry(geometry_type="MULTIPOLYGON", srid=4326),
         nullable=False,
     )

@@ -88,7 +88,7 @@ async def list_runs(
         pagination=PaginationMeta(
             page=page,
             page_size=page_size,
-            total_items=total,
+            total=total,
             total_pages=(total + page_size - 1) // page_size,
         ),
     )
@@ -161,7 +161,7 @@ async def get_run_results(
         pagination=PaginationMeta(
             page=page,
             page_size=page_size,
-            total_items=total,
+            total=total,
             total_pages=(total + page_size - 1) // page_size,
         ),
     )

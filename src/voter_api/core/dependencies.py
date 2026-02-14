@@ -9,6 +9,7 @@ from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -89,7 +90,7 @@ def require_role(*roles: str) -> Callable[..., Any]:
     return role_checker
 
 
-def filter_by_sensitivity(data: dict[str, Any], user_role: str, schema_class: type) -> dict[str, Any]:
+def filter_by_sensitivity(data: dict[str, Any], user_role: str, schema_class: type[BaseModel]) -> dict[str, Any]:
     """Filter response fields based on user role and data sensitivity tier.
 
     Viewers can only see government-sourced fields. Analysts and admins
@@ -108,7 +109,8 @@ def filter_by_sensitivity(data: dict[str, Any], user_role: str, schema_class: ty
 
     filtered = {}
     for field_name, field_info in schema_class.model_fields.items():
-        metadata = field_info.json_schema_extra or {}
+        extra = field_info.json_schema_extra
+        metadata = extra if isinstance(extra, dict) else {}
         tier = metadata.get("sensitivity_tier")
         if tier != SensitivityTier.SYSTEM_GENERATED.value:
             filtered[field_name] = data.get(field_name)

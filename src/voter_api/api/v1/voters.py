@@ -73,7 +73,7 @@ async def search_voters_endpoint(
         pagination=PaginationMeta(
             page=page,
             page_size=page_size,
-            total_items=total,
+            total=total,
             total_pages=(total + page_size - 1) // page_size,
         ),
     )

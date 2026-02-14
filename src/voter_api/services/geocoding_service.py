@@ -18,7 +18,7 @@ from voter_api.lib.geocoder import (
     parse_address_components,
     reconstruct_address,
 )
-from voter_api.lib.geocoder.base import GeocodingProviderError, GeocodingResult
+from voter_api.lib.geocoder.base import BaseGeocoder, GeocodingProviderError, GeocodingResult
 from voter_api.lib.geocoder.point_lookup import validate_georgia_coordinates
 from voter_api.lib.geocoder.verify import validate_address_components
 from voter_api.models.geocoded_location import GeocodedLocation
@@ -359,7 +359,7 @@ async def process_geocoding_job(
 
 
 async def _geocode_with_retry(
-    geocoder: object,
+    geocoder: BaseGeocoder,
     address: str,
     semaphore: asyncio.Semaphore,
 ) -> GeocodingResult | None:
@@ -379,7 +379,7 @@ async def _geocode_with_retry(
     for attempt in range(MAX_RETRIES):
         try:
             async with semaphore:
-                result = await geocoder.geocode(address)  # type: ignore[union-attr]
+                result = await geocoder.geocode(address)
                 if result is not None:
                     return result
         except GeocodingProviderError as e:

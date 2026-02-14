@@ -3,7 +3,7 @@
 Provides format-specific writers and a unified export function.
 """
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -13,7 +13,7 @@ from voter_api.lib.exporter.geojson_writer import write_geojson
 from voter_api.lib.exporter.json_writer import write_json
 
 # Format registry mapping format names to writer functions
-_WRITERS = {
+_WRITERS: dict[str, Callable[..., int]] = {
     "csv": write_csv,
     "json": write_json,
     "geojson": write_geojson,

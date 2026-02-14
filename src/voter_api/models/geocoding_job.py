@@ -33,7 +33,7 @@ class GeocodingJob(Base, UUIDMixin):
     last_processed_voter_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Error tracking
-    error_log: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    error_log: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
 
     # Metadata
     triggered_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)

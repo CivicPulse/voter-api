@@ -6,6 +6,7 @@ geometries to MultiPolygon for consistent storage.
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 from loguru import logger
@@ -103,7 +104,7 @@ def read_shapefile(file_path: Path) -> list[BoundaryData]:
     return boundaries
 
 
-def _is_remainder_polygon(row: object, columns: object) -> bool:
+def _is_remainder_polygon(row: object, columns: Any) -> bool:
     """Detect remainder polygons where a district column exists but is NaN/empty.
 
     Some shapefiles include a statewide or county-wide "remainder" polygon

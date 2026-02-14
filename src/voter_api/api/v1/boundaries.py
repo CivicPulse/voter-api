@@ -10,7 +10,7 @@ from loguru import logger
 from shapely.geometry import mapping
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from voter_api.core.config import get_settings
+from voter_api.core.config import Settings, get_settings
 from voter_api.core.dependencies import get_async_session, require_role
 from voter_api.lib.publisher.manifest import ManifestCache, get_redirect_url
 from voter_api.lib.publisher.storage import fetch_manifest
@@ -50,7 +50,7 @@ def _get_manifest_cache() -> ManifestCache:
 
 
 async def _try_redirect(
-    settings: object,
+    settings: Settings,
     boundary_type: str | None,
     county: str | None,
     source: str | None,
@@ -67,7 +67,13 @@ async def _try_redirect(
 
     cache = _get_manifest_cache()
 
-    if cache.is_stale():
+    if (
+        cache.is_stale()
+        and settings.r2_account_id
+        and settings.r2_access_key_id
+        and settings.r2_secret_access_key
+        and settings.r2_bucket
+    ):
         try:
             client = create_r2_client(
                 settings.r2_account_id,
@@ -311,18 +317,18 @@ async def get_boundary_detail(
 
     # Include county metadata for county boundaries
     if boundary.boundary_type == "county":
-        metadata = await get_county_metadata_by_geoid(session, boundary.boundary_identifier)
-        if metadata:
+        county_meta = await get_county_metadata_by_geoid(session, boundary.boundary_identifier)
+        if county_meta:
             from voter_api.schemas.county_metadata import CountyMetadataResponse
 
-            response_data["county_metadata"] = CountyMetadataResponse.model_validate(metadata)
+            response_data["county_metadata"] = CountyMetadataResponse.model_validate(county_meta)
 
     # Include precinct metadata for county_precinct boundaries
     if boundary.boundary_type == "county_precinct":
-        metadata = await get_precinct_metadata_by_boundary(session, boundary.id)
-        if metadata:
+        precinct_meta = await get_precinct_metadata_by_boundary(session, boundary.id)
+        if precinct_meta:
             from voter_api.schemas.precinct_metadata import PrecinctMetadataResponse
 
-            response_data["precinct_metadata"] = PrecinctMetadataResponse.model_validate(metadata)
+            response_data["precinct_metadata"] = PrecinctMetadataResponse.model_validate(precinct_meta)
 
     return BoundaryDetailResponse(**response_data)
