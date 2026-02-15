@@ -29,6 +29,7 @@ BOUNDARY_TYPES = [
     "fire_district",
     "county_precinct",
     "municipal_precinct",
+    "us_senate",
 ]
 
 
