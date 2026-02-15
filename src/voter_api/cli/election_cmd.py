@@ -13,11 +13,6 @@ from loguru import logger
 election_app = typer.Typer()
 
 
-def _run_async(coro):
-    """Run an async coroutine in a synchronous context."""
-    return asyncio.run(coro)
-
-
 @election_app.command("refresh")
 def refresh(
     election_id: Annotated[
@@ -26,7 +21,7 @@ def refresh(
     ] = None,
 ) -> None:
     """Refresh election results from GA SoS data feeds."""
-    _run_async(_refresh_impl(election_id))
+    asyncio.run(_refresh_impl(election_id))
 
 
 async def _refresh_impl(election_id_str: str | None) -> None:
