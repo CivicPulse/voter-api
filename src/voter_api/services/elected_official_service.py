@@ -1,14 +1,15 @@
 """Elected official service — CRUD, source management, and approval workflow."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from loguru import logger
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.officials.base import OfficialRecord
-from voter_api.models.elected_official import ElectedOfficial, ElectedOfficialSource
+from voter_api.models.elected_official import ElectedOfficial, ElectedOfficialSource, OfficialStatus
 
 # Fields that may be set via the update endpoint.  Anything outside this set
 # is silently ignored, preventing mass-assignment of internal fields such as
@@ -137,25 +138,45 @@ async def create_official(
     party: str | None = None,
     title: str | None = None,
     photo_url: str | None = None,
-    term_start_date: object = None,
-    term_end_date: object = None,
-    last_election_date: object = None,
-    next_election_date: object = None,
+    term_start_date: date | None = None,
+    term_end_date: date | None = None,
+    last_election_date: date | None = None,
+    next_election_date: date | None = None,
     website: str | None = None,
     email: str | None = None,
     phone: str | None = None,
     office_address: str | None = None,
     external_ids: dict | None = None,
-    status: str = "manual",
+    status: str = OfficialStatus.MANUAL,
 ) -> ElectedOfficial:
     """Create a new elected official record.
 
     Args:
         session: Database session.
-        **kwargs: Official fields.
+        boundary_type: District boundary type.
+        district_identifier: District identifier.
+        full_name: Official's full name.
+        first_name: First name.
+        last_name: Last name.
+        party: Party affiliation.
+        title: Office title.
+        photo_url: URL to photo.
+        term_start_date: Start of term.
+        term_end_date: End of term.
+        last_election_date: Date of last election.
+        next_election_date: Date of next election.
+        website: Official website URL.
+        email: Contact email.
+        phone: Contact phone.
+        office_address: Office address.
+        external_ids: External identifier mappings.
+        status: Approval status (defaults to manual).
 
     Returns:
         The created ElectedOfficial.
+
+    Raises:
+        ValueError: If a duplicate record already exists.
     """
     official = ElectedOfficial(
         boundary_type=boundary_type,
@@ -178,7 +199,12 @@ async def create_official(
         status=status,
     )
     session.add(official)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        msg = f"Elected official '{full_name}' already exists for {boundary_type}/{district_identifier}"
+        raise ValueError(msg) from None
     await session.refresh(official)
     logger.info(f"Created elected official {official.id} ({full_name}) for {boundary_type}/{district_identifier}")
     return official
@@ -194,13 +220,14 @@ async def update_official(
     Args:
         session: Database session.
         official: The official to update.
-        updates: Dict of field_name -> new_value (only non-None values applied).
+        updates: Dict of field_name -> new_value. All allowlisted fields
+            are applied, including explicit None to clear nullable fields.
 
     Returns:
         The updated ElectedOfficial.
     """
     for field_name, value in updates.items():
-        if value is not None and field_name in _UPDATABLE_FIELDS:
+        if field_name in _UPDATABLE_FIELDS:
             setattr(official, field_name, value)
     await session.commit()
     await session.refresh(official)
@@ -242,10 +269,21 @@ async def approve_official(
     """
     if source_id:
         source = await get_source(session, source_id)
-        if source and source.elected_official_id == official.id:
-            _promote_source_fields(official, source)
+        if source is None:
+            msg = f"Source record {source_id} not found"
+            raise ValueError(msg)
+        if source.elected_official_id != official.id:
+            msg = f"Source record {source_id} does not belong to official {official.id}"
+            raise ValueError(msg)
+        _promote_source_fields(official, source)
 
-    official.status = "approved"
+    if official.status == OfficialStatus.APPROVED:
+        logger.warning(
+            f"Re-approving already-approved official {official.id} "
+            f"(previously approved by {official.approved_by_id} at {official.approved_at})"
+        )
+
+    official.status = OfficialStatus.APPROVED
     official.approved_by_id = approved_by_id
     official.approved_at = datetime.now(UTC)
 
@@ -441,7 +479,7 @@ async def auto_create_officials_from_sources(
             email=source.email,
             phone=source.phone,
             office_address=source.office_address,
-            status="auto",
+            status=OfficialStatus.AUTO,
         )
         session.add(official)
         await session.flush()  # get the ID

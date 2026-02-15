@@ -2,10 +2,11 @@
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.exc import IntegrityError
 
 from voter_api.lib.officials.base import OfficialRecord
 from voter_api.services.elected_official_service import (
@@ -155,6 +156,23 @@ class TestCreateOfficial:
         session.commit.assert_awaited_once()
         session.refresh.assert_awaited_once()
 
+    @pytest.mark.asyncio
+    async def test_create_duplicate_raises_value_error(self) -> None:
+        """IntegrityError on commit is caught and re-raised as ValueError."""
+        session = _mock_session()
+        session.refresh = AsyncMock()
+        session.commit = AsyncMock(side_effect=IntegrityError("dup", {}, None))
+        session.rollback = AsyncMock()
+
+        with pytest.raises(ValueError, match="already exists"):
+            await create_official(
+                session,
+                boundary_type="congressional",
+                district_identifier="5",
+                full_name="Nikema Williams",
+            )
+        session.rollback.assert_awaited_once()
+
 
 class TestUpdateOfficial:
     """Tests for update_official."""
@@ -175,8 +193,8 @@ class TestUpdateOfficial:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_skips_none_values(self) -> None:
-        """None values in updates are skipped."""
+    async def test_clears_nullable_field_with_explicit_none(self) -> None:
+        """Explicit None in updates clears the field."""
         session = _mock_session()
         session.refresh = AsyncMock()
 
@@ -184,8 +202,8 @@ class TestUpdateOfficial:
         official.party = "Democratic"
 
         await update_official(session, official, {"party": None})
-        # party should NOT be changed because value is None
-        assert official.party == "Democratic"
+        # party should be cleared to None
+        assert official.party is None
 
     @pytest.mark.asyncio
     async def test_rejects_non_allowlisted_fields(self) -> None:
@@ -280,6 +298,58 @@ class TestApproveOfficial:
         assert result.full_name == "Updated Name"
         assert result.party == "Republican"
         assert result.status == "approved"
+
+    @pytest.mark.asyncio
+    async def test_approve_with_missing_source_raises(self) -> None:
+        """Approving with a source_id that doesn't exist raises ValueError."""
+        session = _mock_session()
+        session.refresh = AsyncMock()
+
+        official = MagicMock()
+        official.id = uuid.uuid4()
+        official.status = "auto"
+
+        # get_source returns None
+        session.execute.return_value.scalar_one_or_none.return_value = None
+
+        with pytest.raises(ValueError, match="Source record .* not found"):
+            await approve_official(session, official, uuid.uuid4(), source_id=uuid.uuid4())
+
+    @pytest.mark.asyncio
+    async def test_approve_with_wrong_official_source_raises(self) -> None:
+        """Approving with a source belonging to a different official raises ValueError."""
+        session = _mock_session()
+        session.refresh = AsyncMock()
+
+        official = MagicMock()
+        official.id = uuid.uuid4()
+        official.status = "auto"
+
+        source = MagicMock()
+        source.id = uuid.uuid4()
+        source.elected_official_id = uuid.uuid4()  # Different official
+
+        session.execute.return_value.scalar_one_or_none.return_value = source
+
+        with pytest.raises(ValueError, match="does not belong to official"):
+            await approve_official(session, official, uuid.uuid4(), source_id=source.id)
+
+    @pytest.mark.asyncio
+    async def test_reapproval_logs_warning(self) -> None:
+        """Re-approving an already-approved official logs a warning."""
+        session = _mock_session()
+        session.refresh = AsyncMock()
+
+        official = MagicMock()
+        official.id = uuid.uuid4()
+        official.status = "approved"
+        official.approved_by_id = uuid.uuid4()
+        official.approved_at = datetime.now(UTC)
+
+        with patch("voter_api.services.elected_official_service.logger") as mock_logger:
+            await approve_official(session, official, uuid.uuid4())
+            mock_logger.warning.assert_called_once()
+            assert "Re-approving" in mock_logger.warning.call_args[0][0]
 
 
 class TestPromoteSourceFields:
