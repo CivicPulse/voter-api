@@ -596,6 +596,23 @@ paths:
                 items:
                   $ref: "#/components/schemas/BoundarySummaryResponse"
 
+  /boundaries/types:
+    get:
+      tags: [Boundaries]
+      summary: List distinct boundary types
+      operationId: listBoundaryTypes
+      description: |
+        Returns a sorted list of distinct boundary type strings present
+        in the database. No authentication required.
+      security: []
+      responses:
+        "200":
+          description: List of boundary type strings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoundaryTypesResponse"
+
   # ──────────────── Analysis ────────────────
   /analysis/runs:
     post:
@@ -1360,6 +1377,18 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/BoundarySummaryResponse"
+
+    BoundaryTypesResponse:
+      type: object
+      required:
+        - types
+      properties:
+        types:
+          type: array
+          description: Sorted list of distinct boundary type strings
+          items:
+            type: string
+          example: ["congressional", "county", "precinct", "state_house", "state_senate"]
 
     # ── Analysis ──
     AnalysisRunResponse:

@@ -1,0 +1,1034 @@
+openapi: "3.1.0"
+info:
+  title: voter-api Elected Officials Endpoints
+  version: 0.1.0
+  description: |
+    Public and admin endpoints for managing elected official records.
+    Includes listing, detail views, district lookups, source provenance,
+    and admin operations for creating, updating, deleting, and approving officials.
+    Part of feature 005-elected-officials.
+
+servers:
+  - url: /api/v1
+    description: API v1 prefix
+
+paths:
+  /elected-officials:
+    get:
+      operationId: listElectedOfficials
+      summary: List elected officials with optional filters
+      description: |
+        Returns a paginated list of elected officials. No authentication required.
+        Supports filtering by boundary type, district identifier, party, and
+        approval status. Results include summary fields only.
+      tags:
+        - elected-officials
+      security: []
+      parameters:
+        - name: boundary_type
+          in: query
+          required: false
+          description: Filter by boundary type (e.g. congressional, state_senate)
+          schema:
+            type: string
+          example: "state_senate"
+        - name: district_identifier
+          in: query
+          required: false
+          description: Filter by district identifier
+          schema:
+            type: string
+          example: "18"
+        - name: party
+          in: query
+          required: false
+          description: Filter by party affiliation
+          schema:
+            type: string
+          example: "Democratic"
+        - name: status
+          in: query
+          required: false
+          description: Filter by approval status
+          schema:
+            type: string
+            enum: ["auto", "approved", "manual"]
+          example: "approved"
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-indexed, default 1)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: page_size
+          in: query
+          required: false
+          description: Results per page (min 1, max 100, default 20)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
+      responses:
+        "200":
+          description: Paginated list of elected officials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedElectedOfficialResponse"
+        "422":
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      operationId: createElectedOfficial
+      summary: Create a new elected official record
+      description: |
+        Admin-only operation to create a new elected official record.
+        Returns 409 if an official with the same boundary_type,
+        district_identifier, and full_name already exists.
+      tags:
+        - elected-officials
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ElectedOfficialCreateRequest"
+      responses:
+        "201":
+          description: Elected official created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElectedOfficialDetailResponse"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Only administrators can create elected officials."
+        "409":
+          description: Official already exists for this district and name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error in request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /elected-officials/by-district:
+    get:
+      operationId: getOfficialsByDistrict
+      summary: Get all elected officials for a specific district
+      description: |
+        Returns full detail records for all officials serving a given
+        district. No authentication required. Intended for district
+        detail pages.
+      tags:
+        - elected-officials
+      security: []
+      parameters:
+        - name: boundary_type
+          in: query
+          required: true
+          description: Boundary type (e.g. congressional, state_senate)
+          schema:
+            type: string
+          example: "state_senate"
+        - name: district_identifier
+          in: query
+          required: true
+          description: District identifier
+          schema:
+            type: string
+          example: "18"
+      responses:
+        "200":
+          description: List of elected officials for the district
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ElectedOfficialDetailResponse"
+        "422":
+          description: Missing or invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /elected-officials/district/{boundary_type}/{district_identifier}/sources:
+    get:
+      operationId: getDistrictSources
+      summary: List all source records for a district across providers
+      description: |
+        Admin-only endpoint. Returns all cached source records for a given
+        district across all data providers. Useful for comparing data from
+        different sources before approving the canonical record.
+      tags:
+        - elected-officials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: boundary_type
+          in: path
+          required: true
+          description: Boundary type
+          schema:
+            type: string
+          example: "state_senate"
+        - name: district_identifier
+          in: path
+          required: true
+          description: District identifier
+          schema:
+            type: string
+          example: "18"
+        - name: current_only
+          in: query
+          required: false
+          description: Only return current (latest) source records (default true)
+          schema:
+            type: boolean
+            default: true
+          example: true
+      responses:
+        "200":
+          description: List of source records for the district
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ElectedOfficialSourceResponse"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /elected-officials/{official_id}:
+    get:
+      operationId: getElectedOfficial
+      summary: Get elected official detail including sources
+      description: |
+        Returns full details of an elected official by ID, including
+        all linked source records. No authentication required.
+      tags:
+        - elected-officials
+      security: []
+      parameters:
+        - name: official_id
+          in: path
+          required: true
+          description: Elected official UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        "200":
+          description: Elected official details with sources
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElectedOfficialDetailResponse"
+        "404":
+          description: Elected official not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Elected official not found"
+
+    patch:
+      operationId: updateElectedOfficial
+      summary: Update an elected official record
+      description: |
+        Admin-only operation to update elected official fields.
+        Partial updates are supported (only provided fields are updated).
+      tags:
+        - elected-officials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: official_id
+          in: path
+          required: true
+          description: Elected official UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ElectedOfficialUpdateRequest"
+      responses:
+        "200":
+          description: Elected official updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElectedOfficialDetailResponse"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Elected official not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: deleteElectedOfficial
+      summary: Delete an elected official and all linked sources
+      description: |
+        Admin-only operation to delete an elected official record and
+        all linked source records (cascade).
+      tags:
+        - elected-officials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: official_id
+          in: path
+          required: true
+          description: Elected official UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        "204":
+          description: Elected official deleted successfully
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Elected official not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /elected-officials/{official_id}/sources:
+    get:
+      operationId: getOfficialSources
+      summary: Get all source records linked to an elected official
+      description: |
+        Returns all cached source records for a specific elected official.
+        No authentication required. Provides transparency into data provenance.
+      tags:
+        - elected-officials
+      security: []
+      parameters:
+        - name: official_id
+          in: path
+          required: true
+          description: Elected official UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        "200":
+          description: List of source records for the official
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ElectedOfficialSourceResponse"
+        "404":
+          description: Elected official not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Elected official not found"
+
+  /elected-officials/{official_id}/approve:
+    post:
+      operationId: approveElectedOfficial
+      summary: Approve an elected official record
+      description: |
+        Admin-only operation. Sets status to 'approved' and records who
+        approved and when. Optionally supply a source_id to promote that
+        source's normalized fields into the canonical record first.
+      tags:
+        - elected-officials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: official_id
+          in: path
+          required: true
+          description: Elected official UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveOfficialRequest"
+      responses:
+        "200":
+          description: Elected official approved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElectedOfficialDetailResponse"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Elected official not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid source_id or approval error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT Bearer token with role claim. Roles: admin, analyst, viewer.
+        Admin role required for POST/PATCH/DELETE operations and approval.
+
+  schemas:
+    # Source response
+
+    ElectedOfficialSourceResponse:
+      type: object
+      required:
+        - id
+        - source_name
+        - source_record_id
+        - boundary_type
+        - district_identifier
+        - full_name
+        - fetched_at
+        - is_current
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Source record UUID
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        source_name:
+          type: string
+          description: Data provider name (e.g. "open_states", "google_civic")
+          example: "open_states"
+        source_record_id:
+          type: string
+          description: Unique identifier from the source provider
+          example: "ocd-person/12345678-abcd-1234-abcd-1234567890ab"
+        boundary_type:
+          type: string
+          description: Boundary type for the district
+          example: "state_senate"
+        district_identifier:
+          type: string
+          description: District identifier
+          example: "18"
+        full_name:
+          type: string
+          description: Official's full name from the source
+          example: "Jane Smith"
+        first_name:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: First name (if available from source)
+          example: "Jane"
+        last_name:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Last name (if available from source)
+          example: "Smith"
+        party:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Party affiliation from source
+          example: "Democratic"
+        title:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Office title from source
+          example: "State Senator"
+        photo_url:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: URL to official's photo from source
+          example: "https://example.com/photo.jpg"
+        term_start_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: Term start date (if available from source)
+          example: "2023-01-09"
+        term_end_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: Term end date (if available from source)
+          example: "2025-01-09"
+        website:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Official's website from source
+          example: "https://example.com"
+        email:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Contact email from source
+          example: "jane.smith@senate.ga.gov"
+        phone:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Contact phone from source
+          example: "404-555-0100"
+        office_address:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Office address from source
+          example: "121-E State Capitol, Atlanta, GA 30334"
+        fetched_at:
+          type: string
+          format: date-time
+          description: When this source record was fetched from the provider
+          example: "2026-02-14T12:00:00Z"
+        is_current:
+          type: boolean
+          description: Whether this is the latest record from this source
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: Record creation timestamp
+          example: "2026-02-14T12:00:00Z"
+
+    # Official summary (list endpoints)
+
+    ElectedOfficialSummaryResponse:
+      type: object
+      required:
+        - id
+        - boundary_type
+        - district_identifier
+        - full_name
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Elected official UUID
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        boundary_type:
+          type: string
+          description: Boundary type for the district
+          example: "state_senate"
+        district_identifier:
+          type: string
+          description: District identifier
+          example: "18"
+        full_name:
+          type: string
+          description: Official's full name
+          example: "Jane Smith"
+        party:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Party affiliation
+          example: "Democratic"
+        title:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Office title
+          example: "State Senator"
+        photo_url:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: URL to official's photo
+          example: "https://example.com/photo.jpg"
+        status:
+          type: string
+          enum: ["auto", "approved", "manual"]
+          description: Admin approval status
+          example: "approved"
+        created_at:
+          type: string
+          format: date-time
+          description: Record creation timestamp
+          example: "2026-02-14T12:00:00Z"
+
+    # Official detail (includes sources)
+
+    ElectedOfficialDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/ElectedOfficialSummaryResponse"
+        - type: object
+          required:
+            - updated_at
+            - sources
+          properties:
+            first_name:
+              oneOf:
+                - type: string
+                - type: "null"
+              description: First name
+              example: "Jane"
+            last_name:
+              oneOf:
+                - type: string
+                - type: "null"
+              description: Last name
+              example: "Smith"
+            term_start_date:
+              oneOf:
+                - type: string
+                  format: date
+                - type: "null"
+              description: Term start date
+              example: "2023-01-09"
+            term_end_date:
+              oneOf:
+                - type: string
+                  format: date
+                - type: "null"
+              description: Term end date
+              example: "2025-01-09"
+            last_election_date:
+              oneOf:
+                - type: string
+                  format: date
+                - type: "null"
+              description: Date of last election
+              example: "2022-11-08"
+            next_election_date:
+              oneOf:
+                - type: string
+                  format: date
+                - type: "null"
+              description: Date of next election
+              example: "2026-11-03"
+            website:
+              oneOf:
+                - type: string
+                - type: "null"
+              description: Official's website
+              example: "https://example.com"
+            email:
+              oneOf:
+                - type: string
+                - type: "null"
+              description: Contact email
+              example: "jane.smith@senate.ga.gov"
+            phone:
+              oneOf:
+                - type: string
+                - type: "null"
+              description: Contact phone
+              example: "404-555-0100"
+            office_address:
+              oneOf:
+                - type: string
+                - type: "null"
+              description: Office address
+              example: "121-E State Capitol, Atlanta, GA 30334"
+            external_ids:
+              oneOf:
+                - type: object
+                  additionalProperties: true
+                - type: "null"
+              description: External identifiers for cross-referencing (e.g. bioguide_id, open_states_id)
+              example:
+                open_states_id: "ocd-person/12345678"
+                bioguide_id: "S000123"
+            approved_by_id:
+              oneOf:
+                - type: string
+                  format: uuid
+                - type: "null"
+              description: UUID of the admin who approved this record
+              example: "98765432-e89b-12d3-a456-426614174000"
+            approved_at:
+              oneOf:
+                - type: string
+                  format: date-time
+                - type: "null"
+              description: When the record was approved
+              example: "2026-02-14T15:30:00Z"
+            updated_at:
+              type: string
+              format: date-time
+              description: Record last modified timestamp
+              example: "2026-02-14T15:30:00Z"
+            sources:
+              type: array
+              description: Linked source records from data providers
+              items:
+                $ref: "#/components/schemas/ElectedOfficialSourceResponse"
+
+    # Paginated list
+
+    PaginatedElectedOfficialResponse:
+      type: object
+      required:
+        - items
+        - pagination
+      properties:
+        items:
+          type: array
+          description: List of elected officials on this page
+          items:
+            $ref: "#/components/schemas/ElectedOfficialSummaryResponse"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    # Request schemas (admin)
+
+    ElectedOfficialCreateRequest:
+      type: object
+      required:
+        - boundary_type
+        - district_identifier
+        - full_name
+      properties:
+        boundary_type:
+          type: string
+          description: Boundary type for the district
+          minLength: 1
+          maxLength: 50
+          example: "state_senate"
+        district_identifier:
+          type: string
+          description: District identifier
+          minLength: 1
+          maxLength: 50
+          example: "18"
+        full_name:
+          type: string
+          description: Official's full name
+          minLength: 1
+          maxLength: 200
+          example: "Jane Smith"
+        first_name:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: First name
+          example: "Jane"
+        last_name:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Last name
+          example: "Smith"
+        party:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Party affiliation
+          example: "Democratic"
+        title:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Office title
+          example: "State Senator"
+        photo_url:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: URL to official's photo
+        term_start_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: Term start date
+          example: "2023-01-09"
+        term_end_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: Term end date
+          example: "2025-01-09"
+        last_election_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: Date of last election
+        next_election_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: Date of next election
+        website:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Official's website
+        email:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Contact email
+        phone:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Contact phone
+        office_address:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Office address
+        external_ids:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: "null"
+          description: External identifiers for cross-referencing
+
+    ElectedOfficialUpdateRequest:
+      type: object
+      description: Partial update — only provided fields are modified.
+      properties:
+        full_name:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated full name
+        first_name:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated first name
+        last_name:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated last name
+        party:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated party affiliation
+        title:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated office title
+        photo_url:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated photo URL
+        term_start_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: Updated term start date
+        term_end_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: Updated term end date
+        last_election_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: Updated last election date
+        next_election_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: Updated next election date
+        website:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated website
+        email:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated contact email
+        phone:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated contact phone
+        office_address:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated office address
+        external_ids:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: "null"
+          description: Updated external identifiers
+
+    ApproveOfficialRequest:
+      type: object
+      description: |
+        Request body for approving an elected official record.
+        Optionally supply a source_id to promote that source's data
+        into the canonical record.
+      properties:
+        source_id:
+          oneOf:
+            - type: string
+              format: uuid
+            - type: "null"
+          description: Source record to promote. Omit to approve current data as-is.
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+    # Shared schemas
+
+    PaginationMeta:
+      type: object
+      required:
+        - total
+        - page
+        - page_size
+        - total_pages
+      properties:
+        total:
+          type: integer
+          minimum: 0
+          description: Total number of results across all pages
+          example: 47
+        page:
+          type: integer
+          minimum: 1
+          description: Current page number (1-indexed)
+          example: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Results per page
+          example: 20
+        total_pages:
+          type: integer
+          minimum: 0
+          description: Total number of pages
+          example: 3
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+          example: "Resource not found."
