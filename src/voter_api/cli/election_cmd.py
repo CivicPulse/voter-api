@@ -1,16 +1,77 @@
 """CLI commands for election tracking.
 
-Provides manual refresh of election results from GA SoS feeds.
+Provides creation and manual refresh of election results from GA SoS feeds.
 """
 
 import asyncio
 import uuid
+from datetime import date
 from typing import Annotated
 
 import typer
 from loguru import logger
 
 election_app = typer.Typer()
+
+
+@election_app.command("create")
+def create(
+    name: Annotated[str, typer.Option("--name", help="Election name")],
+    election_date: Annotated[str, typer.Option("--date", help="Election date (YYYY-MM-DD)")],
+    election_type: Annotated[
+        str,
+        typer.Option("--type", help="Election type: special, general, primary, runoff"),
+    ],
+    district: Annotated[str, typer.Option("--district", help="District name")],
+    data_source_url: Annotated[str, typer.Option("--url", help="GA SoS data source URL")],
+    refresh_interval: Annotated[int, typer.Option("--refresh-interval", help="Refresh interval in seconds")] = 120,
+) -> None:
+    """Create a new election and optionally fetch initial results."""
+    parsed_date = date.fromisoformat(election_date)
+    asyncio.run(_create_impl(name, parsed_date, election_type, district, data_source_url, refresh_interval))
+
+
+async def _create_impl(
+    name: str,
+    election_date: date,
+    election_type: str,
+    district: str,
+    data_source_url: str,
+    refresh_interval: int,
+) -> None:
+    """Async implementation of the create command."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.core.logging import setup_logging
+    from voter_api.schemas.election import ElectionCreateRequest
+    from voter_api.services import election_service
+
+    settings = get_settings()
+    setup_logging(settings.log_level)
+    init_engine(settings.database_url, echo=False)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            request = ElectionCreateRequest(
+                name=name,
+                election_date=election_date,
+                election_type=election_type,
+                district=district,
+                data_source_url=data_source_url,
+                refresh_interval_seconds=refresh_interval,
+            )
+            election = await election_service.create_election(session, request)
+            typer.echo(f"Created election {election.id}: {election.name} ({election.election_date})")
+
+            logger.info("Fetching initial results...")
+            result = await election_service.refresh_single_election(session, election.id)
+            typer.echo(
+                f"Initial refresh: {result.counties_updated} counties, "
+                f"{result.precincts_reporting}/{result.precincts_participating} precincts reporting"
+            )
+    finally:
+        await dispose_engine()
 
 
 @election_app.command("refresh")
