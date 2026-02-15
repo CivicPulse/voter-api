@@ -4,11 +4,19 @@ Provides fetch (single district) and sync (all districts) commands
 for loading elected official data from external providers.
 """
 
+from __future__ import annotations
+
 import asyncio
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 from loguru import logger
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+    from voter_api.core.config import Settings
+    from voter_api.lib.officials.base import BaseOfficialsProvider
 
 officials_app = typer.Typer()
 
@@ -36,6 +44,7 @@ async def _fetch_impl(provider_name: str, boundary_type: str, district: str) -> 
     setup_logging(settings.log_level)
     init_engine(settings.database_url, echo=False)
 
+    provider: BaseOfficialsProvider | None = None
     try:
         provider = _create_provider(provider_name, settings)
         records = await provider.fetch_by_district(boundary_type, district)
@@ -54,10 +63,9 @@ async def _fetch_impl(provider_name: str, boundary_type: str, district: str) -> 
             f"  Sources upserted: {len(sources)}\n"
             f"  Officials auto-created: {len(created)}"
         )
-
-        if hasattr(provider, "close"):
-            await provider.close()
     finally:
+        if provider is not None:
+            await provider.close()
         await dispose_engine()
 
 
@@ -82,28 +90,42 @@ async def _sync_impl(provider_name: str) -> None:
     init_engine(settings.database_url, echo=False)
 
     try:
+        if provider_name not in ("open_states", "congress_gov", "all"):
+            typer.echo(f"Unknown provider: {provider_name}. Use open_states, congress_gov, or all.")
+            raise typer.Exit(code=1)
+
         factory = get_session_factory()
+        had_error = False
 
         if provider_name in ("open_states", "all"):
             if settings.open_states_api_key:
-                await _sync_open_states(settings, factory)
+                try:
+                    await _sync_open_states(settings, factory)
+                except Exception:
+                    logger.exception("Open States sync failed")
+                    typer.echo("Error: Open States sync failed (see logs for details)")
+                    had_error = True
             else:
                 typer.echo("Skipping Open States: OPEN_STATES_API_KEY not configured")
 
         if provider_name in ("congress_gov", "all"):
             if settings.congress_gov_api_key:
-                await _sync_congress_gov(settings, factory)
+                try:
+                    await _sync_congress_gov(settings, factory)
+                except Exception:
+                    logger.exception("Congress.gov sync failed")
+                    typer.echo("Error: Congress.gov sync failed (see logs for details)")
+                    had_error = True
             else:
                 typer.echo("Skipping Congress.gov: CONGRESS_GOV_API_KEY not configured")
 
-        if provider_name not in ("open_states", "congress_gov", "all"):
-            typer.echo(f"Unknown provider: {provider_name}. Use open_states, congress_gov, or all.")
+        if had_error:
             raise typer.Exit(code=1)
     finally:
         await dispose_engine()
 
 
-async def _sync_open_states(settings: "object", factory: "object") -> None:
+async def _sync_open_states(settings: Settings, factory: async_sessionmaker[AsyncSession]) -> None:
     """Sync all GA state legislators from Open States."""
     from voter_api.lib.officials.open_states import OpenStatesProvider
     from voter_api.services import elected_official_service
@@ -140,7 +162,7 @@ async def _sync_open_states(settings: "object", factory: "object") -> None:
         await provider.close()
 
 
-async def _sync_congress_gov(settings: "object", factory: "object") -> None:
+async def _sync_congress_gov(settings: Settings, factory: async_sessionmaker[AsyncSession]) -> None:
     """Sync all GA federal members from Congress.gov."""
     from voter_api.lib.officials.congress_gov import CongressGovProvider
     from voter_api.services import elected_official_service
@@ -175,7 +197,7 @@ async def _sync_congress_gov(settings: "object", factory: "object") -> None:
         await provider.close()
 
 
-def _create_provider(provider_name: str, settings: "object") -> "object":
+def _create_provider(provider_name: str, settings: Settings) -> BaseOfficialsProvider:
     """Create a provider instance with the appropriate API key.
 
     Args:

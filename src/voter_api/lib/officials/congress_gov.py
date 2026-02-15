@@ -1,5 +1,8 @@
 """Congress.gov API v3 provider for GA federal representatives and senators."""
 
+from __future__ import annotations
+
+import json
 from datetime import date
 
 import httpx
@@ -69,7 +72,9 @@ class CongressGovProvider(BaseOfficialsProvider):
         for member in members:
             bioguide_id = member.get("bioguideId", "")
             detail = await self._fetch_member_detail(bioguide_id)
-            records.append(self._map_member(member, detail))
+            record = self._map_member(member, detail)
+            if record is not None:
+                records.append(record)
 
         return records
 
@@ -92,7 +97,9 @@ class CongressGovProvider(BaseOfficialsProvider):
         for member in members:
             bioguide_id = member.get("bioguideId", "")
             detail = await self._fetch_member_detail(bioguide_id)
-            records.append(self._map_member(member, detail))
+            record = self._map_member(member, detail)
+            if record is not None:
+                records.append(record)
 
         return records
 
@@ -110,7 +117,9 @@ class CongressGovProvider(BaseOfficialsProvider):
         for member in senators:
             bioguide_id = member.get("bioguideId", "")
             detail = await self._fetch_member_detail(bioguide_id)
-            records.append(self._map_member(member, detail))
+            record = self._map_member(member, detail)
+            if record is not None:
+                records.append(record)
 
         return records
 
@@ -148,14 +157,33 @@ class CongressGovProvider(BaseOfficialsProvider):
                 self.provider_name,
                 f"Request failed: {exc}",
             ) from exc
+        except json.JSONDecodeError as exc:
+            logger.error("Congress.gov returned non-JSON response for {}", path)
+            raise OfficialsProviderError(
+                self.provider_name,
+                f"Invalid JSON response for {path}",
+            ) from exc
 
-    def _map_member(self, summary: dict, detail: dict) -> OfficialRecord:
+    def _map_member(self, summary: dict, detail: dict) -> OfficialRecord | None:
         """Map Congress.gov member data to an OfficialRecord.
+
+        Returns None and logs a warning if the member is missing a bioguideId
+        or name.
 
         Args:
             summary: Member data from the list endpoint.
             detail: Member data from the detail endpoint.
         """
+        source_id = summary.get("bioguideId") or ""
+        full_name = detail.get("directOrderName") or summary.get("name") or ""
+        if not source_id or not full_name:
+            logger.warning(
+                "Skipping Congress.gov member with missing bioguideId={!r} or name={!r}",
+                source_id,
+                full_name,
+            )
+            return None
+
         # Determine if senator or representative
         district = summary.get("district")
         if district is None:
@@ -180,23 +208,17 @@ class CongressGovProvider(BaseOfficialsProvider):
         office_address = detail.get("officeAddress")
 
         # Term start date from the most recent term
-        term_start_date = None
-        terms = detail.get("terms") or []
-        if terms:
-            last_term = terms[-1]
-            start_year = last_term.get("startYear")
-            if start_year:
-                term_start_date = date(int(start_year), 1, 3)
+        term_start_date = self._parse_term_start(detail.get("terms"))
 
         # Combine summary + detail for raw_data
         raw_data = {"summary": summary, "detail": detail}
 
         return OfficialRecord(
             source_name=self.provider_name,
-            source_record_id=summary.get("bioguideId", ""),
+            source_record_id=source_id,
             boundary_type=boundary_type,
             district_identifier=district_identifier,
-            full_name=detail.get("directOrderName") or summary.get("name", ""),
+            full_name=full_name,
             first_name=detail.get("firstName") or summary.get("firstName"),
             last_name=detail.get("lastName") or summary.get("lastName"),
             party=party,
@@ -208,3 +230,18 @@ class CongressGovProvider(BaseOfficialsProvider):
             term_start_date=term_start_date,
             raw_data=raw_data,
         )
+
+    @staticmethod
+    def _parse_term_start(terms: list[dict] | None) -> date | None:
+        """Safely parse the start date from the most recent term."""
+        if not terms:
+            return None
+        last_term = terms[-1]
+        start_year = last_term.get("startYear")
+        if not start_year:
+            return None
+        try:
+            return date(int(start_year), 1, 3)
+        except (ValueError, TypeError):
+            logger.warning("Malformed startYear in term data: {!r}", start_year)
+            return None

@@ -138,6 +138,41 @@ class TestFieldMapping:
         assert record.office_address is None
 
 
+class TestValidation:
+    """Test that invalid person data is skipped with warnings."""
+
+    def test_skips_person_missing_id(self) -> None:
+        provider = OpenStatesProvider(api_key="test-key")
+        person = {**_SAMPLE_PERSON, "id": ""}
+        assert provider._map_person(person) is None
+
+    def test_skips_person_missing_name(self) -> None:
+        provider = OpenStatesProvider(api_key="test-key")
+        person = {**_SAMPLE_PERSON, "name": ""}
+        assert provider._map_person(person) is None
+
+    def test_skips_person_none_id(self) -> None:
+        provider = OpenStatesProvider(api_key="test-key")
+        person = {**_SAMPLE_PERSON, "id": None}
+        assert provider._map_person(person) is None
+
+    def test_skips_unmapped_org_classification(self) -> None:
+        provider = OpenStatesProvider(api_key="test-key")
+        person = {
+            **_SAMPLE_PERSON,
+            "current_role": {**_SAMPLE_PERSON["current_role"], "org_classification": "executive"},
+        }
+        assert provider._map_person(person) is None
+
+    def test_skips_person_with_none_district(self) -> None:
+        provider = OpenStatesProvider(api_key="test-key")
+        person = {
+            **_SAMPLE_PERSON,
+            "current_role": {**_SAMPLE_PERSON["current_role"], "district": None},
+        }
+        assert provider._map_person(person) is None
+
+
 class TestBoundaryTypeMapping:
     """Test Open States org_classification to boundary type mapping."""
 
@@ -291,6 +326,46 @@ class TestErrorHandling:
             pytest.raises(OfficialsProviderError, match="Request failed"),
         ):
             await provider.fetch_by_district("state_senate", "39")
+
+    @pytest.mark.asyncio
+    async def test_json_decode_error(self) -> None:
+        provider = OpenStatesProvider(api_key="test-key")
+        mock_response = httpx.Response(
+            200,
+            text="<html>not json</html>",
+            request=httpx.Request("GET", "https://v3.openstates.org/people"),
+        )
+
+        with (
+            patch.object(provider._client, "get", new_callable=AsyncMock, return_value=mock_response),
+            pytest.raises(OfficialsProviderError, match="Invalid JSON"),
+        ):
+            await provider.fetch_by_district("state_senate", "39")
+
+
+class TestParamsMutation:
+    """Ensure _fetch_people does not mutate the caller's params dict."""
+
+    @pytest.mark.asyncio
+    async def test_does_not_mutate_params(self) -> None:
+        provider = OpenStatesProvider(api_key="test-key")
+        mock_response = httpx.Response(
+            200,
+            json=_paginated_response([_SAMPLE_PERSON]),
+            request=httpx.Request("GET", "https://v3.openstates.org/people"),
+        )
+        original_params: dict[str, str | int] = {
+            "jurisdiction": "Georgia",
+            "org_classification": "upper",
+            "include": "offices",
+            "per_page": 10,
+        }
+        params_copy = {**original_params}
+
+        with patch.object(provider._client, "get", new_callable=AsyncMock, return_value=mock_response):
+            await provider._fetch_people(original_params)
+
+        assert original_params == params_copy
 
 
 class TestFetchAllForChamber:

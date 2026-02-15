@@ -1,5 +1,9 @@
 """Open States API v3 provider for GA state legislators."""
 
+from __future__ import annotations
+
+import json
+
 import httpx
 from loguru import logger
 
@@ -104,7 +108,7 @@ class OpenStatesProvider(BaseOfficialsProvider):
         }
         response = await self._request("/people.geo", params)
         results = response.get("results", [])
-        return [self._map_person(person) for person in results]
+        return [r for person in results if (r := self._map_person(person)) is not None]
 
     async def close(self) -> None:
         """Close the underlying HTTP client."""
@@ -121,12 +125,17 @@ class OpenStatesProvider(BaseOfficialsProvider):
         """Paginate through /people endpoint and collect all results."""
         records: list[OfficialRecord] = []
         page = 1
+        # Copy to avoid mutating the caller's dict
+        params = {**params}
 
         while True:
             params["page"] = page
             data = await self._request("/people", params)
             results = data.get("results", [])
-            records.extend(self._map_person(person) for person in results)
+            for person in results:
+                record = self._map_person(person)
+                if record is not None:
+                    records.append(record)
 
             pagination = data.get("pagination", {})
             max_page = pagination.get("max_page", 1)
@@ -160,16 +169,53 @@ class OpenStatesProvider(BaseOfficialsProvider):
                 self.provider_name,
                 f"Request failed: {exc}",
             ) from exc
+        except json.JSONDecodeError as exc:
+            logger.error("Open States returned non-JSON response for {}", path)
+            raise OfficialsProviderError(
+                self.provider_name,
+                f"Invalid JSON response for {path}",
+            ) from exc
 
-    def _map_person(self, person: dict) -> OfficialRecord:
-        """Map an Open States person object to an OfficialRecord."""
+    def _map_person(self, person: dict) -> OfficialRecord | None:
+        """Map an Open States person object to an OfficialRecord.
+
+        Returns None and logs a warning if the person is missing required
+        fields (id, name) or has an unmapped org_classification.
+        """
+        source_id = person.get("id") or ""
+        full_name = person.get("name") or ""
+        if not source_id or not full_name:
+            logger.warning(
+                "Skipping Open States person with missing id={!r} or name={!r}",
+                source_id,
+                full_name,
+            )
+            return None
+
         current_role = person.get("current_role") or {}
         offices = person.get("offices") or []
         links = person.get("links") or []
 
         # Derive boundary type from org_classification
         org_classification = current_role.get("org_classification", "")
-        boundary_type = _ORG_TO_BOUNDARY.get(org_classification, org_classification)
+        boundary_type = _ORG_TO_BOUNDARY.get(org_classification)
+        if boundary_type is None:
+            logger.warning(
+                "Skipping Open States person {!r}: unmapped org_classification {!r}",
+                full_name,
+                org_classification,
+            )
+            return None
+
+        # District identifier — guard against None
+        district_raw = current_role.get("district")
+        district_identifier = str(district_raw) if district_raw is not None else ""
+        if not district_identifier:
+            logger.warning(
+                "Skipping Open States person {!r}: missing district",
+                full_name,
+            )
+            return None
 
         # Contact info from first office
         first_office = offices[0] if offices else {}
@@ -181,10 +227,10 @@ class OpenStatesProvider(BaseOfficialsProvider):
 
         return OfficialRecord(
             source_name=self.provider_name,
-            source_record_id=person.get("id", ""),
+            source_record_id=source_id,
             boundary_type=boundary_type,
-            district_identifier=str(current_role.get("district", "")),
-            full_name=person.get("name", ""),
+            district_identifier=district_identifier,
+            full_name=full_name,
             first_name=person.get("given_name"),
             last_name=person.get("family_name"),
             party=person.get("party"),

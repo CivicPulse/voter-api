@@ -153,6 +153,51 @@ class TestFieldMapping:
         assert record.website is None
 
 
+class TestValidation:
+    """Test that invalid member data is skipped."""
+
+    def test_skips_member_missing_bioguide_id(self) -> None:
+        provider = CongressGovProvider(api_key="test-key")
+        summary = {**_SAMPLE_REP_SUMMARY, "bioguideId": ""}
+        assert provider._map_member(summary, _SAMPLE_REP_DETAIL) is None
+
+    def test_skips_member_none_bioguide_id(self) -> None:
+        provider = CongressGovProvider(api_key="test-key")
+        summary = {**_SAMPLE_REP_SUMMARY, "bioguideId": None}
+        assert provider._map_member(summary, _SAMPLE_REP_DETAIL) is None
+
+    def test_skips_member_missing_name(self) -> None:
+        provider = CongressGovProvider(api_key="test-key")
+        summary = {**_SAMPLE_REP_SUMMARY, "name": ""}
+        detail = {**_SAMPLE_REP_DETAIL, "directOrderName": ""}
+        assert provider._map_member(summary, detail) is None
+
+    def test_skips_member_no_name_in_either(self) -> None:
+        provider = CongressGovProvider(api_key="test-key")
+        summary = {**_SAMPLE_REP_SUMMARY, "name": None}
+        assert provider._map_member(summary, {}) is None
+
+
+class TestTermDateParsing:
+    """Test safe term date parsing."""
+
+    def test_malformed_start_year_returns_none(self) -> None:
+        provider = CongressGovProvider(api_key="test-key")
+        assert provider._parse_term_start([{"startYear": "not-a-number"}]) is None
+
+    def test_none_start_year_returns_none(self) -> None:
+        provider = CongressGovProvider(api_key="test-key")
+        assert provider._parse_term_start([{"startYear": None}]) is None
+
+    def test_empty_terms_returns_none(self) -> None:
+        provider = CongressGovProvider(api_key="test-key")
+        assert provider._parse_term_start([]) is None
+
+    def test_valid_start_year(self) -> None:
+        provider = CongressGovProvider(api_key="test-key")
+        assert provider._parse_term_start([{"startYear": 2025}]) == date(2025, 1, 3)
+
+
 class TestSenatorDetection:
     """Test that senators are correctly identified by null district."""
 
@@ -351,3 +396,18 @@ class TestErrorHandling:
             await provider.fetch_by_district("congressional", "5")
 
         assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_json_decode_error(self) -> None:
+        provider = CongressGovProvider(api_key="test-key")
+        mock_response = httpx.Response(
+            200,
+            text="<html>not json</html>",
+            request=httpx.Request("GET", "https://api.congress.gov/v3/member/congress/119/GA/5"),
+        )
+
+        with (
+            patch.object(provider._client, "get", new_callable=AsyncMock, return_value=mock_response),
+            pytest.raises(OfficialsProviderError, match="Invalid JSON"),
+        ):
+            await provider.fetch_by_district("congressional", "5")

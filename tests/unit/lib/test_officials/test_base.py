@@ -116,3 +116,18 @@ class TestBaseOfficialsProvider:
         provider = MockProvider()
         with pytest.raises(NotImplementedError, match="mock does not support geo-lookup"):
             await provider.fetch_by_point(33.749, -84.388)
+
+    @pytest.mark.asyncio
+    async def test_close_default_is_noop(self) -> None:
+        """Default close() does nothing (no error)."""
+
+        class MockProvider(BaseOfficialsProvider):
+            @property
+            def provider_name(self) -> str:
+                return "mock"
+
+            async def fetch_by_district(self, boundary_type: str, district_identifier: str) -> list[OfficialRecord]:
+                return []
+
+        provider = MockProvider()
+        await provider.close()  # Should not raise
