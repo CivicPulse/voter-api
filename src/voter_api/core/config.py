@@ -80,6 +80,17 @@ class Settings(BaseSettings):
         description="Regex pattern for allowed CORS origins (e.g. https://(.*\\.kerryhatcher\\.com|.*\\.voter-web\\.pages\\.dev))",
     )
 
+    # Election Tracking
+    election_refresh_enabled: bool = Field(
+        default=True,
+        description="Enable background election result refresh loop",
+    )
+    election_refresh_interval: int = Field(
+        default=60,
+        description="Seconds between election refresh cycles",
+        ge=10,
+    )
+
     # API
     api_v1_prefix: str = Field(
         default="/api/v1",

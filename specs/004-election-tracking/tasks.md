@@ -19,8 +19,8 @@
 
 **Purpose**: Extend existing project configuration for election tracking feature
 
-- [ ] T001 Add `ELECTION_REFRESH_ENABLED` and `ELECTION_REFRESH_INTERVAL` settings to `src/voter_api/core/config.py`
-- [ ] T002 [P] Add election refresh environment variables to `.env.example`
+- [x] T001 Add `ELECTION_REFRESH_ENABLED` and `ELECTION_REFRESH_INTERVAL` settings to `src/voter_api/core/config.py`
+- [x] T002 [P] Add election refresh environment variables to `.env.example`
 
 ---
 
@@ -30,17 +30,17 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Create Election, ElectionResult, and ElectionCountyResult ORM models in `src/voter_api/models/election.py` (UUIDMixin, TimestampMixin, JSONB columns, relationships, constraints per data-model.md)
-- [ ] T004 Create Alembic migration `alembic/versions/015_election_tracking.py` for elections, election_results, and election_county_results tables with indexes and constraints per data-model.md
-- [ ] T005 [P] Implement SoS feed Pydantic validation models and `parse_sos_feed()` function in `src/voter_api/lib/election_tracker/parser.py` (models for BallotOption, GroupResult, BallotItem, LocalResult, SoSFeed; parse + validate raw JSON)
-- [ ] T006 [P] Implement httpx-based SoS feed HTTP client in `src/voter_api/lib/election_tracker/fetcher.py` (async fetch_election_results(url) returning parsed SoSFeed, typed error handling, timeout config; follow CensusGeocoder pattern)
-- [ ] T007 Implement result upsert logic in `src/voter_api/lib/election_tracker/ingester.py` (upsert statewide election_results row, upsert per-county election_county_results rows with county_name_normalized stripping " County" suffix, accept parsed SoSFeed + AsyncSession)
-- [ ] T008 [P] Create public API exports in `src/voter_api/lib/election_tracker/__init__.py` (export parse_sos_feed, fetch_election_results, ingest_election_results, SoSFeed, FetchError)
-- [ ] T009 Create Pydantic v2 request/response schemas in `src/voter_api/schemas/election.py` (ElectionCreateRequest, ElectionUpdateRequest, ElectionSummary, ElectionDetailResponse, PaginationMeta, PaginatedElectionListResponse, CandidateResult, VoteMethodResult, CountyResultSummary, ElectionResultsResponse, ElectionResultFeature, ElectionResultFeatureCollection, RefreshResponse per contracts/openapi.yaml)
-- [ ] T010 [P] Register election models in `src/voter_api/models/__init__.py` (import Election, ElectionResult, ElectionCountyResult so Alembic autogenerate discovers them)
-- [ ] T010a [P] Write unit tests for SoS feed parser in `tests/unit/lib/test_election_tracker/test_parser.py` (valid feed parsing, malformed JSON rejection, missing fields, candidate list changes)
-- [ ] T010b [P] Write unit tests for SoS feed fetcher in `tests/unit/lib/test_election_tracker/test_fetcher.py` (successful fetch, timeout handling, HTTP error codes, invalid response body; mock httpx)
-- [ ] T010c [P] Write unit tests for result ingester in `tests/unit/lib/test_election_tracker/test_ingester.py` (statewide upsert, county upsert with name normalization, re-ingest replaces existing data, county_name_normalized strips " County" suffix)
+- [x] T003 Create Election, ElectionResult, and ElectionCountyResult ORM models in `src/voter_api/models/election.py` (UUIDMixin, TimestampMixin, JSONB columns, relationships, constraints per data-model.md)
+- [x] T004 Create Alembic migration `alembic/versions/015_election_tracking.py` for elections, election_results, and election_county_results tables with indexes and constraints per data-model.md
+- [x] T005 [P] Implement SoS feed Pydantic validation models and `parse_sos_feed()` function in `src/voter_api/lib/election_tracker/parser.py` (models for BallotOption, GroupResult, BallotItem, LocalResult, SoSFeed; parse + validate raw JSON)
+- [x] T006 [P] Implement httpx-based SoS feed HTTP client in `src/voter_api/lib/election_tracker/fetcher.py` (async fetch_election_results(url) returning parsed SoSFeed, typed error handling, timeout config; follow CensusGeocoder pattern)
+- [x] T007 Implement result upsert logic in `src/voter_api/lib/election_tracker/ingester.py` (upsert statewide election_results row, upsert per-county election_county_results rows with county_name_normalized stripping " County" suffix, log warning for county names that don't match any county_metadata entry after normalization, accept parsed SoSFeed + AsyncSession)
+- [x] T008 [P] Create public API exports in `src/voter_api/lib/election_tracker/__init__.py` (export parse_sos_feed, fetch_election_results, ingest_election_results, SoSFeed, FetchError)
+- [x] T009 Create Pydantic v2 request/response schemas in `src/voter_api/schemas/election.py` (ElectionCreateRequest, ElectionUpdateRequest, ElectionSummary, ElectionDetailResponse, PaginationMeta, PaginatedElectionListResponse, CandidateResult, VoteMethodResult, CountyResultSummary, ElectionResultsResponse, ElectionResultFeature, ElectionResultFeatureCollection, RefreshResponse per contracts/openapi.yaml)
+- [x] T010 [P] Register election models in `src/voter_api/models/__init__.py` (import Election, ElectionResult, ElectionCountyResult so Alembic autogenerate discovers them)
+- [x] T010a [P] Write unit tests for SoS feed parser in `tests/unit/lib/test_election_tracker/test_parser.py` (valid feed parsing, malformed JSON rejection, missing fields, candidate list changes)
+- [x] T010b [P] Write unit tests for SoS feed fetcher in `tests/unit/lib/test_election_tracker/test_fetcher.py` (successful fetch, timeout handling, HTTP error codes, invalid response body; mock httpx)
+- [x] T010c [P] Write unit tests for result ingester in `tests/unit/lib/test_election_tracker/test_ingester.py` (statewide upsert, county upsert with name normalization, re-ingest replaces existing data, county_name_normalized strips " County" suffix)
 
 **Checkpoint**: Foundation ready — ORM models, migration, library modules, schemas, and unit tests are in place. User story implementation can now begin.
 
@@ -54,11 +54,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Implement core election service methods in `src/voter_api/services/election_service.py` (create_election, get_election_by_id, get_election_results assembling statewide + county data from ORM into response schemas, refresh_single_election orchestrating fetch→parse→ingest pipeline, update election last_refreshed_at)
-- [ ] T012 [US1] Implement GET `/elections/{election_id}` route handler in `src/voter_api/api/v1/elections.py` (public, returns ElectionDetailResponse, 404 if not found)
-- [ ] T013 [US1] Implement GET `/elections/{election_id}/results` route handler in `src/voter_api/api/v1/elections.py` (public, returns ElectionResultsResponse with statewide candidates + county_results array, includes last_refreshed_at, status-dependent Cache-Control header: 60s active / 86400s finalized, 404 if not found)
-- [ ] T014 [US1] Create election router and wire into main API router in `src/voter_api/api/v1/elections.py` and `src/voter_api/api/router.py` (add elections_router with `/elections` prefix to create_router function)
-- [ ] T014a [US1] Write integration tests for US1 endpoints in `tests/integration/test_election_api.py` (GET /elections/{id}, GET /elections/{id}/results, Cache-Control headers, 404 handling, last_refreshed_at presence)
+- [x] T011 [US1] Implement core election service methods in `src/voter_api/services/election_service.py` (create_election, get_election_by_id, get_election_results assembling statewide + county data from ORM into response schemas, refresh_single_election orchestrating fetch→parse→ingest pipeline, update election last_refreshed_at)
+- [x] T012 [US1] Implement GET `/elections/{election_id}` route handler in `src/voter_api/api/v1/elections.py` (public, returns ElectionDetailResponse, 404 if not found)
+- [x] T013 [US1] Implement GET `/elections/{election_id}/results` route handler in `src/voter_api/api/v1/elections.py` (public, returns ElectionResultsResponse with statewide candidates + county_results array, includes last_refreshed_at, status-dependent Cache-Control header: 60s active / 86400s finalized, 404 if not found)
+- [x] T014 [US1] Create election router and wire into main API router in `src/voter_api/api/v1/elections.py` and `src/voter_api/api/router.py` (add elections_router with `/elections` prefix to create_router function)
+- [x] T014a [US1] Write integration tests for US1 endpoints in `tests/integration/test_election_api.py` (GET /elections/{id}, GET /elections/{id}/results, Cache-Control headers, 404 handling, last_refreshed_at presence)
 
 **Checkpoint**: User Story 1 is fully functional and tested — election results are accessible via JSON API with cache headers. MVP is deliverable.
 
@@ -72,9 +72,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Implement GeoJSON generation method in `src/voter_api/services/election_service.py` (get_election_results_geojson: query election_county_results joined to county_metadata.name → boundaries.geometry via GEOID, build ElectionResultFeatureCollection with ST_AsGeoJSON, include election metadata (election_id, election_name, election_date, status, last_refreshed_at) as top-level FeatureCollection properties per FR-012, include counties with no results as null-value features)
-- [ ] T016 [US2] Implement GET `/elections/{election_id}/results/geojson` route handler in `src/voter_api/api/v1/elections.py` (public, returns ElectionResultFeatureCollection with content-type `application/geo+json`, status-dependent Cache-Control header, 404 if not found)
-- [ ] T016a [US2] Write integration tests for GeoJSON endpoint in `tests/integration/test_election_api.py` (GET /elections/{id}/results/geojson, valid FeatureCollection structure, content-type application/geo+json, election metadata in top-level properties, counties with null results included, Cache-Control headers)
+- [x] T015 [US2] Implement GeoJSON generation method in `src/voter_api/services/election_service.py` (get_election_results_geojson: query election_county_results joined to county_metadata.name → boundaries.geometry via GEOID, build ElectionResultFeatureCollection with ST_AsGeoJSON, include election metadata (election_id, election_name, election_date, status, last_refreshed_at) as top-level FeatureCollection properties per FR-012, include counties with no results as null-value features, include counties with results but no boundary match as features with null geometry)
+- [x] T016 [US2] Implement GET `/elections/{election_id}/results/geojson` route handler in `src/voter_api/api/v1/elections.py` (public, returns ElectionResultFeatureCollection with content-type `application/geo+json`, status-dependent Cache-Control header, 404 if not found)
+- [x] T016a [US2] Write integration tests for GeoJSON endpoint in `tests/integration/test_election_api.py` (GET /elections/{id}/results/geojson, valid FeatureCollection structure, content-type application/geo+json, election metadata in top-level properties, counties with null results included, Cache-Control headers)
 
 **Checkpoint**: User Stories 1 AND 2 are independently functional and tested — JSON and GeoJSON result endpoints work.
 
@@ -88,10 +88,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T017 [US3] Implement background refresh loop function in `src/voter_api/services/election_service.py` (refresh_all_active_elections: query active elections, fetch+parse+ingest each, log errors per-election without stopping, respect ELECTION_REFRESH_INTERVAL; election_refresh_loop: asyncio while-loop calling refresh_all_active_elections on interval)
-- [ ] T018 [US3] Integrate background refresh into FastAPI lifespan in `src/voter_api/main.py` (if ELECTION_REFRESH_ENABLED, create asyncio task for election_refresh_loop in lifespan startup, cancel on shutdown)
-- [ ] T019 [US3] Implement Typer CLI `election refresh` command in `src/voter_api/cli/election_cmd.py` (refresh single election by ID or all active elections, register with main CLI app; uses election_service.refresh_single_election / refresh_all_active_elections)
-- [ ] T019a [US3] Write integration tests for CLI refresh command in `tests/integration/test_election_cli.py` (refresh single election, refresh all active, skip finalized, handle data source failure gracefully)
+- [x] T017 [US3] Implement background refresh loop function in `src/voter_api/services/election_service.py` (refresh_all_active_elections: query active elections, fetch+parse+ingest each, log errors per-election without stopping, respect ELECTION_REFRESH_INTERVAL; election_refresh_loop: asyncio while-loop calling refresh_all_active_elections on interval)
+- [x] T018 [US3] Integrate background refresh into FastAPI lifespan in `src/voter_api/main.py` (if ELECTION_REFRESH_ENABLED, create asyncio task for election_refresh_loop in lifespan startup, cancel on shutdown)
+- [x] T019 [US3] Implement Typer CLI `election refresh` command in `src/voter_api/cli/election_cmd.py` (refresh single election by ID or all active elections, register with main CLI app; uses election_service.refresh_single_election / refresh_all_active_elections)
+- [x] T019a [US3] Write integration tests for CLI refresh command in `tests/integration/test_election_cli.py` (refresh single election, refresh all active, skip finalized, handle data source failure gracefully)
 
 **Checkpoint**: Automatic refresh and CLI manual refresh are operational and tested. Active elections stay current without manual intervention.
 
@@ -105,10 +105,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T020 [US4] Implement POST `/elections` route handler in `src/voter_api/api/v1/elections.py` (admin-only via require_role("admin"), validate ElectionCreateRequest, call election_service.create_election, return 201 ElectionDetailResponse, 409 on duplicate name+date, 401/403 for auth failures)
-- [ ] T021 [US4] Implement PATCH `/elections/{election_id}` route handler in `src/voter_api/api/v1/elections.py` (admin-only, partial update via ElectionUpdateRequest, call election_service.update_election, return ElectionDetailResponse, 404 if not found)
-- [ ] T022 [US4] Implement POST `/elections/{election_id}/refresh` route handler in `src/voter_api/api/v1/elections.py` (admin-only, call election_service.refresh_single_election, return RefreshResponse with refreshed_at + counties_updated + precinct counts, 404 if not found, 502 on data source failure)
-- [ ] T022a [US4] Write integration tests for admin endpoints in `tests/integration/test_election_api.py` (POST create 201, PATCH update, POST refresh, auth enforcement 401/403 for non-admin, duplicate 409, source failure 502)
+- [x] T020 [US4] Implement POST `/elections` route handler in `src/voter_api/api/v1/elections.py` (admin-only via require_role("admin"), validate ElectionCreateRequest, call election_service.create_election, return 201 ElectionDetailResponse, 409 on duplicate name+date, 401/403 for auth failures)
+- [x] T021 [US4] Implement PATCH `/elections/{election_id}` route handler in `src/voter_api/api/v1/elections.py` (admin-only, partial update via ElectionUpdateRequest, call election_service.update_election, return ElectionDetailResponse, 404 if not found)
+- [x] T022 [US4] Implement POST `/elections/{election_id}/refresh` route handler in `src/voter_api/api/v1/elections.py` (admin-only, call election_service.refresh_single_election, return RefreshResponse with refreshed_at + counties_updated + precinct counts, 404 if not found, 502 on data source failure)
+- [x] T022a [US4] Write integration tests for admin endpoints in `tests/integration/test_election_api.py` (POST create 201, PATCH update, POST refresh, auth enforcement 401/403 for non-admin, duplicate 409, source failure 502)
 
 **Checkpoint**: Full admin CRUD and manual refresh via API are tested. Non-admin access is denied.
 
@@ -122,9 +122,9 @@
 
 ### Implementation for User Story 5
 
-- [ ] T023 [US5] Implement list_elections service method in `src/voter_api/services/election_service.py` (paginated query with optional filters: status, election_type, district, date_from, date_to; district filter uses case-insensitive partial match; order by election_date DESC; return PaginatedElectionListResponse with ElectionSummary items including precincts_reporting/participating from joined election_results)
-- [ ] T024 [US5] Implement GET `/elections` route handler in `src/voter_api/api/v1/elections.py` (public, query params for status/election_type/district/date_from/date_to/page/page_size per openapi.yaml, return PaginatedElectionListResponse)
-- [ ] T024a [US5] Write integration tests for list/filter endpoint in `tests/integration/test_election_api.py` (pagination, status filter, date range filter, election_type filter, district partial match)
+- [x] T023 [US5] Implement list_elections service method in `src/voter_api/services/election_service.py` (paginated query with optional filters: status, election_type, district, date_from, date_to; district filter uses case-insensitive partial match; order by election_date DESC; return PaginatedElectionListResponse with ElectionSummary items including precincts_reporting/participating from joined election_results)
+- [x] T024 [US5] Implement GET `/elections` route handler in `src/voter_api/api/v1/elections.py` (public, query params for status/election_type/district/date_from/date_to/page/page_size per openapi.yaml, return PaginatedElectionListResponse)
+- [x] T024a [US5] Write integration tests for list/filter endpoint in `tests/integration/test_election_api.py` (pagination, status filter, date range filter, election_type filter, district partial match)
 
 **Checkpoint**: All 5 user stories are independently functional and tested. Full election tracking system is operational.
 
@@ -134,9 +134,9 @@
 
 **Purpose**: Contract tests, lint validation, and integration verification across all user stories
 
-- [ ] T025 [P] Write OpenAPI contract tests in `tests/contract/test_election_contract.py` (validate all 7 endpoint response schemas match contracts/openapi.yaml definitions)
-- [ ] T026 Run ruff check and ruff format on all new files, fix any violations
-- [ ] T027 Validate quickstart.md scenarios against running API (create election, refresh, view results, view GeoJSON)
+- [x] T025 [P] Write OpenAPI contract tests in `tests/contract/test_election_contract.py` (validate all 7 endpoint response schemas match contracts/openapi.yaml definitions)
+- [x] T026 Run ruff check and ruff format on all new files, fix any violations
+- [x] T027 Validate quickstart.md scenarios against running API (create election, refresh, view results, view GeoJSON)
 
 ---
 
@@ -211,8 +211,8 @@ Task: "Unit tests for ingester in tests/unit/lib/test_election_tracker/test_inge
 ### MVP First (User Story 1 Only)
 
 1. Complete Phase 1: Setup (T001-T002)
-2. Complete Phase 2: Foundational (T003-T010)
-3. Complete Phase 3: User Story 1 (T011-T014)
+2. Complete Phase 2: Foundational + unit tests (T003-T010, T010a-T010c)
+3. Complete Phase 3: User Story 1 + integration tests (T011-T014, T014a)
 4. **STOP and VALIDATE**: Create an election via service/CLI, ingest results, verify GET `/elections/{id}/results` returns correct JSON
 5. Deploy/demo if ready — public users can view live election results
 

@@ -417,10 +417,10 @@ components:
           example: "general"
         district:
           type: string
-          description: Geographic scope of the election (e.g., state, congressional district)
+          description: Race/contest identifier (e.g., "State Senate - District 18", "Georgia Statewide")
           minLength: 1
           maxLength: 200
-          example: "Georgia Statewide"
+          example: "State Senate - District 18"
         data_source_url:
           type: string
           format: uri
@@ -501,10 +501,14 @@ components:
           description: Current election status
           example: "active"
         last_refreshed_at:
-          type: string
-          format: date-time
-          description: Timestamp of last results refresh
-          example: "2024-11-05T18:30:00Z"
+          oneOf:
+            - type: string
+              format: date-time
+              description: Timestamp of last results refresh
+              example: "2024-11-05T18:30:00Z"
+            - type: "null"
+          nullable: true
+          description: Null if election has not yet been refreshed
         precincts_reporting:
           oneOf:
             - type: integer
@@ -607,8 +611,8 @@ components:
       properties:
         group_name:
           type: string
-          description: Vote method group name (e.g., "Early Vote", "Election Day", "Mail")
-          example: "Early Vote"
+          description: Vote method group name (e.g., "Election Day", "Advance Voting", "Absentee by Mail", "Provisional")
+          example: "Advance Voting"
         vote_count:
           type: integer
           minimum: 0
