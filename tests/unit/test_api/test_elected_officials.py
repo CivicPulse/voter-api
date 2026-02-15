@@ -539,3 +539,81 @@ class TestGetDistrictSources:
         data = resp.json()
         assert len(data) == 1
         assert data[0]["source_name"] == "open_states"
+
+
+# ---------------------------------------------------------------------------
+# Auth enforcement tests
+# ---------------------------------------------------------------------------
+
+
+def _mock_viewer_user() -> MagicMock:
+    """Create a mock viewer user (non-admin)."""
+    user = MagicMock()
+    user.id = uuid.uuid4()
+    user.username = "testviewer"
+    user.role = "viewer"
+    user.is_active = True
+    return user
+
+
+@pytest.fixture
+def viewer_app() -> FastAPI:
+    """Create FastAPI app with a viewer-role user (not admin)."""
+    test_app = FastAPI()
+    test_app.include_router(elected_officials_router, prefix="/api/v1")
+    test_app.dependency_overrides[get_async_session] = lambda: AsyncMock()
+    test_app.dependency_overrides[get_current_user] = _mock_viewer_user
+    return test_app
+
+
+@pytest.fixture
+def viewer_client(viewer_app: FastAPI) -> AsyncClient:
+    """Create async test client with viewer-role user."""
+    return AsyncClient(transport=ASGITransport(app=viewer_app), base_url="http://test")
+
+
+class TestAuthEnforcement:
+    """Tests that admin-only endpoints reject viewer-role users."""
+
+    @pytest.mark.asyncio
+    async def test_create_requires_admin_role(self, viewer_client: AsyncClient) -> None:
+        """Viewer cannot create officials — returns 403."""
+        resp = await viewer_client.post(
+            "/api/v1/elected-officials",
+            json={
+                "boundary_type": "congressional",
+                "district_identifier": "5",
+                "full_name": "Nikema Williams",
+            },
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_update_requires_admin_role(self, viewer_client: AsyncClient) -> None:
+        """Viewer cannot update officials — returns 403."""
+        resp = await viewer_client.patch(
+            f"/api/v1/elected-officials/{uuid.uuid4()}",
+            json={"party": "Republican"},
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_delete_requires_admin_role(self, viewer_client: AsyncClient) -> None:
+        """Viewer cannot delete officials — returns 403."""
+        resp = await viewer_client.delete(f"/api/v1/elected-officials/{uuid.uuid4()}")
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_approve_requires_admin_role(self, viewer_client: AsyncClient) -> None:
+        """Viewer cannot approve officials — returns 403."""
+        resp = await viewer_client.post(
+            f"/api/v1/elected-officials/{uuid.uuid4()}/approve",
+            json={},
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_district_sources_requires_admin_role(self, viewer_client: AsyncClient) -> None:
+        """Viewer cannot access district sources — returns 403."""
+        resp = await viewer_client.get("/api/v1/elected-officials/district/congressional/5/sources")
+        assert resp.status_code == 403

@@ -550,6 +550,75 @@ class TestAutoCreateOfficialsFromSources:
         assert result == []
         session.commit.assert_awaited_once()
 
+    @pytest.mark.asyncio
+    async def test_upsert_auto_links_to_existing_official(self) -> None:
+        """New source is auto-linked to a matching existing official."""
+        existing_official = MagicMock()
+        existing_official.id = uuid.uuid4()
+
+        session = AsyncMock()
+        # First call: no existing source (insert path)
+        no_source_result = MagicMock()
+        no_source_result.scalar_one_or_none.return_value = None
+        # Second call: _find_matching_official returns existing official
+        match_result = MagicMock()
+        match_result.scalar_one_or_none.return_value = existing_official
+
+        session.execute.side_effect = [no_source_result, match_result]
+        session.commit = AsyncMock()
+
+        records = [
+            OfficialRecord(
+                source_name="test_source",
+                source_record_id="rec-link",
+                boundary_type="congressional",
+                district_identifier="5",
+                full_name="Nikema Williams",
+            )
+        ]
+
+        result = await upsert_source_records(session, records)
+        assert len(result) == 1
+        assert result[0].elected_official_id == existing_official.id
+
+    @pytest.mark.asyncio
+    async def test_upsert_multiple_records(self) -> None:
+        """Multiple records in one call are all upserted."""
+        session = AsyncMock()
+        # All lookups return None (new inserts)
+        no_source_result = MagicMock()
+        no_source_result.scalar_one_or_none.return_value = None
+        # No matching official for any
+        no_match_result = MagicMock()
+        no_match_result.scalar_one_or_none.return_value = None
+
+        # For 3 records: each has 2 execute calls (find source + find official)
+        session.execute.side_effect = [
+            no_source_result,
+            no_match_result,
+            no_source_result,
+            no_match_result,
+            no_source_result,
+            no_match_result,
+        ]
+        session.commit = AsyncMock()
+
+        records = [
+            OfficialRecord(
+                source_name="test",
+                source_record_id=f"rec-{i}",
+                boundary_type="congressional",
+                district_identifier="5",
+                full_name=f"Official {i}",
+            )
+            for i in range(3)
+        ]
+
+        result = await upsert_source_records(session, records)
+        assert len(result) == 3
+        assert session.add.call_count == 3
+        session.commit.assert_awaited_once()
+
 
 class TestFindMatchingOfficial:
     """Tests for _find_matching_official."""
