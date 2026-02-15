@@ -422,6 +422,105 @@ class TestApproveOfficialEndpoint:
         assert resp.status_code == 404
 
 
+class TestCreateOfficialEndpointErrors:
+    """Tests for error handling on POST /api/v1/elected-officials."""
+
+    @pytest.mark.asyncio
+    async def test_create_duplicate_returns_409(self, client: AsyncClient) -> None:
+        """Service ValueError (duplicate) returns 409 Conflict."""
+        with patch(
+            "voter_api.api.v1.elected_officials.create_official",
+            new_callable=AsyncMock,
+            side_effect=ValueError("already exists"),
+        ):
+            resp = await client.post(
+                "/api/v1/elected-officials",
+                json={
+                    "boundary_type": "congressional",
+                    "district_identifier": "5",
+                    "full_name": "Nikema Williams",
+                },
+            )
+
+        assert resp.status_code == 409
+        assert "already exists" in resp.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_create_unexpected_error_returns_500(self, client: AsyncClient) -> None:
+        """Unexpected service exception returns 500."""
+        with patch(
+            "voter_api.api.v1.elected_officials.create_official",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("db connection lost"),
+        ):
+            resp = await client.post(
+                "/api/v1/elected-officials",
+                json={
+                    "boundary_type": "congressional",
+                    "district_identifier": "5",
+                    "full_name": "Nikema Williams",
+                },
+            )
+
+        assert resp.status_code == 500
+
+
+class TestUpdateOfficialEndpointErrors:
+    """Tests for error handling on PATCH /api/v1/elected-officials/{id}."""
+
+    @pytest.mark.asyncio
+    async def test_update_value_error_returns_422(self, client: AsyncClient) -> None:
+        """Service ValueError returns 422."""
+        mock_official = _mock_official()
+        with (
+            patch(
+                "voter_api.api.v1.elected_officials.get_official",
+                new_callable=AsyncMock,
+                return_value=mock_official,
+            ),
+            patch(
+                "voter_api.api.v1.elected_officials.update_official",
+                new_callable=AsyncMock,
+                side_effect=ValueError("invalid update"),
+            ),
+        ):
+            resp = await client.patch(
+                f"/api/v1/elected-officials/{mock_official.id}",
+                json={"party": "Republican"},
+            )
+
+        assert resp.status_code == 422
+        assert "invalid update" in resp.json()["detail"]
+
+
+class TestApproveOfficialEndpointErrors:
+    """Tests for error handling on POST /api/v1/elected-officials/{id}/approve."""
+
+    @pytest.mark.asyncio
+    async def test_approve_with_invalid_source_returns_422(self, client: AsyncClient) -> None:
+        """Service ValueError on bad source_id returns 422."""
+        mock_official = _mock_official(status="auto")
+        with (
+            patch(
+                "voter_api.api.v1.elected_officials.get_official",
+                new_callable=AsyncMock,
+                return_value=mock_official,
+            ),
+            patch(
+                "voter_api.api.v1.elected_officials.approve_official",
+                new_callable=AsyncMock,
+                side_effect=ValueError("Source record not found"),
+            ),
+        ):
+            resp = await client.post(
+                f"/api/v1/elected-officials/{mock_official.id}/approve",
+                json={"source_id": str(uuid.uuid4())},
+            )
+
+        assert resp.status_code == 422
+        assert "Source record not found" in resp.json()["detail"]
+
+
 class TestGetDistrictSources:
     """Tests for GET /api/v1/elected-officials/district/{type}/{id}/sources."""
 
