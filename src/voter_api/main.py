@@ -29,9 +29,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     if settings.election_refresh_enabled:
         from voter_api.services.election_service import election_refresh_loop
 
-        refresh_task = asyncio.create_task(
-            election_refresh_loop(settings.database_url, settings.election_refresh_interval)
-        )
+        refresh_task = asyncio.create_task(election_refresh_loop(settings.election_refresh_interval))
 
     yield
 

@@ -90,6 +90,17 @@ class Settings(BaseSettings):
         description="Seconds between election refresh cycles",
         ge=10,
     )
+    election_allowed_domains: str = Field(
+        default="results.enr.clarityelections.com,sos.ga.gov",
+        description="Comma-separated list of allowed domains for election data source URLs",
+    )
+
+    @property
+    def election_allowed_domain_list(self) -> list[str]:
+        """Parse allowed domains string into a lowercase list."""
+        if not self.election_allowed_domains.strip():
+            return []
+        return [d.strip().lower() for d in self.election_allowed_domains.split(",") if d.strip()]
 
     # API
     api_v1_prefix: str = Field(

@@ -1,7 +1,10 @@
 """SoS feed HTTP client for fetching election results.
 
 Uses httpx for async HTTP requests with timeout and error handling.
+Includes SSRF protection via domain allowlisting.
 """
+
+from urllib.parse import urlparse
 
 import httpx
 from loguru import logger
@@ -17,15 +20,39 @@ class FetchError(Exception):
         self.status_code = status_code
 
 
+def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
+    """Validate that a URL's hostname is in the allowed domains list.
+
+    Args:
+        url: The URL to validate.
+        allowed_domains: List of allowed domain names (lowercase).
+
+    Raises:
+        FetchError: If the URL's hostname is not in the allowed list.
+    """
+    if not allowed_domains:
+        return
+
+    parsed = urlparse(url)
+    hostname = (parsed.hostname or "").lower()
+
+    if not hostname or hostname not in allowed_domains:
+        msg = f"Domain '{hostname}' is not in the allowed domains list"
+        raise FetchError(msg)
+
+
 async def fetch_election_results(
     url: str,
     timeout: float = 30.0,
+    allowed_domains: list[str] | None = None,
 ) -> SoSFeed:
     """Fetch and parse election results from a SoS feed URL.
 
     Args:
         url: The SoS JSON feed URL.
         timeout: HTTP request timeout in seconds.
+        allowed_domains: List of allowed domain names for SSRF protection.
+            If None, domain validation is skipped.
 
     Returns:
         A validated SoSFeed instance.
@@ -33,8 +60,11 @@ async def fetch_election_results(
     Raises:
         FetchError: If the HTTP request fails or the response is invalid.
     """
+    if allowed_domains is not None:
+        validate_url_domain(url, allowed_domains)
+
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
             logger.debug("Fetching election results from {}", url)
             response = await client.get(url)
             response.raise_for_status()

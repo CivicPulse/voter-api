@@ -1,11 +1,14 @@
 """Unit tests for election result ingester."""
 
-import uuid
-from unittest.mock import AsyncMock, MagicMock
-
 import pytest
 
-from voter_api.lib.election_tracker.ingester import _normalize_county_name, ingest_election_results
+from voter_api.lib.election_tracker.ingester import (
+    CountyResultData,
+    IngestionResult,
+    StatewideResultData,
+    _normalize_county_name,
+    ingest_election_results,
+)
 from voter_api.lib.election_tracker.parser import (
     BallotItem,
     BallotOption,
@@ -108,116 +111,47 @@ def _make_feed(
 class TestIngestElectionResults:
     """Tests for ingest_election_results()."""
 
-    @pytest.mark.asyncio
-    async def test_creates_statewide_result(self):
-        """First ingest creates a new ElectionResult row."""
-        session = AsyncMock()
-        # Mock: no existing result
-        result_mock = MagicMock()
-        result_mock.scalar_one_or_none.return_value = None
-        # Mock: no existing county result
-        county_mock = MagicMock()
-        county_mock.scalar_one_or_none.return_value = None
-        session.execute = AsyncMock(side_effect=[result_mock, county_mock])
-
-        election_id = uuid.uuid4()
+    def test_returns_ingestion_result(self):
+        """Ingestion returns an IngestionResult dataclass."""
         feed = _make_feed()
+        result = ingest_election_results(feed)
+        assert isinstance(result, IngestionResult)
+        assert isinstance(result.statewide, StatewideResultData)
+        assert len(result.counties) == 1
+        assert isinstance(result.counties[0], CountyResultData)
 
-        count = await ingest_election_results(session, election_id, feed)
-        assert count == 1
-        # session.add called for statewide result and county result
-        assert session.add.call_count == 2
-        session.flush.assert_awaited_once()
+    def test_extracts_statewide_results(self):
+        """Statewide data is correctly extracted."""
+        feed = _make_feed(precincts_participating=100, precincts_reporting=95)
+        result = ingest_election_results(feed)
 
-    @pytest.mark.asyncio
-    async def test_updates_existing_statewide_result(self):
-        """Re-ingest updates the existing row."""
-        session = AsyncMock()
-        existing_result = MagicMock()
-        result_mock = MagicMock()
-        result_mock.scalar_one_or_none.return_value = existing_result
-        county_mock = MagicMock()
-        county_mock.scalar_one_or_none.return_value = None
-        session.execute = AsyncMock(side_effect=[result_mock, county_mock])
+        assert result.statewide.precincts_participating == 100
+        assert result.statewide.precincts_reporting == 95
+        assert len(result.statewide.results_data) == 1
+        assert result.statewide.results_data[0]["name"] == "LeMario Nicholas Brown (Dem)"
 
-        election_id = uuid.uuid4()
+    def test_extracts_source_created_at(self):
+        """Source createdAt is parsed into a datetime."""
         feed = _make_feed()
+        result = ingest_election_results(feed)
+        assert result.statewide.source_created_at is not None
 
-        count = await ingest_election_results(session, election_id, feed)
-        assert count == 1
-        # Only county result added (statewide was updated in place)
-        assert session.add.call_count == 1
-        # Verify statewide result was updated
-        assert existing_result.results_data is not None
-
-    @pytest.mark.asyncio
-    async def test_county_name_normalization(self):
+    def test_county_name_normalization(self):
         """County names have ' County' suffix stripped."""
-        session = AsyncMock()
-        result_mock = MagicMock()
-        result_mock.scalar_one_or_none.return_value = None
-        county_mock = MagicMock()
-        county_mock.scalar_one_or_none.return_value = None
-        session.execute = AsyncMock(side_effect=[result_mock, county_mock])
-
-        election_id = uuid.uuid4()
         feed = _make_feed()
+        result = ingest_election_results(feed)
 
-        await ingest_election_results(session, election_id, feed)
+        assert result.counties[0].county_name == "Houston County"
+        assert result.counties[0].county_name_normalized == "Houston"
 
-        # Check the county result that was added
-        add_calls = session.add.call_args_list
-        county_result_arg = add_calls[1][0][0]  # second add call
-        assert county_result_arg.county_name == "Houston County"
-        assert county_result_arg.county_name_normalized == "Houston"
-
-    @pytest.mark.asyncio
-    async def test_updates_existing_county_result(self):
-        """Re-ingest updates existing county rows in place."""
-        session = AsyncMock()
-        result_mock = MagicMock()
-        result_mock.scalar_one_or_none.return_value = None
-        existing_county = MagicMock()
-        county_mock = MagicMock()
-        county_mock.scalar_one_or_none.return_value = existing_county
-        session.execute = AsyncMock(side_effect=[result_mock, county_mock])
-
-        election_id = uuid.uuid4()
-        feed = _make_feed()
-
-        count = await ingest_election_results(session, election_id, feed)
-        assert count == 1
-        # Only statewide result added (county was updated in place)
-        assert session.add.call_count == 1
-        assert existing_county.results_data is not None
-
-    @pytest.mark.asyncio
-    async def test_empty_local_results(self):
-        """Feed with no county results returns 0."""
-        session = AsyncMock()
-        result_mock = MagicMock()
-        result_mock.scalar_one_or_none.return_value = None
-        session.execute = AsyncMock(return_value=result_mock)
-
-        election_id = uuid.uuid4()
+    def test_empty_local_results(self):
+        """Feed with no county results returns empty list."""
         feed = _make_feed(local_results=[])
+        result = ingest_election_results(feed)
+        assert len(result.counties) == 0
 
-        count = await ingest_election_results(session, election_id, feed)
-        assert count == 0
-
-    @pytest.mark.asyncio
-    async def test_multiple_counties(self):
-        """Multiple counties are all ingested."""
-        session = AsyncMock()
-        result_mock = MagicMock()
-        result_mock.scalar_one_or_none.return_value = None
-        county_mock1 = MagicMock()
-        county_mock1.scalar_one_or_none.return_value = None
-        county_mock2 = MagicMock()
-        county_mock2.scalar_one_or_none.return_value = None
-        session.execute = AsyncMock(side_effect=[result_mock, county_mock1, county_mock2])
-
-        election_id = uuid.uuid4()
+    def test_multiple_counties(self):
+        """Multiple counties are all extracted."""
         feed = _make_feed(
             local_results=[
                 LocalResult(
@@ -249,5 +183,63 @@ class TestIngestElectionResults:
             ]
         )
 
-        count = await ingest_election_results(session, election_id, feed)
-        assert count == 2
+        result = ingest_election_results(feed)
+        assert len(result.counties) == 2
+        assert result.counties[0].county_name_normalized == "Houston"
+        assert result.counties[1].county_name_normalized == "Peach"
+
+    def test_county_ballot_data_extracted(self):
+        """County-level ballot options are extracted into results_data."""
+        feed = _make_feed()
+        result = ingest_election_results(feed)
+
+        assert len(result.counties[0].results_data) == 1
+        assert result.counties[0].results_data[0]["voteCount"] == 42
+
+    def test_county_precincts_extracted(self):
+        """County-level precinct counts are extracted."""
+        feed = _make_feed()
+        result = ingest_election_results(feed)
+
+        assert result.counties[0].precincts_participating == 7
+        assert result.counties[0].precincts_reporting == 5
+
+    def test_no_ballot_items_statewide(self):
+        """Feed with no statewide ballot items returns empty results_data."""
+        feed = SoSFeed(
+            electionDate="2026-02-17",
+            electionName="Test Election",
+            createdAt="2026-02-09T17:40:56Z",
+            results=SoSResults(id="state-001", name="Georgia", ballotItems=[]),
+            localResults=[],
+        )
+        result = ingest_election_results(feed)
+        assert result.statewide.precincts_participating is None
+        assert result.statewide.precincts_reporting is None
+        assert result.statewide.results_data == []
+
+    def test_invalid_created_at_sets_none(self):
+        """Invalid createdAt string results in None source_created_at."""
+        feed = SoSFeed(
+            electionDate="2026-02-17",
+            electionName="Test",
+            createdAt="not-a-date",
+            results=SoSResults(id="s1", name="GA", ballotItems=[]),
+            localResults=[],
+        )
+        result = ingest_election_results(feed)
+        assert result.statewide.source_created_at is None
+
+    def test_is_synchronous(self):
+        """ingest_election_results is a regular function, not a coroutine."""
+        import inspect
+
+        assert not inspect.iscoroutinefunction(ingest_election_results)
+
+    def test_no_orm_imports(self):
+        """The ingester module has no ORM model imports."""
+        import voter_api.lib.election_tracker.ingester as mod
+
+        source = pytest.importorskip("inspect").getsource(mod)
+        assert "from voter_api.models" not in source
+        assert "AsyncSession" not in source

@@ -8,14 +8,23 @@ Public API:
     - FetchError: HTTP/parse error type
 """
 
-from voter_api.lib.election_tracker.fetcher import FetchError, fetch_election_results
-from voter_api.lib.election_tracker.ingester import ingest_election_results
+from voter_api.lib.election_tracker.fetcher import FetchError, fetch_election_results, validate_url_domain
+from voter_api.lib.election_tracker.ingester import (
+    CountyResultData,
+    IngestionResult,
+    StatewideResultData,
+    ingest_election_results,
+)
 from voter_api.lib.election_tracker.parser import SoSFeed, parse_sos_feed
 
 __all__ = [
+    "CountyResultData",
     "FetchError",
+    "IngestionResult",
     "SoSFeed",
+    "StatewideResultData",
     "fetch_election_results",
     "ingest_election_results",
     "parse_sos_feed",
+    "validate_url_domain",
 ]

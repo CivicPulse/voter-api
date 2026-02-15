@@ -89,7 +89,7 @@ async def create_election(
         election = await election_service.create_election(session, request)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
-    return election_service._build_detail_response(election)
+    return election_service.build_detail_response(election)
 
 
 # --- US1: Election detail ---
@@ -104,7 +104,7 @@ async def get_election(
     election = await election_service.get_election_by_id(session, election_id)
     if election is None:
         raise HTTPException(status_code=404, detail="Election not found.")
-    return election_service._build_detail_response(election)
+    return election_service.build_detail_response(election)
 
 
 # --- US4: Admin update ---
@@ -121,7 +121,7 @@ async def update_election(
     election = await election_service.update_election(session, election_id, request)
     if election is None:
         raise HTTPException(status_code=404, detail="Election not found.")
-    return election_service._build_detail_response(election)
+    return election_service.build_detail_response(election)
 
 
 # --- US1: JSON results ---

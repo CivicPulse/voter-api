@@ -68,7 +68,7 @@ class ElectionResult(Base, UUIDMixin):
     )
     precincts_participating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     precincts_reporting: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    results_data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    results_data: Mapped[list] = mapped_column(JSONB, nullable=False)
     source_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -100,7 +100,7 @@ class ElectionCountyResult(Base, UUIDMixin):
     county_name_normalized: Mapped[str] = mapped_column(String(100), nullable=False)
     precincts_participating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     precincts_reporting: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    results_data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    results_data: Mapped[list] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     # Relationships

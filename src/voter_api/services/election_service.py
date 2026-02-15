@@ -13,11 +13,13 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from voter_api.core.config import get_settings
 from voter_api.lib.election_tracker import (
+    IngestionResult,
     fetch_election_results,
     ingest_election_results,
 )
-from voter_api.models.election import Election, ElectionCountyResult
+from voter_api.models.election import Election, ElectionCountyResult, ElectionResult
 from voter_api.schemas.election import (
     CandidateResult,
     CountyResultSummary,
@@ -140,7 +142,7 @@ async def update_election(
     return election
 
 
-def _build_detail_response(election: Election) -> ElectionDetailResponse:
+def build_detail_response(election: Election) -> ElectionDetailResponse:
     """Build an ElectionDetailResponse from an Election model instance."""
     precincts_reporting = None
     precincts_participating = None
@@ -223,6 +225,76 @@ async def get_election_results(
     )
 
 
+async def _persist_ingestion_result(
+    session: AsyncSession,
+    election_id: uuid.UUID,
+    ingestion: IngestionResult,
+) -> int:
+    """Persist ingestion results to database using upsert semantics.
+
+    Args:
+        session: Async database session.
+        election_id: The UUID of the election to update.
+        ingestion: Extracted result data from the ingester library.
+
+    Returns:
+        Number of county results upserted.
+    """
+    now = datetime.now(UTC)
+
+    # --- Statewide result upsert ---
+    existing_result = await session.execute(select(ElectionResult).where(ElectionResult.election_id == election_id))
+    result_row = existing_result.scalar_one_or_none()
+
+    if result_row is None:
+        result_row = ElectionResult(
+            election_id=election_id,
+            precincts_participating=ingestion.statewide.precincts_participating,
+            precincts_reporting=ingestion.statewide.precincts_reporting,
+            results_data=ingestion.statewide.results_data,
+            source_created_at=ingestion.statewide.source_created_at,
+            fetched_at=now,
+        )
+        session.add(result_row)
+    else:
+        result_row.precincts_participating = ingestion.statewide.precincts_participating
+        result_row.precincts_reporting = ingestion.statewide.precincts_reporting
+        result_row.results_data = ingestion.statewide.results_data
+        result_row.source_created_at = ingestion.statewide.source_created_at
+        result_row.fetched_at = now
+
+    # --- County results upsert ---
+    counties_updated = 0
+    for county in ingestion.counties:
+        existing_county = await session.execute(
+            select(ElectionCountyResult).where(
+                ElectionCountyResult.election_id == election_id,
+                ElectionCountyResult.county_name == county.county_name,
+            )
+        )
+        county_row = existing_county.scalar_one_or_none()
+
+        if county_row is None:
+            county_row = ElectionCountyResult(
+                election_id=election_id,
+                county_name=county.county_name,
+                county_name_normalized=county.county_name_normalized,
+                precincts_participating=county.precincts_participating,
+                precincts_reporting=county.precincts_reporting,
+                results_data=county.results_data,
+            )
+            session.add(county_row)
+        else:
+            county_row.precincts_participating = county.precincts_participating
+            county_row.precincts_reporting = county.precincts_reporting
+            county_row.results_data = county.results_data
+
+        counties_updated += 1
+
+    await session.flush()
+    return counties_updated
+
+
 async def refresh_single_election(
     session: AsyncSession,
     election_id: uuid.UUID,
@@ -245,8 +317,13 @@ async def refresh_single_election(
         msg = "Election not found."
         raise ValueError(msg)
 
-    feed = await fetch_election_results(election.data_source_url)
-    counties_updated = await ingest_election_results(session, election.id, feed)
+    settings = get_settings()
+    feed = await fetch_election_results(
+        election.data_source_url,
+        allowed_domains=settings.election_allowed_domain_list,
+    )
+    ingestion = ingest_election_results(feed)
+    counties_updated = await _persist_ingestion_result(session, election.id, ingestion)
 
     now = datetime.now(UTC)
     election.last_refreshed_at = now
@@ -458,13 +535,11 @@ async def refresh_all_active_elections(session: AsyncSession) -> int:
 
 
 async def election_refresh_loop(
-    database_url: str,
     interval: int,
 ) -> None:
     """Background asyncio loop that refreshes active elections.
 
     Args:
-        database_url: Database connection string for creating sessions.
         interval: Seconds between refresh cycles.
     """
     from voter_api.core.database import get_session_factory
