@@ -1,0 +1,1094 @@
+openapi: "3.1.0"
+info:
+  title: voter-api Election Result Tracking Endpoints
+  version: 0.1.0
+  description: |
+    Public and admin endpoints for tracking election results.
+    Includes election listing, result retrieval in JSON and GeoJSON formats,
+    and admin operations for creating, updating, and refreshing elections.
+    Part of feature 004-election-tracking.
+
+servers:
+  - url: /api/v1
+    description: API v1 prefix
+
+paths:
+  /elections:
+    get:
+      operationId: listElections
+      summary: List elections with optional filters
+      description: |
+        Returns a paginated list of elections. No authentication required.
+        Supports filtering by status, election type, and date range.
+        Results are sorted by election_date descending.
+      tags:
+        - elections
+      security: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter by election status
+          schema:
+            type: string
+            enum: ["active", "finalized"]
+          example: "active"
+        - name: election_type
+          in: query
+          required: false
+          description: Filter by election type
+          schema:
+            type: string
+            enum: ["special", "general", "primary", "runoff"]
+          example: "general"
+        - name: district
+          in: query
+          required: false
+          description: Filter by district/race identifier (case-insensitive partial match)
+          schema:
+            type: string
+          example: "State Senate - District 18"
+        - name: date_from
+          in: query
+          required: false
+          description: Filter to elections on or after this date (ISO 8601)
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+        - name: date_to
+          in: query
+          required: false
+          description: Filter to elections on or before this date (ISO 8601)
+          schema:
+            type: string
+            format: date
+          example: "2024-12-31"
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-indexed, default 1)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: page_size
+          in: query
+          required: false
+          description: Results per page (min 1, max 100, default 20)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
+      responses:
+        "200":
+          description: List of elections with pagination metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedElectionListResponse"
+        "422":
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+
+    post:
+      operationId: createElection
+      summary: Create a new election
+      description: |
+        Admin-only operation to create a new election record.
+        Returns 409 if an election with the same name and date already exists.
+      tags:
+        - elections
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ElectionCreateRequest"
+      responses:
+        "201":
+          description: Election created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElectionDetailResponse"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Only administrators can create elections."
+        "409":
+          description: Election already exists with this name and date
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "An election with name 'General Election' and date '2024-11-05' already exists."
+        "422":
+          description: Validation error in request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+
+  /elections/{election_id}:
+    get:
+      operationId: getElection
+      summary: Get election detail
+      description: |
+        Returns full details of a single election by ID.
+        No authentication required.
+      tags:
+        - elections
+      security: []
+      parameters:
+        - name: election_id
+          in: path
+          required: true
+          description: Election UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        "200":
+          description: Election details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElectionDetailResponse"
+        "404":
+          description: Election not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Election not found."
+
+    patch:
+      operationId: updateElection
+      summary: Update election metadata
+      description: |
+        Admin-only operation to update election fields.
+        Partial updates are supported (only provided fields are updated).
+      tags:
+        - elections
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: election_id
+          in: path
+          required: true
+          description: Election UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ElectionUpdateRequest"
+      responses:
+        "200":
+          description: Election updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElectionDetailResponse"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Election not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+
+  /elections/{election_id}/results:
+    get:
+      operationId: getElectionResults
+      summary: Get election results as JSON
+      description: |
+        Returns statewide election results with candidate vote totals
+        and breakdowns by vote method and county. Results are cached.
+        Cache duration depends on election status: 60 seconds for active,
+        86400 seconds (1 day) for finalized elections.
+      tags:
+        - results
+      security: []
+      parameters:
+        - name: election_id
+          in: path
+          required: true
+          description: Election UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        "200":
+          description: Election results with candidate and county breakdowns
+          headers:
+            Cache-Control:
+              description: Cache directive based on election status
+              schema:
+                type: string
+              example: "public, max-age=60"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElectionResultsResponse"
+        "404":
+          description: Election not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /elections/{election_id}/results/raw:
+    get:
+      operationId: getRawElectionResults
+      summary: Get raw SOS election results
+      description: |
+        Returns election results preserving the original Secretary of State
+        data structure with camelCase field names (FR-006). Envelope fields
+        use snake_case consistent with other API responses. The statewide_results
+        and county_results[].results arrays contain the raw JSONB dicts verbatim.
+        Uses same caching strategy as the JSON results endpoint.
+      tags:
+        - results
+      security: []
+      parameters:
+        - name: election_id
+          in: path
+          required: true
+          description: Election UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        "200":
+          description: Raw election results with original SOS field names
+          headers:
+            Cache-Control:
+              description: Cache directive based on election status
+              schema:
+                type: string
+              example: "public, max-age=60"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawElectionResultsResponse"
+        "404":
+          description: Election not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /elections/{election_id}/results/geojson:
+    get:
+      operationId: getElectionResultsGeoJSON
+      summary: Get county election results as GeoJSON
+      description: |
+        Returns election results as a GeoJSON FeatureCollection with county
+        boundary geometries. Each feature includes county results and candidate
+        vote totals. Uses same caching strategy as JSON results endpoint.
+      tags:
+        - results
+      security: []
+      parameters:
+        - name: election_id
+          in: path
+          required: true
+          description: Election UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        "200":
+          description: Election results as GeoJSON with county geometries
+          headers:
+            Cache-Control:
+              description: Cache directive based on election status
+              schema:
+                type: string
+              example: "public, max-age=60"
+          content:
+            application/geo+json:
+              schema:
+                $ref: "#/components/schemas/ElectionResultFeatureCollection"
+        "404":
+          description: Election not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /elections/{election_id}/refresh:
+    post:
+      operationId: refreshElection
+      summary: Trigger manual election results refresh
+      description: |
+        Admin-only operation to manually refresh election results from
+        the configured data source. Returns updated precinct counts and
+        the number of counties with updated results.
+      tags:
+        - elections
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: election_id
+          in: path
+          required: true
+          description: Election UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        "200":
+          description: Refresh completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefreshResponse"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Election not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Data source is unreachable or returned an error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Failed to retrieve results from data source. Please retry later."
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT Bearer token with role claim. Roles: admin, analyst, viewer.
+        Admin role required for POST/PATCH operations and manual refresh.
+
+  schemas:
+    # Request schemas
+
+    ElectionCreateRequest:
+      type: object
+      required:
+        - name
+        - election_date
+        - election_type
+        - district
+        - data_source_url
+      properties:
+        name:
+          type: string
+          description: Human-readable election name
+          minLength: 1
+          maxLength: 500
+          example: "General Election 2024"
+        election_date:
+          type: string
+          format: date
+          description: Election date in ISO 8601 format
+          example: "2024-11-05"
+        election_type:
+          type: string
+          enum: ["special", "general", "primary", "runoff"]
+          description: Type of election
+          example: "general"
+        district:
+          type: string
+          description: Race/contest identifier (e.g., "State Senate - District 18", "Georgia Statewide")
+          minLength: 1
+          maxLength: 200
+          example: "State Senate - District 18"
+        data_source_url:
+          type: string
+          format: uri
+          description: URL to the official election results data source
+          example: "https://sos.ga.gov/elections/results"
+        refresh_interval_seconds:
+          type: integer
+          minimum: 60
+          description: Seconds between automatic refreshes (optional, default 120)
+          example: 120
+
+    ElectionUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Updated election name
+          example: "General Election 2024 - Updated"
+        data_source_url:
+          type: string
+          format: uri
+          description: Updated data source URL
+          example: "https://sos.ga.gov/elections/results"
+        status:
+          type: string
+          enum: ["active", "finalized"]
+          description: Updated election status
+          example: "finalized"
+        refresh_interval_seconds:
+          type: integer
+          minimum: 60
+          description: Updated refresh interval in seconds
+          example: 300
+
+    # Response schemas
+
+    ElectionSummary:
+      type: object
+      required:
+        - id
+        - name
+        - election_date
+        - election_type
+        - district
+        - status
+        - last_refreshed_at
+        - precincts_reporting
+        - precincts_participating
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique election identifier
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          description: Election name
+          example: "General Election 2024"
+        election_date:
+          type: string
+          format: date
+          description: Election date
+          example: "2024-11-05"
+        election_type:
+          type: string
+          enum: ["special", "general", "primary", "runoff"]
+          description: Type of election
+          example: "general"
+        district:
+          type: string
+          description: Geographic scope
+          example: "Georgia Statewide"
+        status:
+          type: string
+          enum: ["active", "finalized"]
+          description: Current election status
+          example: "active"
+        last_refreshed_at:
+          oneOf:
+            - type: string
+              format: date-time
+              description: Timestamp of last results refresh
+              example: "2024-11-05T18:30:00Z"
+            - type: "null"
+          nullable: true
+          description: Null if election has not yet been refreshed
+        precincts_reporting:
+          oneOf:
+            - type: integer
+              minimum: 0
+              description: Number of precincts that have reported results
+              example: 2450
+            - type: "null"
+          nullable: true
+          description: Null if results not yet available
+        precincts_participating:
+          oneOf:
+            - type: integer
+              minimum: 1
+              description: Total number of precincts in the election
+              example: 2600
+            - type: "null"
+          nullable: true
+          description: Null if not yet determined
+
+    ElectionDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/ElectionSummary"
+        - type: object
+          required:
+            - data_source_url
+            - refresh_interval_seconds
+            - created_at
+            - updated_at
+          properties:
+            data_source_url:
+              type: string
+              format: uri
+              description: Official results data source URL
+              example: "https://sos.ga.gov/elections/results"
+            refresh_interval_seconds:
+              type: integer
+              minimum: 60
+              description: Seconds between automatic refreshes
+              example: 120
+            created_at:
+              type: string
+              format: date-time
+              description: Timestamp when the election was created
+              example: "2024-10-01T10:00:00Z"
+            updated_at:
+              type: string
+              format: date-time
+              description: Timestamp of the last metadata update
+              example: "2024-11-05T18:30:00Z"
+
+    PaginationMeta:
+      type: object
+      required:
+        - total
+        - page
+        - page_size
+        - total_pages
+      properties:
+        total:
+          type: integer
+          minimum: 0
+          description: Total number of results across all pages
+          example: 47
+        page:
+          type: integer
+          minimum: 1
+          description: Current page number (1-indexed)
+          example: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Results per page
+          example: 20
+        total_pages:
+          type: integer
+          minimum: 0
+          description: Total number of pages
+          example: 3
+
+    PaginatedElectionListResponse:
+      type: object
+      required:
+        - items
+        - pagination
+      properties:
+        items:
+          type: array
+          description: List of elections on this page
+          items:
+            $ref: "#/components/schemas/ElectionSummary"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    VoteMethodResult:
+      type: object
+      required:
+        - group_name
+        - vote_count
+      properties:
+        group_name:
+          type: string
+          description: Vote method group name (e.g., "Election Day", "Advance Voting", "Absentee by Mail", "Provisional")
+          example: "Advance Voting"
+        vote_count:
+          type: integer
+          minimum: 0
+          description: Number of votes cast via this method
+          example: 45000
+
+    CandidateResult:
+      type: object
+      required:
+        - id
+        - name
+        - political_party
+        - ballot_order
+        - vote_count
+        - group_results
+      properties:
+        id:
+          type: string
+          description: Candidate identifier from SoS feed (opaque string, not UUID)
+          example: "2"
+        name:
+          type: string
+          description: Full candidate name
+          example: "Jane Smith"
+        political_party:
+          type: string
+          description: Political party affiliation
+          example: "Democratic"
+        ballot_order:
+          type: integer
+          minimum: 1
+          description: Ballot position (1-indexed)
+          example: 1
+        vote_count:
+          type: integer
+          minimum: 0
+          description: Total votes received statewide
+          example: 1234567
+        group_results:
+          type: array
+          description: Votes broken down by method or group
+          items:
+            $ref: "#/components/schemas/VoteMethodResult"
+
+    CountyResultSummary:
+      type: object
+      required:
+        - county_name
+        - precincts_participating
+        - precincts_reporting
+        - candidates
+      properties:
+        county_name:
+          type: string
+          description: Georgia county name
+          example: "Fulton County"
+        precincts_participating:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: "null"
+          nullable: true
+          description: Number of precincts in the county
+          example: 245
+        precincts_reporting:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: "null"
+          nullable: true
+          description: Number of precincts that have reported
+          example: 200
+        candidates:
+          type: array
+          description: Candidate results for this county
+          items:
+            $ref: "#/components/schemas/CandidateResult"
+
+    ElectionResultsResponse:
+      type: object
+      required:
+        - election_id
+        - election_name
+        - election_date
+        - status
+        - last_refreshed_at
+        - precincts_participating
+        - precincts_reporting
+        - candidates
+        - county_results
+      properties:
+        election_id:
+          type: string
+          format: uuid
+          description: Election UUID
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        election_name:
+          type: string
+          description: Election name
+          example: "General Election 2024"
+        election_date:
+          type: string
+          format: date
+          description: Election date
+          example: "2024-11-05"
+        status:
+          type: string
+          enum: ["active", "finalized"]
+          description: Election status
+          example: "active"
+        last_refreshed_at:
+          type: string
+          format: date-time
+          description: Timestamp of last results refresh
+          example: "2024-11-05T18:30:00Z"
+        precincts_participating:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: "null"
+          nullable: true
+          description: Total precincts in the election
+          example: 2600
+        precincts_reporting:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: "null"
+          nullable: true
+          description: Precincts with reported results
+          example: 2450
+        candidates:
+          type: array
+          description: Statewide candidate results
+          items:
+            $ref: "#/components/schemas/CandidateResult"
+        county_results:
+          type: array
+          description: Results broken down by county
+          items:
+            $ref: "#/components/schemas/CountyResultSummary"
+
+    RawCountyResult:
+      type: object
+      required:
+        - county_name
+        - precincts_participating
+        - precincts_reporting
+        - results
+      properties:
+        county_name:
+          type: string
+          description: Georgia county name
+          example: "Houston County"
+        precincts_participating:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: "null"
+          nullable: true
+          description: Number of precincts in the county
+          example: 7
+        precincts_reporting:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: "null"
+          nullable: true
+          description: Number of precincts that have reported
+          example: 5
+        results:
+          type: array
+          description: Raw SOS ballot option dicts with original camelCase keys
+          items:
+            type: object
+            additionalProperties: true
+
+    RawElectionResultsResponse:
+      type: object
+      required:
+        - election_id
+        - election_name
+        - election_date
+        - status
+        - last_refreshed_at
+        - source_created_at
+        - precincts_participating
+        - precincts_reporting
+        - statewide_results
+        - county_results
+      properties:
+        election_id:
+          type: string
+          format: uuid
+          description: Election UUID
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        election_name:
+          type: string
+          description: Election name
+          example: "GA Senate District 18 Special"
+        election_date:
+          type: string
+          format: date
+          description: Election date
+          example: "2026-02-17"
+        status:
+          type: string
+          enum: ["active", "finalized"]
+          description: Election status
+          example: "active"
+        last_refreshed_at:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: "null"
+          nullable: true
+          description: Timestamp of last results refresh
+          example: "2026-02-17T12:00:00Z"
+        source_created_at:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: "null"
+          nullable: true
+          description: Timestamp from the SOS feed's createdAt field
+          example: "2026-02-09T17:40:56Z"
+        precincts_participating:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: "null"
+          nullable: true
+          description: Total precincts in the election
+          example: 100
+        precincts_reporting:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: "null"
+          nullable: true
+          description: Precincts with reported results
+          example: 95
+        statewide_results:
+          type: array
+          description: Raw SOS ballot option dicts with original camelCase keys
+          items:
+            type: object
+            additionalProperties: true
+        county_results:
+          type: array
+          description: County-level raw results
+          items:
+            $ref: "#/components/schemas/RawCountyResult"
+
+    ElectionResultFeature:
+      type: object
+      required:
+        - type
+        - geometry
+        - properties
+      properties:
+        type:
+          type: string
+          enum: ["Feature"]
+          description: GeoJSON Feature type
+          example: "Feature"
+        geometry:
+          type: object
+          description: GeoJSON geometry object (MultiPolygon or Polygon for county boundary)
+          properties:
+            type:
+              type: string
+              enum: ["Polygon", "MultiPolygon"]
+            coordinates:
+              type: array
+              description: GeoJSON coordinates (raw array structure)
+          example:
+            type: "Polygon"
+            coordinates: [[[-84.5, 33.5], [-84.5, 33.8], [-84.2, 33.8], [-84.2, 33.5], [-84.5, 33.5]]]
+        properties:
+          type: object
+          required:
+            - county_name
+            - precincts_reporting
+            - precincts_participating
+            - candidates
+          properties:
+            county_name:
+              type: string
+              description: County name
+              example: "Fulton County"
+            precincts_reporting:
+              oneOf:
+                - type: integer
+                  minimum: 0
+                - type: "null"
+              nullable: true
+              example: 200
+            precincts_participating:
+              oneOf:
+                - type: integer
+                  minimum: 1
+                - type: "null"
+              nullable: true
+              example: 245
+            candidates:
+              type: array
+              description: County-level candidate results
+              items:
+                $ref: "#/components/schemas/CandidateResult"
+
+    ElectionResultFeatureCollection:
+      type: object
+      required:
+        - type
+        - features
+        - election_id
+        - election_name
+        - election_date
+        - status
+        - last_refreshed_at
+      properties:
+        type:
+          type: string
+          enum: ["FeatureCollection"]
+          description: GeoJSON FeatureCollection type
+          example: "FeatureCollection"
+        election_id:
+          type: string
+          format: uuid
+          description: Election UUID
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        election_name:
+          type: string
+          description: Election name
+          example: "General Election 2024"
+        election_date:
+          type: string
+          format: date
+          description: Election date
+          example: "2024-11-05"
+        status:
+          type: string
+          enum: ["active", "finalized"]
+          description: Election status
+          example: "active"
+        last_refreshed_at:
+          type: string
+          format: date-time
+          description: Timestamp of last results refresh (FR-012)
+          example: "2024-11-05T18:30:00Z"
+        features:
+          type: array
+          description: Array of county result features with boundaries
+          items:
+            $ref: "#/components/schemas/ElectionResultFeature"
+
+    RefreshResponse:
+      type: object
+      required:
+        - election_id
+        - refreshed_at
+        - precincts_reporting
+        - precincts_participating
+        - counties_updated
+      properties:
+        election_id:
+          type: string
+          format: uuid
+          description: Election UUID
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        refreshed_at:
+          type: string
+          format: date-time
+          description: Timestamp when the refresh completed
+          example: "2024-11-05T18:45:30Z"
+        precincts_reporting:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: "null"
+          nullable: true
+          description: Updated precinct count reporting
+          example: 2500
+        precincts_participating:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: "null"
+          nullable: true
+          description: Updated total precinct count
+          example: 2600
+        counties_updated:
+          type: integer
+          minimum: 0
+          description: Number of counties with updated results
+          example: 25
+
+    # Error schemas
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+          example: "Resource not found."
+
+    ValidationErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          oneOf:
+            - type: string
+              description: General validation error message
+            - type: array
+              description: Array of validation errors (Pydantic format)
+              items:
+                type: object
+                properties:
+                  loc:
+                    type: array
+                    description: Location of the error (path in request)
+                    items:
+                      oneOf:
+                        - type: string
+                        - type: integer
+                  msg:
+                    type: string
+                    description: Error message
+                  type:
+                    type: string
+                    description: Error type code

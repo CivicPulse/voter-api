@@ -80,6 +80,28 @@ class Settings(BaseSettings):
         description="Regex pattern for allowed CORS origins (e.g. https://(.*\\.kerryhatcher\\.com|.*\\.voter-web\\.pages\\.dev))",
     )
 
+    # Election Tracking
+    election_refresh_enabled: bool = Field(
+        default=True,
+        description="Enable background election result refresh loop",
+    )
+    election_refresh_interval: int = Field(
+        default=60,
+        description="Seconds between election refresh cycles",
+        ge=10,
+    )
+    election_allowed_domains: str = Field(
+        default="results.enr.clarityelections.com,sos.ga.gov",
+        description="Comma-separated list of allowed domains for election data source URLs",
+    )
+
+    @property
+    def election_allowed_domain_list(self) -> list[str]:
+        """Parse allowed domains string into a lowercase list."""
+        if not self.election_allowed_domains.strip():
+            return []
+        return [d.strip().lower() for d in self.election_allowed_domains.split(",") if d.strip()]
+
     # API
     api_v1_prefix: str = Field(
         default="/api/v1",

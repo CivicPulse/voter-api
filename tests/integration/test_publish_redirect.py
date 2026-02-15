@@ -226,7 +226,10 @@ class TestDiscoveryEndpointIntegration:
     @pytest.mark.asyncio
     async def test_returns_empty_datasets_when_no_manifest(self, client: AsyncClient, mock_settings_r2_enabled) -> None:
         """Returns base_url with empty datasets when R2 configured but no manifest."""
-        with patch("voter_api.api.v1.datasets.get_settings", return_value=mock_settings_r2_enabled):
+        with (
+            patch("voter_api.api.v1.datasets.get_settings", return_value=mock_settings_r2_enabled),
+            patch("voter_api.api.v1.boundaries.get_settings", return_value=mock_settings_r2_enabled),
+        ):
             resp = await client.get("/api/v1/datasets")
 
         assert resp.status_code == 200
@@ -237,7 +240,10 @@ class TestDiscoveryEndpointIntegration:
     @pytest.mark.asyncio
     async def test_no_auth_required(self, client: AsyncClient, mock_settings_r2_enabled) -> None:
         """Endpoint requires no authentication — no Authorization header needed."""
-        with patch("voter_api.api.v1.datasets.get_settings", return_value=mock_settings_r2_enabled):
+        with (
+            patch("voter_api.api.v1.datasets.get_settings", return_value=mock_settings_r2_enabled),
+            patch("voter_api.api.v1.boundaries.get_settings", return_value=mock_settings_r2_enabled),
+        ):
             resp = await client.get("/api/v1/datasets")
 
         assert resp.status_code == 200

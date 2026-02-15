@@ -4,6 +4,8 @@ Creates the FastAPI app with lifespan management, exception handlers,
 and OpenAPI metadata.
 """
 
+import asyncio
+import contextlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -21,7 +23,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     settings = get_settings()
     setup_logging(settings.log_level)
     init_engine(settings.database_url, echo=False)
+
+    # Start election auto-refresh background task
+    refresh_task = None
+    if settings.election_refresh_enabled:
+        from voter_api.services.election_service import election_refresh_loop
+
+        refresh_task = asyncio.create_task(election_refresh_loop(settings.election_refresh_interval))
+
     yield
+
+    # Cancel background refresh task
+    if refresh_task is not None:
+        refresh_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await refresh_task
+
     await dispose_engine()
 
 
