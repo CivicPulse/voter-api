@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import ValidationError
 
+from voter_api.models.elected_official import OfficialStatus
 from voter_api.schemas.elected_official import (
     ApproveOfficialRequest,
     ElectedOfficialCreateRequest,
@@ -16,6 +17,17 @@ from voter_api.schemas.elected_official import (
     ElectedOfficialUpdateRequest,
     PaginatedElectedOfficialResponse,
 )
+
+
+class TestOfficialStatusEnum:
+    """Tests for OfficialStatus enum."""
+
+    def test_official_status_enum_values(self) -> None:
+        """Enum has exactly the 3 expected values."""
+        assert set(OfficialStatus) == {OfficialStatus.AUTO, OfficialStatus.APPROVED, OfficialStatus.MANUAL}
+        assert OfficialStatus.AUTO == "auto"
+        assert OfficialStatus.APPROVED == "approved"
+        assert OfficialStatus.MANUAL == "manual"
 
 
 class TestElectedOfficialCreateRequest:

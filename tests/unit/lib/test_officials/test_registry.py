@@ -1,5 +1,7 @@
 """Unit tests for the officials provider registry."""
 
+from unittest.mock import patch
+
 import pytest
 
 from voter_api.lib.officials import get_provider, register_provider
@@ -12,6 +14,17 @@ class _StubProvider(BaseOfficialsProvider):
     @property
     def provider_name(self) -> str:
         return "stub"
+
+    async def fetch_by_district(self, boundary_type: str, district_identifier: str) -> list[OfficialRecord]:
+        return []
+
+
+class _StubProvider2(BaseOfficialsProvider):
+    """Second stub provider for overwrite test."""
+
+    @property
+    def provider_name(self) -> str:
+        return "stub2"
 
     async def fetch_by_district(self, boundary_type: str, district_identifier: str) -> list[OfficialRecord]:
         return []
@@ -30,3 +43,14 @@ class TestProviderRegistry:
         register_provider("stub", _StubProvider)
         provider = get_provider("stub")
         assert provider.provider_name == "stub"
+
+    def test_register_overwrites_with_warning(self) -> None:
+        """Re-registering a provider logs a warning."""
+        register_provider("overwrite_test", _StubProvider)
+        with patch("voter_api.lib.officials.logger") as mock_logger:
+            register_provider("overwrite_test", _StubProvider2)
+            mock_logger.warning.assert_called_once()
+            assert "overwrite_test" in mock_logger.warning.call_args[0][0]
+        # The new provider should be in place
+        provider = get_provider("overwrite_test")
+        assert provider.provider_name == "stub2"

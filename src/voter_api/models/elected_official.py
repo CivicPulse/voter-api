@@ -12,6 +12,7 @@ Admin approval workflow:
     manual   — admin manually entered or overrode the record
 """
 
+import enum
 import uuid
 from datetime import date, datetime
 
@@ -19,10 +20,18 @@ from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Strin
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from voter_api.models.base import Base, UUIDMixin
+from voter_api.models.base import Base, TimestampMixin, UUIDMixin
 
 
-class ElectedOfficial(Base, UUIDMixin):
+class OfficialStatus(enum.StrEnum):
+    """Admin approval workflow statuses for elected officials."""
+
+    AUTO = "auto"
+    APPROVED = "approved"
+    MANUAL = "manual"
+
+
+class ElectedOfficial(Base, UUIDMixin, TimestampMixin):
     """Canonical elected official record served by the API.
 
     Represents the admin-approved (or auto-populated) view of who holds
@@ -59,15 +68,9 @@ class ElectedOfficial(Base, UUIDMixin):
     external_ids: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Admin approval workflow
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="auto")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=OfficialStatus.AUTO)
     approved_by_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    # Timestamps
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
-    )
 
     # Relationships
     sources: Mapped[list["ElectedOfficialSource"]] = relationship(
@@ -82,7 +85,7 @@ class ElectedOfficial(Base, UUIDMixin):
     )
 
 
-class ElectedOfficialSource(Base, UUIDMixin):
+class ElectedOfficialSource(Base, UUIDMixin, TimestampMixin):
     """Cached response from an external data provider.
 
     Each row represents a single provider's view of an elected official
@@ -129,12 +132,6 @@ class ElectedOfficialSource(Base, UUIDMixin):
     # Tracking
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     is_current: Mapped[bool] = mapped_column(nullable=False, default=True)
-
-    # Timestamps
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
-    )
 
     # Relationships
     elected_official: Mapped["ElectedOfficial | None"] = relationship(back_populates="sources")

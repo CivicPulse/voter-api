@@ -9,6 +9,8 @@ Public API:
 
 from typing import Any
 
+from loguru import logger
+
 from voter_api.lib.officials.base import BaseOfficialsProvider, OfficialRecord, OfficialsProviderError
 
 # Provider registry — populated as concrete providers are implemented
@@ -42,6 +44,8 @@ def register_provider(name: str, cls: type[BaseOfficialsProvider]) -> None:
         name: Short name for the provider.
         cls: Provider class (must subclass BaseOfficialsProvider).
     """
+    if name in _PROVIDERS:
+        logger.warning(f"Overwriting existing officials provider {name!r}")
     _PROVIDERS[name] = cls
 
 

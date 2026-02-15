@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 
-@dataclass
+@dataclass(frozen=True)
 class OfficialRecord:
     """Normalized representation of an elected official from any provider.
 

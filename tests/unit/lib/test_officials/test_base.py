@@ -24,6 +24,18 @@ class TestOfficialRecord:
         assert rec.party is None
         assert rec.raw_data == {}
 
+    def test_record_is_frozen(self) -> None:
+        """Mutating a frozen OfficialRecord raises AttributeError."""
+        rec = OfficialRecord(
+            source_name="test",
+            source_record_id="001",
+            boundary_type="congressional",
+            district_identifier="5",
+            full_name="Nikema Williams",
+        )
+        with pytest.raises(AttributeError):
+            rec.full_name = "Changed Name"
+
     def test_full_record(self) -> None:
         """Record with all fields populated."""
         rec = OfficialRecord(
