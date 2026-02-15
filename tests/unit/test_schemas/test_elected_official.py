@@ -83,6 +83,60 @@ class TestElectedOfficialCreateRequest:
                 district_identifier="5",
             )
 
+    def test_missing_district_identifier_rejected(self) -> None:
+        """Missing required district_identifier is rejected."""
+        with pytest.raises(ValidationError):
+            ElectedOfficialCreateRequest(
+                boundary_type="congressional",
+                full_name="Nikema Williams",
+            )
+
+    def test_empty_full_name_rejected(self) -> None:
+        """Empty full_name string is rejected by min_length."""
+        with pytest.raises(ValidationError, match="full_name"):
+            ElectedOfficialCreateRequest(
+                boundary_type="congressional",
+                district_identifier="5",
+                full_name="",
+            )
+
+    def test_empty_boundary_type_rejected(self) -> None:
+        """Empty boundary_type string is rejected by min_length."""
+        with pytest.raises(ValidationError, match="boundary_type"):
+            ElectedOfficialCreateRequest(
+                boundary_type="",
+                district_identifier="5",
+                full_name="Nikema Williams",
+            )
+
+    def test_empty_district_identifier_rejected(self) -> None:
+        """Empty district_identifier string is rejected by min_length."""
+        with pytest.raises(ValidationError, match="district_identifier"):
+            ElectedOfficialCreateRequest(
+                boundary_type="congressional",
+                district_identifier="",
+                full_name="Nikema Williams",
+            )
+
+    def test_invalid_boundary_type_rejected(self) -> None:
+        """Invalid boundary_type is rejected by field_validator."""
+        with pytest.raises(ValidationError, match="boundary_type"):
+            ElectedOfficialCreateRequest(
+                boundary_type="invalid_type",
+                district_identifier="5",
+                full_name="Nikema Williams",
+            )
+
+    def test_valid_boundary_types_accepted(self) -> None:
+        """Spot check that recognized boundary types are accepted."""
+        for bt in ("congressional", "state_senate", "county"):
+            req = ElectedOfficialCreateRequest(
+                boundary_type=bt,
+                district_identifier="5",
+                full_name="Test Official",
+            )
+            assert req.boundary_type == bt
+
 
 class TestElectedOfficialUpdateRequest:
     """Tests for ElectedOfficialUpdateRequest validation."""

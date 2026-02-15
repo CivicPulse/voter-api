@@ -2,13 +2,12 @@
 
 import uuid
 from datetime import date, datetime
-from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
+from voter_api.models.boundary import BOUNDARY_TYPES
+from voter_api.models.elected_official import OfficialStatus
 from voter_api.schemas.common import PaginationMeta
-
-VALID_OFFICIAL_STATUSES = Literal["auto", "approved", "manual"]
 
 # ---------------------------------------------------------------------------
 # Source schemas
@@ -59,7 +58,7 @@ class ElectedOfficialSummaryResponse(BaseModel):
     party: str | None = None
     title: str | None = None
     photo_url: str | None = None
-    status: VALID_OFFICIAL_STATUSES
+    status: OfficialStatus
     created_at: datetime
 
 
@@ -103,9 +102,19 @@ class PaginatedElectedOfficialResponse(BaseModel):
 class ElectedOfficialCreateRequest(BaseModel):
     """Request body for creating an elected official record."""
 
-    boundary_type: str
-    district_identifier: str
-    full_name: str
+    boundary_type: str = Field(min_length=1, max_length=50)
+    district_identifier: str = Field(min_length=1, max_length=50)
+    full_name: str = Field(min_length=1, max_length=200)
+
+    @field_validator("boundary_type")
+    @classmethod
+    def validate_boundary_type(cls, v: str) -> str:
+        """Ensure boundary_type is a recognized value."""
+        if v not in BOUNDARY_TYPES:
+            msg = f"Invalid boundary_type {v!r}. Must be one of: {BOUNDARY_TYPES}"
+            raise ValueError(msg)
+        return v
+
     first_name: str | None = None
     last_name: str | None = None
     party: str | None = None
