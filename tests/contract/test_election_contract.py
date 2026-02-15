@@ -19,6 +19,9 @@ from voter_api.schemas.election import (
     ElectionSummary,
     ElectionUpdateRequest,
     PaginatedElectionListResponse,
+    PrecinctCandidateResult,
+    PrecinctElectionResultFeature,
+    PrecinctElectionResultFeatureCollection,
     RefreshResponse,
     VoteMethodResult,
 )
@@ -315,3 +318,107 @@ class TestRefreshResponse:
         data = resp.model_dump()
         assert data["precincts_reporting"] is None
         assert data["precincts_participating"] is None
+
+
+class TestPrecinctCandidateResult:
+    def test_all_fields(self):
+        pcr = PrecinctCandidateResult(
+            id="2",
+            name="Jane Smith",
+            political_party="Dem",
+            vote_count=10,
+            reporting_status="Reported",
+            group_results=[
+                VoteMethodResult(group_name="Election Day", vote_count=8),
+            ],
+        )
+        data = pcr.model_dump()
+        assert data["id"] == "2"
+        assert data["name"] == "Jane Smith"
+        assert data["political_party"] == "Dem"
+        assert data["vote_count"] == 10
+        assert data["reporting_status"] == "Reported"
+        assert len(data["group_results"]) == 1
+
+    def test_defaults(self):
+        pcr = PrecinctCandidateResult(
+            id="1",
+            name="Candidate",
+            political_party="Rep",
+        )
+        data = pcr.model_dump()
+        assert data["vote_count"] == 0
+        assert data["reporting_status"] is None
+        assert data["group_results"] == []
+
+
+class TestPrecinctElectionResultFeature:
+    def test_with_geometry(self):
+        feature = PrecinctElectionResultFeature(
+            geometry={
+                "type": "MultiPolygon",
+                "coordinates": [[[[-84.5, 33.5], [-84.5, 33.8], [-84.2, 33.8], [-84.5, 33.5]]]],
+            },
+            properties={
+                "precinct_id": "ANNX",
+                "precinct_name": "Annex",
+                "county": "Houston County",
+                "reporting_status": "Reported",
+                "candidates": [],
+            },
+        )
+        data = feature.model_dump()
+        assert data["type"] == "Feature"
+        assert data["geometry"]["type"] == "MultiPolygon"
+        assert data["properties"]["precinct_id"] == "ANNX"
+
+    def test_null_geometry(self):
+        feature = PrecinctElectionResultFeature(
+            geometry=None,
+            properties={
+                "precinct_id": "VIRTUAL",
+                "precinct_name": "Virtual",
+                "county": "Houston County",
+                "reporting_status": None,
+                "candidates": [],
+            },
+        )
+        data = feature.model_dump()
+        assert data["geometry"] is None
+        assert data["properties"]["precinct_id"] == "VIRTUAL"
+
+
+class TestPrecinctElectionResultFeatureCollection:
+    def test_structure(self):
+        fc = PrecinctElectionResultFeatureCollection(
+            election_id=uuid.uuid4(),
+            election_name="Test Election",
+            election_date=date(2026, 2, 17),
+            status="active",
+            last_refreshed_at=datetime(2026, 2, 17, 12, 0, tzinfo=UTC),
+            features=[
+                PrecinctElectionResultFeature(
+                    geometry=None,
+                    properties={"precinct_id": "P01", "precinct_name": "P01", "county": "Test", "candidates": []},
+                ),
+            ],
+        )
+        data = fc.model_dump(mode="json")
+        assert data["type"] == "FeatureCollection"
+        assert "election_id" in data
+        assert "election_name" in data
+        assert "election_date" in data
+        assert "status" in data
+        assert "last_refreshed_at" in data
+        assert len(data["features"]) == 1
+
+    def test_empty_features(self):
+        fc = PrecinctElectionResultFeatureCollection(
+            election_id=uuid.uuid4(),
+            election_name="Empty",
+            election_date=date(2026, 2, 17),
+            status="active",
+            last_refreshed_at=None,
+        )
+        data = fc.model_dump(mode="json")
+        assert data["features"] == []

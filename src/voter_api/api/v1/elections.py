@@ -170,6 +170,30 @@ async def get_election_results_geojson(
     )
 
 
+# --- US2b: Precinct GeoJSON results ---
+
+
+@elections_router.get("/{election_id}/results/geojson/precincts")
+async def get_election_results_geojson_precincts(
+    election_id: uuid.UUID,
+    response: Response,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    county: str | None = Query(default=None, description="Filter by county name"),
+) -> JSONResponse:
+    """Get precinct-level election results as GeoJSON. Public endpoint."""
+    result = await election_service.get_election_precinct_results_geojson(session, election_id, county=county)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Election not found.")
+
+    cache_ttl = 60 if result.status == "active" else 86400
+
+    return JSONResponse(
+        content=result.model_dump(mode="json"),
+        media_type="application/geo+json",
+        headers={"Cache-Control": f"public, max-age={cache_ttl}"},
+    )
+
+
 # --- US4: Admin manual refresh ---
 
 

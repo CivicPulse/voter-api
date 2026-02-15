@@ -518,3 +518,130 @@ class TestGetElectionResultsGeoJSON:
         with patch("voter_api.services.election_service.get_election_results_geojson", return_value=None):
             resp = await client.get(f"/api/v1/elections/{uuid.uuid4()}/results/geojson")
         assert resp.status_code == 404
+
+
+# --- US2b: GET /elections/{id}/results/geojson/precincts ---
+
+
+class TestGetElectionResultsGeoJSONPrecincts:
+    @pytest.mark.asyncio
+    async def test_returns_precinct_geojson(self, client):
+        from voter_api.schemas.election import (
+            PrecinctElectionResultFeature,
+            PrecinctElectionResultFeatureCollection,
+        )
+
+        election = _make_election()
+        mock_fc = PrecinctElectionResultFeatureCollection(
+            election_id=election.id,
+            election_name="Test",
+            election_date=date(2026, 2, 17),
+            status="active",
+            last_refreshed_at=None,
+            features=[
+                PrecinctElectionResultFeature(
+                    geometry={
+                        "type": "MultiPolygon",
+                        "coordinates": [[[[-84.5, 33.5], [-84.5, 33.8], [-84.2, 33.8], [-84.5, 33.5]]]],
+                    },
+                    properties={
+                        "precinct_id": "ANNX",
+                        "precinct_name": "Annex",
+                        "county": "Houston County",
+                        "reporting_status": "Reported",
+                        "candidates": [],
+                    },
+                ),
+            ],
+        )
+
+        with patch(
+            "voter_api.services.election_service.get_election_precinct_results_geojson",
+            return_value=mock_fc,
+        ):
+            resp = await client.get(f"/api/v1/elections/{election.id}/results/geojson/precincts")
+
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "application/geo+json"
+        data = resp.json()
+        assert data["type"] == "FeatureCollection"
+        assert len(data["features"]) == 1
+        assert data["features"][0]["properties"]["precinct_id"] == "ANNX"
+
+    @pytest.mark.asyncio
+    async def test_county_filter_passed(self, client):
+        from voter_api.schemas.election import PrecinctElectionResultFeatureCollection
+
+        election = _make_election()
+        mock_fc = PrecinctElectionResultFeatureCollection(
+            election_id=election.id,
+            election_name="Test",
+            election_date=date(2026, 2, 17),
+            status="active",
+            last_refreshed_at=None,
+            features=[],
+        )
+
+        with patch(
+            "voter_api.services.election_service.get_election_precinct_results_geojson",
+            return_value=mock_fc,
+        ) as mock_svc:
+            resp = await client.get(f"/api/v1/elections/{election.id}/results/geojson/precincts?county=Houston")
+
+        assert resp.status_code == 200
+        mock_svc.assert_awaited_once()
+        call_kwargs = mock_svc.call_args
+        assert call_kwargs[1]["county"] == "Houston" or call_kwargs[0][2] == "Houston"
+
+    @pytest.mark.asyncio
+    async def test_cache_control_active(self, client):
+        from voter_api.schemas.election import PrecinctElectionResultFeatureCollection
+
+        election = _make_election(status="active")
+        mock_fc = PrecinctElectionResultFeatureCollection(
+            election_id=election.id,
+            election_name="Test",
+            election_date=date(2026, 2, 17),
+            status="active",
+            last_refreshed_at=None,
+            features=[],
+        )
+
+        with patch(
+            "voter_api.services.election_service.get_election_precinct_results_geojson",
+            return_value=mock_fc,
+        ):
+            resp = await client.get(f"/api/v1/elections/{election.id}/results/geojson/precincts")
+
+        assert resp.headers["cache-control"] == "public, max-age=60"
+
+    @pytest.mark.asyncio
+    async def test_cache_control_finalized(self, client):
+        from voter_api.schemas.election import PrecinctElectionResultFeatureCollection
+
+        election = _make_election(status="finalized")
+        mock_fc = PrecinctElectionResultFeatureCollection(
+            election_id=election.id,
+            election_name="Test",
+            election_date=date(2026, 2, 17),
+            status="finalized",
+            last_refreshed_at=None,
+            features=[],
+        )
+
+        with patch(
+            "voter_api.services.election_service.get_election_precinct_results_geojson",
+            return_value=mock_fc,
+        ):
+            resp = await client.get(f"/api/v1/elections/{election.id}/results/geojson/precincts")
+
+        assert resp.headers["cache-control"] == "public, max-age=86400"
+
+    @pytest.mark.asyncio
+    async def test_precinct_geojson_404(self, client):
+        with patch(
+            "voter_api.services.election_service.get_election_precinct_results_geojson",
+            return_value=None,
+        ):
+            resp = await client.get(f"/api/v1/elections/{uuid.uuid4()}/results/geojson/precincts")
+        assert resp.status_code == 404

@@ -30,6 +30,9 @@ from voter_api.schemas.election import (
     ElectionResultsResponse,
     ElectionSummary,
     ElectionUpdateRequest,
+    PrecinctCandidateResult,
+    PrecinctElectionResultFeature,
+    PrecinctElectionResultFeatureCollection,
     RefreshResponse,
     VoteMethodResult,
 )
@@ -499,6 +502,150 @@ async def get_election_results_geojson(
         )
 
     return ElectionResultFeatureCollection(
+        election_id=election.id,
+        election_name=election.name,
+        election_date=election.election_date,
+        status=election.status,
+        last_refreshed_at=election.last_refreshed_at,
+        features=features,
+    )
+
+
+# --- US2b: Precinct-level GeoJSON ---
+
+
+def _transpose_precinct_results(county_results_data: list[dict]) -> dict[str, dict]:
+    """Transpose candidate-centric SoS data into precinct-centric structure.
+
+    SoS data is shaped as candidate -> precincts[]. This function inverts it
+    to precinct -> candidates[] for GeoJSON feature generation.
+
+    Args:
+        county_results_data: Raw JSONB ballot options from a county result row.
+
+    Returns:
+        Dict keyed by uppercased precinct_id, each value containing
+        precinct_id, precinct_name, reporting_status, and candidates list.
+    """
+    precincts: dict[str, dict] = {}
+    for opt in county_results_data:
+        precinct_results = opt.get("precinctResults") or []
+        for pr in precinct_results:
+            pid = str(pr.get("id", "")).upper()
+            if not pid:
+                continue
+
+            if pid not in precincts:
+                precincts[pid] = {
+                    "precinct_id": pid,
+                    "precinct_name": pr.get("name", pid),
+                    "reporting_status": pr.get("reportingStatus"),
+                    "candidates": [],
+                }
+
+            group_results = [
+                VoteMethodResult(
+                    group_name=gr.get("groupName", ""),
+                    vote_count=gr.get("voteCount", 0),
+                )
+                for gr in pr.get("groupResults", [])
+            ]
+
+            precincts[pid]["candidates"].append(
+                PrecinctCandidateResult(
+                    id=opt.get("id", ""),
+                    name=opt.get("name", ""),
+                    political_party=opt.get("politicalParty", ""),
+                    vote_count=pr.get("voteCount", 0),
+                    reporting_status=pr.get("reportingStatus"),
+                    group_results=group_results,
+                )
+            )
+
+    return precincts
+
+
+async def get_election_precinct_results_geojson(
+    session: AsyncSession,
+    election_id: uuid.UUID,
+    county: str | None = None,
+) -> PrecinctElectionResultFeatureCollection | None:
+    """Build a GeoJSON FeatureCollection of precinct-level election results.
+
+    Extracts per-precinct data from the JSONB column, joins to precinct_metadata
+    and boundaries for geometry.
+
+    Args:
+        session: Async database session.
+        election_id: The election UUID.
+        county: Optional county name filter (case-insensitive).
+
+    Returns:
+        PrecinctElectionResultFeatureCollection or None if election not found.
+    """
+    from geoalchemy2.shape import to_shape
+    from shapely.geometry import mapping
+
+    from voter_api.models.boundary import Boundary
+    from voter_api.services.precinct_metadata_service import (
+        get_precinct_metadata_by_county_and_ids,
+    )
+
+    election = await get_election_by_id(session, election_id)
+    if election is None:
+        return None
+
+    # Query county results, optionally filtered by county
+    query = select(ElectionCountyResult).where(ElectionCountyResult.election_id == election_id)
+    if county:
+        query = query.where(func.upper(ElectionCountyResult.county_name_normalized) == county.upper())
+    result = await session.execute(query)
+    county_rows = result.scalars().all()
+
+    features: list[PrecinctElectionResultFeature] = []
+
+    for county_row in county_rows:
+        # Transpose candidate-centric -> precinct-centric
+        precinct_map = _transpose_precinct_results(county_row.results_data)
+        if not precinct_map:
+            continue
+
+        # Batch lookup precinct metadata for geometry
+        precinct_ids = list(precinct_map.keys())
+        metadata_map = await get_precinct_metadata_by_county_and_ids(session, county_row.county_name, precinct_ids)
+
+        # Batch fetch boundary geometries
+        boundary_ids = [m.boundary_id for m in metadata_map.values()]
+        geom_map: dict[uuid.UUID, Any] = {}
+        if boundary_ids:
+            geom_result = await session.execute(
+                select(Boundary.id, Boundary.geometry).where(Boundary.id.in_(boundary_ids))
+            )
+            geom_map = {row.id: row.geometry for row in geom_result.all()}
+
+        # Build features
+        for pid, precinct_data in precinct_map.items():
+            geom_dict: dict[str, Any] | None = None
+            meta = metadata_map.get(pid)
+            if meta and meta.boundary_id in geom_map:
+                geometry = geom_map[meta.boundary_id]
+                if geometry is not None:
+                    geom_dict = mapping(to_shape(geometry))
+
+            features.append(
+                PrecinctElectionResultFeature(
+                    geometry=geom_dict,
+                    properties={
+                        "precinct_id": precinct_data["precinct_id"],
+                        "precinct_name": precinct_data["precinct_name"],
+                        "county": county_row.county_name,
+                        "reporting_status": precinct_data["reporting_status"],
+                        "candidates": [c.model_dump() for c in precinct_data["candidates"]],
+                    },
+                )
+            )
+
+    return PrecinctElectionResultFeatureCollection(
         election_id=election.id,
         election_name=election.name,
         election_date=election.election_date,

@@ -4,7 +4,7 @@ import uuid
 from decimal import Decimal, InvalidOperation
 
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.models.precinct_metadata import PrecinctMetadata
@@ -103,6 +103,34 @@ async def get_precinct_metadata_batch(
 
     result = await session.execute(select(PrecinctMetadata).where(PrecinctMetadata.boundary_id.in_(boundary_ids)))
     return {record.boundary_id: record for record in result.scalars().all()}
+
+
+async def get_precinct_metadata_by_county_and_ids(
+    session: AsyncSession,
+    county_name: str,
+    precinct_ids: list[str],
+) -> dict[str, PrecinctMetadata]:
+    """Look up precinct metadata by county name and precinct IDs.
+
+    Args:
+        session: Database session.
+        county_name: County name to match (case-insensitive).
+        precinct_ids: List of precinct IDs to look up (matched uppercase).
+
+    Returns:
+        Dict mapping uppercased precinct_id to PrecinctMetadata record.
+    """
+    if not precinct_ids:
+        return {}
+
+    upper_ids = [pid.upper() for pid in precinct_ids]
+    result = await session.execute(
+        select(PrecinctMetadata).where(
+            func.upper(PrecinctMetadata.county_name) == county_name.upper(),
+            func.upper(PrecinctMetadata.precinct_id).in_(upper_ids),
+        )
+    )
+    return {record.precinct_id.upper(): record for record in result.scalars().all()}
 
 
 async def get_precinct_metadata_by_boundary(

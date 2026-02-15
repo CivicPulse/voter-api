@@ -138,3 +138,37 @@ class RefreshResponse(BaseModel):
     precincts_reporting: int | None = None
     precincts_participating: int | None = None
     counties_updated: int = 0
+
+
+# --- Precinct-level GeoJSON schemas ---
+
+
+class PrecinctCandidateResult(BaseModel):
+    """Per-candidate result within a single precinct."""
+
+    id: str
+    name: str
+    political_party: str
+    vote_count: int = 0
+    reporting_status: str | None = None
+    group_results: list[VoteMethodResult] = Field(default_factory=list)
+
+
+class PrecinctElectionResultFeature(BaseModel):
+    """GeoJSON Feature for a precinct's election results."""
+
+    type: Literal["Feature"] = "Feature"
+    geometry: dict[str, Any] | None = None
+    properties: dict[str, Any]
+
+
+class PrecinctElectionResultFeatureCollection(BaseModel):
+    """GeoJSON FeatureCollection of precinct-level election results."""
+
+    type: Literal["FeatureCollection"] = "FeatureCollection"
+    election_id: uuid.UUID
+    election_name: str
+    election_date: date
+    status: str
+    last_refreshed_at: datetime | None
+    features: list[PrecinctElectionResultFeature] = Field(default_factory=list)
