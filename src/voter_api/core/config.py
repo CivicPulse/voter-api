@@ -102,6 +102,16 @@ class Settings(BaseSettings):
             return []
         return [d.strip().lower() for d in self.election_allowed_domains.split(",") if d.strip()]
 
+    # Elected Officials Providers
+    open_states_api_key: str | None = Field(
+        default=None,
+        description="Open States API key for state legislator data",
+    )
+    congress_gov_api_key: str | None = Field(
+        default=None,
+        description="Congress.gov API key for federal representative data",
+    )
+
     # API
     api_v1_prefix: str = Field(
         default="/api/v1",

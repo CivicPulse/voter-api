@@ -12,6 +12,8 @@ from typing import Any
 from loguru import logger
 
 from voter_api.lib.officials.base import BaseOfficialsProvider, OfficialRecord, OfficialsProviderError
+from voter_api.lib.officials.congress_gov import CongressGovProvider
+from voter_api.lib.officials.open_states import OpenStatesProvider
 
 # Provider registry — populated as concrete providers are implemented
 _PROVIDERS: dict[str, type[BaseOfficialsProvider]] = {}
@@ -49,10 +51,15 @@ def register_provider(name: str, cls: type[BaseOfficialsProvider]) -> None:
     _PROVIDERS[name] = cls
 
 
+register_provider("open_states", OpenStatesProvider)
+register_provider("congress_gov", CongressGovProvider)
+
 __all__ = [
     "BaseOfficialsProvider",
+    "CongressGovProvider",
     "OfficialRecord",
     "OfficialsProviderError",
+    "OpenStatesProvider",
     "get_provider",
     "register_provider",
 ]
