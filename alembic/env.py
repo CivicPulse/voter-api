@@ -20,6 +20,7 @@ from voter_api.models.base import Base
 from voter_api.models.boundary import Boundary  # noqa: F401
 from voter_api.models.county_district import CountyDistrict  # noqa: F401
 from voter_api.models.county_metadata import CountyMetadata  # noqa: F401
+from voter_api.models.elected_official import ElectedOfficial, ElectedOfficialSource  # noqa: F401
 from voter_api.models.election import Election, ElectionCountyResult, ElectionResult  # noqa: F401
 from voter_api.models.export_job import ExportJob  # noqa: F401
 from voter_api.models.geocoded_location import GeocodedLocation  # noqa: F401

@@ -203,9 +203,22 @@ Piku picks a new random port on each deploy. The `piku-uwsgi` emperor auto-resta
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes
+- 005-elected-officials: Added `ElectedOfficial` and `ElectedOfficialSource` models (migration 015), 9 API endpoints under `/api/v1/elected-officials`, admin approval workflow (auto/approved/manual), multi-source data provider architecture
 - 004-election-tracking: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, httpx, Alembic, Typer, Loguru
 - 004-election-tracking: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 003-address-geocoding-endpoint: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, httpx, Alembic
+
+### 005-elected-officials
+
+**Elected Officials API** — Manages canonical elected official records with multi-source data provider support. Two new tables (`elected_officials`, `elected_official_sources`) added in migration 015. Officials are linked to districts via soft join on `(boundary_type, district_identifier)`. Source records from external providers (Open States, Google Civic, etc.) are cached with full provenance. Admin approval workflow supports three states: `auto` (unreviewed), `approved` (admin-verified), `manual` (admin-entered). Nine REST endpoints cover listing, district lookup, source comparison, CRUD, and approval. JSONB `external_ids` column enables flexible cross-referencing across provider ID schemes.
+
+Key files:
+- `src/voter_api/models/elected_official.py` — `ElectedOfficial`, `ElectedOfficialSource` models, `OfficialStatus` enum
+- `src/voter_api/schemas/elected_official.py` — 7 Pydantic v2 schemas
+- `src/voter_api/api/v1/elected_officials.py` — 9 route handlers
+- `src/voter_api/services/elected_official_service.py` — service layer
+- `alembic/versions/015_elected_officials.py` — migration
+- `specs/005-elected-officials/` — OpenAPI contract and data model docs
 
 ### 002-static-dataset-publish
 
@@ -215,5 +228,5 @@ Key files:
 
 
 ## Active Technologies
-- Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, httpx, Alembic, Typer, Loguru (004-election-tracking)
-- PostgreSQL 15+ / PostGIS 3.x (existing `boundaries`, `county_metadata` tables; new `elections`, `election_results`, `election_county_results` tables) (004-election-tracking)
+- Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, httpx, Alembic, Typer, Loguru (005-elected-officials)
+- PostgreSQL 15+ / PostGIS 3.x (existing `boundaries`, `county_metadata`, `elections`, `election_results`, `election_county_results` tables; new `elected_officials`, `elected_official_sources` tables) (005-elected-officials)
