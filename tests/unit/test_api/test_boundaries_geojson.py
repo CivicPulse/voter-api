@@ -13,7 +13,16 @@ from voter_api.core.dependencies import get_async_session
 
 
 @pytest.fixture
-def app() -> FastAPI:
+def _mock_settings():
+    """Patch get_settings so Settings is never instantiated without env vars."""
+    mock = MagicMock()
+    mock.r2_enabled = False
+    with patch("voter_api.api.v1.boundaries.get_settings", return_value=mock):
+        yield mock
+
+
+@pytest.fixture
+def app(_mock_settings) -> FastAPI:
     """Create a minimal FastAPI app with the boundaries router and mocked DB session."""
     app = FastAPI()
     app.include_router(boundaries_router, prefix="/api/v1")

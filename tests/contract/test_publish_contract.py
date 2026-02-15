@@ -195,7 +195,10 @@ class TestDiscoveryContract:
     @pytest.mark.asyncio
     async def test_empty_datasets_when_no_manifest(self, client: AsyncClient, mock_settings_r2_enabled) -> None:
         """Empty datasets list when no manifest loaded."""
-        with patch("voter_api.api.v1.datasets.get_settings", return_value=mock_settings_r2_enabled):
+        with (
+            patch("voter_api.api.v1.datasets.get_settings", return_value=mock_settings_r2_enabled),
+            patch("voter_api.api.v1.boundaries.get_settings", return_value=mock_settings_r2_enabled),
+        ):
             resp = await client.get("/api/v1/datasets")
 
         data = resp.json()
@@ -205,7 +208,10 @@ class TestDiscoveryContract:
     @pytest.mark.asyncio
     async def test_no_auth_required(self, client: AsyncClient, mock_settings_r2_enabled) -> None:
         """Endpoint requires no authentication."""
-        with patch("voter_api.api.v1.datasets.get_settings", return_value=mock_settings_r2_enabled):
+        with (
+            patch("voter_api.api.v1.datasets.get_settings", return_value=mock_settings_r2_enabled),
+            patch("voter_api.api.v1.boundaries.get_settings", return_value=mock_settings_r2_enabled),
+        ):
             resp = await client.get("/api/v1/datasets")
 
         # No 401 or 403 — endpoint is public
