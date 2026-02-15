@@ -22,6 +22,8 @@ from voter_api.schemas.election import (
     PrecinctCandidateResult,
     PrecinctElectionResultFeature,
     PrecinctElectionResultFeatureCollection,
+    RawCountyResult,
+    RawElectionResultsResponse,
     RefreshResponse,
     VoteMethodResult,
 )
@@ -318,6 +320,110 @@ class TestRefreshResponse:
         data = resp.model_dump()
         assert data["precincts_reporting"] is None
         assert data["precincts_participating"] is None
+
+
+class TestRawCountyResult:
+    def test_fields(self):
+        rcr = RawCountyResult(
+            county_name="Houston County",
+            precincts_participating=7,
+            precincts_reporting=5,
+            results=[
+                {
+                    "id": "2",
+                    "name": "Jane Doe",
+                    "politicalParty": "Dem",
+                    "voteCount": 42,
+                    "groupResults": [],
+                },
+            ],
+        )
+        data = rcr.model_dump()
+        assert data["county_name"] == "Houston County"
+        assert data["precincts_participating"] == 7
+        assert data["precincts_reporting"] == 5
+        assert len(data["results"]) == 1
+        assert data["results"][0]["politicalParty"] == "Dem"
+
+    def test_defaults(self):
+        rcr = RawCountyResult(county_name="Test County")
+        data = rcr.model_dump()
+        assert data["precincts_participating"] is None
+        assert data["precincts_reporting"] is None
+        assert data["results"] == []
+
+
+class TestRawElectionResultsResponse:
+    def test_full_structure(self):
+        resp = RawElectionResultsResponse(
+            election_id=uuid.uuid4(),
+            election_name="GA Senate District 18 Special",
+            election_date=date(2026, 2, 17),
+            status="active",
+            last_refreshed_at=datetime(2026, 2, 17, 12, 0, tzinfo=UTC),
+            source_created_at=datetime(2026, 2, 9, 17, 40, 56, tzinfo=UTC),
+            precincts_participating=100,
+            precincts_reporting=95,
+            statewide_results=[
+                {
+                    "id": "2",
+                    "name": "Candidate A",
+                    "ballotOrder": 1,
+                    "voteCount": 1234,
+                    "politicalParty": "Dem",
+                    "groupResults": [{"groupName": "Election Day", "voteCount": 800}],
+                },
+            ],
+            county_results=[
+                RawCountyResult(
+                    county_name="Houston County",
+                    precincts_participating=7,
+                    precincts_reporting=5,
+                    results=[{"id": "2", "voteCount": 42}],
+                ),
+            ],
+        )
+        data = resp.model_dump(mode="json")
+        assert "election_id" in data
+        assert "election_name" in data
+        assert "election_date" in data
+        assert "status" in data
+        assert "last_refreshed_at" in data
+        assert "source_created_at" in data
+        assert "precincts_participating" in data
+        assert "precincts_reporting" in data
+        assert "statewide_results" in data
+        assert "county_results" in data
+        # camelCase keys preserved in raw data
+        assert data["statewide_results"][0]["politicalParty"] == "Dem"
+        assert data["county_results"][0]["results"][0]["voteCount"] == 42
+
+    def test_empty_results(self):
+        resp = RawElectionResultsResponse(
+            election_id=uuid.uuid4(),
+            election_name="Empty",
+            election_date=date(2026, 2, 17),
+            status="active",
+            last_refreshed_at=None,
+        )
+        data = resp.model_dump(mode="json")
+        assert data["statewide_results"] == []
+        assert data["county_results"] == []
+        assert data["source_created_at"] is None
+
+    def test_nullable_precincts(self):
+        resp = RawElectionResultsResponse(
+            election_id=uuid.uuid4(),
+            election_name="Test",
+            election_date=date(2026, 2, 17),
+            status="active",
+            last_refreshed_at=None,
+            precincts_participating=None,
+            precincts_reporting=None,
+        )
+        data = resp.model_dump()
+        assert data["precincts_participating"] is None
+        assert data["precincts_reporting"] is None
 
 
 class TestPrecinctCandidateResult:

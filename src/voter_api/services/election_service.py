@@ -33,6 +33,8 @@ from voter_api.schemas.election import (
     PrecinctCandidateResult,
     PrecinctElectionResultFeature,
     PrecinctElectionResultFeatureCollection,
+    RawCountyResult,
+    RawElectionResultsResponse,
     RefreshResponse,
     VoteMethodResult,
 )
@@ -224,6 +226,66 @@ async def get_election_results(
         precincts_participating=precincts_participating,
         precincts_reporting=precincts_reporting,
         candidates=candidates,
+        county_results=county_results,
+    )
+
+
+async def get_raw_election_results(
+    session: AsyncSession,
+    election_id: uuid.UUID,
+) -> RawElectionResultsResponse | None:
+    """Assemble raw election results preserving original SOS field names.
+
+    Returns the stored JSONB data verbatim without camelCase-to-snake_case
+    transformation applied by get_election_results().
+
+    Args:
+        session: Async database session.
+        election_id: The election UUID.
+
+    Returns:
+        RawElectionResultsResponse or None if election not found.
+    """
+    election = await get_election_by_id(session, election_id)
+    if election is None:
+        return None
+
+    statewide_results: list[dict[str, Any]] = []
+    precincts_participating = None
+    precincts_reporting = None
+    source_created_at = None
+    if election.result:
+        precincts_participating = election.result.precincts_participating
+        precincts_reporting = election.result.precincts_reporting
+        source_created_at = election.result.source_created_at
+        statewide_results = election.result.results_data
+
+    county_query = await session.execute(
+        select(ElectionCountyResult).where(ElectionCountyResult.election_id == election_id)
+    )
+    county_rows = county_query.scalars().all()
+
+    county_results: list[RawCountyResult] = []
+    for row in county_rows:
+        county_results.append(
+            RawCountyResult(
+                county_name=row.county_name,
+                precincts_participating=row.precincts_participating,
+                precincts_reporting=row.precincts_reporting,
+                results=row.results_data,
+            )
+        )
+
+    return RawElectionResultsResponse(
+        election_id=election.id,
+        election_name=election.name,
+        election_date=election.election_date,
+        status=election.status,
+        last_refreshed_at=election.last_refreshed_at,
+        source_created_at=source_created_at,
+        precincts_participating=precincts_participating,
+        precincts_reporting=precincts_reporting,
+        statewide_results=statewide_results,
         county_results=county_results,
     )
 

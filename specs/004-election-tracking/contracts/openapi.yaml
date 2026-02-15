@@ -282,6 +282,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /elections/{election_id}/results/raw:
+    get:
+      operationId: getRawElectionResults
+      summary: Get raw SOS election results
+      description: |
+        Returns election results preserving the original Secretary of State
+        data structure with camelCase field names (FR-006). Envelope fields
+        use snake_case consistent with other API responses. The statewide_results
+        and county_results[].results arrays contain the raw JSONB dicts verbatim.
+        Uses same caching strategy as the JSON results endpoint.
+      tags:
+        - results
+      security: []
+      parameters:
+        - name: election_id
+          in: path
+          required: true
+          description: Election UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        "200":
+          description: Raw election results with original SOS field names
+          headers:
+            Cache-Control:
+              description: Cache directive based on election status
+              schema:
+                type: string
+              example: "public, max-age=60"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawElectionResultsResponse"
+        "404":
+          description: Election not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /elections/{election_id}/results/geojson:
     get:
       operationId: getElectionResultsGeoJSON
@@ -754,6 +796,118 @@ components:
           description: Results broken down by county
           items:
             $ref: "#/components/schemas/CountyResultSummary"
+
+    RawCountyResult:
+      type: object
+      required:
+        - county_name
+        - precincts_participating
+        - precincts_reporting
+        - results
+      properties:
+        county_name:
+          type: string
+          description: Georgia county name
+          example: "Houston County"
+        precincts_participating:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: "null"
+          nullable: true
+          description: Number of precincts in the county
+          example: 7
+        precincts_reporting:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: "null"
+          nullable: true
+          description: Number of precincts that have reported
+          example: 5
+        results:
+          type: array
+          description: Raw SOS ballot option dicts with original camelCase keys
+          items:
+            type: object
+            additionalProperties: true
+
+    RawElectionResultsResponse:
+      type: object
+      required:
+        - election_id
+        - election_name
+        - election_date
+        - status
+        - last_refreshed_at
+        - source_created_at
+        - precincts_participating
+        - precincts_reporting
+        - statewide_results
+        - county_results
+      properties:
+        election_id:
+          type: string
+          format: uuid
+          description: Election UUID
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        election_name:
+          type: string
+          description: Election name
+          example: "GA Senate District 18 Special"
+        election_date:
+          type: string
+          format: date
+          description: Election date
+          example: "2026-02-17"
+        status:
+          type: string
+          enum: ["active", "finalized"]
+          description: Election status
+          example: "active"
+        last_refreshed_at:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: "null"
+          nullable: true
+          description: Timestamp of last results refresh
+          example: "2026-02-17T12:00:00Z"
+        source_created_at:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: "null"
+          nullable: true
+          description: Timestamp from the SOS feed's createdAt field
+          example: "2026-02-09T17:40:56Z"
+        precincts_participating:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: "null"
+          nullable: true
+          description: Total precincts in the election
+          example: 100
+        precincts_reporting:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: "null"
+          nullable: true
+          description: Precincts with reported results
+          example: 95
+        statewide_results:
+          type: array
+          description: Raw SOS ballot option dicts with original camelCase keys
+          items:
+            type: object
+            additionalProperties: true
+        county_results:
+          type: array
+          description: County-level raw results
+          items:
+            $ref: "#/components/schemas/RawCountyResult"
 
     ElectionResultFeature:
       type: object

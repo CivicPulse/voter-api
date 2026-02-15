@@ -20,6 +20,7 @@ from voter_api.schemas.election import (
     ElectionSummary,
     PrecinctCandidateResult,
     PrecinctElectionResultFeatureCollection,
+    RawElectionResultsResponse,
     RefreshResponse,
     VoteMethodResult,
 )
@@ -33,6 +34,7 @@ from voter_api.services.election_service import (
     get_election_by_id,
     get_election_precinct_results_geojson,
     get_election_results,
+    get_raw_election_results,
     list_elections,
     refresh_all_active_elections,
     refresh_single_election,
@@ -345,6 +347,94 @@ class TestGetElectionResults:
         assert result.candidates == []
         assert result.county_results == []
         assert result.precincts_reporting is None
+
+
+# --- Tests for get_raw_election_results ---
+
+
+class TestGetRawElectionResults:
+    """Tests for get_raw_election_results()."""
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_not_found(self):
+        session = _mock_session_with_scalar(None)
+        result = await get_raw_election_results(session, uuid.uuid4())
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_raw_data_passthrough(self):
+        raw_data = [
+            {
+                "id": "2",
+                "name": "Candidate A",
+                "politicalParty": "Dem",
+                "ballotOrder": 1,
+                "voteCount": 1234,
+                "groupResults": [
+                    {"groupName": "Election Day", "voteCount": 800},
+                ],
+            },
+        ]
+        election_result = _mock_election_result(results_data=raw_data)
+        election = _mock_election(result=election_result)
+        election_id = election.id
+
+        session = AsyncMock()
+        election_query = MagicMock()
+        election_query.scalar_one_or_none.return_value = election
+        county_query = MagicMock()
+        county_query.scalars.return_value.all.return_value = [
+            _mock_county_result("Houston County"),
+        ]
+        session.execute = AsyncMock(side_effect=[election_query, county_query])
+
+        result = await get_raw_election_results(session, election_id)
+        assert isinstance(result, RawElectionResultsResponse)
+        assert result.election_id == election_id
+        assert result.precincts_reporting == 95
+        # Raw data passed through without transformation
+        assert result.statewide_results == raw_data
+        assert result.statewide_results[0]["politicalParty"] == "Dem"
+        assert result.statewide_results[0]["voteCount"] == 1234
+        # County results also raw
+        assert len(result.county_results) == 1
+        assert result.county_results[0].county_name == "Houston County"
+        assert result.county_results[0].results[0]["politicalParty"] == "Dem"
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_results_without_data(self):
+        election = _mock_election(result=None)
+        election_id = election.id
+
+        session = AsyncMock()
+        election_query = MagicMock()
+        election_query.scalar_one_or_none.return_value = election
+        county_query = MagicMock()
+        county_query.scalars.return_value.all.return_value = []
+        session.execute = AsyncMock(side_effect=[election_query, county_query])
+
+        result = await get_raw_election_results(session, election_id)
+        assert result is not None
+        assert result.statewide_results == []
+        assert result.county_results == []
+        assert result.precincts_reporting is None
+        assert result.source_created_at is None
+
+    @pytest.mark.asyncio
+    async def test_includes_source_created_at(self):
+        source_ts = datetime(2026, 2, 9, 17, 40, 56, tzinfo=UTC)
+        election_result = _mock_election_result(source_created_at=source_ts)
+        election = _mock_election(result=election_result)
+
+        session = AsyncMock()
+        election_query = MagicMock()
+        election_query.scalar_one_or_none.return_value = election
+        county_query = MagicMock()
+        county_query.scalars.return_value.all.return_value = []
+        session.execute = AsyncMock(side_effect=[election_query, county_query])
+
+        result = await get_raw_election_results(session, election.id)
+        assert result.source_created_at == source_ts
 
 
 # --- Tests for _persist_ingestion_result ---

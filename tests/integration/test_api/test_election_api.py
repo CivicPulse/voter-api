@@ -271,6 +271,107 @@ class TestGetElectionResults:
         assert resp.status_code == 404
 
 
+# --- FR-006: GET /elections/{id}/results/raw ---
+
+
+class TestGetRawElectionResults:
+    @pytest.mark.asyncio
+    async def test_returns_raw_results(self, client):
+        from voter_api.schemas.election import RawCountyResult, RawElectionResultsResponse
+
+        mock_response = RawElectionResultsResponse(
+            election_id=uuid.uuid4(),
+            election_name="Test",
+            election_date=date(2026, 2, 17),
+            status="active",
+            last_refreshed_at=datetime(2026, 2, 17, 12, 0, 0, tzinfo=UTC),
+            source_created_at=datetime(2026, 2, 9, 17, 40, 56, tzinfo=UTC),
+            precincts_participating=100,
+            precincts_reporting=95,
+            statewide_results=[
+                {
+                    "id": "2",
+                    "name": "Jane Doe (Dem)",
+                    "ballotOrder": 1,
+                    "voteCount": 1234,
+                    "politicalParty": "Dem",
+                    "groupResults": [{"groupName": "Election Day", "voteCount": 800}],
+                },
+            ],
+            county_results=[
+                RawCountyResult(
+                    county_name="Houston County",
+                    precincts_participating=7,
+                    precincts_reporting=5,
+                    results=[
+                        {
+                            "id": "2",
+                            "name": "Jane Doe (Dem)",
+                            "voteCount": 42,
+                            "politicalParty": "Dem",
+                        },
+                    ],
+                ),
+            ],
+        )
+
+        with patch("voter_api.services.election_service.get_raw_election_results", return_value=mock_response):
+            resp = await client.get(f"/api/v1/elections/{mock_response.election_id}/results/raw")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["source_created_at"] is not None
+        # camelCase keys preserved in raw results
+        assert data["statewide_results"][0]["politicalParty"] == "Dem"
+        assert data["statewide_results"][0]["voteCount"] == 1234
+        assert data["county_results"][0]["county_name"] == "Houston County"
+        assert data["county_results"][0]["results"][0]["politicalParty"] == "Dem"
+
+    @pytest.mark.asyncio
+    async def test_cache_control_active(self, client):
+        from voter_api.schemas.election import RawElectionResultsResponse
+
+        mock_response = RawElectionResultsResponse(
+            election_id=uuid.uuid4(),
+            election_name="Test",
+            election_date=date(2026, 2, 17),
+            status="active",
+            last_refreshed_at=None,
+            statewide_results=[],
+            county_results=[],
+        )
+
+        with patch("voter_api.services.election_service.get_raw_election_results", return_value=mock_response):
+            resp = await client.get(f"/api/v1/elections/{mock_response.election_id}/results/raw")
+
+        assert resp.headers["cache-control"] == "public, max-age=60"
+
+    @pytest.mark.asyncio
+    async def test_cache_control_finalized(self, client):
+        from voter_api.schemas.election import RawElectionResultsResponse
+
+        mock_response = RawElectionResultsResponse(
+            election_id=uuid.uuid4(),
+            election_name="Test",
+            election_date=date(2026, 2, 17),
+            status="finalized",
+            last_refreshed_at=None,
+            statewide_results=[],
+            county_results=[],
+        )
+
+        with patch("voter_api.services.election_service.get_raw_election_results", return_value=mock_response):
+            resp = await client.get(f"/api/v1/elections/{mock_response.election_id}/results/raw")
+
+        assert resp.headers["cache-control"] == "public, max-age=86400"
+
+    @pytest.mark.asyncio
+    async def test_raw_results_404(self, client):
+        with patch("voter_api.services.election_service.get_raw_election_results", return_value=None):
+            resp = await client.get(f"/api/v1/elections/{uuid.uuid4()}/results/raw")
+        assert resp.status_code == 404
+
+
 # --- US4: POST /elections ---
 
 

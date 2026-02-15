@@ -110,6 +110,30 @@ class ElectionResultsResponse(BaseModel):
     county_results: list[CountyResultSummary] = Field(default_factory=list)
 
 
+class RawCountyResult(BaseModel):
+    """County-level raw result with original SOS field names preserved."""
+
+    county_name: str
+    precincts_participating: int | None = None
+    precincts_reporting: int | None = None
+    results: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class RawElectionResultsResponse(BaseModel):
+    """Election results with raw SOS ballot option data (camelCase preserved)."""
+
+    election_id: uuid.UUID
+    election_name: str
+    election_date: date
+    status: str
+    last_refreshed_at: datetime | None
+    source_created_at: datetime | None = None
+    precincts_participating: int | None = None
+    precincts_reporting: int | None = None
+    statewide_results: list[dict[str, Any]] = Field(default_factory=list)
+    county_results: list[RawCountyResult] = Field(default_factory=list)
+
+
 class ElectionResultFeature(BaseModel):
     """GeoJSON Feature for a county's election results."""
 

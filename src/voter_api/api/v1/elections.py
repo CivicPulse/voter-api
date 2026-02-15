@@ -5,6 +5,7 @@ POST /elections — create election (US4)
 GET /elections/{id} — election detail (US1)
 PATCH /elections/{id} — update election (US4)
 GET /elections/{id}/results — JSON results (US1)
+GET /elections/{id}/results/raw — raw SOS results (FR-006)
 GET /elections/{id}/results/geojson — GeoJSON results (US2)
 POST /elections/{id}/refresh — manual refresh (US4)
 """
@@ -28,6 +29,7 @@ from voter_api.schemas.election import (
     ElectionResultsResponse,
     ElectionUpdateRequest,
     PaginatedElectionListResponse,
+    RawElectionResultsResponse,
     RefreshResponse,
 )
 from voter_api.services import election_service
@@ -139,6 +141,26 @@ async def get_election_results(
         raise HTTPException(status_code=404, detail="Election not found.")
 
     # Status-dependent Cache-Control header
+    cache_ttl = 60 if result.status == "active" else 86400
+    response.headers["Cache-Control"] = f"public, max-age={cache_ttl}"
+
+    return result
+
+
+# --- FR-006: Raw SOS results ---
+
+
+@elections_router.get("/{election_id}/results/raw", response_model=RawElectionResultsResponse)
+async def get_raw_election_results(
+    election_id: uuid.UUID,
+    response: Response,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> RawElectionResultsResponse:
+    """Get raw SOS election results preserving original field names. Public endpoint."""
+    result = await election_service.get_raw_election_results(session, election_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Election not found.")
+
     cache_ttl = 60 if result.status == "active" else 86400
     response.headers["Cache-Control"] = f"public, max-age={cache_ttl}"
 
