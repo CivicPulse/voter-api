@@ -1,7 +1,7 @@
 """add elected_officials and elected_official_sources tables
 
-Revision ID: 015
-Revises: 014
+Revision ID: 017
+Revises: 016
 Create Date: 2026-02-14
 
 Introduces two tables for elected official management:
@@ -16,8 +16,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "015"
-down_revision: str | None = "014"
+revision: str = "017"
+down_revision: str | None = "016"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
