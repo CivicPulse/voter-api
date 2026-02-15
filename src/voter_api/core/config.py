@@ -91,7 +91,7 @@ class Settings(BaseSettings):
         ge=10,
     )
     election_allowed_domains: str = Field(
-        default="results.enr.clarityelections.com,sos.ga.gov",
+        default="results.enr.clarityelections.com,sos.ga.gov,results.sos.ga.gov",
         description="Comma-separated list of allowed domains for election data source URLs",
     )
 
