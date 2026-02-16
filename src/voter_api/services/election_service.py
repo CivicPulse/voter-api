@@ -692,12 +692,24 @@ async def get_election_precinct_results_geojson(
         for pid, precinct_data in precinct_map.items():
             geom_dict: dict[str, Any] | None = None
             meta = metadata_map.get(pid)
-            if meta and meta.boundary_id in geom_map:
+            if meta is None:
+                logger.warning(
+                    "Precinct {} in county {} has no metadata match — skipping",
+                    pid,
+                    county_row.county_name,
+                )
+            elif meta.boundary_id in geom_map:
                 geometry = geom_map[meta.boundary_id]
                 if geometry is not None:
                     geom_dict = mapping(to_shape(geometry))
 
             if geom_dict is None:
+                if meta is not None:
+                    logger.warning(
+                        "Precinct {} in county {} has no geometry — skipping",
+                        pid,
+                        county_row.county_name,
+                    )
                 continue
 
             candidates = precinct_data["candidates"]

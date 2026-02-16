@@ -471,7 +471,8 @@ class TestPrecinctElectionResultFeature:
             properties={
                 "precinct_id": "ANNX",
                 "precinct_name": "Annex",
-                "county": "Houston County",
+                "county_name": "Houston County",
+                "total_votes": 0,
                 "reporting_status": "Reported",
                 "candidates": [],
             },
@@ -487,7 +488,8 @@ class TestPrecinctElectionResultFeature:
             properties={
                 "precinct_id": "VIRTUAL",
                 "precinct_name": "Virtual",
-                "county": "Houston County",
+                "county_name": "Houston County",
+                "total_votes": 0,
                 "reporting_status": None,
                 "candidates": [],
             },
@@ -508,7 +510,13 @@ class TestPrecinctElectionResultFeatureCollection:
             features=[
                 PrecinctElectionResultFeature(
                     geometry=None,
-                    properties={"precinct_id": "P01", "precinct_name": "P01", "county": "Test", "candidates": []},
+                    properties={
+                        "precinct_id": "P01",
+                        "precinct_name": "P01",
+                        "county_name": "Test",
+                        "total_votes": 0,
+                        "candidates": [],
+                    },
                 ),
             ],
         )
