@@ -9,10 +9,10 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, HttpUrl, computed_field
 
+from voter_api.lib.election_tracker import ElectionType
 from voter_api.schemas.common import PaginationMeta
 
-# Canonical type aliases — single source of truth for election domain enums
-ElectionType = Literal["special", "general", "primary", "runoff"]
+# ElectionStatus defined here — schema/service layer concept only
 ElectionStatus = Literal["active", "finalized"]
 
 # --- Request schemas ---

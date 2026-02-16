@@ -37,7 +37,7 @@ def detect_election_type(election_name: str) -> ElectionType:
         return "primary"
     if "general" in name_lower:
         return "general"
-    logger.warning(
+    logger.info(
         "Could not detect election type from name '{}'; defaulting to 'special'",
         election_name,
     )

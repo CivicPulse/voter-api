@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import time_machine
 
 from voter_api.lib.election_tracker.parser import (
     BallotItem,
@@ -342,6 +343,7 @@ class TestImportFeed:
         assert result.elections == []
 
     @pytest.mark.asyncio
+    @time_machine.travel("2026-02-16", tick=False)
     async def test_auto_refresh_calls_refresh(self):
         """Auto-refresh runs for active (recent) elections."""
         feed = _make_recent_feed()
@@ -607,6 +609,7 @@ class TestImportFeed:
         assert result.elections[0].status == "finalized"
 
     @pytest.mark.asyncio
+    @time_machine.travel("2026-02-16", tick=False)
     async def test_active_for_recent_election(self):
         """Elections within 14 days are created with status='active'."""
         feed = _make_recent_feed()
@@ -684,6 +687,7 @@ class TestImportFeed:
         assert result.elections[0].status == "finalized"
 
     @pytest.mark.asyncio
+    @time_machine.travel("2026-02-16", tick=False)
     async def test_exactly_14_days_is_active(self):
         """An election dated exactly 14 days ago is still active (strict >)."""
         feed = _make_boundary_feed(days_ago=14)
@@ -720,6 +724,7 @@ class TestImportFeed:
         assert result.elections[0].status == "active"
 
     @pytest.mark.asyncio
+    @time_machine.travel("2026-02-16", tick=False)
     async def test_15_days_is_finalized(self):
         """An election dated 15 days ago is finalized."""
         feed = _make_boundary_feed(days_ago=15)

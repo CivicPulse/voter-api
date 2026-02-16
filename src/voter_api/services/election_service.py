@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 
 from voter_api.core.config import get_settings
 from voter_api.lib.election_tracker import (
+    ElectionType,
     FetchError,
     IngestionResult,
     SoSFeed,
@@ -31,6 +32,7 @@ from voter_api.schemas.election import (
     ElectionResultFeature,
     ElectionResultFeatureCollection,
     ElectionResultsResponse,
+    ElectionStatus,
     ElectionSummary,
     ElectionUpdateRequest,
     FeedImportedElection,
@@ -829,11 +831,7 @@ async def preview_feed_import(
             )
         )
 
-    try:
-        election_date = date.fromisoformat(feed.electionDate)
-    except ValueError as e:
-        msg = f"Feed contains invalid election date '{feed.electionDate}': {e}"
-        raise ValueError(msg) from e
+    election_date = _parse_feed_date(feed)
 
     return FeedImportPreviewResponse(
         data_source_url=data_source_url,
@@ -844,10 +842,29 @@ async def preview_feed_import(
     )
 
 
+def _parse_feed_date(feed: SoSFeed) -> date:
+    """Parse and validate the election date from a SoS feed.
+
+    Args:
+        feed: Parsed SoS feed data.
+
+    Returns:
+        The parsed election date.
+
+    Raises:
+        ValueError: If feed contains an invalid election date.
+    """
+    try:
+        return date.fromisoformat(feed.electionDate)
+    except ValueError as e:
+        msg = f"Feed contains invalid election date '{feed.electionDate}': {e}"
+        raise ValueError(msg) from e
+
+
 def _resolve_feed_metadata(
     feed: SoSFeed,
-    request_election_type: str | None,
-) -> tuple[date, str, str]:
+    request_election_type: ElectionType | None,
+) -> tuple[date, ElectionType, ElectionStatus]:
     """Parse feed date and resolve election type and status.
 
     Returns:
@@ -856,11 +873,7 @@ def _resolve_feed_metadata(
     Raises:
         ValueError: If feed contains an invalid election date.
     """
-    try:
-        election_date = date.fromisoformat(feed.electionDate)
-    except ValueError as e:
-        msg = f"Feed contains invalid election date '{feed.electionDate}': {e}"
-        raise ValueError(msg) from e
+    election_date = _parse_feed_date(feed)
 
     if request_election_type is not None:
         election_type = request_election_type
