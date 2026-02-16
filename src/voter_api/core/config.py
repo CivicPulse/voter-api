@@ -117,6 +117,11 @@ class Settings(BaseSettings):
         default="/api/v1",
         description="API version prefix",
     )
+    rate_limit_per_minute: int = Field(
+        default=200,
+        description="Maximum API requests per minute per IP address",
+        gt=0,
+    )
 
     # R2 / S3-Compatible Object Storage
     r2_enabled: bool = Field(
