@@ -145,3 +145,27 @@ class TestParseSosFeed:
         )
         feed = parse_sos_feed(raw)
         assert len(feed.results.ballotItems[0].ballotOptions) == 2
+
+    def test_null_group_results_coerced_to_empty_list(self):
+        raw = _make_feed()
+        raw["results"]["ballotItems"][0]["ballotOptions"][0]["groupResults"] = None
+        feed = parse_sos_feed(raw)
+        assert feed.results.ballotItems[0].ballotOptions[0].groupResults == []
+
+    def test_null_vote_count_coerced_to_zero(self):
+        raw = _make_feed()
+        raw["results"]["ballotItems"][0]["ballotOptions"][0]["voteCount"] = None
+        feed = parse_sos_feed(raw)
+        assert feed.results.ballotItems[0].ballotOptions[0].voteCount == 0
+
+    def test_null_ballot_options_coerced_to_empty_list(self):
+        raw = _make_feed()
+        raw["results"]["ballotItems"][0]["ballotOptions"] = None
+        feed = parse_sos_feed(raw)
+        assert feed.results.ballotItems[0].ballotOptions == []
+
+    def test_null_political_party_coerced_to_empty_string(self):
+        raw = _make_feed()
+        raw["results"]["ballotItems"][0]["ballotOptions"][0]["politicalParty"] = None
+        feed = parse_sos_feed(raw)
+        assert feed.results.ballotItems[0].ballotOptions[0].politicalParty == ""
