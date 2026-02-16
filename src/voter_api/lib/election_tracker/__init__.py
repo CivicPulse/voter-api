@@ -13,6 +13,7 @@ from voter_api.lib.election_tracker.ingester import (
     CountyResultData,
     IngestionResult,
     StatewideResultData,
+    detect_election_type,
     ingest_election_results,
 )
 from voter_api.lib.election_tracker.parser import SoSFeed, parse_sos_feed
@@ -23,6 +24,7 @@ __all__ = [
     "IngestionResult",
     "SoSFeed",
     "StatewideResultData",
+    "detect_election_type",
     "fetch_election_results",
     "ingest_election_results",
     "parse_sos_feed",

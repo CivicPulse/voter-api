@@ -29,6 +29,7 @@ class ElectionCreateRequest(BaseModel):
         max_length=50,
         description="SoS ballot item ID for multi-race feeds. Defaults to first race if null.",
     )
+    status: Literal["active", "finalized"] = "active"
 
 
 class ElectionUpdateRequest(BaseModel):
@@ -219,8 +220,9 @@ class FeedImportRequest(BaseModel):
     """Request body for importing races from an SoS feed."""
 
     data_source_url: HttpUrl = Field(description="SoS feed URL containing one or more races")
-    election_type: Literal["special", "general", "primary", "runoff"] = Field(
-        description="Election type to assign to all created elections"
+    election_type: Literal["special", "general", "primary", "runoff"] | None = Field(
+        default=None,
+        description="Election type to assign to all created elections. Auto-detected from feed name when null.",
     )
     refresh_interval_seconds: int = Field(
         default=120,
@@ -249,6 +251,7 @@ class FeedImportPreviewResponse(BaseModel):
     data_source_url: str
     election_date: date
     election_name: str
+    detected_election_type: str
     races: list[FeedRaceSummary]
 
     @computed_field  # type: ignore[prop-decorator]
@@ -265,6 +268,7 @@ class FeedImportedElection(BaseModel):
     ballot_item_id: str
     name: str
     election_date: date
+    status: str
     refreshed: bool
     precincts_reporting: int | None = None
     precincts_participating: int | None = None

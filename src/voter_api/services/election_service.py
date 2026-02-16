@@ -5,7 +5,7 @@ Orchestrates election CRUD, result fetching, and data assembly.
 
 import asyncio
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from loguru import logger
@@ -17,6 +17,7 @@ from voter_api.core.config import get_settings
 from voter_api.lib.election_tracker import (
     FetchError,
     IngestionResult,
+    detect_election_type,
     fetch_election_results,
     ingest_election_results,
 )
@@ -113,6 +114,7 @@ async def create_election(
         election_date=request.election_date,
         election_type=request.election_type,
         district=request.district,
+        status=request.status,
         data_source_url=str(request.data_source_url),
         refresh_interval_seconds=request.refresh_interval_seconds,
         ballot_item_id=request.ballot_item_id,
@@ -836,6 +838,7 @@ async def preview_feed_import(
         data_source_url=data_source_url,
         election_date=election_date,
         election_name=feed.electionName,
+        detected_election_type=detect_election_type(feed.electionName),
         races=races,
     )
 
@@ -871,6 +874,8 @@ async def import_feed(
         raise ValueError(msg)
 
     election_date = date.fromisoformat(feed.electionDate)
+    election_type = request.election_type or detect_election_type(feed.electionName)
+    status = "finalized" if datetime.now(UTC).date() - election_date > timedelta(days=14) else "active"
     created_elections: list[FeedImportedElection] = []
     skipped = 0
 
@@ -881,11 +886,12 @@ async def import_feed(
         create_request = ElectionCreateRequest(
             name=election_name,
             election_date=election_date,
-            election_type=request.election_type,
+            election_type=election_type,
             district=district,
             data_source_url=request.data_source_url,
             refresh_interval_seconds=request.refresh_interval_seconds,
             ballot_item_id=ballot_item.id,
+            status=status,
         )
 
         try:
@@ -905,7 +911,7 @@ async def import_feed(
         precincts_reporting = None
         precincts_participating = None
 
-        if request.auto_refresh:
+        if request.auto_refresh and status == "active":
             try:
                 refresh_result = await refresh_single_election(session, election.id)
                 refreshed = True
@@ -925,6 +931,7 @@ async def import_feed(
                 ballot_item_id=ballot_item.id,
                 name=election_name,
                 election_date=election_date,
+                status=status,
                 refreshed=refreshed,
                 precincts_reporting=precincts_reporting,
                 precincts_participating=precincts_participating,

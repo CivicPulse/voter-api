@@ -1,7 +1,7 @@
 """Unit tests for feed import service functions."""
 
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -72,6 +72,42 @@ def _make_multi_race_feed() -> SoSFeed:
     )
 
 
+def _make_recent_feed() -> SoSFeed:
+    """Build a multi-race feed with a recent date (within 14 days) so status='active'."""
+    recent_date = (datetime.now(UTC).date() - timedelta(days=3)).isoformat()
+    return SoSFeed(
+        electionDate=recent_date,
+        electionName="February Special Election",
+        createdAt="2026-02-13T20:00:00Z",
+        results=SoSResults(
+            id="GA",
+            name="Georgia",
+            ballotItems=[
+                BallotItem(
+                    id="S10",
+                    name="PSC - District 2",
+                    precinctsParticipating=4000,
+                    precinctsReporting=3500,
+                    ballotOptions=[
+                        BallotOption(id="c1", name="Tim Echols", voteCount=582402, politicalParty="Rep"),
+                        BallotOption(id="c2", name="Alicia Johnson", voteCount=980471, politicalParty="Dem"),
+                    ],
+                ),
+                BallotItem(
+                    id="S11",
+                    name="PSC - District 3",
+                    precinctsParticipating=4000,
+                    precinctsReporting=3600,
+                    ballotOptions=[
+                        BallotOption(id="c3", name="Fitz Johnson", voteCount=578476, politicalParty="Rep"),
+                    ],
+                ),
+            ],
+        ),
+        localResults=[],
+    )
+
+
 def _make_empty_feed() -> SoSFeed:
     return SoSFeed(
         electionDate="2025-11-04",
@@ -106,6 +142,7 @@ class TestPreviewFeedImport:
         assert result.total_races == 2
         assert result.election_date == date(2025, 11, 4)
         assert result.election_name == "November 4, 2025 - Multi-Race Election"
+        assert result.detected_election_type == "special"
         assert result.races[0].ballot_item_id == "S10"
         assert result.races[0].name == "PSC - District 2"
         assert result.races[0].candidate_count == 2
@@ -173,6 +210,7 @@ class TestImportFeed:
         assert result.elections[0].name == "November 4, 2025 - Multi-Race Election - PSC - District 2"
         assert result.elections[1].ballot_item_id == "S11"
         assert result.elections[0].refreshed is False
+        assert result.elections[0].status == "finalized"  # old date → auto-finalized
         assert mock_create.await_count == 2
 
     @pytest.mark.asyncio
@@ -233,7 +271,8 @@ class TestImportFeed:
 
     @pytest.mark.asyncio
     async def test_auto_refresh_calls_refresh(self):
-        feed = _make_multi_race_feed()
+        """Auto-refresh runs for active (recent) elections."""
+        feed = _make_recent_feed()
         session = AsyncMock()
 
         mock_elections = [_mock_election("S10"), _mock_election("S11")]
@@ -274,6 +313,7 @@ class TestImportFeed:
         assert mock_refresh.await_count == 2
         assert result.elections[0].refreshed is True
         assert result.elections[0].precincts_reporting == 3500
+        assert result.elections[0].status == "active"
 
     @pytest.mark.asyncio
     async def test_election_name_format(self):
@@ -314,7 +354,7 @@ class TestImportFeed:
     @pytest.mark.asyncio
     async def test_auto_refresh_failure_still_includes_election(self):
         """If auto-refresh fails, the election is still included with refreshed=False."""
-        feed = _make_multi_race_feed()
+        feed = _make_recent_feed()
         session = AsyncMock()
 
         mock_elections = [_mock_election("S10"), _mock_election("S11")]
@@ -386,3 +426,187 @@ class TestImportFeed:
         assert result.elections_created == 0
         assert result.elections_skipped == 2
         assert result.elections == []
+
+    @pytest.mark.asyncio
+    async def test_auto_detect_type_when_none(self):
+        """When election_type is None, type is auto-detected from feed name."""
+        feed = _make_multi_race_feed()  # electionName contains no keyword → "special"
+        session = AsyncMock()
+
+        mock_elections = [_mock_election("S10"), _mock_election("S11")]
+
+        request = FeedImportRequest(
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            election_type=None,
+            auto_refresh=False,
+        )
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+                return_value=feed,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+            patch(
+                "voter_api.services.election_service.create_election",
+                new_callable=AsyncMock,
+                side_effect=mock_elections,
+            ) as mock_create,
+        ):
+            await import_feed(session, request)
+
+        # election_type should be auto-detected as "special" (no keyword match)
+        create_req = mock_create.call_args_list[0][0][1]
+        assert create_req.election_type == "special"
+
+    @pytest.mark.asyncio
+    async def test_explicit_type_overrides_detection(self):
+        """When election_type is explicitly provided, it overrides auto-detection."""
+        feed = _make_multi_race_feed()
+        session = AsyncMock()
+
+        mock_elections = [_mock_election("S10"), _mock_election("S11")]
+
+        request = FeedImportRequest(
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            election_type="general",
+            auto_refresh=False,
+        )
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+                return_value=feed,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+            patch(
+                "voter_api.services.election_service.create_election",
+                new_callable=AsyncMock,
+                side_effect=mock_elections,
+            ) as mock_create,
+        ):
+            await import_feed(session, request)
+
+        create_req = mock_create.call_args_list[0][0][1]
+        assert create_req.election_type == "general"
+
+    @pytest.mark.asyncio
+    async def test_auto_finalize_old_election(self):
+        """Elections older than 14 days are created with status='finalized'."""
+        feed = _make_multi_race_feed()  # date "2025-11-04" → well over 14 days ago
+        session = AsyncMock()
+
+        mock_elections = [_mock_election("S10"), _mock_election("S11")]
+
+        request = FeedImportRequest(
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            election_type="special",
+            auto_refresh=False,
+        )
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+                return_value=feed,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+            patch(
+                "voter_api.services.election_service.create_election",
+                new_callable=AsyncMock,
+                side_effect=mock_elections,
+            ) as mock_create,
+        ):
+            result = await import_feed(session, request)
+
+        create_req = mock_create.call_args_list[0][0][1]
+        assert create_req.status == "finalized"
+        assert result.elections[0].status == "finalized"
+
+    @pytest.mark.asyncio
+    async def test_active_for_recent_election(self):
+        """Elections within 14 days are created with status='active'."""
+        feed = _make_recent_feed()
+        session = AsyncMock()
+
+        mock_elections = [_mock_election("S10"), _mock_election("S11")]
+
+        request = FeedImportRequest(
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            election_type="special",
+            auto_refresh=False,
+        )
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+                return_value=feed,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+            patch(
+                "voter_api.services.election_service.create_election",
+                new_callable=AsyncMock,
+                side_effect=mock_elections,
+            ) as mock_create,
+        ):
+            result = await import_feed(session, request)
+
+        create_req = mock_create.call_args_list[0][0][1]
+        assert create_req.status == "active"
+        assert result.elections[0].status == "active"
+
+    @pytest.mark.asyncio
+    async def test_skip_refresh_for_finalized(self):
+        """Auto-refresh is skipped for finalized elections even when auto_refresh=True."""
+        feed = _make_multi_race_feed()  # old date → finalized
+        session = AsyncMock()
+
+        mock_elections = [_mock_election("S10"), _mock_election("S11")]
+
+        request = FeedImportRequest(
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            election_type="special",
+            auto_refresh=True,
+        )
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+                return_value=feed,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+            patch(
+                "voter_api.services.election_service.create_election",
+                new_callable=AsyncMock,
+                side_effect=mock_elections,
+            ),
+            patch(
+                "voter_api.services.election_service.refresh_single_election",
+                new_callable=AsyncMock,
+            ) as mock_refresh,
+        ):
+            result = await import_feed(session, request)
+
+        # Refresh should NOT be called for finalized elections
+        assert mock_refresh.await_count == 0
+        assert result.elections[0].refreshed is False
+        assert result.elections[0].status == "finalized"

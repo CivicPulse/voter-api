@@ -8,6 +8,7 @@ from voter_api.lib.election_tracker.ingester import (
     StatewideResultData,
     _find_ballot_item,
     _normalize_county_name,
+    detect_election_type,
     ingest_election_results,
 )
 from voter_api.lib.election_tracker.parser import (
@@ -487,3 +488,45 @@ class TestIngestMultiRace:
         fulton = next(c for c in result.counties if c.county_name_normalized == "Fulton")
         assert fulton.results_data[0]["name"] == "Fitz Johnson"
         assert fulton.results_data[0]["voteCount"] == 200
+
+
+class TestDetectElectionType:
+    """Tests for detect_election_type()."""
+
+    def test_general_election(self):
+        assert detect_election_type("November General Election") == "general"
+
+    def test_primary_election(self):
+        assert detect_election_type("May Primary Election") == "primary"
+
+    def test_runoff_election(self):
+        assert detect_election_type("December Runoff Election") == "runoff"
+
+    def test_special_election_fallback(self):
+        assert detect_election_type("January 20 Special Election") == "special"
+
+    def test_special_election_runoff_returns_runoff(self):
+        """'Special Election Runoff' matches runoff first due to priority."""
+        assert detect_election_type("Special Election Runoff") == "runoff"
+
+    def test_case_insensitive(self):
+        assert detect_election_type("GENERAL ELECTION") == "general"
+        assert detect_election_type("primary election") == "primary"
+        assert detect_election_type("Runoff Election") == "runoff"
+
+    def test_unknown_name_defaults_to_special(self):
+        assert detect_election_type("Some Unknown Election") == "special"
+
+    def test_empty_string_defaults_to_special(self):
+        assert detect_election_type("") == "special"
+
+    def test_primary_runoff_returns_runoff(self):
+        """'Primary Runoff' matches runoff first due to priority."""
+        assert detect_election_type("Primary Runoff") == "runoff"
+
+    def test_real_sos_feed_names(self):
+        """Test against actual GA SoS feed election names."""
+        assert detect_election_type("January20SpecialElection") == "special"
+        assert detect_election_type("November 5 General Election") == "general"
+        assert detect_election_type("May 21 Primary Election") == "primary"
+        assert detect_election_type("June 18 Runoff") == "runoff"

@@ -12,6 +12,31 @@ from loguru import logger
 from voter_api.lib.election_tracker.parser import BallotItem, SoSFeed
 
 
+def detect_election_type(election_name: str) -> str:
+    """Infer election type from SoS feed electionName.
+
+    Priority order (first match wins):
+      1. "runoff" → "runoff"
+      2. "primary" → "primary"
+      3. "general" → "general"
+      4. fallback → "special"
+
+    Args:
+        election_name: The electionName field from a SoS feed.
+
+    Returns:
+        One of "runoff", "primary", "general", or "special".
+    """
+    name_lower = election_name.lower()
+    if "runoff" in name_lower:
+        return "runoff"
+    if "primary" in name_lower:
+        return "primary"
+    if "general" in name_lower:
+        return "general"
+    return "special"
+
+
 @dataclass
 class StatewideResultData:
     """Extracted statewide election result data."""
