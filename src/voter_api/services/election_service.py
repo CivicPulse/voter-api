@@ -623,6 +623,7 @@ def _transpose_precinct_results(county_results_data: list[dict]) -> dict[str, di
     """
     precincts: dict[str, dict] = {}
     for opt in county_results_data:
+        # Defensive: parser now coerces nulls, but old JSONB data may still have them
         precinct_results = opt.get("precinctResults") or []
         for pr in precinct_results:
             pid = str(pr.get("id", "")).upper()
@@ -637,6 +638,7 @@ def _transpose_precinct_results(county_results_data: list[dict]) -> dict[str, di
                     "candidates": [],
                 }
 
+            # Defensive: parser now coerces nulls, but old JSONB data may still have them
             group_results = [
                 VoteMethodResult(
                     group_name=gr.get("groupName", ""),

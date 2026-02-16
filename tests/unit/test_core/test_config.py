@@ -32,6 +32,7 @@ class TestSettings:
         assert settings.log_level == "INFO"
         assert settings.cors_origins == ""
         assert settings.api_v1_prefix == "/api/v1"
+        assert settings.rate_limit_per_minute == 200
 
     def test_cors_origin_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """CORS origins string is parsed into a list."""
@@ -53,5 +54,13 @@ class TestSettings:
         monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://localhost/db")
         monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key-that-is-at-least-32-characters-long")
         monkeypatch.setenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "0")
+        with pytest.raises(ValidationError):
+            Settings()  # type: ignore[call-arg]
+
+    def test_validation_rate_limit_positive(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Rate limit per minute must be a positive integer."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://localhost/db")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key-that-is-at-least-32-characters-long")
+        monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "0")
         with pytest.raises(ValidationError):
             Settings()  # type: ignore[call-arg]
