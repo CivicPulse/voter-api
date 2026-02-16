@@ -3,7 +3,7 @@
 Public API:
     - parse_sos_feed: Parse raw JSON into validated SoSFeed model
     - fetch_election_results: Async HTTP fetch + parse from SoS feed URL
-    - ingest_election_results: Upsert statewide + county results to DB
+    - ingest_election_results: Extract statewide + county results from a parsed SoS feed
     - SoSFeed: Top-level feed model
     - FetchError: HTTP/parse error type
 """
