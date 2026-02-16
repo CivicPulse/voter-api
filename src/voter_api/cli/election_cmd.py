@@ -120,9 +120,9 @@ async def _refresh_impl(election_id_str: str | None) -> None:
 def import_feed(
     url: Annotated[str, typer.Option("--url", help="GA SoS feed URL")],
     election_type: Annotated[
-        str,
-        typer.Option("--type", help="Election type: special, general, primary, runoff"),
-    ] = "general",
+        str | None,
+        typer.Option("--type", help="Election type: special, general, primary, runoff. Auto-detected if omitted."),
+    ] = None,
     refresh_interval: Annotated[
         int,
         typer.Option("--refresh-interval", help="Refresh interval in seconds"),
@@ -138,7 +138,7 @@ def import_feed(
 
 async def _import_feed_impl(
     url: str,
-    election_type: str,
+    election_type: str | None,
     refresh_interval: int,
     auto_refresh: bool,
 ) -> None:
@@ -163,6 +163,9 @@ async def _import_feed_impl(
             typer.echo(f"\nDiscovered {preview.total_races} race(s):")
             for i, race in enumerate(preview.races, 1):
                 typer.echo(f"  {i}. [{race.ballot_item_id}] {race.name} ({race.candidate_count} candidates)")
+
+            if election_type is None:
+                typer.echo(f"Detected election type: {preview.detected_election_type}")
             typer.echo("")
 
             request = FeedImportRequest(
@@ -176,12 +179,13 @@ async def _import_feed_impl(
 
             typer.echo(f"Imported {result.elections_created} election(s):")
             for election in result.elections:
+                status_label = f" ({election.status})"
                 refresh_status = ""
                 if election.refreshed:
                     refresh_status = (
                         f" - {election.precincts_reporting}/{election.precincts_participating} precincts reporting"
                     )
-                typer.echo(f"  {election.election_id}: {election.name}{refresh_status}")
+                typer.echo(f"  {election.election_id}: {election.name}{status_label}{refresh_status}")
     except FetchError as e:
         typer.echo(f"Error: Failed to fetch feed: {e}", err=True)
         raise typer.Exit(code=1) from e

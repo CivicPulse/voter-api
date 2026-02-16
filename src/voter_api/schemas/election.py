@@ -9,7 +9,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, HttpUrl, computed_field
 
+from voter_api.lib.election_tracker import ElectionType
 from voter_api.schemas.common import PaginationMeta
+
+# ElectionStatus defined here — schema/service layer concept only
+ElectionStatus = Literal["active", "finalized"]
 
 # --- Request schemas ---
 
@@ -19,7 +23,7 @@ class ElectionCreateRequest(BaseModel):
 
     name: str = Field(min_length=1, max_length=500)
     election_date: date
-    election_type: Literal["special", "general", "primary", "runoff"]
+    election_type: ElectionType
     district: str = Field(min_length=1, max_length=200)
     data_source_url: HttpUrl
     refresh_interval_seconds: int = Field(default=120, ge=60)
@@ -29,6 +33,7 @@ class ElectionCreateRequest(BaseModel):
         max_length=50,
         description="SoS ballot item ID for multi-race feeds. Defaults to first race if null.",
     )
+    status: ElectionStatus = "active"
 
 
 class ElectionUpdateRequest(BaseModel):
@@ -36,7 +41,7 @@ class ElectionUpdateRequest(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=500)
     data_source_url: HttpUrl | None = None
-    status: Literal["active", "finalized"] | None = None
+    status: ElectionStatus | None = None
     refresh_interval_seconds: int | None = Field(default=None, ge=60)
     ballot_item_id: str | None = Field(
         default=None,
@@ -57,9 +62,9 @@ class ElectionSummary(BaseModel):
     id: uuid.UUID
     name: str
     election_date: date
-    election_type: str
+    election_type: ElectionType
     district: str
-    status: str
+    status: ElectionStatus
     last_refreshed_at: datetime | None
     precincts_reporting: int | None = None
     precincts_participating: int | None = None
@@ -115,7 +120,7 @@ class ElectionResultsResponse(BaseModel):
     election_id: uuid.UUID
     election_name: str
     election_date: date
-    status: str
+    status: ElectionStatus
     last_refreshed_at: datetime | None
     precincts_participating: int | None = None
     precincts_reporting: int | None = None
@@ -138,7 +143,7 @@ class RawElectionResultsResponse(BaseModel):
     election_id: uuid.UUID
     election_name: str
     election_date: date
-    status: str
+    status: ElectionStatus
     last_refreshed_at: datetime | None
     source_created_at: datetime | None = None
     precincts_participating: int | None = None
@@ -162,7 +167,7 @@ class ElectionResultFeatureCollection(BaseModel):
     election_id: uuid.UUID
     election_name: str
     election_date: date
-    status: str
+    status: ElectionStatus
     last_refreshed_at: datetime | None
     features: list[ElectionResultFeature] = Field(default_factory=list)
 
@@ -207,7 +212,7 @@ class PrecinctElectionResultFeatureCollection(BaseModel):
     election_id: uuid.UUID
     election_name: str
     election_date: date
-    status: str
+    status: ElectionStatus
     last_refreshed_at: datetime | None
     features: list[PrecinctElectionResultFeature] = Field(default_factory=list)
 
@@ -219,8 +224,9 @@ class FeedImportRequest(BaseModel):
     """Request body for importing races from an SoS feed."""
 
     data_source_url: HttpUrl = Field(description="SoS feed URL containing one or more races")
-    election_type: Literal["special", "general", "primary", "runoff"] = Field(
-        description="Election type to assign to all created elections"
+    election_type: ElectionType | None = Field(
+        default=None,
+        description="Election type to assign to all created elections. Auto-detected from feed name when null.",
     )
     refresh_interval_seconds: int = Field(
         default=120,
@@ -249,6 +255,7 @@ class FeedImportPreviewResponse(BaseModel):
     data_source_url: str
     election_date: date
     election_name: str
+    detected_election_type: ElectionType
     races: list[FeedRaceSummary]
 
     @computed_field  # type: ignore[prop-decorator]
@@ -265,6 +272,7 @@ class FeedImportedElection(BaseModel):
     ballot_item_id: str
     name: str
     election_date: date
+    status: ElectionStatus
     refreshed: bool
     precincts_reporting: int | None = None
     precincts_participating: int | None = None

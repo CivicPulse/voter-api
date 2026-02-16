@@ -5,7 +5,7 @@ Orchestrates election CRUD, result fetching, and data assembly.
 
 import asyncio
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from loguru import logger
@@ -15,8 +15,11 @@ from sqlalchemy.orm import selectinload
 
 from voter_api.core.config import get_settings
 from voter_api.lib.election_tracker import (
+    ElectionType,
     FetchError,
     IngestionResult,
+    SoSFeed,
+    detect_election_type,
     fetch_election_results,
     ingest_election_results,
 )
@@ -29,6 +32,7 @@ from voter_api.schemas.election import (
     ElectionResultFeature,
     ElectionResultFeatureCollection,
     ElectionResultsResponse,
+    ElectionStatus,
     ElectionSummary,
     ElectionUpdateRequest,
     FeedImportedElection,
@@ -113,6 +117,7 @@ async def create_election(
         election_date=request.election_date,
         election_type=request.election_type,
         district=request.district,
+        status=request.status,
         data_source_url=str(request.data_source_url),
         refresh_interval_seconds=request.refresh_interval_seconds,
         ballot_item_id=request.ballot_item_id,
@@ -826,18 +831,68 @@ async def preview_feed_import(
             )
         )
 
-    try:
-        election_date = date.fromisoformat(feed.electionDate)
-    except ValueError as e:
-        msg = f"Feed contains invalid election date '{feed.electionDate}': {e}"
-        raise ValueError(msg) from e
+    election_date = _parse_feed_date(feed)
 
     return FeedImportPreviewResponse(
         data_source_url=data_source_url,
         election_date=election_date,
         election_name=feed.electionName,
+        detected_election_type=detect_election_type(feed.electionName),
         races=races,
     )
+
+
+def _parse_feed_date(feed: SoSFeed) -> date:
+    """Parse and validate the election date from a SoS feed.
+
+    Args:
+        feed: Parsed SoS feed data.
+
+    Returns:
+        The parsed election date.
+
+    Raises:
+        ValueError: If feed contains an invalid election date.
+    """
+    try:
+        return date.fromisoformat(feed.electionDate)
+    except ValueError as e:
+        msg = f"Feed contains invalid election date '{feed.electionDate}': {e}"
+        raise ValueError(msg) from e
+
+
+def _resolve_feed_metadata(
+    feed: SoSFeed,
+    request_election_type: ElectionType | None,
+) -> tuple[date, ElectionType, ElectionStatus]:
+    """Parse feed date and resolve election type and status.
+
+    Returns:
+        Tuple of (election_date, election_type, status).
+
+    Raises:
+        ValueError: If feed contains an invalid election date.
+    """
+    election_date = _parse_feed_date(feed)
+
+    if request_election_type is not None:
+        election_type = request_election_type
+    else:
+        election_type = detect_election_type(feed.electionName)
+        logger.info(
+            "Auto-detected election type '{}' from feed name '{}'",
+            election_type,
+            feed.electionName,
+        )
+
+    status: ElectionStatus = "finalized" if datetime.now(UTC).date() - election_date > timedelta(days=14) else "active"
+    if status == "finalized":
+        logger.info(
+            "Auto-finalizing import: election date {} is more than 14 days ago",
+            election_date,
+        )
+
+    return election_date, election_type, status
 
 
 async def import_feed(
@@ -870,7 +925,7 @@ async def import_feed(
         msg = "Feed contains no ballot items (races)."
         raise ValueError(msg)
 
-    election_date = date.fromisoformat(feed.electionDate)
+    election_date, election_type, status = _resolve_feed_metadata(feed, request.election_type)
     created_elections: list[FeedImportedElection] = []
     skipped = 0
 
@@ -881,11 +936,12 @@ async def import_feed(
         create_request = ElectionCreateRequest(
             name=election_name,
             election_date=election_date,
-            election_type=request.election_type,
+            election_type=election_type,
             district=district,
             data_source_url=request.data_source_url,
             refresh_interval_seconds=request.refresh_interval_seconds,
             ballot_item_id=ballot_item.id,
+            status=status,
         )
 
         try:
@@ -905,7 +961,7 @@ async def import_feed(
         precincts_reporting = None
         precincts_participating = None
 
-        if request.auto_refresh:
+        if request.auto_refresh and status == "active":
             try:
                 refresh_result = await refresh_single_election(session, election.id)
                 refreshed = True
@@ -918,6 +974,11 @@ async def import_feed(
                     ballot_item.id,
                     e,
                 )
+        elif request.auto_refresh and status == "finalized":
+            logger.info(
+                "Skipping auto-refresh for election {} — status is finalized",
+                election.id,
+            )
 
         created_elections.append(
             FeedImportedElection(
@@ -925,6 +986,7 @@ async def import_feed(
                 ballot_item_id=ballot_item.id,
                 name=election_name,
                 election_date=election_date,
+                status=status,
                 refreshed=refreshed,
                 precincts_reporting=precincts_reporting,
                 precincts_participating=precincts_participating,

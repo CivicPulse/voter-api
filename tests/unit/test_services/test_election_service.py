@@ -279,6 +279,25 @@ class TestCreateElection:
         with pytest.raises(DuplicateElectionError, match="ballot item 'S10'"):
             await create_election(session, request)
 
+    @pytest.mark.asyncio
+    async def test_creates_election_with_explicit_status(self):
+        """create_election passes status to the Election constructor."""
+        session = _mock_session_with_scalar(None)
+
+        request = ElectionCreateRequest(
+            name="Old Election",
+            election_date=date(2025, 1, 1),
+            election_type="special",
+            district="State Senate - District 18",
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            status="finalized",
+        )
+
+        await create_election(session, request)
+        session.add.assert_called_once()
+        added_election = session.add.call_args[0][0]
+        assert added_election.status == "finalized"
+
 
 # --- Tests for get_election_by_id ---
 
