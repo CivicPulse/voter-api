@@ -9,6 +9,7 @@ import uuid
 
 import httpx
 import pytest
+from sqlalchemy import text
 
 from tests.e2e.conftest import (
     ADMIN_PASSWORD,
@@ -103,7 +104,7 @@ class TestAuth:
         resp = await viewer_client.get(_url("/users"))
         assert resp.status_code == 403
 
-    async def test_create_and_list_user(self, admin_client: httpx.AsyncClient):
+    async def test_create_and_list_user(self, admin_client: httpx.AsyncClient, db_session):
         new_user = {
             "username": f"e2e_tmp_{uuid.uuid4().hex[:8]}",
             "email": f"e2e_tmp_{uuid.uuid4().hex[:8]}@test.com",
@@ -115,6 +116,10 @@ class TestAuth:
         body = resp.json()
         assert body["username"] == new_user["username"]
         assert body["role"] == "viewer"
+
+        # Cleanup: no DELETE /users endpoint, so remove via DB directly.
+        await db_session.execute(text("DELETE FROM users WHERE id = :id"), {"id": body["id"]})
+        await db_session.commit()
 
 
 # ── Boundaries ─────────────────────────────────────────────────────────────
@@ -205,7 +210,7 @@ class TestElections:
         resp = await viewer_client.post(_url("/elections"), json=payload)
         assert resp.status_code == 403
 
-    async def test_create_and_read_election(self, admin_client: httpx.AsyncClient):
+    async def test_create_and_read_election(self, admin_client: httpx.AsyncClient, db_session):
         payload = {
             "name": f"E2E Temp Election {uuid.uuid4().hex[:8]}",
             "election_date": "2025-06-15",
@@ -222,11 +227,16 @@ class TestElections:
         assert detail_resp.status_code == 200
         assert detail_resp.json()["name"] == payload["name"]
 
+        # Cleanup: no DELETE /elections endpoint, so remove via DB directly.
+        await db_session.execute(text("DELETE FROM elections WHERE id = :id"), {"id": election_id})
+        await db_session.commit()
+
     async def test_get_election_results_empty(self, client: httpx.AsyncClient):
-        """Results endpoint returns 200 even when no result data exists yet."""
+        """Results endpoint returns 200 with empty data when no results ingested yet."""
         resp = await client.get(_url(f"/elections/{ELECTION_ID}/results"))
-        # 200 with empty/null results or 404 are both valid — the endpoint exists.
-        assert resp.status_code in (200, 404)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert isinstance(body, dict)
 
 
 # ── Elected Officials ─────────────────────────────────────────────────────

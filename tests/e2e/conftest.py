@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from voter_api.core.config import get_settings
 from voter_api.core.database import get_engine
 from voter_api.core.security import create_access_token, hash_password
-from voter_api.main import create_app
+from voter_api.main import create_app, lifespan
 
 # ---------------------------------------------------------------------------
 # App & client
@@ -33,9 +33,16 @@ VIEWER_USERNAME = "e2e_viewer"
 
 
 @pytest.fixture(scope="session")
-def app():
-    """Create the FastAPI application (triggers lifespan / engine init)."""
-    return create_app()
+async def app():
+    """Create the FastAPI app and run its lifespan to initialise the DB engine.
+
+    The lifespan context manager calls ``init_engine()`` on entry and
+    ``dispose_engine()`` on exit, so ``get_engine()`` is safe to call
+    in any fixture or test that depends on ``app``.
+    """
+    _app = create_app()
+    async with lifespan(_app):
+        yield _app
 
 
 @pytest.fixture(scope="session")
