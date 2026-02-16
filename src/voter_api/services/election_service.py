@@ -618,6 +618,7 @@ def _transpose_precinct_results(county_results_data: list[dict]) -> dict[str, di
                     id=opt.get("id", ""),
                     name=opt.get("name", ""),
                     political_party=opt.get("politicalParty", ""),
+                    ballot_order=opt.get("ballotOrder", 1),
                     vote_count=pr.get("voteCount", 0),
                     reporting_status=pr.get("reportingStatus"),
                     group_results=group_results,
@@ -674,7 +675,9 @@ async def get_election_precinct_results_geojson(
 
         # Batch lookup precinct metadata for geometry
         precinct_ids = list(precinct_map.keys())
-        metadata_map = await get_precinct_metadata_by_county_and_ids(session, county_row.county_name, precinct_ids)
+        metadata_map = await get_precinct_metadata_by_county_and_ids(
+            session, county_row.county_name_normalized, precinct_ids
+        )
 
         # Batch fetch boundary geometries
         boundary_ids = [m.boundary_id for m in metadata_map.values()]
@@ -694,15 +697,22 @@ async def get_election_precinct_results_geojson(
                 if geometry is not None:
                     geom_dict = mapping(to_shape(geometry))
 
+            if geom_dict is None:
+                continue
+
+            candidates = precinct_data["candidates"]
+            total_votes = sum(c.vote_count for c in candidates)
+
             features.append(
                 PrecinctElectionResultFeature(
                     geometry=geom_dict,
                     properties={
                         "precinct_id": precinct_data["precinct_id"],
                         "precinct_name": precinct_data["precinct_name"],
-                        "county": county_row.county_name,
+                        "county_name": county_row.county_name,
+                        "total_votes": total_votes,
                         "reporting_status": precinct_data["reporting_status"],
-                        "candidates": [c.model_dump() for c in precinct_data["candidates"]],
+                        "candidates": [c.model_dump() for c in candidates],
                     },
                 )
             )

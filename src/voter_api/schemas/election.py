@@ -173,6 +173,7 @@ class PrecinctCandidateResult(BaseModel):
     id: str
     name: str
     political_party: str
+    ballot_order: int
     vote_count: int = 0
     reporting_status: str | None = None
     group_results: list[VoteMethodResult] = Field(default_factory=list)

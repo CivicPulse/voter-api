@@ -432,6 +432,7 @@ class TestPrecinctCandidateResult:
             id="2",
             name="Jane Smith",
             political_party="Dem",
+            ballot_order=2,
             vote_count=10,
             reporting_status="Reported",
             group_results=[
@@ -442,6 +443,7 @@ class TestPrecinctCandidateResult:
         assert data["id"] == "2"
         assert data["name"] == "Jane Smith"
         assert data["political_party"] == "Dem"
+        assert data["ballot_order"] == 2
         assert data["vote_count"] == 10
         assert data["reporting_status"] == "Reported"
         assert len(data["group_results"]) == 1
@@ -451,6 +453,7 @@ class TestPrecinctCandidateResult:
             id="1",
             name="Candidate",
             political_party="Rep",
+            ballot_order=1,
         )
         data = pcr.model_dump()
         assert data["vote_count"] == 0
