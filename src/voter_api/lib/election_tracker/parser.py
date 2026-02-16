@@ -9,8 +9,24 @@ Field names use camelCase to match the SoS feed JSON structure.
 # ruff: noqa: N815
 
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+def _coerce_null_to_list(v: Any) -> Any:
+    """Coerce explicit JSON null to empty list."""
+    return v if v is not None else []
+
+
+def _coerce_null_to_int(v: Any) -> Any:
+    """Coerce explicit JSON null to 0."""
+    return v if v is not None else 0
+
+
+def _coerce_null_to_str(v: Any) -> Any:
+    """Coerce explicit JSON null to empty string."""
+    return v if v is not None else ""
 
 
 class GroupResult(BaseModel):
@@ -19,6 +35,11 @@ class GroupResult(BaseModel):
     groupName: str
     voteCount: int = 0
     isFromVirtualPrecinct: bool = False
+
+    @field_validator("voteCount", mode="before")
+    @classmethod
+    def _coerce_vote_count(cls, v: Any) -> Any:
+        return _coerce_null_to_int(v)
 
 
 class BallotOption(BaseModel):
@@ -32,6 +53,21 @@ class BallotOption(BaseModel):
     groupResults: list[GroupResult] = Field(default_factory=list)
     precinctResults: list[dict] | None = None
 
+    @field_validator("voteCount", mode="before")
+    @classmethod
+    def _coerce_vote_count(cls, v: Any) -> Any:
+        return _coerce_null_to_int(v)
+
+    @field_validator("politicalParty", mode="before")
+    @classmethod
+    def _coerce_party(cls, v: Any) -> Any:
+        return _coerce_null_to_str(v)
+
+    @field_validator("groupResults", mode="before")
+    @classmethod
+    def _coerce_group_results(cls, v: Any) -> Any:
+        return _coerce_null_to_list(v)
+
 
 class BallotItem(BaseModel):
     """A contest or race on the ballot."""
@@ -43,6 +79,11 @@ class BallotItem(BaseModel):
     precinctsReporting: int | None = None
     ballotOptions: list[BallotOption] = Field(default_factory=list)
 
+    @field_validator("ballotOptions", mode="before")
+    @classmethod
+    def _coerce_ballot_options(cls, v: Any) -> Any:
+        return _coerce_null_to_list(v)
+
 
 class LocalResult(BaseModel):
     """County-level results from the SoS feed."""
@@ -51,6 +92,11 @@ class LocalResult(BaseModel):
     name: str
     ballotItems: list[BallotItem] = Field(default_factory=list)
 
+    @field_validator("ballotItems", mode="before")
+    @classmethod
+    def _coerce_ballot_items(cls, v: Any) -> Any:
+        return _coerce_null_to_list(v)
+
 
 class SoSResults(BaseModel):
     """Statewide results container."""
@@ -58,6 +104,11 @@ class SoSResults(BaseModel):
     id: str
     name: str
     ballotItems: list[BallotItem] = Field(default_factory=list)
+
+    @field_validator("ballotItems", mode="before")
+    @classmethod
+    def _coerce_ballot_items(cls, v: Any) -> Any:
+        return _coerce_null_to_list(v)
 
 
 class SoSFeed(BaseModel):
@@ -68,6 +119,11 @@ class SoSFeed(BaseModel):
     createdAt: str
     results: SoSResults
     localResults: list[LocalResult] = Field(default_factory=list)
+
+    @field_validator("localResults", mode="before")
+    @classmethod
+    def _coerce_local_results(cls, v: Any) -> Any:
+        return _coerce_null_to_list(v)
 
     @property
     def created_at_dt(self) -> datetime:
