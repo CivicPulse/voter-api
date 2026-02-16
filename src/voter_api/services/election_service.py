@@ -885,7 +885,7 @@ def _resolve_feed_metadata(
             feed.electionName,
         )
 
-    status = "finalized" if datetime.now(UTC).date() - election_date > timedelta(days=14) else "active"
+    status: ElectionStatus = "finalized" if datetime.now(UTC).date() - election_date > timedelta(days=14) else "active"
     if status == "finalized":
         logger.info(
             "Auto-finalizing import: election date {} is more than 14 days ago",
