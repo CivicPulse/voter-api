@@ -1,12 +1,15 @@
 """Extended tests for precinct metadata service — covering uncovered functions."""
 
+import io
 import uuid
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from loguru import logger
 
 from voter_api.services.precinct_metadata_service import (
+    _build_precinct_indexes,
     _extract_precinct_fields,
     _normalize_precinct_name,
     get_precinct_metadata_batch,
@@ -234,6 +237,73 @@ def _mock_precinct_meta(
     return m
 
 
+class TestBuildPrecinctIndexes:
+    """Tests for _build_precinct_indexes."""
+
+    def test_builds_all_three_indexes(self) -> None:
+        rec = _mock_precinct_meta("P01", "Sandy Springs", sos_id="C001")
+        by_pid, by_sos, by_name = _build_precinct_indexes([rec])
+        assert "P01" in by_pid
+        assert "C001" in by_sos
+        assert "sandy springs" in by_name
+        assert by_name["sandy springs"] == [rec]
+
+    def test_precinct_id_uppercased(self) -> None:
+        rec = _mock_precinct_meta("p01", "Test")
+        by_pid, _, _ = _build_precinct_indexes([rec])
+        assert "P01" in by_pid
+        assert "p01" not in by_pid
+
+    def test_sos_id_none_excluded(self) -> None:
+        rec = _mock_precinct_meta("P01", "Test", sos_id=None)
+        _, by_sos, _ = _build_precinct_indexes([rec])
+        assert by_sos == {}
+
+    def test_duplicate_precinct_id_logs_warning(self) -> None:
+        rec1 = _mock_precinct_meta("P01", "First")
+        rec2 = _mock_precinct_meta("P01", "Second")
+        sink = io.StringIO()
+        handler_id = logger.add(sink, format="{message}")
+        try:
+            by_pid, _, _ = _build_precinct_indexes([rec1, rec2])
+            # Last record wins
+            assert by_pid["P01"] is rec2
+            assert "Duplicate precinct_id" in sink.getvalue()
+        finally:
+            logger.remove(handler_id)
+
+    def test_duplicate_sos_id_logs_warning(self) -> None:
+        rec1 = _mock_precinct_meta("P01", "First", sos_id="C001")
+        rec2 = _mock_precinct_meta("P02", "Second", sos_id="C001")
+        sink = io.StringIO()
+        handler_id = logger.add(sink, format="{message}")
+        try:
+            _, by_sos, _ = _build_precinct_indexes([rec1, rec2])
+            # Last record wins
+            assert by_sos["C001"] is rec2
+            assert "Duplicate sos_id" in sink.getvalue()
+        finally:
+            logger.remove(handler_id)
+
+    def test_empty_normalized_name_excluded(self) -> None:
+        """Records whose name normalizes to empty are excluded from name index."""
+        rec = _mock_precinct_meta("P01", "---")  # normalizes to ""
+        _, _, by_name = _build_precinct_indexes([rec])
+        assert by_name == {}
+
+    def test_name_collision_builds_list(self) -> None:
+        rec1 = _mock_precinct_meta("P01", "Precinct 1")
+        rec2 = _mock_precinct_meta("P02", "PCT 1")  # both normalize to "1"
+        _, _, by_name = _build_precinct_indexes([rec1, rec2])
+        assert len(by_name["1"]) == 2
+
+    def test_empty_records(self) -> None:
+        by_pid, by_sos, by_name = _build_precinct_indexes([])
+        assert by_pid == {}
+        assert by_sos == {}
+        assert by_name == {}
+
+
 class TestGetPrecinctMetadataMultiStrategy:
     """Tests for get_precinct_metadata_by_county_multi_strategy."""
 
@@ -292,7 +362,10 @@ class TestGetPrecinctMetadataMultiStrategy:
     @pytest.mark.asyncio
     async def test_all_strategies_combined(self) -> None:
         rec1 = _mock_precinct_meta("P01", "Precinct 1", sos_id="C001")
-        rec2 = _mock_precinct_meta("P02", "Precinct 2", sos_id="C002")
+        # rec2 has a different precinct_name than the SOS name so that
+        # only sos_id matching (strategy 2) can resolve it — strategy 3
+        # would not match "Zone Two" to "Precinct 2".
+        rec2 = _mock_precinct_meta("P02", "Zone Two", sos_id="C002")
         rec3 = _mock_precinct_meta("P03", "Annex", sos_id="C003")
 
         session = AsyncMock()
@@ -308,7 +381,7 @@ class TestGetPrecinctMetadataMultiStrategy:
         )
         # P01 matches via strategy 1 (precinct_id)
         assert result["P01"] is rec1
-        # C002 matches via strategy 2 (sos_id)
+        # C002 matches via strategy 2 (sos_id) — name "Precinct 2" ≠ "Zone Two"
         assert result["C002"] is rec2
         # NOMATCH matches via strategy 3 (name "Annex" → "annex")
         assert result["NOMATCH"] is rec3
@@ -402,3 +475,23 @@ class TestGetPrecinctMetadataMultiStrategy:
         assert "X99" not in result  # ambiguous
         assert "Y88" in result  # unique match
         assert result["Y88"] is rec3
+
+    @pytest.mark.asyncio
+    async def test_strategy_3_excludes_already_matched_records(self) -> None:
+        """Strategy 3 should not re-match a record already consumed by strategy 1."""
+        rec = _mock_precinct_meta("P01", "Sandy Springs")
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.scalars.return_value.all.return_value = [rec]
+        session.execute.return_value = query_result
+
+        # P01 matches via strategy 1. X99 has the same name as rec but should
+        # NOT match because rec is already consumed.
+        result = await get_precinct_metadata_by_county_multi_strategy(
+            session,
+            "Houston",
+            ["P01", "X99"],
+            precinct_names={"P01": "Sandy Springs", "X99": "Sandy Springs"},
+        )
+        assert result["P01"] is rec
+        assert "X99" not in result

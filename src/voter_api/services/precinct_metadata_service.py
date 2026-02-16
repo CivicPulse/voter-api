@@ -146,7 +146,16 @@ def _build_precinct_indexes(
     by_normalized_name: dict[str, list[PrecinctMetadata]] = {}
 
     for record in records:
-        by_precinct_id[record.precinct_id.upper()] = record
+        pid_key = record.precinct_id.upper()
+        if pid_key in by_precinct_id:
+            logger.warning(
+                "Duplicate precinct_id '{}' in county '{}': precinct '{}' overwrites '{}'",
+                pid_key,
+                record.county_name,
+                record.precinct_id,
+                by_precinct_id[pid_key].precinct_id,
+            )
+        by_precinct_id[pid_key] = record
         if record.sos_id:
             sos_key = record.sos_id.upper()
             if sos_key in by_sos_id:
@@ -249,6 +258,9 @@ async def get_precinct_metadata_by_county_multi_strategy(
     if not precinct_ids:
         return {}
 
+    if precinct_names:
+        precinct_names = {k.upper(): v for k, v in precinct_names.items()}
+
     all_result = await session.execute(
         select(PrecinctMetadata).where(func.upper(PrecinctMetadata.county_name) == county_name.upper())
     )
@@ -261,15 +273,23 @@ async def get_precinct_metadata_by_county_multi_strategy(
 
     # Strategy 1: exact match on precinct_id.
     result, unmatched = _match_ids_to_index(upper_ids, by_precinct_id)
+    s1_count = len(result)
 
     # Strategy 2: exact match on sos_id.
     sos_matched, unmatched = _match_ids_to_index(unmatched, by_sos_id)
     result.update(sos_matched)
+    s2_count = len(sos_matched)
 
     # Strategy 3: fuzzy name matching for remaining.
+    # Filter name index to exclude records already matched by strategies 1/2
+    # to prevent two SOS IDs mapping to the same boundary geometry.
+    s3_count = 0
     if precinct_names and unmatched:
-        name_matched, unmatched = _match_by_name(unmatched, precinct_names, by_normalized_name)
+        already_matched = {id(rec) for rec in result.values()}
+        filtered_name_index = {k: [r for r in v if id(r) not in already_matched] for k, v in by_normalized_name.items()}
+        name_matched, unmatched = _match_by_name(unmatched, precinct_names, filtered_name_index)
         result.update(name_matched)
+        s3_count = len(name_matched)
 
     for uid in unmatched:
         sos_name = precinct_names.get(uid, uid) if precinct_names else uid
@@ -279,6 +299,17 @@ async def get_precinct_metadata_by_county_multi_strategy(
             sos_name,
             county_name,
         )
+
+    logger.info(
+        "County '{}': matched {}/{} precincts (s1={}, s2={}, s3={}, unmatched={})",
+        county_name,
+        len(result),
+        len(upper_ids),
+        s1_count,
+        s2_count,
+        s3_count,
+        len(unmatched),
+    )
 
     return result
 
