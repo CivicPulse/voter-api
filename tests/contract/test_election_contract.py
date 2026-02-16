@@ -432,6 +432,7 @@ class TestPrecinctCandidateResult:
             id="2",
             name="Jane Smith",
             political_party="Dem",
+            ballot_order=2,
             vote_count=10,
             reporting_status="Reported",
             group_results=[
@@ -442,6 +443,7 @@ class TestPrecinctCandidateResult:
         assert data["id"] == "2"
         assert data["name"] == "Jane Smith"
         assert data["political_party"] == "Dem"
+        assert data["ballot_order"] == 2
         assert data["vote_count"] == 10
         assert data["reporting_status"] == "Reported"
         assert len(data["group_results"]) == 1
@@ -451,6 +453,7 @@ class TestPrecinctCandidateResult:
             id="1",
             name="Candidate",
             political_party="Rep",
+            ballot_order=1,
         )
         data = pcr.model_dump()
         assert data["vote_count"] == 0
@@ -468,7 +471,8 @@ class TestPrecinctElectionResultFeature:
             properties={
                 "precinct_id": "ANNX",
                 "precinct_name": "Annex",
-                "county": "Houston County",
+                "county_name": "Houston County",
+                "total_votes": 0,
                 "reporting_status": "Reported",
                 "candidates": [],
             },
@@ -484,7 +488,8 @@ class TestPrecinctElectionResultFeature:
             properties={
                 "precinct_id": "VIRTUAL",
                 "precinct_name": "Virtual",
-                "county": "Houston County",
+                "county_name": "Houston County",
+                "total_votes": 0,
                 "reporting_status": None,
                 "candidates": [],
             },
@@ -505,7 +510,13 @@ class TestPrecinctElectionResultFeatureCollection:
             features=[
                 PrecinctElectionResultFeature(
                     geometry=None,
-                    properties={"precinct_id": "P01", "precinct_name": "P01", "county": "Test", "candidates": []},
+                    properties={
+                        "precinct_id": "P01",
+                        "precinct_name": "P01",
+                        "county_name": "Test",
+                        "total_votes": 0,
+                        "candidates": [],
+                    },
                 ),
             ],
         )

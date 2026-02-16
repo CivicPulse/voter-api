@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from unittest.mock import patch
 
 import httpx
@@ -12,6 +13,12 @@ from voter_api.cli.app import app
 from voter_api.cli.deploy_check_cmd import CheckStatus, _run_all_checks
 
 runner = CliRunner()
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences from text."""
+    return re.sub(r"\x1b\[[0-9;]*m", "", text)
+
 
 BASE = "http://test-api:8000"
 
@@ -104,11 +111,12 @@ def _mock_client_all_pass(method: str, url: str, **kwargs: object) -> httpx.Resp
 class TestHelpText:
     def test_help_renders(self) -> None:
         result = runner.invoke(app, ["deploy-check", "--help"])
+        output = _strip_ansi(result.output)
         assert result.exit_code == 0
-        assert "deploy" in result.output.lower()
-        assert "--url" in result.output
-        assert "--verbose" in result.output
-        assert "--timeout" in result.output
+        assert "deploy" in output.lower()
+        assert "--url" in output
+        assert "--verbose" in output
+        assert "--timeout" in output
 
 
 class TestAllPass:

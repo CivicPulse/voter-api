@@ -824,6 +824,7 @@ class TestTransposePrecinctResults:
                 "id": "2",
                 "name": "Jane Smith",
                 "politicalParty": "Dem",
+                "ballotOrder": 2,
                 "voteCount": 100,
                 "precinctResults": [
                     {
@@ -847,6 +848,7 @@ class TestTransposePrecinctResults:
         assert isinstance(cand, PrecinctCandidateResult)
         assert cand.id == "2"
         assert cand.name == "Jane Smith"
+        assert cand.ballot_order == 2
         assert cand.vote_count == 10
         assert len(cand.group_results) == 1
         assert cand.group_results[0].group_name == "Election Day"
@@ -944,6 +946,37 @@ class TestTransposePrecinctResults:
         result = _transpose_precinct_results(data)
         assert result == {}
 
+    def test_ballot_order_defaults_to_one(self):
+        data = [
+            {
+                "id": "2",
+                "name": "Jane",
+                "politicalParty": "Dem",
+                "precinctResults": [
+                    {"id": "P01", "name": "Precinct 1", "voteCount": 5},
+                ],
+            },
+        ]
+        result = _transpose_precinct_results(data)
+        cand = result["P01"]["candidates"][0]
+        assert cand.ballot_order == 1
+
+    def test_ballot_order_explicit_value(self):
+        data = [
+            {
+                "id": "2",
+                "name": "Jane",
+                "politicalParty": "Dem",
+                "ballotOrder": 3,
+                "precinctResults": [
+                    {"id": "P01", "name": "Precinct 1", "voteCount": 5},
+                ],
+            },
+        ]
+        result = _transpose_precinct_results(data)
+        cand = result["P01"]["candidates"][0]
+        assert cand.ballot_order == 3
+
 
 # --- Tests for get_election_precinct_results_geojson ---
 
@@ -1024,7 +1057,8 @@ class TestGetElectionPrecinctResultsGeoJSON:
         assert len(result.features) == 1
         feature = result.features[0]
         assert feature.properties["precinct_id"] == "ANNX"
-        assert feature.properties["county"] == "Houston County"
+        assert feature.properties["county_name"] == "Houston County"
+        assert feature.properties["total_votes"] == 10
         assert feature.geometry == mock_mapping
 
     @pytest.mark.asyncio
@@ -1055,9 +1089,7 @@ class TestGetElectionPrecinctResultsGeoJSON:
 
         result = await get_election_precinct_results_geojson(session, election.id)
         assert result is not None
-        assert len(result.features) == 1
-        assert result.features[0].geometry is None
-        assert result.features[0].properties["precinct_id"] == "VIRTUAL"
+        assert len(result.features) == 0  # null geometries are filtered out
 
     @pytest.mark.asyncio
     async def test_county_filter(self):
@@ -1086,4 +1118,39 @@ class TestGetElectionPrecinctResultsGeoJSON:
 
         result = await get_election_precinct_results_geojson(session, election.id, county="Houston")
         assert result is not None
-        assert len(result.features) == 1
+        assert len(result.features) == 0  # no metadata match → null geometry → filtered out
+
+    @pytest.mark.asyncio
+    async def test_uses_county_name_normalized_for_metadata_lookup(self):
+        """Verify that the metadata lookup uses county_name_normalized, not county_name."""
+        election = _mock_election()
+        county_result = _mock_county_result("Houston County")
+        county_result.county_name_normalized = "Houston"
+        county_result.results_data = [
+            {
+                "id": "2",
+                "name": "Jane",
+                "politicalParty": "Dem",
+                "precinctResults": [
+                    {"id": "P01", "name": "Precinct 1", "voteCount": 5},
+                ],
+            },
+        ]
+
+        session = AsyncMock()
+        election_query = MagicMock()
+        election_query.scalar_one_or_none.return_value = election
+        county_query = MagicMock()
+        county_query.scalars.return_value.all.return_value = [county_result]
+        meta_query = MagicMock()
+        meta_query.scalars.return_value.all.return_value = []
+
+        session.execute = AsyncMock(side_effect=[election_query, county_query, meta_query])
+
+        with patch(
+            "voter_api.services.precinct_metadata_service.get_precinct_metadata_by_county_and_ids",
+            new_callable=AsyncMock,
+            return_value={},
+        ) as mock_lookup:
+            await get_election_precinct_results_geojson(session, election.id)
+            mock_lookup.assert_awaited_once_with(session, "Houston", ["P01"])

@@ -130,6 +130,8 @@ async def _sync_open_states(settings: Settings, factory: async_sessionmaker[Asyn
     from voter_api.lib.officials.open_states import OpenStatesProvider
     from voter_api.services import elected_official_service
 
+    if not settings.open_states_api_key:
+        raise typer.BadParameter("OPEN_STATES_API_KEY is required for Open States sync")
     provider = OpenStatesProvider(api_key=settings.open_states_api_key)
     total_records = 0
     total_sources = 0
@@ -167,6 +169,8 @@ async def _sync_congress_gov(settings: Settings, factory: async_sessionmaker[Asy
     from voter_api.lib.officials.congress_gov import CongressGovProvider
     from voter_api.services import elected_official_service
 
+    if not settings.congress_gov_api_key:
+        raise typer.BadParameter("CONGRESS_GOV_API_KEY is required for Congress.gov sync")
     provider = CongressGovProvider(api_key=settings.congress_gov_api_key)
 
     try:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -123,22 +124,25 @@ class CongressGovProvider(BaseOfficialsProvider):
 
         return records
 
-    async def _fetch_member_list(self, path: str, params: dict | None = None) -> list[dict]:
+    async def _fetch_member_list(self, path: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Fetch a list of members from the Congress.gov API."""
         data = await self._request(path, params)
-        return data.get("members", [])
+        members: list[dict[str, Any]] = data.get("members", [])
+        return members
 
-    async def _fetch_member_detail(self, bioguide_id: str) -> dict:
+    async def _fetch_member_detail(self, bioguide_id: str) -> dict[str, Any]:
         """Fetch detailed member info by bioguide ID."""
         data = await self._request(f"/member/{bioguide_id}")
-        return data.get("member", {})
+        member: dict[str, Any] = data.get("member", {})
+        return member
 
-    async def _request(self, path: str, params: dict | None = None) -> dict:
+    async def _request(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Make an authenticated GET request to the Congress.gov API."""
         try:
             response = await self._client.get(path, params=params or {})
             response.raise_for_status()
-            return response.json()
+            result: dict[str, Any] = response.json()
+            return result
         except httpx.HTTPStatusError as exc:
             logger.error(
                 "Congress.gov API error: {} {} for {}",

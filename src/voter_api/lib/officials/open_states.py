@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -120,7 +121,7 @@ class OpenStatesProvider(BaseOfficialsProvider):
 
     async def _fetch_people(
         self,
-        params: dict,
+        params: dict[str, Any],
     ) -> list[OfficialRecord]:
         """Paginate through /people endpoint and collect all results."""
         records: list[OfficialRecord] = []
@@ -145,12 +146,13 @@ class OpenStatesProvider(BaseOfficialsProvider):
 
         return records
 
-    async def _request(self, path: str, params: dict) -> dict:
+    async def _request(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
         """Make an authenticated GET request to the Open States API."""
         try:
             response = await self._client.get(path, params=params)
             response.raise_for_status()
-            return response.json()
+            result: dict[str, Any] = response.json()
+            return result
         except httpx.HTTPStatusError as exc:
             logger.error(
                 "Open States API error: {} {} for {}",
