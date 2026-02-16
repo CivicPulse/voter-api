@@ -27,6 +27,7 @@ def _register_subcommands() -> None:
     """Register all CLI subcommand groups."""
     from voter_api.cli.analyze_cmd import analyze_app
     from voter_api.cli.db_cmd import db_app
+    from voter_api.cli.deploy_check_cmd import deploy_check
     from voter_api.cli.election_cmd import election_app
     from voter_api.cli.export_cmd import export_app
     from voter_api.cli.geocode_cmd import geocode_app
@@ -44,6 +45,7 @@ def _register_subcommands() -> None:
     app.add_typer(publish_app, name="publish", help="Publish static datasets to object storage")
     app.add_typer(election_app, name="election", help="Election tracking commands")
     app.add_typer(officials_app, name="officials", help="Elected officials data commands")
+    app.command("deploy-check")(deploy_check)
 
 
 _register_subcommands()
