@@ -8,8 +8,10 @@ import pytest
 
 from voter_api.services.precinct_metadata_service import (
     _extract_precinct_fields,
+    _normalize_precinct_name,
     get_precinct_metadata_batch,
     get_precinct_metadata_by_boundary,
+    get_precinct_metadata_by_county_multi_strategy,
     upsert_precinct_metadata,
 )
 
@@ -177,3 +179,186 @@ class TestGetPrecinctMetadataByBoundary:
 
         found = await get_precinct_metadata_by_boundary(session, uuid.uuid4())
         assert found is None
+
+
+class TestNormalizePrecinctName:
+    """Tests for _normalize_precinct_name."""
+
+    def test_lowercase_and_strip(self) -> None:
+        assert _normalize_precinct_name("  SANDY SPRINGS  ") == "sandy springs"
+
+    def test_removes_precinct_prefix(self) -> None:
+        assert _normalize_precinct_name("Precinct 1") == "1"
+
+    def test_removes_pct_prefix(self) -> None:
+        assert _normalize_precinct_name("PCT 5") == "5"
+
+    def test_removes_prec_prefix_with_dot(self) -> None:
+        assert _normalize_precinct_name("Prec. 12") == "12"
+
+    def test_strips_punctuation(self) -> None:
+        assert _normalize_precinct_name("Sandy Springs - 01") == "sandy springs 01"
+
+    def test_numeric_strips_leading_zeros(self) -> None:
+        assert _normalize_precinct_name("007") == "7"
+
+    def test_zero_stays_as_zero(self) -> None:
+        assert _normalize_precinct_name("000") == "0"
+
+    def test_empty_string(self) -> None:
+        assert _normalize_precinct_name("") == ""
+
+    def test_mixed_case_and_whitespace(self) -> None:
+        assert _normalize_precinct_name("  PcT  3a  ") == "3a"
+
+    def test_non_numeric_preserves_leading_zeros(self) -> None:
+        assert _normalize_precinct_name("01A") == "01a"
+
+    def test_removes_prc_token(self) -> None:
+        assert _normalize_precinct_name("PRC 42") == "42"
+
+
+def _mock_precinct_meta(
+    precinct_id: str,
+    precinct_name: str,
+    sos_id: str | None = None,
+    county_name: str = "HOUSTON",
+) -> MagicMock:
+    """Create a mock PrecinctMetadata record."""
+    m = MagicMock()
+    m.precinct_id = precinct_id
+    m.precinct_name = precinct_name
+    m.sos_id = sos_id
+    m.county_name = county_name
+    m.boundary_id = uuid.uuid4()
+    return m
+
+
+class TestGetPrecinctMetadataMultiStrategy:
+    """Tests for get_precinct_metadata_by_county_multi_strategy."""
+
+    @pytest.mark.asyncio
+    async def test_empty_input_returns_empty(self) -> None:
+        session = AsyncMock()
+        result = await get_precinct_metadata_by_county_multi_strategy(session, "Houston", [])
+        assert result == {}
+        session.execute.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_strategy_1_exact_precinct_id_match(self) -> None:
+        rec = _mock_precinct_meta("SS01", "Sandy Springs 01", sos_id="C001")
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.scalars.return_value.all.return_value = [rec]
+        session.execute.return_value = query_result
+
+        result = await get_precinct_metadata_by_county_multi_strategy(session, "Houston", ["SS01"])
+        assert "SS01" in result
+        assert result["SS01"] is rec
+
+    @pytest.mark.asyncio
+    async def test_strategy_2_sos_id_fallback(self) -> None:
+        rec = _mock_precinct_meta("SS01", "Sandy Springs 01", sos_id="C099")
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.scalars.return_value.all.return_value = [rec]
+        session.execute.return_value = query_result
+
+        # SOS election data uses "C099" as the precinct ID, which doesn't
+        # match precinct_id="SS01" but matches sos_id="C099".
+        result = await get_precinct_metadata_by_county_multi_strategy(session, "Houston", ["C099"])
+        assert "C099" in result
+        assert result["C099"] is rec
+
+    @pytest.mark.asyncio
+    async def test_strategy_3_fuzzy_name_fallback(self) -> None:
+        rec = _mock_precinct_meta("SS01", "Sandy Springs 01")
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.scalars.return_value.all.return_value = [rec]
+        session.execute.return_value = query_result
+
+        # SOS ID "X99" matches neither precinct_id nor sos_id,
+        # but name "SANDY SPRINGS 01" normalizes to match.
+        result = await get_precinct_metadata_by_county_multi_strategy(
+            session,
+            "Houston",
+            ["X99"],
+            precinct_names={"X99": "SANDY SPRINGS 01"},
+        )
+        assert "X99" in result
+        assert result["X99"] is rec
+
+    @pytest.mark.asyncio
+    async def test_all_strategies_combined(self) -> None:
+        rec1 = _mock_precinct_meta("P01", "Precinct 1", sos_id="C001")
+        rec2 = _mock_precinct_meta("P02", "Precinct 2", sos_id="C002")
+        rec3 = _mock_precinct_meta("P03", "Annex", sos_id="C003")
+
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.scalars.return_value.all.return_value = [rec1, rec2, rec3]
+        session.execute.return_value = query_result
+
+        result = await get_precinct_metadata_by_county_multi_strategy(
+            session,
+            "Houston",
+            ["P01", "C002", "NOMATCH"],
+            precinct_names={"P01": "Precinct 1", "C002": "Precinct 2", "NOMATCH": "Annex"},
+        )
+        # P01 matches via strategy 1 (precinct_id)
+        assert result["P01"] is rec1
+        # C002 matches via strategy 2 (sos_id)
+        assert result["C002"] is rec2
+        # NOMATCH matches via strategy 3 (name "Annex" → "annex")
+        assert result["NOMATCH"] is rec3
+
+    @pytest.mark.asyncio
+    async def test_no_match_returns_empty_for_id(self) -> None:
+        rec = _mock_precinct_meta("P01", "Precinct 1")
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.scalars.return_value.all.return_value = [rec]
+        session.execute.return_value = query_result
+
+        result = await get_precinct_metadata_by_county_multi_strategy(
+            session,
+            "Houston",
+            ["UNKNOWN"],
+            precinct_names={"UNKNOWN": "Nonexistent Precinct"},
+        )
+        assert "UNKNOWN" not in result
+
+    @pytest.mark.asyncio
+    async def test_no_county_records_returns_empty(self) -> None:
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.scalars.return_value.all.return_value = []
+        session.execute.return_value = query_result
+
+        result = await get_precinct_metadata_by_county_multi_strategy(session, "Nonexistent", ["P01"])
+        assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_case_insensitive_matching(self) -> None:
+        rec = _mock_precinct_meta("ss01", "Sandy Springs", sos_id="c099")
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.scalars.return_value.all.return_value = [rec]
+        session.execute.return_value = query_result
+
+        # Uppercase input should match lowercase precinct_id
+        result = await get_precinct_metadata_by_county_multi_strategy(session, "Houston", ["SS01"])
+        assert "SS01" in result
+
+    @pytest.mark.asyncio
+    async def test_without_precinct_names_skips_strategy_3(self) -> None:
+        rec = _mock_precinct_meta("P01", "Precinct 1")
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.scalars.return_value.all.return_value = [rec]
+        session.execute.return_value = query_result
+
+        # No precinct_names provided — strategy 3 not attempted
+        result = await get_precinct_metadata_by_county_multi_strategy(session, "Houston", ["UNKNOWN"])
+        assert "UNKNOWN" not in result
