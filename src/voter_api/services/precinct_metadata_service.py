@@ -2,6 +2,7 @@
 
 import re
 import uuid
+from collections.abc import Sequence
 from decimal import Decimal, InvalidOperation
 
 from loguru import logger
@@ -106,34 +107,6 @@ async def get_precinct_metadata_batch(
     return {record.boundary_id: record for record in result.scalars().all()}
 
 
-async def get_precinct_metadata_by_county_and_ids(
-    session: AsyncSession,
-    county_name: str,
-    precinct_ids: list[str],
-) -> dict[str, PrecinctMetadata]:
-    """Look up precinct metadata by county name and precinct IDs.
-
-    Args:
-        session: Database session.
-        county_name: County name to match (case-insensitive).
-        precinct_ids: List of precinct IDs to look up (matched uppercase).
-
-    Returns:
-        Dict mapping uppercased precinct_id to PrecinctMetadata record.
-    """
-    if not precinct_ids:
-        return {}
-
-    upper_ids = [pid.upper() for pid in precinct_ids]
-    result = await session.execute(
-        select(PrecinctMetadata).where(
-            func.upper(PrecinctMetadata.county_name) == county_name.upper(),
-            func.upper(PrecinctMetadata.precinct_id).in_(upper_ids),
-        )
-    )
-    return {record.precinct_id.upper(): record for record in result.scalars().all()}
-
-
 def _normalize_precinct_name(name: str) -> str:
     """Normalize a precinct name for fuzzy matching.
 
@@ -157,8 +130,8 @@ def _normalize_precinct_name(name: str) -> str:
 
 
 def _build_precinct_indexes(
-    records: list[PrecinctMetadata],
-) -> tuple[dict[str, PrecinctMetadata], dict[str, PrecinctMetadata], dict[str, PrecinctMetadata]]:
+    records: Sequence[PrecinctMetadata],
+) -> tuple[dict[str, PrecinctMetadata], dict[str, PrecinctMetadata], dict[str, list[PrecinctMetadata]]]:
     """Build lookup indexes from a list of precinct metadata records.
 
     Args:
@@ -166,18 +139,28 @@ def _build_precinct_indexes(
 
     Returns:
         Tuple of (by_precinct_id, by_sos_id, by_normalized_name) dicts.
+        by_normalized_name maps to a list to detect collisions.
     """
     by_precinct_id: dict[str, PrecinctMetadata] = {}
     by_sos_id: dict[str, PrecinctMetadata] = {}
-    by_normalized_name: dict[str, PrecinctMetadata] = {}
+    by_normalized_name: dict[str, list[PrecinctMetadata]] = {}
 
     for record in records:
         by_precinct_id[record.precinct_id.upper()] = record
         if record.sos_id:
-            by_sos_id[record.sos_id.upper()] = record
+            sos_key = record.sos_id.upper()
+            if sos_key in by_sos_id:
+                logger.warning(
+                    "Duplicate sos_id '{}' in county '{}': precinct '{}' overwrites '{}'",
+                    sos_key,
+                    record.county_name,
+                    record.precinct_id,
+                    by_sos_id[sos_key].precinct_id,
+                )
+            by_sos_id[sos_key] = record
         normalized = _normalize_precinct_name(record.precinct_name)
         if normalized:
-            by_normalized_name[normalized] = record
+            by_normalized_name.setdefault(normalized, []).append(record)
 
     return by_precinct_id, by_sos_id, by_normalized_name
 
@@ -208,14 +191,14 @@ def _match_ids_to_index(
 def _match_by_name(
     ids: list[str],
     precinct_names: dict[str, str],
-    name_index: dict[str, PrecinctMetadata],
+    name_index: dict[str, list[PrecinctMetadata]],
 ) -> tuple[dict[str, PrecinctMetadata], list[str]]:
     """Match precinct IDs via fuzzy name normalization.
 
     Args:
         ids: Uppercased SOS precinct IDs still unmatched.
         precinct_names: Mapping of uppercased precinct_id to SOS name.
-        name_index: Mapping of normalized name to PrecinctMetadata.
+        name_index: Mapping of normalized name to list of PrecinctMetadata.
 
     Returns:
         Tuple of (matched dict, unmatched IDs list).
@@ -225,9 +208,17 @@ def _match_by_name(
     for uid in ids:
         sos_name = precinct_names.get(uid, uid)
         normalized_sos = _normalize_precinct_name(sos_name)
-        if normalized_sos and normalized_sos in name_index:
-            matched[uid] = name_index[normalized_sos]
+        candidates = name_index.get(normalized_sos, []) if normalized_sos else []
+        if len(candidates) == 1:
+            matched[uid] = candidates[0]
         else:
+            if len(candidates) > 1:
+                logger.warning(
+                    "Precinct {} ('{}') has {} name-collision candidates — skipping fuzzy match",
+                    uid,
+                    sos_name,
+                    len(candidates),
+                )
             unmatched.append(uid)
     return matched, unmatched
 

@@ -362,3 +362,43 @@ class TestGetPrecinctMetadataMultiStrategy:
         # No precinct_names provided — strategy 3 not attempted
         result = await get_precinct_metadata_by_county_multi_strategy(session, "Houston", ["UNKNOWN"])
         assert "UNKNOWN" not in result
+
+    @pytest.mark.asyncio
+    async def test_strategy_3_skips_ambiguous_name_collision(self) -> None:
+        """When two precincts normalize to the same name, fuzzy match is skipped."""
+        rec1 = _mock_precinct_meta("P01", "Precinct 1")
+        rec2 = _mock_precinct_meta("P02", "PCT 1")  # normalizes to "1" — same as rec1
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.scalars.return_value.all.return_value = [rec1, rec2]
+        session.execute.return_value = query_result
+
+        result = await get_precinct_metadata_by_county_multi_strategy(
+            session,
+            "Houston",
+            ["X99"],
+            precinct_names={"X99": "Precinct 1"},
+        )
+        # X99 doesn't match by ID/sos_id, and normalized name "1" is ambiguous
+        assert "X99" not in result
+
+    @pytest.mark.asyncio
+    async def test_strategy_3_matches_unique_skips_ambiguous(self) -> None:
+        """Fuzzy match returns unique matches and skips ambiguous ones."""
+        rec1 = _mock_precinct_meta("P01", "Precinct 1")
+        rec2 = _mock_precinct_meta("P02", "PCT 1")  # collision with rec1
+        rec3 = _mock_precinct_meta("P03", "Annex")  # unique name
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.scalars.return_value.all.return_value = [rec1, rec2, rec3]
+        session.execute.return_value = query_result
+
+        result = await get_precinct_metadata_by_county_multi_strategy(
+            session,
+            "Houston",
+            ["X99", "Y88"],
+            precinct_names={"X99": "Precinct 1", "Y88": "Annex"},
+        )
+        assert "X99" not in result  # ambiguous
+        assert "Y88" in result  # unique match
+        assert result["Y88"] is rec3
