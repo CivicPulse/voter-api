@@ -53,6 +53,12 @@ uv run ruff format .
 # Database migrations
 uv run voter-api db upgrade
 uv run voter-api db downgrade
+
+# E2E tests (requires a running PostGIS database + env vars set)
+uv run pytest tests/e2e/ -v
+
+# E2E: collect tests without running (syntax/import check)
+uv run pytest tests/e2e/ --collect-only
 ```
 
 ## Architecture
@@ -85,10 +91,91 @@ Each library in `lib/` has an explicit public API via `__init__.py` exports and 
 
 ```
 tests/
-├── unit/           # Library and schema tests (no DB)
+├── unit/           # Library and schema tests (no DB, in-memory SQLite)
 ├── integration/    # API, database, and CLI tests (requires PostGIS)
-└── contract/       # OpenAPI contract tests
+├── contract/       # OpenAPI contract tests
+└── e2e/            # End-to-end smoke tests (real PostGIS, Alembic migrations)
 ```
+
+### E2E Tests
+
+The `tests/e2e/` suite runs **53 smoke tests** against a real PostgreSQL/PostGIS database with all Alembic migrations applied. Unlike unit/integration tests (which use in-memory SQLite and mocks), E2E tests exercise the full stack: real app factory, real database, real auth, real queries.
+
+**CI workflow**: `.github/workflows/e2e.yml` — triggers on PRs to `main`. Spins up a `postgis/postgis:15-3.4` service container, runs `alembic upgrade head`, then `pytest tests/e2e/`.
+
+**Running E2E tests locally** (requires a running PostGIS instance):
+
+```bash
+# Start PostGIS via docker-compose
+docker compose up -d db
+
+# Apply migrations
+DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_api \
+  JWT_SECRET_KEY=test-secret-key-minimum-32-characters \
+  uv run alembic upgrade head
+
+# Run E2E tests
+DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_api \
+  JWT_SECRET_KEY=test-secret-key-minimum-32-characters \
+  ELECTION_REFRESH_ENABLED=false \
+  uv run pytest tests/e2e/ -v
+```
+
+#### Key files
+
+| File | Purpose |
+|---|---|
+| `tests/e2e/conftest.py` | Session-scoped fixtures: app factory, DB seeding, authenticated HTTP clients |
+| `tests/e2e/test_smoke.py` | 53 smoke tests organized by API router |
+| `.github/workflows/e2e.yml` | GitHub Actions workflow with PostGIS service container |
+
+#### How the fixtures work
+
+- **`app`** (session-scoped) — calls `create_app()` which initialises the async engine via lifespan
+- **`seed_database`** (session-scoped, autouse) — inserts baseline test data (3 users, 1 election, 1 boundary with real geometry, 1 elected official) using raw SQL with `ON CONFLICT DO NOTHING` for idempotency; cleans up after the session
+- **`client`** / **`admin_client`** / **`analyst_client`** / **`viewer_client`** — `httpx.AsyncClient` instances wired to the app via `ASGITransport`; role-specific clients include a pre-set `Authorization: Bearer <jwt>` header
+- **Fixed UUIDs** — seeded rows use deterministic UUIDs (`BOUNDARY_ID`, `ELECTION_ID`, `OFFICIAL_ID`, etc.) exported from `conftest.py` so tests can reference them
+
+#### Test coverage by router
+
+| Test class | Router | Tests | What it covers |
+|---|---|---|---|
+| `TestHealth` | auth | 1 | Health check |
+| `TestAuth` | auth | 9 | Login, refresh, /me, user CRUD, bad credentials, 401/403 |
+| `TestBoundaries` | boundaries | 6 | List, filter, detail, types, point-in-polygon, 404 |
+| `TestElections` | elections | 6 | List, detail, create, RBAC, results, 404 |
+| `TestElectedOfficials` | elected-officials | 7 | List, detail, by-district, full CRUD lifecycle, sources, 404 |
+| `TestVoters` | voters | 3 | Auth required, search, 404 |
+| `TestGeocoding` | geocoding | 3 | Auth enforcement on all endpoints |
+| `TestImports` | imports | 3 | Auth, admin list, viewer 403 |
+| `TestExports` | exports | 2 | Auth, admin list |
+| `TestAnalysis` | analysis | 3 | Auth, admin list, viewer 403 |
+| `TestDatasets` | datasets | 1 | Public listing |
+| `TestPagination` | cross-cutting | 4 | Parameterized pagination, invalid page_size 422 |
+| `TestRBAC` | cross-cutting | 6 | Admin/analyst/viewer role enforcement |
+
+#### Updating E2E tests when the API changes
+
+Follow these rules whenever you add, modify, or remove API endpoints:
+
+1. **New endpoint** — Add at least one smoke test to the corresponding `Test<Router>` class in `test_smoke.py`. Cover the happy path (expected status code + key response fields) and auth/RBAC if the endpoint is protected. If it's a new router, add a new test class.
+
+2. **New model/table** — If the new endpoint requires seed data, add an `INSERT` to the `seed_database` fixture in `conftest.py`. Use a fixed UUID constant (add it next to `BOUNDARY_ID`, `ELECTION_ID`, etc.) and `ON CONFLICT DO NOTHING`. Add a matching `DELETE` in the cleanup block at the bottom of the fixture.
+
+3. **Changed request/response schema** — Update any test that asserts on renamed/removed fields or sends a request body with the old shape. Search for the field name in `test_smoke.py`.
+
+4. **Changed auth requirements** — If an endpoint's auth or role requirement changes (e.g., public → admin-only), move the test to use the appropriate client fixture (`client` for public, `admin_client` / `analyst_client` / `viewer_client` for authenticated). Update or add 401/403 assertions.
+
+5. **New Alembic migration** — No test changes needed. The CI workflow runs `alembic upgrade head` before tests, so new migrations are applied automatically.
+
+6. **New boundary type** — If the new type needs E2E coverage, add a seeded boundary row to `seed_database` and a test that queries it.
+
+7. **Removing an endpoint** — Delete the corresponding test(s). If seed data is no longer needed by any test, remove it from `seed_database`.
+
+**Checklist for PR authors:**
+- [ ] Every new endpoint has at least one E2E test
+- [ ] `uv run pytest tests/e2e/ --collect-only` discovers all new tests
+- [ ] Lint passes: `uv run ruff check tests/e2e/ && uv run ruff format --check tests/e2e/`
 
 ## Key Conventions
 
