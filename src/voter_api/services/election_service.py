@@ -640,7 +640,7 @@ def _transpose_precinct_results(county_results_data: list[dict]) -> dict[str, di
             group_results = [
                 VoteMethodResult(
                     group_name=gr.get("groupName", ""),
-                    vote_count=gr.get("voteCount", 0),
+                    vote_count=gr.get("voteCount") or 0,
                 )
                 for gr in pr.get("groupResults", [])
             ]
@@ -651,7 +651,7 @@ def _transpose_precinct_results(county_results_data: list[dict]) -> dict[str, di
                     name=opt.get("name", ""),
                     political_party=opt.get("politicalParty", ""),
                     ballot_order=opt.get("ballotOrder", 1),
-                    vote_count=pr.get("voteCount", 0),
+                    vote_count=pr.get("voteCount") or 0,
                     reporting_status=pr.get("reportingStatus"),
                     group_results=group_results,
                 )

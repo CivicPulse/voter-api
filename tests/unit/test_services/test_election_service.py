@@ -1079,6 +1079,32 @@ class TestTransposePrecinctResults:
         cand = result["P01"]["candidates"][0]
         assert cand.ballot_order == 3
 
+    def test_null_vote_count_coerced_to_zero(self):
+        """NULL voteCount in precinct or group results is coerced to 0 (GH-27)."""
+        data = [
+            {
+                "id": "1",
+                "name": "Candidate A",
+                "politicalParty": "Rep",
+                "precinctResults": [
+                    {
+                        "id": "P01",
+                        "name": "Precinct 1",
+                        "voteCount": None,
+                        "groupResults": [
+                            {"groupName": "Election Day", "voteCount": None},
+                            {"groupName": "Advance Voting", "voteCount": 10},
+                        ],
+                    },
+                ],
+            },
+        ]
+        result = _transpose_precinct_results(data)
+        cand = result["P01"]["candidates"][0]
+        assert cand.vote_count == 0
+        assert cand.group_results[0].vote_count == 0
+        assert cand.group_results[1].vote_count == 10
+
 
 # --- Tests for get_election_precinct_results_geojson ---
 
