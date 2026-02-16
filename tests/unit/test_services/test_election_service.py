@@ -55,6 +55,7 @@ def _mock_election(**overrides: object) -> MagicMock:
     election.status = "active"
     election.data_source_url = "https://results.enr.clarityelections.com/feed.json"
     election.refresh_interval_seconds = 120
+    election.ballot_item_id = None
     election.last_refreshed_at = None
     election.created_at = datetime(2026, 2, 1, tzinfo=UTC)
     election.updated_at = datetime(2026, 2, 1, tzinfo=UTC)

@@ -2,6 +2,8 @@
 
 GET /elections — list elections (US5)
 POST /elections — create election (US4)
+POST /elections/import-feed/preview — preview races in SOS feed
+POST /elections/import-feed — import all races from SOS feed
 GET /elections/{id} — election detail (US1)
 PATCH /elections/{id} — update election (US4)
 GET /elections/{id}/results — JSON results (US1)
@@ -28,6 +30,9 @@ from voter_api.schemas.election import (
     ElectionDetailResponse,
     ElectionResultsResponse,
     ElectionUpdateRequest,
+    FeedImportPreviewResponse,
+    FeedImportRequest,
+    FeedImportResponse,
     PaginatedElectionListResponse,
     RawElectionResultsResponse,
     RefreshResponse,
@@ -92,6 +97,50 @@ async def create_election(
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     return election_service.build_detail_response(election)
+
+
+# --- Feed import (multi-race support) ---
+
+
+@elections_router.post(
+    "/import-feed/preview",
+    response_model=FeedImportPreviewResponse,
+)
+async def preview_feed_import(
+    request: FeedImportRequest,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(require_role("admin"))],
+) -> FeedImportPreviewResponse:
+    """Preview races available in an SoS feed before importing. Admin-only."""
+    try:
+        return await election_service.preview_feed_import(session, str(request.data_source_url))
+    except FetchError as e:
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to retrieve feed from data source. Please retry later.",
+        ) from e
+
+
+@elections_router.post(
+    "/import-feed",
+    response_model=FeedImportResponse,
+    status_code=201,
+)
+async def import_feed(
+    request: FeedImportRequest,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(require_role("admin"))],
+) -> FeedImportResponse:
+    """Import all races from an SoS feed as separate elections. Admin-only."""
+    try:
+        return await election_service.import_feed(session, request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except FetchError as e:
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to retrieve feed from data source. Please retry later.",
+        ) from e
 
 
 # --- US1: Election detail ---

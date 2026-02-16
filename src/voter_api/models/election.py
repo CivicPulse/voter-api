@@ -18,6 +18,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -35,6 +36,7 @@ class Election(Base, UUIDMixin, TimestampMixin):
     election_type: Mapped[str] = mapped_column(String(50), nullable=False)
     district: Mapped[str] = mapped_column(String(200), nullable=False)
     data_source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    ballot_item_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
     last_refreshed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     refresh_interval_seconds: Mapped[int] = mapped_column(Integer, nullable=False, server_default="120")
@@ -53,6 +55,14 @@ class Election(Base, UUIDMixin, TimestampMixin):
         CheckConstraint("refresh_interval_seconds >= 60", name="ck_election_refresh_interval"),
         Index("idx_elections_status", "status"),
         Index("idx_elections_election_date", "election_date"),
+        Index("idx_elections_ballot_item_id", "ballot_item_id"),
+        Index(
+            "uq_election_feed_ballot_item",
+            "data_source_url",
+            "ballot_item_id",
+            unique=True,
+            postgresql_where=text("ballot_item_id IS NOT NULL"),
+        ),
     )
 
 

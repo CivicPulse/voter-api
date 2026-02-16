@@ -27,6 +27,7 @@ def _make_election(**overrides) -> Election:
         "refresh_interval_seconds": 120,
         "created_at": datetime(2026, 2, 14, 10, 0, 0, tzinfo=UTC),
         "updated_at": datetime(2026, 2, 14, 10, 0, 0, tzinfo=UTC),
+        "ballot_item_id": None,
         "result": None,
         "county_results": [],
     }
