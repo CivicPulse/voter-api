@@ -646,8 +646,8 @@ class TestImportFeed:
         assert result.elections[0].status == "active"
 
     @pytest.mark.asyncio
-    async def test_skip_refresh_for_finalized(self):
-        """Auto-refresh is skipped for finalized elections even when auto_refresh=True."""
+    async def test_finalized_ingests_directly_without_refetch(self):
+        """Finalized elections ingest results from in-memory feed, not via refresh_single_election."""
         feed = _make_multi_race_feed()  # old date → finalized
         session = AsyncMock()
 
@@ -678,13 +678,63 @@ class TestImportFeed:
                 "voter_api.services.election_service.refresh_single_election",
                 new_callable=AsyncMock,
             ) as mock_refresh,
+            patch(
+                "voter_api.services.election_service._persist_ingestion_result",
+                new_callable=AsyncMock,
+                return_value=0,
+            ) as mock_persist,
         ):
             result = await import_feed(session, request)
 
-        # Refresh should NOT be called for finalized elections
+        # refresh_single_election should NOT be called (no re-fetch)
         assert mock_refresh.await_count == 0
-        assert result.elections[0].refreshed is False
+        # But results should be persisted directly from the in-memory feed
+        assert mock_persist.await_count == 2
+        assert result.elections[0].refreshed is True
         assert result.elections[0].status == "finalized"
+        assert result.elections[0].precincts_reporting == 3500
+        assert result.elections[0].precincts_participating == 4000
+
+    @pytest.mark.asyncio
+    async def test_finalized_ingestion_failure_still_includes_election(self):
+        """If direct ingestion fails for a finalized election, it's still included with refreshed=False."""
+        feed = _make_multi_race_feed()  # old date → finalized
+        session = AsyncMock()
+
+        mock_elections = [_mock_election("S10"), _mock_election("S11")]
+
+        request = FeedImportRequest(
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            election_type="special",
+            auto_refresh=True,
+        )
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+                return_value=feed,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+            patch(
+                "voter_api.services.election_service.create_election",
+                new_callable=AsyncMock,
+                side_effect=mock_elections,
+            ),
+            patch(
+                "voter_api.services.election_service.ingest_election_results",
+                side_effect=ValueError("ingestion failed"),
+            ),
+        ):
+            result = await import_feed(session, request)
+
+        assert result.elections_created == 2
+        assert result.elections[0].refreshed is False
+        assert result.elections[0].precincts_reporting is None
+        assert result.elections[1].refreshed is False
 
     @pytest.mark.asyncio
     @time_machine.travel("2026-02-16", tick=False)

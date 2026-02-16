@@ -975,10 +975,21 @@ async def import_feed(
                     e,
                 )
         elif request.auto_refresh and status == "finalized":
-            logger.info(
-                "Skipping auto-refresh for election {} — status is finalized",
-                election.id,
-            )
+            try:
+                ingestion = ingest_election_results(feed, ballot_item_id=ballot_item.id)
+                await _persist_ingestion_result(session, election.id, ingestion)
+                election.last_refreshed_at = datetime.now(UTC)
+                await session.commit()
+                refreshed = True
+                precincts_reporting = ingestion.statewide.precincts_reporting
+                precincts_participating = ingestion.statewide.precincts_participating
+            except Exception as e:
+                logger.warning(
+                    "Result ingestion failed for finalized election {} ({}): {}",
+                    election.id,
+                    ballot_item.id,
+                    e,
+                )
 
         created_elections.append(
             FeedImportedElection(
