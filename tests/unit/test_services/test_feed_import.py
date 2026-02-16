@@ -108,6 +108,59 @@ def _make_recent_feed() -> SoSFeed:
     )
 
 
+def _make_boundary_feed(days_ago: int) -> SoSFeed:
+    """Build a feed with electionDate exactly `days_ago` days before today."""
+    boundary_date = (datetime.now(UTC).date() - timedelta(days=days_ago)).isoformat()
+    return SoSFeed(
+        electionDate=boundary_date,
+        electionName="Boundary Test Election",
+        createdAt="2026-01-01T00:00:00Z",
+        results=SoSResults(
+            id="GA",
+            name="Georgia",
+            ballotItems=[
+                BallotItem(
+                    id="S10",
+                    name="PSC - District 2",
+                    precinctsParticipating=4000,
+                    precinctsReporting=3500,
+                    ballotOptions=[
+                        BallotOption(id="c1", name="Candidate A", voteCount=100, politicalParty="Rep"),
+                    ],
+                ),
+            ],
+        ),
+        localResults=[],
+    )
+
+
+def _make_general_feed() -> SoSFeed:
+    """Build a feed with 'General' in the electionName for keyword detection tests."""
+    recent_date = (datetime.now(UTC).date() - timedelta(days=3)).isoformat()
+    return SoSFeed(
+        electionDate=recent_date,
+        electionName="November General Election",
+        createdAt="2026-01-01T00:00:00Z",
+        results=SoSResults(
+            id="GA",
+            name="Georgia",
+            ballotItems=[
+                BallotItem(
+                    id="S10",
+                    name="PSC - District 2",
+                    precinctsParticipating=4000,
+                    precinctsReporting=3500,
+                    ballotOptions=[
+                        BallotOption(id="c1", name="Candidate A", voteCount=100, politicalParty="Rep"),
+                        BallotOption(id="c2", name="Candidate B", voteCount=200, politicalParty="Dem"),
+                    ],
+                ),
+            ],
+        ),
+        localResults=[],
+    )
+
+
 def _make_empty_feed() -> SoSFeed:
     return SoSFeed(
         electionDate="2025-11-04",
@@ -169,6 +222,26 @@ class TestPreviewFeedImport:
         assert result.total_races == 0
         assert result.races == []
 
+    @pytest.mark.asyncio
+    async def test_preview_detects_general_from_feed_name(self):
+        """Preview auto-detects 'general' when feed name contains the keyword."""
+        feed = _make_general_feed()
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+                return_value=feed,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+        ):
+            result = await preview_feed_import("https://results.sos.ga.gov/feed.json")
+
+        assert result.detected_election_type == "general"
+
 
 class TestImportFeed:
     """Tests for import_feed()."""
@@ -210,7 +283,6 @@ class TestImportFeed:
         assert result.elections[0].name == "November 4, 2025 - Multi-Race Election - PSC - District 2"
         assert result.elections[1].ballot_item_id == "S11"
         assert result.elections[0].refreshed is False
-        assert result.elections[0].status == "finalized"  # old date → auto-finalized
         assert mock_create.await_count == 2
 
     @pytest.mark.asyncio
@@ -610,3 +682,110 @@ class TestImportFeed:
         assert mock_refresh.await_count == 0
         assert result.elections[0].refreshed is False
         assert result.elections[0].status == "finalized"
+
+    @pytest.mark.asyncio
+    async def test_exactly_14_days_is_active(self):
+        """An election dated exactly 14 days ago is still active (strict >)."""
+        feed = _make_boundary_feed(days_ago=14)
+        session = AsyncMock()
+
+        mock_elections = [_mock_election("S10")]
+
+        request = FeedImportRequest(
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            election_type="special",
+            auto_refresh=False,
+        )
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+                return_value=feed,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+            patch(
+                "voter_api.services.election_service.create_election",
+                new_callable=AsyncMock,
+                side_effect=mock_elections,
+            ) as mock_create,
+        ):
+            result = await import_feed(session, request)
+
+        create_req = mock_create.call_args_list[0][0][1]
+        assert create_req.status == "active"
+        assert result.elections[0].status == "active"
+
+    @pytest.mark.asyncio
+    async def test_15_days_is_finalized(self):
+        """An election dated 15 days ago is finalized."""
+        feed = _make_boundary_feed(days_ago=15)
+        session = AsyncMock()
+
+        mock_elections = [_mock_election("S10")]
+
+        request = FeedImportRequest(
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            election_type="special",
+            auto_refresh=False,
+        )
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+                return_value=feed,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+            patch(
+                "voter_api.services.election_service.create_election",
+                new_callable=AsyncMock,
+                side_effect=mock_elections,
+            ) as mock_create,
+        ):
+            result = await import_feed(session, request)
+
+        create_req = mock_create.call_args_list[0][0][1]
+        assert create_req.status == "finalized"
+        assert result.elections[0].status == "finalized"
+
+    @pytest.mark.asyncio
+    async def test_auto_detect_general_from_feed_name(self):
+        """Auto-detect resolves 'general' when feed name contains the keyword."""
+        feed = _make_general_feed()
+        session = AsyncMock()
+
+        mock_elections = [_mock_election("S10")]
+
+        request = FeedImportRequest(
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            election_type=None,
+            auto_refresh=False,
+        )
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+                return_value=feed,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+            patch(
+                "voter_api.services.election_service.create_election",
+                new_callable=AsyncMock,
+                side_effect=mock_elections,
+            ) as mock_create,
+        ):
+            await import_feed(session, request)
+
+        create_req = mock_create.call_args_list[0][0][1]
+        assert create_req.election_type == "general"

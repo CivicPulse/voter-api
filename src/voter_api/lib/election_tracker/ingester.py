@@ -6,13 +6,16 @@ The actual database operations live in the service layer.
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Literal
 
 from loguru import logger
 
 from voter_api.lib.election_tracker.parser import BallotItem, SoSFeed
 
+ElectionType = Literal["special", "general", "primary", "runoff"]
 
-def detect_election_type(election_name: str) -> str:
+
+def detect_election_type(election_name: str) -> ElectionType:
     """Infer election type from SoS feed electionName.
 
     Priority order (first match wins):
@@ -34,6 +37,10 @@ def detect_election_type(election_name: str) -> str:
         return "primary"
     if "general" in name_lower:
         return "general"
+    logger.warning(
+        "Could not detect election type from name '{}'; defaulting to 'special'",
+        election_name,
+    )
     return "special"
 
 

@@ -17,6 +17,7 @@ from voter_api.core.config import get_settings
 from voter_api.lib.election_tracker import (
     FetchError,
     IngestionResult,
+    SoSFeed,
     detect_election_type,
     fetch_election_results,
     ingest_election_results,
@@ -843,6 +844,44 @@ async def preview_feed_import(
     )
 
 
+def _resolve_feed_metadata(
+    feed: SoSFeed,
+    request_election_type: str | None,
+) -> tuple[date, str, str]:
+    """Parse feed date and resolve election type and status.
+
+    Returns:
+        Tuple of (election_date, election_type, status).
+
+    Raises:
+        ValueError: If feed contains an invalid election date.
+    """
+    try:
+        election_date = date.fromisoformat(feed.electionDate)
+    except ValueError as e:
+        msg = f"Feed contains invalid election date '{feed.electionDate}': {e}"
+        raise ValueError(msg) from e
+
+    if request_election_type is not None:
+        election_type = request_election_type
+    else:
+        election_type = detect_election_type(feed.electionName)
+        logger.info(
+            "Auto-detected election type '{}' from feed name '{}'",
+            election_type,
+            feed.electionName,
+        )
+
+    status = "finalized" if datetime.now(UTC).date() - election_date > timedelta(days=14) else "active"
+    if status == "finalized":
+        logger.info(
+            "Auto-finalizing import: election date {} is more than 14 days ago",
+            election_date,
+        )
+
+    return election_date, election_type, status
+
+
 async def import_feed(
     session: AsyncSession,
     request: FeedImportRequest,
@@ -873,9 +912,7 @@ async def import_feed(
         msg = "Feed contains no ballot items (races)."
         raise ValueError(msg)
 
-    election_date = date.fromisoformat(feed.electionDate)
-    election_type = request.election_type or detect_election_type(feed.electionName)
-    status = "finalized" if datetime.now(UTC).date() - election_date > timedelta(days=14) else "active"
+    election_date, election_type, status = _resolve_feed_metadata(feed, request.election_type)
     created_elections: list[FeedImportedElection] = []
     skipped = 0
 
@@ -924,6 +961,11 @@ async def import_feed(
                     ballot_item.id,
                     e,
                 )
+        elif request.auto_refresh and status == "finalized":
+            logger.info(
+                "Skipping auto-refresh for election {} — status is finalized",
+                election.id,
+            )
 
         created_elections.append(
             FeedImportedElection(

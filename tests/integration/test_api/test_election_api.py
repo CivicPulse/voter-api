@@ -769,6 +769,7 @@ class TestPreviewFeedImport:
             data_source_url="https://results.sos.ga.gov/feed.json",
             election_date=date(2025, 11, 4),
             election_name="Test Election",
+            detected_election_type="general",
             races=[
                 FeedRaceSummary(ballot_item_id="S10", name="PSC - District 2", candidate_count=2),
                 FeedRaceSummary(ballot_item_id="S11", name="PSC - District 3", candidate_count=1),
@@ -844,6 +845,7 @@ class TestImportFeed:
                     ballot_item_id="S10",
                     name="Test - PSC District 2",
                     election_date=date(2025, 11, 4),
+                    status="active",
                     refreshed=False,
                 ),
             ],
