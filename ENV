@@ -34,7 +34,7 @@ LOG_LEVEL=INFO
 
 # --- CORS ---
 CORS_ORIGINS=
-CORS_ORIGIN_REGEX=https://((.*\.)?voter-web\.pages\.dev|(.*\.)?civpulse\.org|(.*\.)?kerryhatcher\.com)
+CORS_ORIGIN_REGEX=^(?:https://(?:(?:.*\.)?voter-web\.pages\.dev|(?:.*\.)?civpulse\.org|(?:.*\.)?kerryhatcher\.com)|http://localhost(?::\d+)?)$
 
 # --- API ---
 API_V1_PREFIX=/api/v1

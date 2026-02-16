@@ -651,7 +651,7 @@ async def get_election_precinct_results_geojson(
 
     from voter_api.models.boundary import Boundary
     from voter_api.services.precinct_metadata_service import (
-        get_precinct_metadata_by_county_and_ids,
+        get_precinct_metadata_by_county_multi_strategy,
     )
 
     election = await get_election_by_id(session, election_id)
@@ -675,8 +675,9 @@ async def get_election_precinct_results_geojson(
 
         # Batch lookup precinct metadata for geometry
         precinct_ids = list(precinct_map.keys())
-        metadata_map = await get_precinct_metadata_by_county_and_ids(
-            session, county_row.county_name_normalized, precinct_ids
+        precinct_names = {pid: pdata["precinct_name"] for pid, pdata in precinct_map.items()}
+        metadata_map = await get_precinct_metadata_by_county_multi_strategy(
+            session, county_row.county_name_normalized, precinct_ids, precinct_names
         )
 
         # Batch fetch boundary geometries

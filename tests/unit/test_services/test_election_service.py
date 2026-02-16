@@ -1025,6 +1025,9 @@ class TestGetElectionPrecinctResultsGeoJSON:
         mock_meta = MagicMock()
         mock_meta.boundary_id = uuid.uuid4()
         mock_meta.precinct_id = "ANNX"
+        mock_meta.precinct_name = "Annex"
+        mock_meta.sos_id = None
+        mock_meta.county_name = "Houston"
 
         mock_boundary_row = MagicMock()
         mock_boundary_row.id = mock_meta.boundary_id
@@ -1148,9 +1151,9 @@ class TestGetElectionPrecinctResultsGeoJSON:
         session.execute = AsyncMock(side_effect=[election_query, county_query, meta_query])
 
         with patch(
-            "voter_api.services.precinct_metadata_service.get_precinct_metadata_by_county_and_ids",
+            "voter_api.services.precinct_metadata_service.get_precinct_metadata_by_county_multi_strategy",
             new_callable=AsyncMock,
             return_value={},
         ) as mock_lookup:
             await get_election_precinct_results_geojson(session, election.id)
-            mock_lookup.assert_awaited_once_with(session, "Houston", ["P01"])
+            mock_lookup.assert_awaited_once_with(session, "Houston", ["P01"], {"P01": "Precinct 1"})

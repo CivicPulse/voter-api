@@ -53,4 +53,5 @@ class PrecinctMetadata(Base, UUIDMixin):
         Index("ix_precinct_metadata_county_name", "county_name"),
         Index("ix_precinct_metadata_fips", "fips"),
         Index("ix_precinct_metadata_sos_district_id", "sos_district_id"),
+        Index("ix_precinct_metadata_county_sos_id", "county_name", "sos_id"),
     )
