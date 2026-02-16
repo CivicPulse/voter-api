@@ -25,6 +25,7 @@ from voter_api.schemas.election import (
     VoteMethodResult,
 )
 from voter_api.services.election_service import (
+    DuplicateElectionError,
     _ballot_option_to_candidate,
     _persist_ingestion_result,
     _transpose_precinct_results,
@@ -238,7 +239,44 @@ class TestCreateElection:
             data_source_url="https://results.enr.clarityelections.com/feed.json",
         )
 
-        with pytest.raises(ValueError, match="already exists"):
+        with pytest.raises(DuplicateElectionError, match="already exists"):
+            await create_election(session, request)
+
+    @pytest.mark.asyncio
+    async def test_creates_election_with_ballot_item_id(self):
+        """create_election sets ballot_item_id when provided."""
+        session = _mock_session_with_scalar(None)
+
+        request = ElectionCreateRequest(
+            name="Test Election - PSC District 2",
+            election_date=date(2026, 2, 17),
+            election_type="special",
+            district="PSC - District 2",
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            ballot_item_id="S10",
+        )
+
+        await create_election(session, request)
+        session.add.assert_called_once()
+        added_election = session.add.call_args[0][0]
+        assert added_election.ballot_item_id == "S10"
+
+    @pytest.mark.asyncio
+    async def test_duplicate_ballot_item_id_raises(self):
+        """Duplicate detection uses data_source_url + ballot_item_id when ballot_item_id set."""
+        existing = _mock_election(ballot_item_id="S10")
+        session = _mock_session_with_scalar(existing)
+
+        request = ElectionCreateRequest(
+            name="Test Election - PSC District 2",
+            election_date=date(2026, 2, 17),
+            election_type="special",
+            district="PSC - District 2",
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            ballot_item_id="S10",
+        )
+
+        with pytest.raises(DuplicateElectionError, match="ballot item 'S10'"):
             await create_election(session, request)
 
 
@@ -639,6 +677,50 @@ class TestRefreshSingleElection:
         assert result.election_id == election_id
         assert result.counties_updated == 1
         session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_passes_ballot_item_id_to_ingester(self):
+        """refresh_single_election passes ballot_item_id to ingest_election_results."""
+        election = _mock_election(ballot_item_id="S10")
+        election_id = election.id
+
+        session = AsyncMock()
+        election_query = MagicMock()
+        election_query.scalar_one_or_none.return_value = election
+
+        statewide_mock = MagicMock()
+        statewide_mock.scalar_one_or_none.return_value = None
+        session.execute = AsyncMock(side_effect=[election_query, statewide_mock])
+
+        mock_ingestion = IngestionResult(
+            statewide=StatewideResultData(
+                precincts_participating=100,
+                precincts_reporting=95,
+                results_data=[],
+                source_created_at=None,
+            ),
+            counties=[],
+        )
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+            patch(
+                "voter_api.services.election_service.ingest_election_results",
+                return_value=mock_ingestion,
+            ) as mock_ingest,
+        ):
+            result = await refresh_single_election(session, election_id)
+
+        mock_ingest.assert_called_once()
+        assert mock_ingest.call_args[1]["ballot_item_id"] == "S10"
+        assert isinstance(result, RefreshResponse)
 
 
 # --- Tests for list_elections ---

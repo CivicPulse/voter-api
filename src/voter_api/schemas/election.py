@@ -7,7 +7,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, computed_field
 
 from voter_api.schemas.common import PaginationMeta
 
@@ -236,9 +236,9 @@ class FeedImportRequest(BaseModel):
 class FeedRaceSummary(BaseModel):
     """Summary of a single race discovered in a feed."""
 
-    ballot_item_id: str
+    ballot_item_id: str = Field(min_length=1)
     name: str
-    candidate_count: int = 0
+    candidate_count: int = Field(default=0, ge=0)
     statewide_precincts_participating: int | None = None
     statewide_precincts_reporting: int | None = None
 
@@ -250,7 +250,12 @@ class FeedImportPreviewResponse(BaseModel):
     election_date: date
     election_name: str
     races: list[FeedRaceSummary]
-    total_races: int
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def total_races(self) -> int:
+        """Number of races discovered in the feed."""
+        return len(self.races)
 
 
 class FeedImportedElection(BaseModel):
@@ -268,5 +273,11 @@ class FeedImportedElection(BaseModel):
 class FeedImportResponse(BaseModel):
     """Response from a feed import operation."""
 
-    elections_created: int
+    elections_skipped: int = 0
     elections: list[FeedImportedElection]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def elections_created(self) -> int:
+        """Number of elections successfully created."""
+        return len(self.elections)

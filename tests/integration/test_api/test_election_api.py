@@ -396,9 +396,11 @@ class TestCreateElection:
 
     @pytest.mark.asyncio
     async def test_create_duplicate_returns_409(self, admin_client):
+        from voter_api.services.election_service import DuplicateElectionError
+
         with patch(
             "voter_api.services.election_service.create_election",
-            side_effect=ValueError("already exists"),
+            side_effect=DuplicateElectionError("already exists"),
         ):
             resp = await admin_client.post(
                 "/api/v1/elections",
@@ -747,3 +749,155 @@ class TestGetElectionResultsGeoJSONPrecincts:
         ):
             resp = await client.get(f"/api/v1/elections/{uuid.uuid4()}/results/geojson/precincts")
         assert resp.status_code == 404
+
+
+# --- Feed import preview ---
+
+
+_FEED_IMPORT_BODY = {
+    "data_source_url": "https://results.sos.ga.gov/feed.json",
+    "election_type": "general",
+}
+
+
+class TestPreviewFeedImport:
+    @pytest.mark.asyncio
+    async def test_preview_returns_races(self, admin_client):
+        from voter_api.schemas.election import FeedImportPreviewResponse, FeedRaceSummary
+
+        mock_preview = FeedImportPreviewResponse(
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            election_date=date(2025, 11, 4),
+            election_name="Test Election",
+            races=[
+                FeedRaceSummary(ballot_item_id="S10", name="PSC - District 2", candidate_count=2),
+                FeedRaceSummary(ballot_item_id="S11", name="PSC - District 3", candidate_count=1),
+            ],
+        )
+
+        with patch(
+            "voter_api.services.election_service.preview_feed_import",
+            new_callable=AsyncMock,
+            return_value=mock_preview,
+        ):
+            resp = await admin_client.post(
+                "/api/v1/elections/import-feed/preview",
+                json=_FEED_IMPORT_BODY,
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_races"] == 2
+        assert data["races"][0]["ballot_item_id"] == "S10"
+
+    @pytest.mark.asyncio
+    async def test_preview_requires_auth(self, client):
+        resp = await client.post(
+            "/api/v1/elections/import-feed/preview",
+            json=_FEED_IMPORT_BODY,
+        )
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_preview_fetch_error_returns_502(self, admin_client):
+        from voter_api.lib.election_tracker import FetchError
+
+        with patch(
+            "voter_api.services.election_service.preview_feed_import",
+            new_callable=AsyncMock,
+            side_effect=FetchError("connection failed"),
+        ):
+            resp = await admin_client.post(
+                "/api/v1/elections/import-feed/preview",
+                json=_FEED_IMPORT_BODY,
+            )
+
+        assert resp.status_code == 502
+
+    @pytest.mark.asyncio
+    async def test_preview_value_error_returns_422(self, admin_client):
+        with patch(
+            "voter_api.services.election_service.preview_feed_import",
+            new_callable=AsyncMock,
+            side_effect=ValueError("invalid date"),
+        ):
+            resp = await admin_client.post(
+                "/api/v1/elections/import-feed/preview",
+                json=_FEED_IMPORT_BODY,
+            )
+
+        assert resp.status_code == 422
+
+
+# --- Feed import ---
+
+
+class TestImportFeed:
+    @pytest.mark.asyncio
+    async def test_import_creates_elections(self, admin_client):
+        from voter_api.schemas.election import FeedImportedElection, FeedImportResponse
+
+        mock_response = FeedImportResponse(
+            elections=[
+                FeedImportedElection(
+                    election_id=uuid.uuid4(),
+                    ballot_item_id="S10",
+                    name="Test - PSC District 2",
+                    election_date=date(2025, 11, 4),
+                    refreshed=False,
+                ),
+            ],
+        )
+
+        with patch(
+            "voter_api.services.election_service.import_feed",
+            new_callable=AsyncMock,
+            return_value=mock_response,
+        ):
+            resp = await admin_client.post(
+                "/api/v1/elections/import-feed",
+                json=_FEED_IMPORT_BODY,
+            )
+
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["elections_created"] == 1
+        assert data["elections"][0]["ballot_item_id"] == "S10"
+
+    @pytest.mark.asyncio
+    async def test_import_requires_auth(self, client):
+        resp = await client.post(
+            "/api/v1/elections/import-feed",
+            json=_FEED_IMPORT_BODY,
+        )
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_import_empty_feed_returns_400(self, admin_client):
+        with patch(
+            "voter_api.services.election_service.import_feed",
+            new_callable=AsyncMock,
+            side_effect=ValueError("Feed contains no ballot items"),
+        ):
+            resp = await admin_client.post(
+                "/api/v1/elections/import-feed",
+                json=_FEED_IMPORT_BODY,
+            )
+
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_import_fetch_error_returns_502(self, admin_client):
+        from voter_api.lib.election_tracker import FetchError
+
+        with patch(
+            "voter_api.services.election_service.import_feed",
+            new_callable=AsyncMock,
+            side_effect=FetchError("connection failed"),
+        ):
+            resp = await admin_client.post(
+                "/api/v1/elections/import-feed",
+                json=_FEED_IMPORT_BODY,
+            )
+
+        assert resp.status_code == 502

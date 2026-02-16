@@ -38,6 +38,7 @@ from voter_api.schemas.election import (
     RefreshResponse,
 )
 from voter_api.services import election_service
+from voter_api.services.election_service import DuplicateElectionError
 
 elections_router = APIRouter(prefix="/elections", tags=["elections"])
 
@@ -94,7 +95,7 @@ async def create_election(
     """Create a new election. Admin-only."""
     try:
         election = await election_service.create_election(session, request)
-    except ValueError as e:
+    except DuplicateElectionError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     return election_service.build_detail_response(election)
 
@@ -113,7 +114,9 @@ async def preview_feed_import(
 ) -> FeedImportPreviewResponse:
     """Preview races available in an SoS feed before importing. Admin-only."""
     try:
-        return await election_service.preview_feed_import(session, str(request.data_source_url))
+        return await election_service.preview_feed_import(str(request.data_source_url))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except FetchError as e:
         raise HTTPException(
             status_code=502,

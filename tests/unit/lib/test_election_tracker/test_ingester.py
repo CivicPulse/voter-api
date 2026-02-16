@@ -384,9 +384,10 @@ class TestFindBallotItem:
         result = _find_ballot_item([], None, "test")
         assert result is None
 
-    def test_returns_none_when_items_empty_with_id(self):
-        result = _find_ballot_item([], "S10", "test")
-        assert result is None
+    def test_raises_when_items_empty_with_id(self):
+        """Empty items list with a ballot_item_id raises ValueError by default."""
+        with pytest.raises(ValueError, match="No ballot items found"):
+            _find_ballot_item([], "S10", "test")
 
     def test_raises_when_id_not_found(self):
         items = [BallotItem(id="S10", name="Race 1")]
@@ -405,6 +406,21 @@ class TestFindBallotItem:
         ]
         with pytest.raises(ValueError, match=r"Available: \['S10', 'S11'\]"):
             _find_ballot_item(items, "S99", "statewide", raise_on_missing=True)
+
+    def test_empty_list_with_id_and_raise_on_missing(self):
+        """Empty items list raises ValueError when ballot_item_id specified and raise_on_missing=True."""
+        with pytest.raises(ValueError, match="No ballot items found"):
+            _find_ballot_item([], "S10", "statewide", raise_on_missing=True)
+
+    def test_empty_list_with_id_no_raise(self):
+        """Empty items list returns None when raise_on_missing=False even with ballot_item_id."""
+        result = _find_ballot_item([], "S10", "test", raise_on_missing=False)
+        assert result is None
+
+    def test_empty_list_without_id_and_raise_on_missing(self):
+        """Empty items list returns None when ballot_item_id is None, even with raise_on_missing=True."""
+        result = _find_ballot_item([], None, "test", raise_on_missing=True)
+        assert result is None
 
 
 class TestIngestMultiRace:

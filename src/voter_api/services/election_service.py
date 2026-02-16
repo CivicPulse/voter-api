@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 
 from voter_api.core.config import get_settings
 from voter_api.lib.election_tracker import (
+    FetchError,
     IngestionResult,
     fetch_election_results,
     ingest_election_results,
@@ -43,6 +44,10 @@ from voter_api.schemas.election import (
     RefreshResponse,
     VoteMethodResult,
 )
+
+
+class DuplicateElectionError(ValueError):
+    """Raised when attempting to create an election that already exists."""
 
 
 def _ballot_option_to_candidate(opt: dict) -> CandidateResult:
@@ -77,7 +82,7 @@ async def create_election(
         The created Election instance.
 
     Raises:
-        ValueError: If a duplicate election exists (by name+date or feed+ballot_item).
+        DuplicateElectionError: If a duplicate election exists (by name+date or feed+ballot_item).
     """
     if request.ballot_item_id is not None:
         existing = await session.execute(
@@ -91,7 +96,7 @@ async def create_election(
                 f"An election for ballot item '{request.ballot_item_id}' "
                 f"from '{request.data_source_url}' already exists."
             )
-            raise ValueError(msg)
+            raise DuplicateElectionError(msg)
     else:
         existing = await session.execute(
             select(Election).where(
@@ -101,7 +106,7 @@ async def create_election(
         )
         if existing.scalar_one_or_none() is not None:
             msg = f"An election with name '{request.name}' and date '{request.election_date}' already exists."
-            raise ValueError(msg)
+            raise DuplicateElectionError(msg)
 
     election = Election(
         name=request.name,
@@ -789,13 +794,11 @@ async def refresh_all_active_elections(session: AsyncSession) -> int:
 
 
 async def preview_feed_import(
-    session: AsyncSession,
     data_source_url: str,
 ) -> FeedImportPreviewResponse:
     """Fetch and analyze a feed to preview available races before import.
 
     Args:
-        session: Async database session.
         data_source_url: The SoS feed URL to preview.
 
     Returns:
@@ -803,6 +806,7 @@ async def preview_feed_import(
 
     Raises:
         FetchError: If feed cannot be fetched or parsed.
+        ValueError: If feed contains an invalid election date.
     """
     settings = get_settings()
     feed = await fetch_election_results(
@@ -822,12 +826,17 @@ async def preview_feed_import(
             )
         )
 
+    try:
+        election_date = date.fromisoformat(feed.electionDate)
+    except ValueError as e:
+        msg = f"Feed contains invalid election date '{feed.electionDate}': {e}"
+        raise ValueError(msg) from e
+
     return FeedImportPreviewResponse(
         data_source_url=data_source_url,
-        election_date=date.fromisoformat(feed.electionDate),
+        election_date=election_date,
         election_name=feed.electionName,
         races=races,
-        total_races=len(races),
     )
 
 
@@ -863,6 +872,7 @@ async def import_feed(
 
     election_date = date.fromisoformat(feed.electionDate)
     created_elections: list[FeedImportedElection] = []
+    skipped = 0
 
     for ballot_item in feed.results.ballotItems:
         election_name = f"{feed.electionName} - {ballot_item.name}"
@@ -886,8 +896,9 @@ async def import_feed(
                 ballot_item.id,
                 ballot_item.name,
             )
-        except ValueError as e:
+        except DuplicateElectionError as e:
             logger.warning("Skipping ballot item {}: {}", ballot_item.id, e)
+            skipped += 1
             continue
 
         refreshed = False
@@ -900,8 +911,13 @@ async def import_feed(
                 refreshed = True
                 precincts_reporting = refresh_result.precincts_reporting
                 precincts_participating = refresh_result.precincts_participating
-            except Exception:
-                logger.exception("Initial refresh failed for election {}", election.id)
+            except (FetchError, ValueError) as e:
+                logger.warning(
+                    "Initial refresh failed for election {} ({}): {}",
+                    election.id,
+                    ballot_item.id,
+                    e,
+                )
 
         created_elections.append(
             FeedImportedElection(
@@ -916,7 +932,7 @@ async def import_feed(
         )
 
     return FeedImportResponse(
-        elections_created=len(created_elections),
+        elections_skipped=skipped,
         elections=created_elections,
     )
 

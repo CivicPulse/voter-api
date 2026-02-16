@@ -18,6 +18,7 @@ from voter_api.schemas.election import (
     FeedImportResponse,
 )
 from voter_api.services.election_service import (
+    DuplicateElectionError,
     import_feed,
     preview_feed_import,
 )
@@ -86,7 +87,6 @@ class TestPreviewFeedImport:
 
     @pytest.mark.asyncio
     async def test_returns_preview_with_races(self):
-        session = AsyncMock()
         feed = _make_multi_race_feed()
 
         with (
@@ -100,7 +100,7 @@ class TestPreviewFeedImport:
                 return_value=_mock_settings(),
             ),
         ):
-            result = await preview_feed_import(session, "https://results.sos.ga.gov/feed.json")
+            result = await preview_feed_import("https://results.sos.ga.gov/feed.json")
 
         assert isinstance(result, FeedImportPreviewResponse)
         assert result.total_races == 2
@@ -114,7 +114,6 @@ class TestPreviewFeedImport:
 
     @pytest.mark.asyncio
     async def test_preview_empty_feed(self):
-        session = AsyncMock()
         feed = _make_empty_feed()
 
         with (
@@ -128,7 +127,7 @@ class TestPreviewFeedImport:
                 return_value=_mock_settings(),
             ),
         ):
-            result = await preview_feed_import(session, "https://results.sos.ga.gov/feed.json")
+            result = await preview_feed_import("https://results.sos.ga.gov/feed.json")
 
         assert result.total_races == 0
         assert result.races == []
@@ -224,7 +223,7 @@ class TestImportFeed:
             patch(
                 "voter_api.services.election_service.create_election",
                 new_callable=AsyncMock,
-                side_effect=ValueError("already exists"),
+                side_effect=DuplicateElectionError("already exists"),
             ),
         ):
             result = await import_feed(session, request)
@@ -311,3 +310,79 @@ class TestImportFeed:
         assert "PSC - District 2" in result.elections[0].name
         assert "PSC - District 3" in result.elections[1].name
         assert result.elections[0].election_date == date(2025, 11, 4)
+
+    @pytest.mark.asyncio
+    async def test_auto_refresh_failure_still_includes_election(self):
+        """If auto-refresh fails, the election is still included with refreshed=False."""
+        feed = _make_multi_race_feed()
+        session = AsyncMock()
+
+        mock_elections = [_mock_election("S10"), _mock_election("S11")]
+
+        request = FeedImportRequest(
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            election_type="special",
+            auto_refresh=True,
+        )
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+                return_value=feed,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+            patch(
+                "voter_api.services.election_service.create_election",
+                new_callable=AsyncMock,
+                side_effect=mock_elections,
+            ),
+            patch(
+                "voter_api.services.election_service.refresh_single_election",
+                new_callable=AsyncMock,
+                side_effect=ValueError("refresh failed"),
+            ),
+        ):
+            result = await import_feed(session, request)
+
+        assert result.elections_created == 2
+        assert result.elections[0].refreshed is False
+        assert result.elections[0].precincts_reporting is None
+        assert result.elections[1].refreshed is False
+
+    @pytest.mark.asyncio
+    async def test_skips_duplicates_tracks_count(self):
+        """Duplicate elections are counted in elections_skipped."""
+        feed = _make_multi_race_feed()
+        session = AsyncMock()
+
+        request = FeedImportRequest(
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            election_type="special",
+            auto_refresh=False,
+        )
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+                return_value=feed,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+            patch(
+                "voter_api.services.election_service.create_election",
+                new_callable=AsyncMock,
+                side_effect=DuplicateElectionError("already exists"),
+            ),
+        ):
+            result = await import_feed(session, request)
+
+        assert result.elections_created == 0
+        assert result.elections_skipped == 2
+        assert result.elections == []

@@ -70,13 +70,17 @@ def _find_ballot_item(
             If False, return None.
 
     Returns:
-        The matching ballot item, or None if items is empty or not found
-        (when raise_on_missing=False).
+        The matching ballot item, or None if items is empty (and raise_on_missing
+        is False or ballot_item_id is None), or not found (when raise_on_missing=False).
 
     Raises:
-        ValueError: If ballot_item_id is specified but not found and raise_on_missing=True.
+        ValueError: If ballot_item_id is specified but not found (or items is empty)
+            and raise_on_missing=True.
     """
     if not items:
+        if ballot_item_id is not None and raise_on_missing:
+            msg = f"No ballot items found in {context} to search for '{ballot_item_id}'."
+            raise ValueError(msg)
         return None
 
     if ballot_item_id is None:
@@ -91,7 +95,7 @@ def _find_ballot_item(
         msg = f"Ballot item '{ballot_item_id}' not found in {context}. Available: {available_ids}"
         raise ValueError(msg)
 
-    logger.debug(
+    logger.info(
         "Ballot item '{}' not found in {} (available: {})",
         ballot_item_id,
         context,

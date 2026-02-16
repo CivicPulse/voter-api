@@ -146,6 +146,7 @@ async def _import_feed_impl(
     from voter_api.core.config import get_settings
     from voter_api.core.database import dispose_engine, get_session_factory, init_engine
     from voter_api.core.logging import setup_logging
+    from voter_api.lib.election_tracker import FetchError
     from voter_api.schemas.election import FeedImportRequest
     from voter_api.services import election_service
 
@@ -158,7 +159,7 @@ async def _import_feed_impl(
         async with factory() as session:
             typer.echo(f"Fetching feed from {url}...")
 
-            preview = await election_service.preview_feed_import(session, url)
+            preview = await election_service.preview_feed_import(url)
             typer.echo(f"\nDiscovered {preview.total_races} race(s):")
             for i, race in enumerate(preview.races, 1):
                 typer.echo(f"  {i}. [{race.ballot_item_id}] {race.name} ({race.candidate_count} candidates)")
@@ -181,5 +182,11 @@ async def _import_feed_impl(
                         f" - {election.precincts_reporting}/{election.precincts_participating} precincts reporting"
                     )
                 typer.echo(f"  {election.election_id}: {election.name}{refresh_status}")
+    except FetchError as e:
+        typer.echo(f"Error: Failed to fetch feed: {e}", err=True)
+        raise typer.Exit(code=1) from e
+    except ValueError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=1) from e
     finally:
         await dispose_engine()
