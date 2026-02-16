@@ -1,0 +1,46 @@
+name: E2E API Tests
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:15-3.4
+        env:
+          POSTGRES_DB: voter_api_e2e
+          POSTGRES_USER: voter_api
+          POSTGRES_PASSWORD: voter_api_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U voter_api"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://voter_api:voter_api_e2e@localhost:5432/voter_api_e2e
+      JWT_SECRET_KEY: e2e-test-secret-key-not-for-production
+      JWT_ALGORITHM: HS256
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: 7
+      ELECTION_REFRESH_ENABLED: "false"
+      LOG_LEVEL: WARNING
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run Alembic migrations
+        run: uv run alembic upgrade head
+
+      - name: Run E2E smoke tests
+        run: uv run pytest tests/e2e/ -v --tb=short
