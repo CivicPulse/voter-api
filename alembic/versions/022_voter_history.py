@@ -22,9 +22,15 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     # --- voter_history table ---
+    pg_uuid = sa.dialects.postgresql.UUID(as_uuid=True)
     op.create_table(
         "voter_history",
-        sa.Column("id", sa.dialects.postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            pg_uuid,
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("voter_registration_number", sa.String(20), nullable=False),
         sa.Column("county", sa.String(100), nullable=False),
         sa.Column("election_date", sa.Date, nullable=False),
@@ -35,9 +41,24 @@ def upgrade() -> None:
         sa.Column("absentee", sa.Boolean, nullable=False, server_default=sa.text("false")),
         sa.Column("provisional", sa.Boolean, nullable=False, server_default=sa.text("false")),
         sa.Column("supplemental", sa.Boolean, nullable=False, server_default=sa.text("false")),
-        sa.Column("import_job_id", sa.dialects.postgresql.UUID(as_uuid=True), sa.ForeignKey("import_jobs.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.UniqueConstraint("voter_registration_number", "election_date", "election_type", name="uq_voter_history_participation"),
+        sa.Column(
+            "import_job_id",
+            pg_uuid,
+            sa.ForeignKey("import_jobs.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
+        sa.UniqueConstraint(
+            "voter_registration_number",
+            "election_date",
+            "election_type",
+            name="uq_voter_history_participation",
+        ),
     )
 
     # Indexes for voter_history
