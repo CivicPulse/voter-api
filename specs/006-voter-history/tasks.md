@@ -49,14 +49,14 @@
 
 ### Implementation for User Story 1
 
-- [ ] T007 [P] [US1] Create voter history CSV parser library in `src/voter_api/lib/voter_history/parser.py` — column map for 9-column GA SoS format, `parse_voter_history_chunks()` generator using Pandas `read_csv(chunksize=...)`, date parsing (MM/DD/YYYY), boolean coercion ("Y"→True, blank→False per FR-018/FR-019), `map_election_type()` to populate `normalized_election_type` per research.md section 7 mapping table, delimiter/encoding auto-detection following existing `lib/importer/parser.py` pattern
-- [ ] T008 [P] [US1] Create `__init__.py` public API exports in `src/voter_api/lib/voter_history/__init__.py` — export `parse_voter_history_chunks`, column map constant, and any validation helpers
-- [ ] T009 [US1] Implement `process_voter_history_import()` in `src/voter_api/services/voter_history_service.py` — chunk-by-chunk processing, batch upsert via ON CONFLICT on `(voter_registration_number, election_date, election_type)` (upsert updates `import_job_id` to the new job for matching records), unmatched voter detection (LEFT JOIN to `voters` table), duplicate tracking within file, progress tracking via `last_processed_offset`, error logging to `error_log` JSONB
-- [ ] T010 [US1] Implement atomic re-import logic in `src/voter_api/services/voter_history_service.py` — find previous completed import jobs by `file_name` + `file_type='voter_history'`, after successful import delete `voter_history` records still associated with old `import_job_id` (records that were in the previous file but not the new one — records with matching natural keys had their `import_job_id` updated to the new job during T009 upsert), mark old jobs as `'superseded'`; auto-created elections from previous imports are NOT deleted (FR-021)
-- [ ] T011 [US1] Add `POST /api/v1/imports/voter-history` endpoint in `src/voter_api/api/v1/imports.py` — `UploadFile` parameter, `require_role("admin")` auth, file size validation, write to temp file, create `ImportJob` with `file_type='voter_history'`, submit background task via `task_runner.submit_task()`, return 202 with `ImportJobResponse`
-- [ ] T012 [US1] Update `ImportJobResponse` schema in `src/voter_api/schemas/imports.py` to include `records_skipped` and `records_unmatched` fields
-- [ ] T013 [US1] Create CLI command `voter-history` in `src/voter_api/cli/voter_history_cmd.py` — Typer command accepting `file: Path` argument and `--batch-size` option, sync wrapper around async import, progress output via `typer.echo()`, summary display on completion, following `cli/import_cmd.py` pattern
-- [ ] T014 [US1] Register CLI command in `src/voter_api/cli/app.py` — add `voter_history_cmd.voter_history_app` as subcommand under `import` group via `app.add_typer()` in `_register_subcommands()`
+- [X] T007 [P] [US1] Create voter history CSV parser library in `src/voter_api/lib/voter_history/parser.py` — column map for 9-column GA SoS format, `parse_voter_history_chunks()` generator using Pandas `read_csv(chunksize=...)`, date parsing (MM/DD/YYYY), boolean coercion ("Y"→True, blank→False per FR-018/FR-019), `map_election_type()` to populate `normalized_election_type` per research.md section 7 mapping table, delimiter/encoding auto-detection following existing `lib/importer/parser.py` pattern
+- [X] T008 [P] [US1] Create `__init__.py` public API exports in `src/voter_api/lib/voter_history/__init__.py` — export `parse_voter_history_chunks`, column map constant, and any validation helpers
+- [X] T009 [US1] Implement `process_voter_history_import()` in `src/voter_api/services/voter_history_service.py` — chunk-by-chunk processing, batch upsert via ON CONFLICT on `(voter_registration_number, election_date, election_type)` (upsert updates `import_job_id` to the new job for matching records), unmatched voter detection (LEFT JOIN to `voters` table), duplicate tracking within file, progress tracking via `last_processed_offset`, error logging to `error_log` JSONB
+- [X] T010 [US1] Implement atomic re-import logic in `src/voter_api/services/voter_history_service.py` — find previous completed import jobs by `file_name` + `file_type='voter_history'`, after successful import delete `voter_history` records still associated with old `import_job_id` (records that were in the previous file but not the new one — records with matching natural keys had their `import_job_id` updated to the new job during T009 upsert), mark old jobs as `'superseded'`; auto-created elections from previous imports are NOT deleted (FR-021)
+- [X] T011 [US1] Add `POST /api/v1/imports/voter-history` endpoint in `src/voter_api/api/v1/imports.py` — `UploadFile` parameter, `require_role("admin")` auth, file size validation, write to temp file, create `ImportJob` with `file_type='voter_history'`, submit background task via `task_runner.submit_task()`, return 202 with `ImportJobResponse`
+- [X] T012 [US1] Update `ImportJobResponse` schema in `src/voter_api/schemas/imports.py` to include `records_skipped` and `records_unmatched` fields
+- [X] T013 [US1] Create CLI command `voter-history` in `src/voter_api/cli/voter_history_cmd.py` — Typer command accepting `file: Path` argument and `--batch-size` option, sync wrapper around async import, progress output via `typer.echo()`, summary display on completion, following `cli/import_cmd.py` pattern
+- [X] T014 [US1] Register CLI command in `src/voter_api/cli/import_cmd.py` — add `voter_history_cmd.voter_history_app` as subcommand under `import` group via `app.add_typer()` in `_register_subcommands()`
 
 ### Tests for User Story 1
 
@@ -80,11 +80,11 @@
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Implement `get_voter_history()` service function in `src/voter_api/services/voter_history_service.py` — query `voter_history` by `voter_registration_number`, order by `election_date DESC`, filter by `election_type`, `date_from`, `date_to`, `county`, `ballot_style` (FR-010: all history queries must support these filters); paginate with `page`/`page_size`; return `tuple[list[VoterHistory], int]`
-- [ ] T021 [US2] Add `GET /api/v1/voters/{voter_registration_number}/history` endpoint in `src/voter_api/api/v1/voter_history.py` — new router with prefix, `require_role("analyst", "admin")` auth (FR-017: viewers excluded), query params for `election_type`, `date_from`, `date_to`, `county`, `ballot_style`, `page`, `page_size` (FR-010); returns `PaginatedVoterHistoryResponse`
-- [ ] T022 [US2] Register voter history router in `src/voter_api/api/router.py` — add `from voter_api.api.v1.voter_history import ...` and `root_router.include_router(...)` in `create_router()`
-- [ ] T023 [US2] Add `ParticipationSummary` schema to `src/voter_api/schemas/voter.py` and add `participation_summary` field to `VoterDetailResponse` with `Field(default_factory=ParticipationSummary)`
-- [ ] T024 [US2] Enrich voter detail query in `src/voter_api/services/voter_service.py` — add subquery to count `voter_history` records and get `MAX(election_date)` by `voter_registration_number`, populate `ParticipationSummary` in the detail response builder
+- [X] T020 [US2] Implement `get_voter_history()` service function in `src/voter_api/services/voter_history_service.py` — query `voter_history` by `voter_registration_number`, order by `election_date DESC`, filter by `election_type`, `date_from`, `date_to`, `county`, `ballot_style` (FR-010: all history queries must support these filters); paginate with `page`/`page_size`; return `tuple[list[VoterHistory], int]`
+- [X] T021 [US2] Add `GET /api/v1/voters/{voter_registration_number}/history` endpoint in `src/voter_api/api/v1/voter_history.py` — new router with prefix, `require_role("analyst", "admin")` auth (FR-017: viewers excluded), query params for `election_type`, `date_from`, `date_to`, `county`, `ballot_style`, `page`, `page_size` (FR-010); returns `PaginatedVoterHistoryResponse`
+- [X] T022 [US2] Register voter history router in `src/voter_api/api/router.py` — add `from voter_api.api.v1.voter_history import ...` and `root_router.include_router(...)` in `create_router()`
+- [X] T023 [US2] Add `ParticipationSummary` schema to `src/voter_api/schemas/voter.py` and add `participation_summary` field to `VoterDetailResponse` with `Field(default_factory=ParticipationSummary)`
+- [X] T024 [US2] Enrich voter detail query in `src/voter_api/services/voter_service.py` — add subquery to count `voter_history` records and get `MAX(election_date)` by `voter_registration_number`, populate `ParticipationSummary` in the detail response builder
 
 ### Tests for User Story 2
 
@@ -105,9 +105,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T027 [P] [US3] Add `generate_election_name(raw_type: str, election_date: date) -> str` to `src/voter_api/lib/voter_history/parser.py` for auto-created election names (note: `map_election_type()` is already implemented in T007 and used to populate `normalized_election_type` during parsing)
-- [ ] T028 [US3] Implement `auto_create_elections()` in `src/voter_api/services/voter_history_service.py` — extract unique `(election_date, election_type)` combos from import batch, query existing elections, create missing elections with `creation_method='voter_history'`, `status='finalized'`, `district='Statewide'`, `data_source_url='n/a'`, generated name; return count of created elections
-- [ ] T029 [US3] Integrate `auto_create_elections()` into `process_voter_history_import()` in `src/voter_api/services/voter_history_service.py` — call before/during batch processing to ensure elections exist; existing elections are not duplicated
+- [X] T027 [P] [US3] Add `generate_election_name(raw_type: str, election_date: date) -> str` to `src/voter_api/lib/voter_history/parser.py` for auto-created election names (note: `map_election_type()` is already implemented in T007 and used to populate `normalized_election_type` during parsing)
+- [X] T028 [US3] Implement `auto_create_elections()` in `src/voter_api/services/voter_history_service.py` — extract unique `(election_date, election_type)` combos from import batch, query existing elections, create missing elections with `creation_method='voter_history'`, `status='finalized'`, `district='Statewide'`, `data_source_url='n/a'`, generated name; return count of created elections
+- [X] T029 [US3] Integrate `auto_create_elections()` into `process_voter_history_import()` in `src/voter_api/services/voter_history_service.py` — call before/during batch processing to ensure elections exist; existing elections are not duplicated
 
 ### Tests for User Story 3
 
@@ -128,10 +128,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T032 [US4] Implement `list_election_participants()` in `src/voter_api/services/voter_history_service.py` — look up election by ID to get `(election_date, election_type)`, query `voter_history` by `(election_date, normalized_election_type)` matching the election's type, filter by `county`, `ballot_style`, `absentee`, `provisional`, `supplemental`; paginate; return `tuple[list[VoterHistory], int]`
-- [ ] T033 [US4] Implement `get_participation_stats()` in `src/voter_api/services/voter_history_service.py` — look up election by ID, query `voter_history` by `(election_date, normalized_election_type)`, aggregate count of total participants, GROUP BY county, GROUP BY ballot_style; return `ParticipationStatsResponse`
-- [ ] T034 [P] [US4] Add `GET /api/v1/elections/{election_id}/participation` endpoint in `src/voter_api/api/v1/voter_history.py` — `require_role("analyst", "admin")` auth (FR-017: viewers excluded), query params for county/ballot_style/absentee/provisional/supplemental/page/page_size, 404 if election not found, returns `PaginatedElectionParticipationResponse`
-- [ ] T035 [P] [US4] Add `GET /api/v1/elections/{election_id}/participation/stats` endpoint in `src/voter_api/api/v1/voter_history.py` — `get_current_user` auth (FR-017: all authenticated users including viewers), 404 if election not found, returns `ParticipationStatsResponse`
+- [X] T032 [US4] Implement `list_election_participants()` in `src/voter_api/services/voter_history_service.py` — look up election by ID to get `(election_date, election_type)`, query `voter_history` by `(election_date, normalized_election_type)` matching the election's type, filter by `county`, `ballot_style`, `absentee`, `provisional`, `supplemental`; paginate; return `tuple[list[VoterHistory], int]`
+- [X] T033 [US4] Implement `get_participation_stats()` in `src/voter_api/services/voter_history_service.py` — look up election by ID, query `voter_history` by `(election_date, normalized_election_type)`, aggregate count of total participants, GROUP BY county, GROUP BY ballot_style; return `ParticipationStatsResponse`
+- [X] T034 [P] [US4] Add `GET /api/v1/elections/{election_id}/participation` endpoint in `src/voter_api/api/v1/voter_history.py` — `require_role("analyst", "admin")` auth (FR-017: viewers excluded), query params for county/ballot_style/absentee/provisional/supplemental/page/page_size, 404 if election not found, returns `PaginatedElectionParticipationResponse`
+- [X] T035 [P] [US4] Add `GET /api/v1/elections/{election_id}/participation/stats` endpoint in `src/voter_api/api/v1/voter_history.py` — `get_current_user` auth (FR-017: all authenticated users including viewers), 404 if election not found, returns `ParticipationStatsResponse`
 
 ### Tests for User Story 4
 
