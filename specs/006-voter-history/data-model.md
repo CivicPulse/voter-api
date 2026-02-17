@@ -2,7 +2,7 @@
 
 **Feature Branch**: `006-voter-history`
 **Date**: 2026-02-17
-**Migration**: `020_voter_history.py`
+**Migration**: `022_voter_history.py`
 
 ## Entity Relationship Diagram
 

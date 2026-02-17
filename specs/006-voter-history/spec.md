@@ -109,12 +109,12 @@ An analyst queries participation statistics to understand turnout patterns — t
 - **FR-002**: System MUST store each participation record as a distinct entry linking a voter registration number to a specific election event, preserving all source fields.
 - **FR-003**: System MUST link history records to existing voters by registration number. Records referencing unknown registration numbers MUST still be stored as text references and flagged as unmatched.
 - **FR-004**: System MUST support re-importing the same file (identified by file name). The system MUST track which import job produced each record to enable clean replacement. See FR-021 for atomicity and replacement semantics.
-- **FR-005**: System MUST process files in batches to support 100,000+ records without excessive memory use, with progress tracking.
-- **FR-006**: System MUST auto-create election events when the import encounters a date+type combination not present in the election table. Auto-created elections MUST be distinguishable from manually created or feed-imported elections.
+- **FR-005**: System MUST process files in batches to support 100,000+ records without exceeding 512MB peak memory, with progress tracking. Maximum upload file size MUST be 100MB.
+- **FR-006**: System MUST auto-create election events when the import encounters a date+type combination not present in the election table. Auto-created elections MUST be distinguishable from manually created or feed-imported elections. The system MUST normalize verbose GA SoS election types (e.g., "GENERAL ELECTION" → "general") to match the existing election type vocabulary when performing lookups and auto-creation. The original verbose type MUST be preserved on the voter history record.
 - **FR-007**: System MUST provide the ability to query a voter's complete participation history, ordered by election date, with full details.
 - **FR-008**: System MUST provide the ability to query all participating voters for a specific election, with filtering by county, ballot style, and voting method flags.
 - **FR-009**: System MUST provide aggregate participation counts for an election: total participants, breakdowns by county and by ballot style.
-- **FR-010**: System MUST support filtering history queries by date range, election type, county, and ballot style.
+- **FR-010**: System MUST support filtering per-voter history queries (FR-007) by date range, election type, county, and ballot style. Election participation queries (FR-008) MUST support filtering by county, ballot style, and voting method flags (absentee, provisional, supplemental).
 - **FR-011**: System MUST paginate all list and query results.
 - **FR-012**: System MUST generate an import summary after each import: total processed, succeeded, skipped duplicates, unmatched registration numbers, parsing errors.
 - **FR-013**: System MUST support importing voter history from any year (not limited to 2026).
@@ -125,7 +125,7 @@ An analyst queries participation statistics to understand turnout patterns — t
 - **FR-018**: System MUST treat blank/empty Provisional and Supplemental values as "No".
 - **FR-019**: System MUST parse Election Date from MM/DD/YYYY format and reject unparseable dates, logging the error without halting the import.
 - **FR-020**: System MUST enrich the existing voter detail response with a participation summary containing total elections participated in and the most recent election date. If no history records exist for the voter, the summary fields MUST be null or zero (not omitted).
-- **FR-021**: System MUST allow administrators to re-import a file, replacing all records from the previous import of that file. The re-import MUST be atomic — previous records are only removed once the new import succeeds. Auto-created elections from the previous import MUST NOT be deleted (they may be referenced by other data).
+- **FR-021**: System MUST allow administrators to re-import a file, replacing all records from the previous import of that file. The re-import MUST be atomic — previous records are only removed once the new import succeeds. Previous import jobs MUST be marked as `superseded`. Auto-created elections from the previous import MUST NOT be deleted (they may be referenced by other data).
 
 ### Key Entities
 
