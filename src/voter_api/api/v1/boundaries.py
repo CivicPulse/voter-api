@@ -35,6 +35,7 @@ from voter_api.services.precinct_metadata_service import (
     get_precinct_metadata_batch,
     get_precinct_metadata_by_boundary,
 )
+from voter_api.services.voter_stats_service import get_voter_stats_for_boundary
 
 # Module-level manifest cache singleton
 _manifest_cache: ManifestCache | None = None
