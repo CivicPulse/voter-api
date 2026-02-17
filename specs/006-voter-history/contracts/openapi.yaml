@@ -1,0 +1,442 @@
+openapi: "3.1.0"
+info:
+  title: Voter History API
+  description: Endpoints for voter participation history import, query, and aggregation.
+  version: "1.0.0"
+
+paths:
+  /api/v1/imports/voter-history:
+    post:
+      operationId: importVoterHistory
+      summary: Import voter participation history CSV
+      description: |
+        Upload a GA SoS voter history CSV file for processing.
+        The import runs asynchronously in the background.
+        If a file with the same name was previously imported, all records
+        from the previous import are atomically replaced.
+      tags: [imports]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: GA SoS voter history CSV file (9 columns)
+      responses:
+        "202":
+          description: Import job accepted and processing in background
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportJobResponse"
+        "400":
+          description: Invalid file format or empty file
+        "401":
+          description: Not authenticated
+        "403":
+          description: Not authorized (admin role required)
+        "413":
+          description: File too large
+
+  /api/v1/voters/{voter_registration_number}/history:
+    get:
+      operationId: getVoterHistory
+      summary: Get a voter's participation history
+      description: |
+        Returns all elections a voter participated in, ordered by date descending.
+        Supports filtering by election type and date range.
+      tags: [voter-history]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: voter_registration_number
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 20
+          description: Voter registration number
+        - name: election_type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by election type (e.g., "GENERAL ELECTION")
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter elections on or after this date (YYYY-MM-DD)
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter elections on or before this date (YYYY-MM-DD)
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Voter participation history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedVoterHistoryResponse"
+        "401":
+          description: Not authenticated
+
+  /api/v1/elections/{election_id}/participation:
+    get:
+      operationId: listElectionParticipants
+      summary: List voters who participated in an election
+      description: |
+        Returns all voter participation records for a given election,
+        with optional filtering by county, ballot style, and voting method.
+      tags: [voter-history]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: election_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Election UUID
+        - name: county
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by county name
+        - name: ballot_style
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by ballot style
+        - name: absentee
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by absentee flag
+        - name: provisional
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by provisional flag
+        - name: supplemental
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by supplemental flag
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Election participation records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedElectionParticipationResponse"
+        "401":
+          description: Not authenticated
+        "404":
+          description: Election not found
+
+  /api/v1/elections/{election_id}/participation/stats:
+    get:
+      operationId: getElectionParticipationStats
+      summary: Get aggregate participation statistics for an election
+      description: |
+        Returns total participant count with breakdowns by county and ballot style.
+      tags: [voter-history]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: election_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Election UUID
+      responses:
+        "200":
+          description: Participation statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipationStatsResponse"
+        "401":
+          description: Not authenticated
+        "404":
+          description: Election not found
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    VoterHistoryRecord:
+      type: object
+      required:
+        - id
+        - voter_registration_number
+        - county
+        - election_date
+        - election_type
+        - absentee
+        - provisional
+        - supplemental
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        voter_registration_number:
+          type: string
+          maxLength: 20
+        county:
+          type: string
+        election_date:
+          type: string
+          format: date
+        election_type:
+          type: string
+          description: Raw election type from GA SoS (e.g., "GENERAL ELECTION")
+        party:
+          type: string
+          nullable: true
+        ballot_style:
+          type: string
+          nullable: true
+        absentee:
+          type: boolean
+        provisional:
+          type: boolean
+        supplemental:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    PaginatedVoterHistoryResponse:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/VoterHistoryRecord"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    ElectionParticipationRecord:
+      type: object
+      required:
+        - id
+        - voter_registration_number
+        - county
+        - election_date
+        - election_type
+        - absentee
+        - provisional
+        - supplemental
+      properties:
+        id:
+          type: string
+          format: uuid
+        voter_registration_number:
+          type: string
+        county:
+          type: string
+        election_date:
+          type: string
+          format: date
+        election_type:
+          type: string
+        party:
+          type: string
+          nullable: true
+        ballot_style:
+          type: string
+          nullable: true
+        absentee:
+          type: boolean
+        provisional:
+          type: boolean
+        supplemental:
+          type: boolean
+
+    PaginatedElectionParticipationResponse:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ElectionParticipationRecord"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CountyBreakdown:
+      type: object
+      required: [county, count]
+      properties:
+        county:
+          type: string
+        count:
+          type: integer
+
+    BallotStyleBreakdown:
+      type: object
+      required: [ballot_style, count]
+      properties:
+        ballot_style:
+          type: string
+        count:
+          type: integer
+
+    ParticipationStatsResponse:
+      type: object
+      required:
+        - election_id
+        - total_participants
+        - by_county
+        - by_ballot_style
+      properties:
+        election_id:
+          type: string
+          format: uuid
+        total_participants:
+          type: integer
+        by_county:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountyBreakdown"
+        by_ballot_style:
+          type: array
+          items:
+            $ref: "#/components/schemas/BallotStyleBreakdown"
+
+    ParticipationSummary:
+      type: object
+      description: Lightweight summary added to voter detail response
+      required: [total_elections, last_election_date]
+      properties:
+        total_elections:
+          type: integer
+          description: Total number of elections the voter participated in
+        last_election_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of most recent election participation
+
+    ImportJobResponse:
+      type: object
+      required: [id, file_name, file_type, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        file_name:
+          type: string
+        file_type:
+          type: string
+          example: voter_history
+        status:
+          type: string
+          enum: [pending, running, completed, failed, superseded]
+        total_records:
+          type: integer
+          nullable: true
+        records_succeeded:
+          type: integer
+          nullable: true
+        records_failed:
+          type: integer
+          nullable: true
+        records_inserted:
+          type: integer
+          nullable: true
+        records_skipped:
+          type: integer
+          nullable: true
+          description: Duplicate records within the same file
+        records_unmatched:
+          type: integer
+          nullable: true
+          description: Records with voter registration numbers not in voters table
+        error_log:
+          type: array
+          nullable: true
+          items:
+            type: object
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    PaginationMeta:
+      type: object
+      required: [total, page, page_size, total_pages]
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
