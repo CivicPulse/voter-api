@@ -130,12 +130,13 @@ voter_history — Auto-created during voter history import
 1. `voter_registration_number` — REQUIRED, non-empty string, max 20 chars
 2. `county` — REQUIRED, non-empty string, max 100 chars
 3. `election_date` — REQUIRED, must parse from MM/DD/YYYY format; reject record on failure
-4. `election_type` — REQUIRED, non-empty string, max 50 chars
-5. `party` — OPTIONAL, stored as-is; null/empty accepted
-6. `ballot_style` — OPTIONAL, stored as-is; null/empty accepted
-7. `absentee` — OPTIONAL, "Y" → true, anything else (including blank) → false
-8. `provisional` — OPTIONAL, "Y" → true, anything else (including blank) → false
-9. `supplemental` — OPTIONAL, "Y" → true, anything else (including blank) → false
+4. `election_type` — REQUIRED, non-empty string, max 50 chars (raw CSV value)
+5. `normalized_election_type` — DERIVED at import time from `election_type` using the mapping table in research.md section 7; max 20 chars
+6. `party` — OPTIONAL, stored as-is; null/empty accepted
+7. `ballot_style` — OPTIONAL, stored as-is; null/empty accepted
+8. `absentee` — OPTIONAL, "Y" → true, anything else (including blank) → false
+9. `provisional` — OPTIONAL, "Y" → true, anything else (including blank) → false
+10. `supplemental` — OPTIONAL, "Y" → true, anything else (including blank) → false
 
 ### Duplicate Handling
 
@@ -159,12 +160,12 @@ COBB,11111111,01/05/2021,SPECIAL ELECTION RUNOFF,,GENERAL,Y,N,N
 
 ### Resulting `voter_history` Records
 
-| voter_registration_number | county  | election_date | election_type          | party      | ballot_style | absentee | provisional | supplemental |
-| ------------------------- | ------- | ------------- | ---------------------- | ---------- | ------------ | -------- | ----------- | ------------ |
-| 12345678                  | FULTON  | 2024-11-05    | GENERAL ELECTION       | NULL       | GENERAL      | false    | false       | false        |
-| 12345678                  | FULTON  | 2024-05-21    | GENERAL PRIMARY        | REPUBLICAN | PARTISAN     | true     | false       | false        |
-| 87654321                  | DEKALB  | 2024-11-05    | GENERAL ELECTION       | NULL       | GENERAL      | false    | false       | false        |
-| 11111111                  | COBB    | 2021-01-05    | SPECIAL ELECTION RUNOFF| NULL       | GENERAL      | true     | false       | false        |
+| voter_registration_number | county  | election_date | election_type           | normalized_election_type | party      | ballot_style | absentee | provisional | supplemental |
+| ------------------------- | ------- | ------------- | ----------------------- | ------------------------ | ---------- | ------------ | -------- | ----------- | ------------ |
+| 12345678                  | FULTON  | 2024-11-05    | GENERAL ELECTION        | general                  | NULL       | GENERAL      | false    | false       | false        |
+| 12345678                  | FULTON  | 2024-05-21    | GENERAL PRIMARY         | primary                  | REPUBLICAN | PARTISAN     | true     | false       | false        |
+| 87654321                  | DEKALB  | 2024-11-05    | GENERAL ELECTION        | general                  | NULL       | GENERAL      | false    | false       | false        |
+| 11111111                  | COBB    | 2021-01-05    | SPECIAL ELECTION RUNOFF | runoff                   | NULL       | GENERAL      | true     | false       | false        |
 
 ### Auto-Created Elections
 

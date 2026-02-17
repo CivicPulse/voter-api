@@ -108,7 +108,7 @@ An analyst queries participation statistics to understand turnout patterns — t
 - **FR-001**: System MUST ingest voter participation history from CSV files in the GA SoS 9-column format: County Name, Voter Registration Number, Election Date, Election Type, Party, Ballot Style, Absentee, Provisional, Supplemental.
 - **FR-002**: System MUST store each participation record as a distinct entry linking a voter registration number to a specific election event, preserving all source fields.
 - **FR-003**: System MUST link history records to existing voters by registration number. Records referencing unknown registration numbers MUST still be stored as text references and flagged as unmatched.
-- **FR-004**: System MUST support re-importing the same file. When a file is re-imported, all records from the previous import of that file are replaced with the new file's contents. This supports files that grow over time (e.g., a yearly voter history file that gets appended to as new elections occur). The system MUST track which import job produced each record to enable clean replacement.
+- **FR-004**: System MUST support re-importing the same file (identified by file name). The system MUST track which import job produced each record to enable clean replacement. See FR-021 for atomicity and replacement semantics.
 - **FR-005**: System MUST process files in batches to support 100,000+ records without excessive memory use, with progress tracking.
 - **FR-006**: System MUST auto-create election events when the import encounters a date+type combination not present in the election table. Auto-created elections MUST be distinguishable from manually created or feed-imported elections.
 - **FR-007**: System MUST provide the ability to query a voter's complete participation history, ordered by election date, with full details.
@@ -121,7 +121,7 @@ An analyst queries participation statistics to understand turnout patterns — t
 - **FR-014**: System MUST provide a CLI command for administrators to trigger imports from a file path.
 - **FR-015**: System MUST provide an authenticated endpoint for administrators to trigger imports.
 - **FR-016**: System MUST restrict import operations to administrator-privileged users.
-- **FR-017**: System MUST restrict query access to authenticated users (analyst/admin for full access; viewer for basic summary only).
+- **FR-017**: System MUST restrict query access to authenticated users. Analyst and admin roles MUST have full access to all voter history endpoints. Viewer role MUST only have access to aggregate participation statistics (`GET /elections/{id}/participation/stats`). Viewer role MUST NOT have access to individual voter history listings (`GET /voters/{reg_num}/history`) or election participant listings (`GET /elections/{id}/participation`).
 - **FR-018**: System MUST treat blank/empty Provisional and Supplemental values as "No".
 - **FR-019**: System MUST parse Election Date from MM/DD/YYYY format and reject unparseable dates, logging the error without halting the import.
 - **FR-020**: System MUST enrich the existing voter detail response with a participation summary containing total elections participated in and the most recent election date. If no history records exist for the voter, the summary fields MUST be null or zero (not omitted).

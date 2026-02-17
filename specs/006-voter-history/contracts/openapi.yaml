@@ -83,6 +83,18 @@ paths:
             type: string
             format: date
           description: Filter elections on or before this date (YYYY-MM-DD)
+        - name: county
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by county name
+        - name: ballot_style
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by ballot style
         - name: page
           in: query
           required: false
@@ -107,6 +119,8 @@ paths:
                 $ref: "#/components/schemas/PaginatedVoterHistoryResponse"
         "401":
           description: Not authenticated
+        "403":
+          description: Not authorized (analyst or admin role required)
 
   /api/v1/elections/{election_id}/participation:
     get:
@@ -180,6 +194,8 @@ paths:
                 $ref: "#/components/schemas/PaginatedElectionParticipationResponse"
         "401":
           description: Not authenticated
+        "403":
+          description: Not authorized (analyst or admin role required)
         "404":
           description: Election not found
 
@@ -228,6 +244,7 @@ components:
         - county
         - election_date
         - election_type
+        - normalized_election_type
         - absentee
         - provisional
         - supplemental
@@ -247,6 +264,9 @@ components:
         election_type:
           type: string
           description: Raw election type from GA SoS (e.g., "GENERAL ELECTION")
+        normalized_election_type:
+          type: string
+          description: Mapped election type for joins (e.g., "general", "primary", "special", "runoff")
         party:
           type: string
           nullable: true
@@ -282,6 +302,7 @@ components:
         - county
         - election_date
         - election_type
+        - normalized_election_type
         - absentee
         - provisional
         - supplemental
@@ -297,6 +318,8 @@ components:
           type: string
           format: date
         election_type:
+          type: string
+        normalized_election_type:
           type: string
         party:
           type: string

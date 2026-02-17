@@ -77,11 +77,11 @@ src/voter_api/
 ├── models/import_job.py          # Add records_skipped, records_unmatched columns
 ├── schemas/voter.py              # Add ParticipationSummary to VoterDetailResponse
 ├── services/voter_service.py     # Enrich voter detail with participation summary
-├── api/v1/router.py              # Register voter_history router
-└── cli/main.py                   # Register voter_history_cmd
+├── api/router.py                 # Register voter_history router
+└── cli/app.py                    # Register voter_history_cmd
 
 alembic/versions/
-└── 020_voter_history.py          # Migration: voter_history table + election.creation_method + import_job counters
+└── 022_voter_history.py          # Migration: voter_history table + election.creation_method + import_job counters
 
 tests/
 ├── unit/
