@@ -210,6 +210,8 @@ def parse_voter_history_chunks(
 
         records: list[dict] = []
         for row in chunk.to_dict("records"):
+            # pandas represents None as float NaN in dicts; normalize to Python None
+            row = {k: (None if pd.isna(v) else v) for k, v in row.items()}
             record = _process_row(row)
             records.append(record)
 

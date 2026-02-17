@@ -60,8 +60,8 @@
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] Write unit tests for parser in `tests/unit/lib/test_voter_history/test_parser.py` — test column mapping, date parsing (valid MM/DD/YYYY, invalid formats), boolean coercion ("Y"/"N"/blank), chunked reading, empty file handling, missing required fields, encoding detection
-- [ ] T016 [P] [US1] Write unit tests for schemas in `tests/unit/test_schemas/test_voter_history_schemas.py` — test all Pydantic schemas from_attributes, field defaults, nullable fields, computed fields if any
+- [X] T015 [P] [US1] Write unit tests for parser in `tests/unit/lib/test_voter_history/test_parser.py` — test column mapping, date parsing (valid MM/DD/YYYY, invalid formats), boolean coercion ("Y"/"N"/blank), chunked reading, empty file handling, missing required fields, encoding detection
+- [X] T016 [P] [US1] Write unit tests for schemas in `tests/unit/test_schemas/test_voter_history_schemas.py` — test all Pydantic schemas from_attributes, field defaults, nullable fields, computed fields if any
 - [ ] T017 [US1] Write integration tests for import service in `tests/integration/test_voter_history_import.py` — test successful import (verify DB records), re-import replacement (verify old records deleted, new records present, old job superseded), unmatched voter tracking, duplicate handling within file, large batch processing, error handling for corrupt records
 - [ ] T018 [US1] Write integration tests for import API endpoint in `tests/integration/test_voter_history_api.py` — test POST /imports/voter-history returns 202, auth enforcement (admin required), invalid file rejection, import job status tracking
 - [ ] T019 [US1] Write integration test for CLI import in `tests/integration/test_voter_history_cli.py` — test `import voter-history` command with sample file, verify output summary
@@ -111,7 +111,7 @@
 
 ### Tests for User Story 3
 
-- [ ] T030 [P] [US3] Write unit tests for election type mapping in `tests/unit/lib/test_voter_history/test_parser.py` — test all mapping values from research.md table, unknown type defaults to "general", name generation format
+- [X] T030 [P] [US3] Write unit tests for election type mapping in `tests/unit/lib/test_voter_history/test_parser.py` — test all mapping values from research.md table, unknown type defaults to "general", name generation format
 - [ ] T031 [US3] Write integration tests for election auto-creation in `tests/integration/test_voter_history_import.py` — test auto-creation of missing elections, no duplicates when election exists, `creation_method='voter_history'` set correctly, auto-created elections survive re-import (FR-021)
 
 **Checkpoint**: User Stories 1, 2, AND 3 complete — import auto-creates elections, which are queryable and marked as voter-history-sourced.
