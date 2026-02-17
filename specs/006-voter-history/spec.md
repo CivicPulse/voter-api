@@ -5,6 +5,14 @@
 **Status**: Draft
 **Input**: User description: "We need a way to store and track this data as it relates to a voter (the Voter Registration Number). The election details may also be used to populate an election event that hasn't been imported otherwise."
 
+## Clarifications
+
+### Session 2026-02-17
+
+- Q: How should unmatched voter history records be reconciled when the voter is later imported? → A: Lazy reconciliation — history records are joined to voters at query time; no explicit linking step or background job needed.
+- Q: Should the existing voter detail endpoint be enriched with participation history, or only new dedicated endpoints? → A: Enrich existing voter detail — add a lightweight participation summary (election count + last election date) to the existing voter detail response.
+- Q: How should bad or updated imports be handled? → A: Full re-import — the same file (e.g., 2026.csv) gets appended to throughout the year as new elections occur. Re-importing the file replaces all records from the previous import of that file with the new file's contents.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Import Voter Participation History (Priority: P1)
@@ -21,7 +29,8 @@ A data administrator imports a voter participation history file received from th
 2. **Given** a file referencing voter registration numbers that exist in the system, **When** the import completes, **Then** each record is linked to the corresponding voter and retrievable by registration number.
 3. **Given** a file referencing voter registration numbers not in the system, **When** the import runs, **Then** records are stored with the registration number as a text reference, flagged as unmatched, and reported in the summary.
 4. **Given** a large file (tens of thousands of records), **When** the import runs, **Then** the system processes in batches with progress feedback and without excessive memory use.
-5. **Given** the same file is imported a second time, **When** the import runs, **Then** duplicate records (same voter + election date + election type) are skipped, and the summary reports the skip count.
+5. **Given** the same file is imported a second time (e.g., 2026.csv updated with new election data), **When** the import runs, **Then** all records from the previous import of that file are replaced with the new file's contents, and the summary reports records added, updated, and removed.
+6. **Given** a file that was previously imported with 10,000 records and now contains 15,000 records (5,000 new appended), **When** re-imported, **Then** all 15,000 records are stored and the previous import's records are fully replaced.
 
 ---
 
@@ -38,6 +47,7 @@ An analyst or API consumer looks up a specific voter's participation history to 
 1. **Given** history records exist for a voter, **When** an authorized user requests that voter's participation history, **Then** the system returns all elections participated in, ordered by date, with full participation details.
 2. **Given** a voter with no history records, **When** their history is requested, **Then** the system returns an empty result (not an error).
 3. **Given** a voter who participated in multiple elections, **When** their history is requested with a date range filter, **Then** only elections within the range are returned.
+4. **Given** a voter exists in the system with participation history records, **When** an authorized user requests the existing voter detail, **Then** the response includes a participation summary showing total elections participated in and the most recent election date.
 
 ---
 
@@ -75,8 +85,8 @@ An analyst queries participation statistics to understand turnout patterns — t
 
 ### Edge Cases
 
-- **Duplicate imports**: Same file imported twice produces zero duplicate records. Uniqueness enforced on voter registration number + election date + election type.
-- **Unmatched registration numbers**: Records stored with registration number as text reference, flagged as unmatched. If the voter is imported later, reconciliation is possible.
+- **Re-import of updated file**: The same file (e.g., 2026.csv) may be re-imported after new election data is appended. Re-importing replaces all records from the previous import of that file with the new file's contents. No duplicate records are created.
+- **Unmatched registration numbers**: Records stored with registration number as text reference. Reconciliation is lazy — when querying voter history, records are joined to voters at query time. If a voter is imported later, their history records are automatically associated on the next query with no explicit linking step.
 - **Unparseable dates**: Records with invalid date formats are rejected and logged without halting the import.
 - **Same-date different-type elections**: A voter participating in both "SPECIAL ELECTION" and "GENERAL" on the same date creates separate records (different election events).
 - **Empty Party field**: Stored as-is (null/empty). Normal for non-primary elections; not an error.
@@ -98,7 +108,7 @@ An analyst queries participation statistics to understand turnout patterns — t
 - **FR-001**: System MUST ingest voter participation history from CSV files in the GA SoS 9-column format: County Name, Voter Registration Number, Election Date, Election Type, Party, Ballot Style, Absentee, Provisional, Supplemental.
 - **FR-002**: System MUST store each participation record as a distinct entry linking a voter registration number to a specific election event, preserving all source fields.
 - **FR-003**: System MUST link history records to existing voters by registration number. Records referencing unknown registration numbers MUST still be stored as text references and flagged as unmatched.
-- **FR-004**: System MUST handle duplicate imports idempotently. Existing records (matched by voter registration number + election date + election type) are preserved; duplicates are skipped and reported.
+- **FR-004**: System MUST support re-importing the same file. When a file is re-imported, all records from the previous import of that file are replaced with the new file's contents. This supports files that grow over time (e.g., a yearly voter history file that gets appended to as new elections occur). The system MUST track which import job produced each record to enable clean replacement.
 - **FR-005**: System MUST process files in batches to support 100,000+ records without excessive memory use, with progress tracking.
 - **FR-006**: System MUST auto-create election events when the import encounters a date+type combination not present in the election table. Auto-created elections MUST be distinguishable from manually created or feed-imported elections.
 - **FR-007**: System MUST provide the ability to query a voter's complete participation history, ordered by election date, with full details.
@@ -114,10 +124,12 @@ An analyst queries participation statistics to understand turnout patterns — t
 - **FR-017**: System MUST restrict query access to authenticated users (analyst/admin for full access; viewer for basic summary only).
 - **FR-018**: System MUST treat blank/empty Provisional and Supplemental values as "No".
 - **FR-019**: System MUST parse Election Date from MM/DD/YYYY format and reject unparseable dates, logging the error without halting the import.
+- **FR-020**: System MUST enrich the existing voter detail response with a participation summary containing total elections participated in and the most recent election date. If no history records exist for the voter, the summary fields MUST be null or zero (not omitted).
+- **FR-021**: System MUST allow administrators to re-import a file, replacing all records from the previous import of that file. The re-import MUST be atomic — previous records are only removed once the new import succeeds. Auto-created elections from the previous import MUST NOT be deleted (they may be referenced by other data).
 
 ### Key Entities
 
-- **Voter History Record** (new): A single voter's participation in a single election. Attributes: voter registration number, county, election date, election type, party, ballot style, absentee flag, provisional flag, supplemental flag, matched voter reference (if voter exists), import job reference. Unique on voter registration number + election date + election type.
+- **Voter History Record** (new): A single voter's participation in a single election. Attributes: voter registration number, county, election date, election type, party, ballot style, absentee flag, provisional flag, supplemental flag, import job reference. Unique on voter registration number + election date + election type. Voter association is lazy — records are joined to voters by registration number at query time rather than storing a direct voter reference. No explicit reconciliation step is needed when voters are imported after their history records.
 
 - **Election** (existing, may be auto-created): When voter history references a date+type not already present, a minimal election record is auto-created with date, type, and generated name. Marked to distinguish from other creation methods.
 
@@ -135,7 +147,7 @@ An analyst queries participation statistics to understand turnout patterns — t
 - Blank Provisional and Supplemental fields mean "N".
 - Files may contain records from multiple counties and elections.
 - Not all voters in a history file will exist in the voters table; the system stores unmatched records for future reconciliation.
-- Voter history imports are additive — importing a new file never deletes previously imported records.
+- Voter history files (e.g., 2026.csv) are cumulative — the same file grows throughout the year as new election data is appended. Re-importing a file replaces all records from the previous import of that file. Records from other import jobs are not affected.
 - Existing JWT-based auth and role-based access control govern all operations.
 
 ## Success Criteria
@@ -144,7 +156,7 @@ An analyst queries participation statistics to understand turnout patterns — t
 
 - **SC-001**: Administrators can import a 50,000+ record file and receive a completion summary within 5 minutes.
 - **SC-002**: 100% of valid records are stored and retrievable by voter registration number within 1 second of query execution.
-- **SC-003**: Importing the same file twice produces zero duplicate participation records.
+- **SC-003**: Re-importing an updated file cleanly replaces previous records with zero duplicates and zero orphaned records.
 - **SC-004**: Records referencing unrecognized registration numbers are stored and reported (0% valid-record data loss).
 - **SC-005**: Every unique date+type combination in imported history has a corresponding election record after import (100% auto-creation coverage).
 - **SC-006**: A voter's complete participation history is retrievable in under 2 seconds.
