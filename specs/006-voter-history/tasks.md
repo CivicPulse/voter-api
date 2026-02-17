@@ -147,8 +147,8 @@
 **Purpose**: Quality gates, contract verification, and final cleanup.
 
 - [X] T038 Write contract tests for voter history OpenAPI spec in `tests/contract/test_voter_history_contract.py` — verify response schemas match contracts/openapi.yaml for all 4 endpoints
-- [ ] T039 Run `uv run ruff check .` and `uv run ruff format --check .` — fix any violations across all new and modified files
-- [ ] T040 Run `uv run pytest --cov=voter_api --cov-report=term-missing` — verify 90% coverage threshold met; add missing tests if needed
+- [X] T039 Run `uv run ruff check .` and `uv run ruff format --check .` — fix any violations across all new and modified files
+- [X] T040 Run `uv run pytest --cov=voter_api --cov-report=term-missing` — verify 90% coverage threshold met; add missing tests if needed
 - [ ] T041 Validate quickstart.md scenarios — smoke-test CLI and API commands from quickstart.md against running dev environment
 - [ ] T042 Performance smoke test — import a 50,000+ record file and verify completion within 5 minutes (SC-001); verify a single voter's history record is retrievable within 1 second (SC-002); query a voter's full participation history and verify response within 2 seconds (SC-006); query aggregate stats for an election with 50,000 participants and verify response within 3 seconds (SC-007); monitor peak memory during 100,000+ record import and verify it stays under 512MB (FR-005)
 
