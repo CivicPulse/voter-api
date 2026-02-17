@@ -92,6 +92,30 @@ async def _try_redirect(
     return get_redirect_url(cached, boundary_type, county, source)
 
 
+async def _resolve_county_name(
+    session: AsyncSession,
+    boundary: object,
+    county_metadata: object | None,
+) -> str | None:
+    """Resolve the county name for voter stats on county-type boundaries.
+
+    For "county" boundaries, the boundary_identifier is a FIPS GEOID, but
+    voter records use a county name. This resolves the name from county_metadata
+    (already fetched) or fetches it if needed.
+
+    Returns:
+        County name string for county boundaries, None otherwise.
+    """
+    if boundary.boundary_type != "county":  # type: ignore[union-attr]
+        return None
+
+    if county_metadata:
+        return county_metadata.name  # type: ignore[union-attr]
+
+    meta = await get_county_metadata_by_geoid(session, boundary.boundary_identifier)  # type: ignore[union-attr]
+    return meta.name if meta else None
+
+
 boundaries_router = APIRouter(prefix="/boundaries", tags=["boundaries"])
 
 
@@ -333,18 +357,7 @@ async def get_boundary_detail(
             response_data["precinct_metadata"] = PrecinctMetadataResponse.model_validate(precinct_meta)
 
     # Include voter registration stats for boundary types with voter field mappings
-    county_name_override = None
-    if boundary.boundary_type == "county":
-        county_meta_resp = response_data.get("county_metadata")
-        if county_meta_resp:
-            county_name_override = county_meta_resp.name
-        else:
-            county_meta_for_name = await get_county_metadata_by_geoid(
-                session, boundary.boundary_identifier
-            )
-            if county_meta_for_name:
-                county_name_override = county_meta_for_name.name
-
+    county_name_override = await _resolve_county_name(session, boundary, response_data.get("county_metadata"))
     voter_stats = await get_voter_stats_for_boundary(
         session,
         boundary.boundary_type,

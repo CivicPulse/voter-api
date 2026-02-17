@@ -33,8 +33,7 @@ async def get_voter_stats_for_boundary(
     if boundary_type == "county":
         if not county_name_override:
             logger.debug(
-                "No county name override for county boundary {}, "
-                "cannot determine voter stats",
+                "No county name override for county boundary {}, cannot determine voter stats",
                 boundary_identifier,
             )
             return None

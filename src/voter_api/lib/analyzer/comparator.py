@@ -25,7 +25,7 @@ BOUNDARY_TYPE_TO_VOTER_FIELD: dict[str, str] = {
     "super_council": "super_council_district",
     "super_commissioner": "super_commissioner_district",
     "super_school_board": "super_school_board_district",
-    "fire": "fire_district",
+    "fire_district": "fire_district",
 }
 
 # Boundary types that are "district" vs "precinct" for classification
@@ -42,7 +42,7 @@ DISTRICT_TYPES = {
     "super_council",
     "super_commissioner",
     "super_school_board",
-    "fire",
+    "fire_district",
 }
 
 PRECINCT_TYPES = {
