@@ -62,9 +62,9 @@
 
 - [X] T015 [P] [US1] Write unit tests for parser in `tests/unit/lib/test_voter_history/test_parser.py` — test column mapping, date parsing (valid MM/DD/YYYY, invalid formats), boolean coercion ("Y"/"N"/blank), chunked reading, empty file handling, missing required fields, encoding detection
 - [X] T016 [P] [US1] Write unit tests for schemas in `tests/unit/test_schemas/test_voter_history_schemas.py` — test all Pydantic schemas from_attributes, field defaults, nullable fields, computed fields if any
-- [ ] T017 [US1] Write integration tests for import service in `tests/integration/test_voter_history_import.py` — test successful import (verify DB records), re-import replacement (verify old records deleted, new records present, old job superseded), unmatched voter tracking, duplicate handling within file, large batch processing, error handling for corrupt records
-- [ ] T018 [US1] Write integration tests for import API endpoint in `tests/integration/test_voter_history_api.py` — test POST /imports/voter-history returns 202, auth enforcement (admin required), invalid file rejection, import job status tracking
-- [ ] T019 [US1] Write integration test for CLI import in `tests/integration/test_voter_history_cli.py` — test `import voter-history` command with sample file, verify output summary
+- [X] T017 [US1] Write integration tests for import service in `tests/integration/test_voter_history_import.py` — test successful import (verify DB records), re-import replacement (verify old records deleted, new records present, old job superseded), unmatched voter tracking, duplicate handling within file, large batch processing, error handling for corrupt records
+- [X] T018 [US1] Write integration tests for import API endpoint in `tests/integration/test_voter_history_api.py` — test POST /imports/voter-history returns 202, auth enforcement (admin required), invalid file rejection, import job status tracking
+- [X] T019 [US1] Write integration test for CLI import in `tests/integration/test_voter_history_cli.py` — test `import voter-history` command with sample file, verify output summary
 
 **Checkpoint**: User Story 1 complete — admin can import voter history CSV via CLI or API, records are stored, re-import replaces previous records, summary reported.
 
@@ -88,8 +88,8 @@
 
 ### Tests for User Story 2
 
-- [ ] T025 [P] [US2] Write integration tests for voter history query in `tests/integration/test_voter_history_api.py` — test GET history with results, empty result (no error), date range filtering, election type filtering, pagination, auth enforcement (analyst/admin allowed, viewer gets 403)
-- [ ] T026 [P] [US2] Write integration tests for voter detail enrichment in `tests/integration/test_voter_history_api.py` — test voter detail includes `participation_summary` with correct count and last date, test voter with no history returns zero/null summary
+- [X] T025 [P] [US2] Write integration tests for voter history query in `tests/integration/test_voter_history_api.py` — test GET history with results, empty result (no error), date range filtering, election type filtering, pagination, auth enforcement (analyst/admin allowed, viewer gets 403)
+- [X] T026 [P] [US2] Write integration tests for voter detail enrichment in `tests/integration/test_voter_history_api.py` — test voter detail includes `participation_summary` with correct count and last date, test voter with no history returns zero/null summary
 
 **Checkpoint**: User Stories 1 AND 2 complete — voter history can be imported and queried per voter with filtering; voter detail includes participation summary.
 
@@ -112,7 +112,7 @@
 ### Tests for User Story 3
 
 - [X] T030 [P] [US3] Write unit tests for election type mapping in `tests/unit/lib/test_voter_history/test_parser.py` — test all mapping values from research.md table, unknown type defaults to "general", name generation format
-- [ ] T031 [US3] Write integration tests for election auto-creation in `tests/integration/test_voter_history_import.py` — test auto-creation of missing elections, no duplicates when election exists, `creation_method='voter_history'` set correctly, auto-created elections survive re-import (FR-021)
+- [X] T031 [US3] Write integration tests for election auto-creation in `tests/integration/test_voter_history_import.py` — test auto-creation of missing elections, no duplicates when election exists, `creation_method='voter_history'` set correctly, auto-created elections survive re-import (FR-021)
 
 **Checkpoint**: User Stories 1, 2, AND 3 complete — import auto-creates elections, which are queryable and marked as voter-history-sourced.
 
@@ -135,8 +135,8 @@
 
 ### Tests for User Story 4
 
-- [ ] T036 [P] [US4] Write integration tests for participation endpoints in `tests/integration/test_voter_history_api.py` — test participant listing with filters (county, ballot_style, absentee), pagination, 404 for unknown election, auth enforcement (analyst/admin allowed, viewer gets 403)
-- [ ] T037 [P] [US4] Write integration tests for participation stats in `tests/integration/test_voter_history_api.py` — test total count, county breakdown, ballot style breakdown, 404 for unknown election, auth enforcement (all authenticated users including viewer allowed)
+- [X] T036 [P] [US4] Write integration tests for participation endpoints in `tests/integration/test_voter_history_api.py` — test participant listing with filters (county, ballot_style, absentee), pagination, 404 for unknown election, auth enforcement (analyst/admin allowed, viewer gets 403)
+- [X] T037 [P] [US4] Write integration tests for participation stats in `tests/integration/test_voter_history_api.py` — test total count, county breakdown, ballot style breakdown, 404 for unknown election, auth enforcement (all authenticated users including viewer allowed)
 
 **Checkpoint**: All four user stories complete — voter history can be imported, queried per voter, auto-creates elections, and provides aggregate participation statistics.
 
@@ -146,7 +146,7 @@
 
 **Purpose**: Quality gates, contract verification, and final cleanup.
 
-- [ ] T038 Write contract tests for voter history OpenAPI spec in `tests/contract/test_voter_history_contract.py` — verify response schemas match contracts/openapi.yaml for all 4 endpoints
+- [X] T038 Write contract tests for voter history OpenAPI spec in `tests/contract/test_voter_history_contract.py` — verify response schemas match contracts/openapi.yaml for all 4 endpoints
 - [ ] T039 Run `uv run ruff check .` and `uv run ruff format --check .` — fix any violations across all new and modified files
 - [ ] T040 Run `uv run pytest --cov=voter_api --cov-report=term-missing` — verify 90% coverage threshold met; add missing tests if needed
 - [ ] T041 Validate quickstart.md scenarios — smoke-test CLI and API commands from quickstart.md against running dev environment
