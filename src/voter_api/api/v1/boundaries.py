@@ -332,4 +332,27 @@ async def get_boundary_detail(
 
             response_data["precinct_metadata"] = PrecinctMetadataResponse.model_validate(precinct_meta)
 
+    # Include voter registration stats for boundary types with voter field mappings
+    county_name_override = None
+    if boundary.boundary_type == "county":
+        county_meta_resp = response_data.get("county_metadata")
+        if county_meta_resp:
+            county_name_override = county_meta_resp.name
+        else:
+            county_meta_for_name = await get_county_metadata_by_geoid(
+                session, boundary.boundary_identifier
+            )
+            if county_meta_for_name:
+                county_name_override = county_meta_for_name.name
+
+    voter_stats = await get_voter_stats_for_boundary(
+        session,
+        boundary.boundary_type,
+        boundary.boundary_identifier,
+        county=boundary.county,
+        county_name_override=county_name_override,
+    )
+    if voter_stats:
+        response_data["voter_stats"] = voter_stats
+
     return BoundaryDetailResponse(**response_data)
