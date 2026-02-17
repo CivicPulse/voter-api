@@ -159,6 +159,8 @@ class VoterDetailResponse(BaseModel):
 - `election_type: str | None` — filter by election type
 - `date_from: date | None` — filter by election date range start
 - `date_to: date | None` — filter by election date range end
+- `county: str | None` — filter by county name
+- `ballot_style: str | None` — filter by ballot style
 
 **Filters for election participation** (`GET /api/v1/elections/{id}/participation`):
 

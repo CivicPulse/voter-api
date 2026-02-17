@@ -16,6 +16,7 @@ from voter_api.models.import_job import ImportJob
 from voter_api.models.precinct_metadata import PrecinctMetadata
 from voter_api.models.user import User
 from voter_api.models.voter import Voter
+from voter_api.models.voter_history import VoterHistory
 
 __all__ = [
     "Address",
@@ -36,4 +37,5 @@ __all__ = [
     "PrecinctMetadata",
     "User",
     "Voter",
+    "VoterHistory",
 ]

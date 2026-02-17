@@ -19,7 +19,7 @@
 
 **Purpose**: Database migration and schema changes that enable all subsequent work.
 
-- [ ] T001 Create Alembic migration `022_voter_history.py` in `alembic/versions/` — creates `voter_history` table (all columns including `normalized_election_type` VARCHAR(20) NOT NULL, constraints, indexes per data-model.md), adds `creation_method` column (VARCHAR(20), NOT NULL, server_default `'manual'`) to `elections` table with index, adds `records_skipped` and `records_unmatched` nullable INTEGER columns to `import_jobs` table
+- [X] T001 Create Alembic migration `022_voter_history.py` in `alembic/versions/` — creates `voter_history` table (all columns including `normalized_election_type` VARCHAR(20) NOT NULL, constraints, indexes per data-model.md), adds `creation_method` column (VARCHAR(20), NOT NULL, server_default `'manual'`) to `elections` table with index, adds `records_skipped` and `records_unmatched` nullable INTEGER columns to `import_jobs` table
 
 ---
 
@@ -29,11 +29,11 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T002 Create `VoterHistory` ORM model in `src/voter_api/models/voter_history.py` — all columns from data-model.md (including `normalized_election_type` VARCHAR(20) NOT NULL), `UUIDMixin`/`TimestampMixin`, FK to `import_jobs.id` with CASCADE, unique constraint on `(voter_registration_number, election_date, election_type)`, all indexes (note: `idx_voter_history_date_type` uses `(election_date, normalized_election_type)` for election joins)
-- [ ] T003 [P] Add `creation_method` field to `Election` model in `src/voter_api/models/election.py` — `mapped_column(String(20), nullable=False, server_default="manual")`, add to `__table_args__` index
-- [ ] T004 [P] Add `records_skipped` and `records_unmatched` fields to `ImportJob` model in `src/voter_api/models/import_job.py` — nullable `Integer` columns matching existing counter pattern. Also ensure `'voter_history'` is a valid `file_type` value and `'superseded'` is a valid `status` value (check for any enum/validator constraints on these fields in the model and schema layers)
-- [ ] T005 [P] Create Pydantic v2 schemas in `src/voter_api/schemas/voter_history.py` — `VoterHistoryRecord`, `PaginatedVoterHistoryResponse`, `ElectionParticipationRecord`, `PaginatedElectionParticipationResponse`, `CountyBreakdown`, `BallotStyleBreakdown`, `ParticipationStatsResponse`, `ParticipationSummary` per contracts/openapi.yaml; all with `model_config = {"from_attributes": True}` (note: schema names match OpenAPI contract names exactly)
-- [ ] T006 Register `VoterHistory` model import in `src/voter_api/models/__init__.py`
+- [X] T002 Create `VoterHistory` ORM model in `src/voter_api/models/voter_history.py` — all columns from data-model.md (including `normalized_election_type` VARCHAR(20) NOT NULL), `UUIDMixin`/`TimestampMixin`, FK to `import_jobs.id` with CASCADE, unique constraint on `(voter_registration_number, election_date, election_type)`, all indexes (note: `idx_voter_history_date_type` uses `(election_date, normalized_election_type)` for election joins)
+- [X] T003 [P] Add `creation_method` field to `Election` model in `src/voter_api/models/election.py` — `mapped_column(String(20), nullable=False, server_default="manual")`, add to `__table_args__` index
+- [X] T004 [P] Add `records_skipped` and `records_unmatched` fields to `ImportJob` model in `src/voter_api/models/import_job.py` — nullable `Integer` columns matching existing counter pattern. Also ensure `'voter_history'` is a valid `file_type` value and `'superseded'` is a valid `status` value (check for any enum/validator constraints on these fields in the model and schema layers)
+- [X] T005 [P] Create Pydantic v2 schemas in `src/voter_api/schemas/voter_history.py` — `VoterHistoryRecord`, `PaginatedVoterHistoryResponse`, `ElectionParticipationRecord`, `PaginatedElectionParticipationResponse`, `CountyBreakdown`, `BallotStyleBreakdown`, `ParticipationStatsResponse`, `ParticipationSummary` per contracts/openapi.yaml; all with `model_config = {"from_attributes": True}` (note: schema names match OpenAPI contract names exactly)
+- [X] T006 Register `VoterHistory` model import in `src/voter_api/models/__init__.py`
 
 **Checkpoint**: Foundation ready — all models and schemas in place, migration applied, user story implementation can begin.
 
@@ -150,7 +150,7 @@
 - [ ] T039 Run `uv run ruff check .` and `uv run ruff format --check .` — fix any violations across all new and modified files
 - [ ] T040 Run `uv run pytest --cov=voter_api --cov-report=term-missing` — verify 90% coverage threshold met; add missing tests if needed
 - [ ] T041 Validate quickstart.md scenarios — smoke-test CLI and API commands from quickstart.md against running dev environment
-- [ ] T042 Performance smoke test — import a 50,000+ record file and verify completion within 5 minutes (SC-001); query a voter's history and verify response within 2 seconds (SC-006); query aggregate stats for an election with 50,000 participants and verify response within 3 seconds (SC-007)
+- [ ] T042 Performance smoke test — import a 50,000+ record file and verify completion within 5 minutes (SC-001); verify a single voter's history record is retrievable within 1 second (SC-002); query a voter's full participation history and verify response within 2 seconds (SC-006); query aggregate stats for an election with 50,000 participants and verify response within 3 seconds (SC-007); monitor peak memory during 100,000+ record import and verify it stays under 512MB (FR-005)
 
 ---
 
@@ -171,13 +171,11 @@
 ```text
 Phase 1 (Setup) → Phase 2 (Foundational)
                        │
-                       ├──→ US1 (Phase 3) ──→ US3 (Phase 5)
-                       │                         │
-                       ├──→ US2 (Phase 4) ◄──────┘ (can start after Phase 2, no US3 dependency)
-                       │
-                       └──→ US4 (Phase 6) (can start after Phase 2, independent of US2/US3)
-                                                  │
-                                                  └──→ Phase 7 (Polish)
+                       ├──→ US1 (Phase 3) ──→ US3 (Phase 5) ──┐
+                       │                                       │
+                       ├──→ US2 (Phase 4) ─────────────────────┼──→ Phase 7 (Polish)
+                       │                                       │
+                       └──→ US4 (Phase 6) ─────────────────────┘
 ```
 
 - **US1 (P1)**: Foundation only — no dependencies on other stories

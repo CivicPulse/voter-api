@@ -155,7 +155,7 @@ An analyst queries participation statistics to understand turnout patterns — t
 ### Measurable Outcomes
 
 - **SC-001**: Administrators can import a 50,000+ record file and receive a completion summary within 5 minutes.
-- **SC-002**: 100% of valid records are stored and retrievable by voter registration number within 1 second of query execution.
+- **SC-002**: 100% of valid records are stored and individually retrievable (single record by voter registration number + election date) within 1 second of query execution.
 - **SC-003**: Re-importing an updated file cleanly replaces previous records with zero duplicates and zero orphaned records.
 - **SC-004**: Records referencing unrecognized registration numbers are stored and reported (0% valid-record data loss).
 - **SC-005**: Every unique date+type combination in imported history has a corresponding election record after import (100% auto-creation coverage).
