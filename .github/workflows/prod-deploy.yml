@@ -8,6 +8,11 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to deploy (default: main)"
+        required: false
+        default: main
 
 concurrency:
   group: production-deploy
@@ -34,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: main
+          ref: ${{ github.event.workflow_run.head_sha || github.event.inputs.ref || 'main' }}
 
       - name: Connect to Tailscale
         uses: tailscale/github-action@v4
@@ -53,7 +58,7 @@ jobs:
       - name: Deploy to piku
         run: |
           git remote add piku "${PIKU}:voter-api"
-          git push piku main
+          git push piku HEAD:refs/heads/main
 
       - name: Wait for health
         run: |
