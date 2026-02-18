@@ -133,3 +133,13 @@ class PaginatedVoterResponse(BaseModel):
 
     items: list[VoterSummaryResponse]
     pagination: PaginationMeta
+
+
+class VoterFilterOptions(BaseModel):
+    """Distinct filter values available for voter search dropdowns."""
+
+    statuses: list[str]
+    counties: list[str]
+    congressional_districts: list[str]
+    state_senate_districts: list[str]
+    state_house_districts: list[str]

@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -135,6 +135,37 @@ async def get_voter_detail(
     query = select(Voter).options(selectinload(Voter.geocoded_locations)).where(Voter.id == voter_id)
     result = await session.execute(query)
     return result.scalar_one_or_none()
+
+
+async def get_voter_filter_options(session: AsyncSession) -> dict[str, list[str]]:
+    """Return distinct non-null values for voter search filter dropdowns.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        Dict mapping filter field names to sorted lists of distinct values.
+    """
+
+    async def _distinct_sorted(column: object) -> list[str]:
+        result = await session.execute(
+            select(distinct(column)).where(column.isnot(None)).order_by(column)
+        )
+        return [row for (row,) in result.all()]
+
+    statuses = await _distinct_sorted(Voter.status)
+    counties = await _distinct_sorted(Voter.county)
+    congressional_districts = await _distinct_sorted(Voter.congressional_district)
+    state_senate_districts = await _distinct_sorted(Voter.state_senate_district)
+    state_house_districts = await _distinct_sorted(Voter.state_house_district)
+
+    return {
+        "statuses": statuses,
+        "counties": counties,
+        "congressional_districts": congressional_districts,
+        "state_senate_districts": state_senate_districts,
+        "state_house_districts": state_house_districts,
+    }
 
 
 def build_voter_detail_dict(voter: Voter) -> dict:
