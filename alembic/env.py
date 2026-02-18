@@ -79,7 +79,7 @@ def do_run_migrations(connection) -> None:  # type: ignore[no-untyped-def]
         "compare_type": True,
     }
     if schema is not None:
-        connection.execute(text(f"SET search_path TO {schema}, public"))
+        connection.execute(text(f'SET search_path TO "{schema}", public'))
         configure_kwargs["version_table_schema"] = schema
     context.configure(**configure_kwargs)
 
@@ -101,7 +101,7 @@ async def run_async_migrations() -> None:
     schema = _get_schema()
     async with connectable.connect() as connection:
         if schema is not None:
-            await connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
+            await connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
             await connection.commit()
         await connection.run_sync(do_run_migrations)
 

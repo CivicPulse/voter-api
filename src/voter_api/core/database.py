@@ -49,7 +49,8 @@ def init_engine(database_url: str, *, schema: str | None = None, **kwargs: objec
     if schema is not None:
         connect_args = kwargs.pop("connect_args", {})
         if not isinstance(connect_args, dict):
-            connect_args = {}
+            msg = "connect_args must be a dict"
+            raise TypeError(msg)
         connect_args["options"] = f"-c search_path={schema},public"
         kwargs["connect_args"] = connect_args
     _engine = create_async_engine(database_url, **kwargs)

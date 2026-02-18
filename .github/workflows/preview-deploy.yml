@@ -90,16 +90,16 @@ jobs:
         run: |
           URL="https://pr-${PR_NUM}.${{ vars.PREVIEW_DOMAIN }}/api/v1/health"
           echo "Waiting for ${URL}..."
-          for i in 1 2 3 4 5; do
+          for i in $(seq 1 10); do
             if curl -sf --max-time 10 "${URL}"; then
               echo ""
               echo "Preview is up!"
               exit 0
             fi
-            echo "Attempt ${i}/5 failed, retrying in 15s..."
+            echo "Attempt ${i}/10 failed, retrying in 15s..."
             sleep 15
           done
-          echo "Preview did not respond after 5 attempts"
+          echo "Preview did not respond after 10 attempts"
           exit 1
 
       - name: Comment preview URL on PR

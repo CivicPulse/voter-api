@@ -51,6 +51,11 @@ jobs:
           for APP in ${PREVIEW_APPS}; do
             PR_NUM=$(echo "${APP}" | sed 's/voter-api-pr-//')
 
+            if ! [[ "$PR_NUM" =~ ^[0-9]+$ ]]; then
+              echo "Skipping invalid app name: ${APP}"
+              continue
+            fi
+
             STATE=$(gh pr view "${PR_NUM}" \
               --repo "${{ github.repository }}" \
               --json state --jq '.state' 2>/dev/null || echo "UNKNOWN")
