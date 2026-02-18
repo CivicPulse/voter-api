@@ -1,0 +1,71 @@
+# Weekly garbage collection for orphaned preview environments
+# whose corresponding PR is no longer open.
+
+name: Preview Garbage Collection
+
+on:
+  schedule:
+    - cron: "0 3 * * 0" # Sunday at 3 AM UTC
+  workflow_dispatch:
+
+jobs:
+  garbage-collect:
+    runs-on: ubuntu-latest
+
+    env:
+      PIKU: piku@${{ vars.PIKU_HOST }}
+
+    steps:
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Configure SSH for piku
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PIKU_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ vars.PIKU_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Install Postgres client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Find and remove orphaned previews
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
+        run: |
+          PREVIEW_APPS=$(ssh ${PIKU} apps 2>/dev/null | grep "^voter-api-pr-" || true)
+
+          if [ -z "${PREVIEW_APPS}" ]; then
+            echo "No preview apps found. Nothing to clean up."
+            exit 0
+          fi
+
+          echo "Found preview apps:"
+          echo "${PREVIEW_APPS}"
+
+          for APP in ${PREVIEW_APPS}; do
+            PR_NUM=$(echo "${APP}" | sed 's/voter-api-pr-//')
+
+            STATE=$(gh pr view "${PR_NUM}" \
+              --repo "${{ github.repository }}" \
+              --json state --jq '.state' 2>/dev/null || echo "UNKNOWN")
+
+            if [ "${STATE}" != "OPEN" ]; then
+              echo "PR #${PR_NUM} is ${STATE}. Cleaning up ${APP}..."
+
+              ssh ${PIKU} destroy "${APP}" || true
+
+              SCHEMA="pr_${PR_NUM}"
+              psql "${DATABASE_URL}" \
+                -c "DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE;" || true
+
+              echo "Cleaned up ${APP} and schema pr_${PR_NUM}"
+            else
+              echo "PR #${PR_NUM} is still open. Keeping ${APP}."
+            fi
+          done
