@@ -1,5 +1,7 @@
 """Tests for the database engine and session management module."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 import voter_api.core.database as db_module
@@ -53,6 +55,22 @@ class TestInitEngine:
             assert factory is not None
         finally:
             await dispose_engine()
+
+    def test_init_engine_without_schema(self) -> None:
+        """init_engine without schema does not inject connect_args."""
+        with patch("voter_api.core.database.create_async_engine", return_value=MagicMock()) as mock_create:
+            init_engine("postgresql+asyncpg://localhost/db", echo=False)
+            mock_create.assert_called_once_with("postgresql+asyncpg://localhost/db", echo=False)
+
+    def test_init_engine_with_schema(self) -> None:
+        """init_engine with schema injects connect_args with search_path."""
+        with patch("voter_api.core.database.create_async_engine", return_value=MagicMock()) as mock_create:
+            init_engine("postgresql+asyncpg://localhost/db", schema="pr_42", echo=False)
+            mock_create.assert_called_once_with(
+                "postgresql+asyncpg://localhost/db",
+                echo=False,
+                connect_args={"options": "-c search_path=pr_42,public"},
+            )
 
 
 class TestDisposeEngine:
