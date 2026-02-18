@@ -4,7 +4,7 @@ import uuid
 
 from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
 from voter_api.models.voter import Voter
 
@@ -147,7 +147,7 @@ async def get_voter_filter_options(session: AsyncSession) -> dict[str, list[str]
         Dict mapping filter field names to sorted lists of distinct values.
     """
 
-    async def _distinct_sorted(column: object) -> list[str]:
+    async def _distinct_sorted(column: InstrumentedAttribute[str | None]) -> list[str]:
         result = await session.execute(
             select(distinct(column)).where(column.isnot(None)).order_by(column)
         )
