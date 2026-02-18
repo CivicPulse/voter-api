@@ -54,6 +54,12 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ vars.PIKU_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
+      - name: Initialize piku app
+        run: |
+          # Create the app if it doesn't exist yet (first deploy for this PR).
+          # piku init is idempotent — safe to call on subsequent pushes.
+          ssh ${PIKU} init ${APP_NAME} || true
+
       - name: Configure preview environment
         env:
           PREVIEW_DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
