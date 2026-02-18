@@ -178,6 +178,76 @@ class TestSearchVoters:
         )
         assert total == 0
 
+    @pytest.mark.asyncio
+    async def test_filter_by_q_single_word(self) -> None:
+        """Test combined name search with single word."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 1
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = [_mock_voter()]
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="Smith")
+        assert total == 1
+
+    @pytest.mark.asyncio
+    async def test_filter_by_q_multiple_words(self) -> None:
+        """Test combined name search with multiple words."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 1
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = [_mock_voter()]
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="John Smith")
+        assert total == 1
+
+    @pytest.mark.asyncio
+    async def test_filter_by_q_with_other_filters(self) -> None:
+        """Test combined name search works with other filters."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 1
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = [_mock_voter()]
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="Smith", county="FULTON")
+        assert total == 1
+
+    @pytest.mark.asyncio
+    async def test_filter_by_q_empty_string_ignored(self) -> None:
+        """Test that empty q parameter is ignored."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 2
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = [_mock_voter(), _mock_voter()]
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="")
+        assert total == 2
+
+    @pytest.mark.asyncio
+    async def test_filter_by_q_whitespace_only_ignored(self) -> None:
+        """Test that whitespace-only q parameter is ignored."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 2
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = [_mock_voter(), _mock_voter()]
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="   ")
+        assert total == 2
+
 
 class TestGetVoterDetail:
     """Tests for get_voter_detail."""

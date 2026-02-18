@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -12,6 +12,7 @@ from voter_api.models.voter import Voter
 async def search_voters(
     session: AsyncSession,
     *,
+    q: str | None = None,
     voter_registration_number: str | None = None,
     first_name: str | None = None,
     last_name: str | None = None,
@@ -31,6 +32,7 @@ async def search_voters(
 
     Args:
         session: Database session.
+        q: Combined name search query (searches across first_name, last_name, middle_name).
         voter_registration_number: Exact match on registration number.
         first_name: Partial match (ILIKE) on first name.
         last_name: Partial match (ILIKE) on last name.
@@ -51,6 +53,21 @@ async def search_voters(
     """
     query = select(Voter)
     count_query = select(func.count(Voter.id))
+
+    # Combined name search (q parameter)
+    if q:
+        # Split query into words and search each word across first_name, last_name, middle_name
+        words = q.strip().split()
+        for word in words:
+            pattern = f"%{word}%"
+            # Each word must match at least one of the name fields
+            word_condition = or_(
+                Voter.first_name.ilike(pattern),
+                Voter.last_name.ilike(pattern),
+                Voter.middle_name.ilike(pattern),
+            )
+            query = query.where(word_condition)
+            count_query = count_query.where(word_condition)
 
     # Exact match filters
     if voter_registration_number:

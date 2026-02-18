@@ -33,6 +33,7 @@ voters_router = APIRouter(prefix="/voters", tags=["voters"])
     response_model=PaginatedVoterResponse,
 )
 async def search_voters_endpoint(
+    q: str | None = Query(None, description="Combined name search across first, last, and middle name"),
     voter_registration_number: str | None = Query(None),
     first_name: str | None = Query(None),
     last_name: str | None = Query(None),
@@ -53,6 +54,7 @@ async def search_voters_endpoint(
     """Search and list voters with multiple filter parameters."""
     voters, total = await search_voters(
         session,
+        q=q,
         voter_registration_number=voter_registration_number,
         first_name=first_name,
         last_name=last_name,
