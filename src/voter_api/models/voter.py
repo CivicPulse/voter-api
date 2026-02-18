@@ -29,11 +29,11 @@ class Voter(Base, UUIDMixin, TimestampMixin):
 
     # Demographics
     birth_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    race: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    race: Mapped[str | None] = mapped_column(String(50), nullable=True)
     gender: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     # Residence address
-    residence_street_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    residence_street_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
     residence_pre_direction: Mapped[str | None] = mapped_column(String(10), nullable=True)
     residence_street_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     residence_street_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -43,11 +43,11 @@ class Voter(Base, UUIDMixin, TimestampMixin):
     residence_zipcode: Mapped[str | None] = mapped_column(String(10), nullable=True, index=True)
 
     # Mailing address
-    mailing_street_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    mailing_street_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
     mailing_street_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     mailing_apt_unit_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     mailing_city: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    mailing_zipcode: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    mailing_zipcode: Mapped[str | None] = mapped_column(String(20), nullable=True)
     mailing_state: Mapped[str | None] = mapped_column(String(50), nullable=True)
     mailing_country: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
@@ -62,7 +62,7 @@ class Voter(Base, UUIDMixin, TimestampMixin):
     judicial_district: Mapped[str | None] = mapped_column(String(10), nullable=True)
     county_commission_district: Mapped[str | None] = mapped_column(String(10), nullable=True)
     school_board_district: Mapped[str | None] = mapped_column(String(10), nullable=True)
-    city_council_district: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    city_council_district: Mapped[str | None] = mapped_column(String(50), nullable=True)
     municipal_school_board_district: Mapped[str | None] = mapped_column(String(10), nullable=True)
     water_board_district: Mapped[str | None] = mapped_column(String(10), nullable=True)
     super_council_district: Mapped[str | None] = mapped_column(String(10), nullable=True)
