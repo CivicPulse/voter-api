@@ -54,13 +54,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ vars.PIKU_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Initialize piku app
-        run: |
-          # Create the app if it doesn't exist yet (first deploy for this PR).
-          # piku init is idempotent — safe to call on subsequent pushes.
-          ssh ${PIKU} init ${APP_NAME} || true
-
-      - name: Configure preview environment
+      - name: Deploy app to piku
         env:
           PREVIEW_DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
           JWT_SECRET_KEY: ${{ secrets.PREVIEW_JWT_SECRET_KEY }}
@@ -68,9 +62,14 @@ jobs:
           # Replace postgresql:// with postgresql+asyncpg:// for the app
           ASYNC_DB_URL="${PREVIEW_DATABASE_URL/postgresql:\/\//postgresql+asyncpg:\/\/}"
 
-          # config:set BEFORE git push — piku runs the release worker
-          # (Alembic migrations) during deploy, so DATABASE_SCHEMA must
-          # already be set or migrations target the public schema.
+          git remote add piku "${PIKU}:${APP_NAME}"
+
+          # First push creates the app in piku. On a brand-new app the
+          # release worker (Alembic) will fail because env vars aren't
+          # set yet — that's expected and harmless.
+          git push piku HEAD:main --force || true
+
+          # Now the app exists, so config:set works.
           ssh ${PIKU} config:set ${APP_NAME} \
             DATABASE_URL="${ASYNC_DB_URL}" \
             DATABASE_SCHEMA="pr_${PR_NUM}" \
@@ -80,9 +79,8 @@ jobs:
             CORS_ORIGIN_REGEX=".*" \
             BIND_ADDRESS=0.0.0.0
 
-      - name: Deploy app to piku
-        run: |
-          git remote add piku "${PIKU}:${APP_NAME}"
+          # Re-deploy now that config is in place so migrations run
+          # against the correct schema.
           git push piku HEAD:main --force
 
       - name: Smoke test
