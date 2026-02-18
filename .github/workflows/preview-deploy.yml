@@ -67,7 +67,7 @@ jobs:
           # First push creates the app in piku. On a brand-new app the
           # release worker (Alembic) will fail because env vars aren't
           # set yet — that's expected and harmless.
-          git push piku HEAD:main --force || true
+          git push piku HEAD:refs/heads/main --force || true
 
           # Now the app exists, so config:set works.
           ssh ${PIKU} config:set ${APP_NAME} \
@@ -81,7 +81,7 @@ jobs:
 
           # Re-deploy now that config is in place so migrations run
           # against the correct schema.
-          git push piku HEAD:main --force
+          git push piku HEAD:refs/heads/main --force
 
       - name: Smoke test
         run: |
