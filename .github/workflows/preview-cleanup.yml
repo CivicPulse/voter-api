@@ -9,6 +9,8 @@ on:
 jobs:
   cleanup:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
 
     env:
       APP_NAME: voter-api-pr-${{ github.event.pull_request.number }}
@@ -49,7 +51,6 @@ jobs:
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          comment-tag: preview-deploy
           body: |
             ### Preview Environment Removed
 
