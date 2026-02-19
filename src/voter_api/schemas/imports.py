@@ -21,6 +21,8 @@ class ImportJobResponse(BaseModel):
     records_inserted: int | None = None
     records_updated: int | None = None
     records_soft_deleted: int | None = None
+    records_skipped: int | None = None
+    records_unmatched: int | None = None
     error_log: dict | None = None
     triggered_by: UUID | None = None
     started_at: datetime | None = None

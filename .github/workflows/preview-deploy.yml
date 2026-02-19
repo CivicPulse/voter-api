@@ -83,8 +83,15 @@ jobs:
             BIND_ADDRESS=0.0.0.0
 
           # Re-deploy now that config is in place so migrations run
-          # against the correct schema.
-          git push piku HEAD:refs/heads/main --force
+          # against the correct schema. Capture output to detect silent
+          # nginx failures (piku deletes broken configs and continues).
+          DEPLOY_OUTPUT=$(git push piku HEAD:refs/heads/main --force 2>&1)
+          echo "$DEPLOY_OUTPUT"
+
+          if echo "$DEPLOY_OUTPUT" | grep -q "removing broken nginx config"; then
+            echo "::error::nginx config was rejected — check server nginx configs for conflicts"
+            exit 1
+          fi
 
       - name: Smoke test
         run: |

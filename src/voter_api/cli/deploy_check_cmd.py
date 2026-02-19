@@ -84,6 +84,25 @@ def _json_or_none(resp: httpx.Response) -> tuple[Any, str | None]:
 # ---------------------------------------------------------------------------
 
 
+def _check_info(client: httpx.Client, base: str) -> CheckResult:
+    endpoint = "/api/v1/info"
+    resp, ms, err = _request(client, "GET", base + endpoint)
+    if err:
+        return CheckResult("info", CheckStatus.FAIL, err, endpoint, ms)
+    assert resp is not None
+    if resp.status_code != 200:
+        return CheckResult("info", CheckStatus.FAIL, f"HTTP {resp.status_code}", endpoint, ms)
+    data, jerr = _json_or_none(resp)
+    if jerr:
+        return CheckResult("info", CheckStatus.FAIL, jerr, endpoint, ms)
+    required = {"version", "git_commit", "environment"}
+    missing = required - set(data.keys())
+    if missing:
+        return CheckResult("info", CheckStatus.FAIL, f"missing keys: {missing}", endpoint, ms)
+    details = [f"version={data['version']}", f"commit={data['git_commit']}", f"env={data['environment']}"]
+    return CheckResult("info", CheckStatus.PASS, "ok", endpoint, ms, details)
+
+
 def _check_health(client: httpx.Client, base: str) -> CheckResult:
     endpoint = "/api/v1/health"
     resp, ms, err = _request(client, "GET", base + endpoint)
@@ -420,7 +439,7 @@ def _check_auth_gate(client: httpx.Client, base: str) -> CheckResult:
 # ---------------------------------------------------------------------------
 
 _SECTIONS: list[tuple[str, list[str]]] = [
-    ("Health", ["health"]),
+    ("Health", ["health", "info"]),
     (
         "Boundaries",
         [
@@ -462,6 +481,7 @@ def _run_all_checks(client: httpx.Client, base: str) -> list[CheckResult]:
 
     # Health
     results["health"] = _check_health(client, base)
+    results["info"] = _check_info(client, base)
 
     # Boundaries
     boundary_result, boundary_id = _check_boundaries_list(client, base)

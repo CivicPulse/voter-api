@@ -28,6 +28,8 @@ class ImportJob(Base, UUIDMixin):
     records_inserted: Mapped[int | None] = mapped_column(Integer, nullable=True)
     records_updated: Mapped[int | None] = mapped_column(Integer, nullable=True)
     records_soft_deleted: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    records_skipped: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    records_unmatched: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Error tracking
     error_log: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)

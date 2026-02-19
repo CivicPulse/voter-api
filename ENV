@@ -1,11 +1,18 @@
 # =============================================================================
-# Piku ENV Configuration for voter-api
+# Piku ENV Configuration — DEV DEFAULTS
 # =============================================================================
-# This file is deployed to the piku server. App-specific secrets should be
-# set via `piku config:set` on the server rather than committed here.
+# This file is committed to the repo and deployed to BOTH piku apps.
+# It contains DEV-environment defaults (voter-api-dev).
+#
+# Production overrides (voter-api) are set on the server via:
+#   ssh piku@hatchweb.tailb56d83.ts.net -- config:set voter-api \
+#     NGINX_SERVER_NAME=voteapi.civpulse.org LOG_LEVEL=INFO ...
+#
+# App-specific secrets (DATABASE_URL, JWT_SECRET_KEY) must always be
+# set via `piku config:set` — never commit them here.
 
 # --- Piku / nginx settings ---
-NGINX_SERVER_NAME=voteapi.civpulse.org
+NGINX_SERVER_NAME=voteapi-dev.hatchtech.dev
 NGINX_CLOUDFLARE_ACL=true
 BIND_ADDRESS=0.0.0.0
 
@@ -30,11 +37,11 @@ IMPORT_BATCH_SIZE=1000
 EXPORT_DIR=./exports
 
 # --- Logging ---
-LOG_LEVEL=INFO
+LOG_LEVEL=DEBUG
 
 # --- CORS ---
 CORS_ORIGINS=
-CORS_ORIGIN_REGEX=^(?:https://(?:(?:.*\.)?voter-web\.pages\.dev|(?:.*\.)?civpulse\.org|(?:.*\.)?kerryhatcher\.com)|http://localhost(?::\d+)?)$
+CORS_ORIGIN_REGEX=^(?:https://(?:(?:.*\.)?voter-web\.pages\.dev|(?:.*\.)?civpulse\.org|(?:.*\.)?kerryhatcher\.com|(?:.*\.)?hatchtech\.dev)|http://localhost(?::\d+)?)$
 
 # --- API ---
 API_V1_PREFIX=/api/v1
