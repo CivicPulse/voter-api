@@ -142,32 +142,31 @@ git push piku-prod main     # deploy to prod
 ### Configuration files
 
 - **`Procfile`** — defines `release` (Alembic migrations) and `web` (uvicorn ASGI) workers
-- **`ENV`** — piku/nginx settings and non-secret environment variables; committed to the repo. Contains **dev defaults** (hostname, DEBUG logging, etc.). Production overrides are set via `piku config:set` on the server (see Secrets below).
+- **`ENV`** — piku/nginx settings and non-secret environment variables; committed to the repo. Contains **prod defaults** (hostname, logging, etc.). Dev overrides (hostname, log level) and secrets are set via `piku config:set` on the server (see Secrets below).
 
 ### Secrets
 
 Set secrets on the server via `piku config:set` — never commit them in `ENV`.
 
-**Dev app:**
+**Dev app** (secrets + ENV overrides for dev hostname and logging):
 ```bash
 ssh piku@hatchweb.tailb56d83.ts.net -- config:set voter-api-dev \
+  DATABASE_URL=postgresql+asyncpg://... \
+  JWT_SECRET_KEY=... \
+  UV_PYTHON_DOWNLOADS=auto \
+  NGINX_SERVER_NAME=voteapi-dev.hatchtech.dev \
+  LOG_LEVEL=DEBUG
+```
+
+**Prod app** (secrets only — ENV file already has prod defaults):
+```bash
+ssh piku@hatchweb.tailb56d83.ts.net -- config:set voter-api \
   DATABASE_URL=postgresql+asyncpg://... \
   JWT_SECRET_KEY=... \
   UV_PYTHON_DOWNLOADS=auto
 ```
 
-**Prod app** (secrets + ENV overrides so dev defaults don't leak):
-```bash
-ssh piku@hatchweb.tailb56d83.ts.net -- config:set voter-api \
-  DATABASE_URL=postgresql+asyncpg://... \
-  JWT_SECRET_KEY=... \
-  UV_PYTHON_DOWNLOADS=auto \
-  NGINX_SERVER_NAME=voteapi.civpulse.org \
-  LOG_LEVEL=INFO \
-  CORS_ORIGIN_REGEX='^(?:https://(?:(?:.*\.)?voter-web\.pages\.dev|(?:.*\.)?civpulse\.org|(?:.*\.)?kerryhatcher\.com)|http://localhost(?::\d+)?)$'
-```
-
-`config:set` values override anything in the `ENV` file, so the committed dev defaults are harmless in prod.
+`config:set` values override anything in the `ENV` file.
 
 ### Ingress: Cloudflare Tunnel
 
