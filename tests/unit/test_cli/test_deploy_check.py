@@ -97,6 +97,7 @@ _HEALTHY_RESPONSES = {
     "/api/v1/elected-officials/o-1/sources": _make_response(json_data=[]),
     "/api/v1/datasets": _make_response(json_data={"base_url": None, "datasets": []}),
     "/api/v1/voters": _make_response(status_code=401, json_data={"detail": "Not authenticated"}),
+    "/api/v1/info": _make_response(json_data={"version": "0.1.0", "git_commit": "abc123", "environment": "test"}),
 }
 
 
@@ -301,13 +302,13 @@ class TestGeoJsonRedirect:
 
 
 class TestRunAllChecks:
-    def test_returns_18_results(self) -> None:
-        """The orchestrator returns exactly 18 check results."""
+    def test_returns_19_results(self) -> None:
+        """The orchestrator returns exactly 19 check results."""
         client = httpx.Client()
         client.request = lambda method, url, **kw: _mock_client_all_pass(method, url, **kw)  # type: ignore[method-assign]
 
         results = _run_all_checks(client, BASE)
-        assert len(results) == 18
+        assert len(results) == 19
 
     def test_all_statuses_are_check_status(self) -> None:
         client = httpx.Client()

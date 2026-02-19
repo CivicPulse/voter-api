@@ -14,6 +14,7 @@ from voter_api.core.config import Settings, get_settings
 from voter_api.core.dependencies import get_async_session, require_role
 from voter_api.lib.publisher.manifest import ManifestCache, get_redirect_url
 from voter_api.lib.publisher.storage import fetch_manifest
+from voter_api.models.boundary import Boundary
 from voter_api.schemas.boundary import (
     BoundaryDetailResponse,
     BoundaryFeatureCollection,
@@ -23,6 +24,7 @@ from voter_api.schemas.boundary import (
     PaginatedBoundaryResponse,
 )
 from voter_api.schemas.common import PaginationMeta
+from voter_api.schemas.county_metadata import CountyMetadataResponse
 from voter_api.schemas.publish import PublishedDatasetInfo, PublishStatusResponse
 from voter_api.services.boundary_service import (
     find_containing_boundaries,
@@ -94,8 +96,8 @@ async def _try_redirect(
 
 async def _resolve_county_name(
     session: AsyncSession,
-    boundary: object,
-    county_metadata: object | None,
+    boundary: Boundary,
+    county_metadata: CountyMetadataResponse | None,
 ) -> str | None:
     """Resolve the county name for voter stats on county-type boundaries.
 
@@ -106,13 +108,13 @@ async def _resolve_county_name(
     Returns:
         County name string for county boundaries, None otherwise.
     """
-    if boundary.boundary_type != "county":  # type: ignore[union-attr]
+    if boundary.boundary_type != "county":
         return None
 
     if county_metadata:
-        return county_metadata.name  # type: ignore[union-attr]
+        return county_metadata.name
 
-    meta = await get_county_metadata_by_geoid(session, boundary.boundary_identifier)  # type: ignore[union-attr]
+    meta = await get_county_metadata_by_geoid(session, boundary.boundary_identifier)
     return meta.name if meta else None
 
 
@@ -357,7 +359,8 @@ async def get_boundary_detail(
             response_data["precinct_metadata"] = PrecinctMetadataResponse.model_validate(precinct_meta)
 
     # Include voter registration stats for boundary types with voter field mappings
-    county_name_override = await _resolve_county_name(session, boundary, response_data.get("county_metadata"))
+    county_meta_resp: CountyMetadataResponse | None = response_data.get("county_metadata")  # type: ignore[assignment]
+    county_name_override = await _resolve_county_name(session, boundary, county_meta_resp)
     voter_stats = await get_voter_stats_for_boundary(
         session,
         boundary.boundary_type,
