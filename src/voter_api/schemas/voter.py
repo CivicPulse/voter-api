@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, computed_field
 
 from voter_api.schemas.common import PaginationMeta
+from voter_api.schemas.voter_history import ParticipationSummary
 
 
 class AddressResponse(BaseModel):
@@ -119,6 +120,8 @@ class VoterDetailResponse(BaseModel):
     voter_created_date: date | None = None
     last_party_voted: str | None = None
     municipality: str | None = None
+
+    participation_summary: ParticipationSummary = Field(default_factory=ParticipationSummary)
 
     present_in_latest_import: bool
     soft_deleted_at: datetime | None = None
