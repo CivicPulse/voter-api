@@ -148,9 +148,7 @@ async def get_voter_filter_options(session: AsyncSession) -> dict[str, list[str]
     """
 
     async def _distinct_sorted(column: InstrumentedAttribute[str | None]) -> list[str]:
-        result = await session.execute(
-            select(distinct(column)).where(column.isnot(None)).order_by(column)
-        )
+        result = await session.execute(select(distinct(column)).where(column.isnot(None)).order_by(column))
         return [row for (row,) in result.all()]
 
     statuses = await _distinct_sorted(Voter.status)
