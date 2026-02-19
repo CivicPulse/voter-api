@@ -91,8 +91,8 @@ Each library in `lib/` has an explicit public API via `__init__.py` exports and 
 
 ```
 tests/
-├── unit/           # Library and schema tests (no DB, in-memory SQLite)
-├── integration/    # API, database, and CLI tests (requires PostGIS)
+├── unit/           # Library and schema tests (no PostGIS, uses in-memory SQLite)
+├── integration/    # API, database, and CLI tests (in-memory SQLite + mocks)
 ├── contract/       # OpenAPI contract tests
 └── e2e/            # End-to-end smoke tests (real PostGIS, Alembic migrations)
 ```
@@ -141,7 +141,7 @@ DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_a
 | Test class | Router | Tests | What it covers |
 |---|---|---|---|
 | `TestHealth` | auth | 1 | Health check |
-| `TestAuth` | auth | 9 | Login, refresh, /me, user CRUD, bad credentials, 401/403 |
+| `TestAuth` | auth | 8 | Login, refresh, /me, user CRUD, bad credentials, 401/403 |
 | `TestBoundaries` | boundaries | 6 | List, filter, detail, types, point-in-polygon, 404 |
 | `TestElections` | elections | 6 | List, detail, create, RBAC, results, 404 |
 | `TestElectedOfficials` | elected-officials | 7 | List, detail, by-district, full CRUD lifecycle, sources, 404 |

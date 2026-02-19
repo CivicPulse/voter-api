@@ -158,8 +158,8 @@ class TestBoundaries:
         resp = await client.get(_url("/boundaries/types"))
         assert resp.status_code == 200
         body = resp.json()
-        assert "boundary_types" in body
-        assert "congressional" in body["boundary_types"]
+        assert "types" in body
+        assert "congressional" in body["types"]
 
     async def test_containing_point(self, client: httpx.AsyncClient):
         """Point inside the seeded congressional polygon."""
