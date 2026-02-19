@@ -4,6 +4,7 @@ Uses httpx for async HTTP requests with timeout and error handling.
 Includes SSRF protection via domain allowlisting.
 """
 
+import asyncio
 import ipaddress
 import socket
 from urllib.parse import urlparse
@@ -22,7 +23,7 @@ class FetchError(Exception):
         self.status_code = status_code
 
 
-def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
+async def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
     """Validate that a URL is safe to request and in the allowed domains list.
 
     This enforces:
@@ -61,7 +62,14 @@ def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
 
     # Resolve hostname and ensure it does not point to a private or loopback IP.
     try:
-        addrinfo_list = socket.getaddrinfo(hostname, parsed.port, type=socket.SOCK_STREAM)
+        loop = asyncio.get_running_loop()
+        addrinfo_list = await asyncio.wait_for(
+            loop.getaddrinfo(hostname, parsed.port, type=socket.SOCK_STREAM),
+            timeout=5.0,
+        )
+    except TimeoutError as exc:
+        msg = f"DNS resolution timed out for hostname '{hostname}'"
+        raise FetchError(msg) from exc
     except OSError as exc:
         msg = f"Failed to resolve hostname '{hostname}': {exc}"
         raise FetchError(msg) from exc
@@ -75,14 +83,7 @@ def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
             continue
 
         ip = ipaddress.ip_address(ip_str)
-        if (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_multicast
-            or ip.is_reserved
-            or ip.is_unspecified
-        ):
+        if not ip.is_global:
             msg = f"Resolved IP address '{ip}' for hostname '{hostname}' is not allowed"
             raise FetchError(msg)
 
@@ -107,7 +108,7 @@ async def fetch_election_results(
     Raises:
         FetchError: If the HTTP request fails or the response is invalid.
     """
-    validate_url_domain(url, allowed_domains)
+    await validate_url_domain(url, allowed_domains)
 
     try:
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:

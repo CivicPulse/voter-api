@@ -41,7 +41,7 @@ class TestFetchElectionResults:
             request=httpx.Request("GET", "https://example.com/feed.json"),
         )
         with (
-            patch("voter_api.lib.election_tracker.fetcher.validate_url_domain"),
+            patch("voter_api.lib.election_tracker.fetcher.validate_url_domain") as mock_validate,
             patch("voter_api.lib.election_tracker.fetcher.httpx.AsyncClient") as mock_client_cls,
         ):
             mock_client = AsyncMock()
@@ -56,11 +56,12 @@ class TestFetchElectionResults:
             )
             assert isinstance(result, SoSFeed)
             assert result.electionName == "Test Election"
+            mock_validate.assert_called_once_with("https://example.com/feed.json", ["example.com"])
 
     @pytest.mark.asyncio
     async def test_timeout_raises_fetch_error(self):
         with (
-            patch("voter_api.lib.election_tracker.fetcher.validate_url_domain"),
+            patch("voter_api.lib.election_tracker.fetcher.validate_url_domain") as mock_validate,
             patch("voter_api.lib.election_tracker.fetcher.httpx.AsyncClient") as mock_client_cls,
         ):
             mock_client = AsyncMock()
@@ -74,6 +75,7 @@ class TestFetchElectionResults:
                     "https://example.com/feed.json",
                     allowed_domains=["example.com"],
                 )
+            mock_validate.assert_called_once_with("https://example.com/feed.json", ["example.com"])
 
     @pytest.mark.asyncio
     async def test_http_404_raises_fetch_error(self):
@@ -82,7 +84,7 @@ class TestFetchElectionResults:
             request=httpx.Request("GET", "https://example.com/feed.json"),
         )
         with (
-            patch("voter_api.lib.election_tracker.fetcher.validate_url_domain"),
+            patch("voter_api.lib.election_tracker.fetcher.validate_url_domain") as mock_validate,
             patch("voter_api.lib.election_tracker.fetcher.httpx.AsyncClient") as mock_client_cls,
         ):
             mock_client = AsyncMock()
@@ -96,6 +98,7 @@ class TestFetchElectionResults:
                     "https://example.com/feed.json",
                     allowed_domains=["example.com"],
                 )
+            mock_validate.assert_called_once_with("https://example.com/feed.json", ["example.com"])
 
     @pytest.mark.asyncio
     async def test_http_500_raises_fetch_error(self):
@@ -104,7 +107,7 @@ class TestFetchElectionResults:
             request=httpx.Request("GET", "https://example.com/feed.json"),
         )
         with (
-            patch("voter_api.lib.election_tracker.fetcher.validate_url_domain"),
+            patch("voter_api.lib.election_tracker.fetcher.validate_url_domain") as mock_validate,
             patch("voter_api.lib.election_tracker.fetcher.httpx.AsyncClient") as mock_client_cls,
         ):
             mock_client = AsyncMock()
@@ -118,6 +121,7 @@ class TestFetchElectionResults:
                     "https://example.com/feed.json",
                     allowed_domains=["example.com"],
                 )
+            mock_validate.assert_called_once_with("https://example.com/feed.json", ["example.com"])
 
     @pytest.mark.asyncio
     async def test_invalid_json_raises_fetch_error(self):
@@ -128,7 +132,7 @@ class TestFetchElectionResults:
             headers={"content-type": "text/plain"},
         )
         with (
-            patch("voter_api.lib.election_tracker.fetcher.validate_url_domain"),
+            patch("voter_api.lib.election_tracker.fetcher.validate_url_domain") as mock_validate,
             patch("voter_api.lib.election_tracker.fetcher.httpx.AsyncClient") as mock_client_cls,
         ):
             mock_client = AsyncMock()
@@ -142,6 +146,7 @@ class TestFetchElectionResults:
                     "https://example.com/feed.json",
                     allowed_domains=["example.com"],
                 )
+            mock_validate.assert_called_once_with("https://example.com/feed.json", ["example.com"])
 
     @pytest.mark.asyncio
     async def test_invalid_feed_structure_raises_fetch_error(self):
@@ -151,7 +156,7 @@ class TestFetchElectionResults:
             request=httpx.Request("GET", "https://example.com/feed.json"),
         )
         with (
-            patch("voter_api.lib.election_tracker.fetcher.validate_url_domain"),
+            patch("voter_api.lib.election_tracker.fetcher.validate_url_domain") as mock_validate,
             patch("voter_api.lib.election_tracker.fetcher.httpx.AsyncClient") as mock_client_cls,
         ):
             mock_client = AsyncMock()
@@ -165,6 +170,7 @@ class TestFetchElectionResults:
                     "https://example.com/feed.json",
                     allowed_domains=["example.com"],
                 )
+            mock_validate.assert_called_once_with("https://example.com/feed.json", ["example.com"])
 
     @pytest.mark.asyncio
     async def test_allowed_domain_passes(self):
@@ -235,35 +241,41 @@ class TestFetchElectionResults:
 class TestValidateUrlDomain:
     """Tests for validate_url_domain()."""
 
-    def test_allowed_domain_passes(self):
+    @pytest.mark.asyncio
+    async def test_allowed_domain_passes(self):
         fake_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", 443))]
         with patch(
             "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
             return_value=fake_addrinfo,
         ):
-            validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+            await validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
 
-    def test_disallowed_domain_raises(self):
+    @pytest.mark.asyncio
+    async def test_disallowed_domain_raises(self):
         with pytest.raises(FetchError, match="not in the allowed domains"):
-            validate_url_domain("https://evil.com/data", ["sos.ga.gov"])
+            await validate_url_domain("https://evil.com/data", ["sos.ga.gov"])
 
-    def test_case_insensitive(self):
+    @pytest.mark.asyncio
+    async def test_case_insensitive(self):
         fake_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", 443))]
         with patch(
             "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
             return_value=fake_addrinfo,
         ):
-            validate_url_domain("https://SOS.GA.GOV/results", ["sos.ga.gov"])
+            await validate_url_domain("https://SOS.GA.GOV/results", ["sos.ga.gov"])
 
-    def test_empty_list_raises(self):
+    @pytest.mark.asyncio
+    async def test_empty_list_raises(self):
         with pytest.raises(FetchError, match="allowed_domains must be a non-empty list"):
-            validate_url_domain("https://anything.com/data", [])
+            await validate_url_domain("https://anything.com/data", [])
 
-    def test_raw_ip_hostname_rejected(self):
+    @pytest.mark.asyncio
+    async def test_raw_ip_hostname_rejected(self):
         with pytest.raises(FetchError, match="not in the allowed domains"):
-            validate_url_domain("http://169.254.169.254/latest", ["sos.ga.gov"])
+            await validate_url_domain("http://169.254.169.254/latest", ["sos.ga.gov"])
 
-    def test_private_ip_resolution_blocked(self):
+    @pytest.mark.asyncio
+    async def test_private_ip_resolution_blocked(self):
         """Allowed domain resolving to a private IP is blocked."""
         fake_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("10.0.0.1", 443))]
         with (
@@ -273,9 +285,10 @@ class TestValidateUrlDomain:
             ),
             pytest.raises(FetchError, match="Resolved IP address.*is not allowed"),
         ):
-            validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+            await validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
 
-    def test_loopback_ip_resolution_blocked(self):
+    @pytest.mark.asyncio
+    async def test_loopback_ip_resolution_blocked(self):
         """Allowed domain resolving to loopback is blocked."""
         fake_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 443))]
         with (
@@ -285,9 +298,10 @@ class TestValidateUrlDomain:
             ),
             pytest.raises(FetchError, match="Resolved IP address.*is not allowed"),
         ):
-            validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+            await validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
 
-    def test_link_local_ip_resolution_blocked(self):
+    @pytest.mark.asyncio
+    async def test_link_local_ip_resolution_blocked(self):
         """Allowed domain resolving to link-local (metadata) IP is blocked."""
         fake_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("169.254.169.254", 80))]
         with (
@@ -297,9 +311,10 @@ class TestValidateUrlDomain:
             ),
             pytest.raises(FetchError, match="Resolved IP address.*is not allowed"),
         ):
-            validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+            await validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
 
-    def test_ipv6_loopback_resolution_blocked(self):
+    @pytest.mark.asyncio
+    async def test_ipv6_loopback_resolution_blocked(self):
         """Allowed domain resolving to IPv6 loopback is blocked."""
         fake_addrinfo = [(socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("::1", 443, 0, 0))]
         with (
@@ -309,9 +324,10 @@ class TestValidateUrlDomain:
             ),
             pytest.raises(FetchError, match="Resolved IP address.*is not allowed"),
         ):
-            validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+            await validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
 
-    def test_dns_resolution_failure(self):
+    @pytest.mark.asyncio
+    async def test_dns_resolution_failure(self):
         """DNS resolution failure raises FetchError."""
         with (
             patch(
@@ -320,4 +336,4 @@ class TestValidateUrlDomain:
             ),
             pytest.raises(FetchError, match="Failed to resolve hostname"),
         ):
-            validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+            await validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
