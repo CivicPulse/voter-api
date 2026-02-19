@@ -5,6 +5,8 @@ Includes SSRF protection via domain allowlisting.
 """
 
 from urllib.parse import urlparse
+import ipaddress
+import socket
 
 import httpx
 from loguru import logger
@@ -21,24 +23,66 @@ class FetchError(Exception):
 
 
 def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
-    """Validate that a URL's hostname is in the allowed domains list.
+    """Validate that a URL is safe to request and in the allowed domains list.
+
+    This enforces:
+        * Scheme must be http or https.
+        * Hostname must be in the allowed_domains list (if provided).
+        * All resolved IP addresses must be public (no private/loopback/etc.).
 
     Args:
         url: The URL to validate.
         allowed_domains: List of allowed domain names (lowercase).
 
     Raises:
-        FetchError: If the URL's hostname is not in the allowed list.
+        FetchError: If the URL is not safe or the hostname is not allowed.
     """
-    if not allowed_domains:
-        return
-
     parsed = urlparse(url)
+
+    if parsed.scheme not in ("http", "https"):
+        msg = f"Unsupported URL scheme '{parsed.scheme}'"
+        raise FetchError(msg)
+
     hostname = (parsed.hostname or "").lower()
 
-    if not hostname or hostname not in allowed_domains:
-        msg = f"Domain '{hostname}' is not in the allowed domains list"
+    if not hostname:
+        msg = "URL must include a hostname"
         raise FetchError(msg)
+
+    # If an allowlist is provided, enforce membership.
+    if allowed_domains:
+        if hostname not in allowed_domains:
+            msg = f"Domain '{hostname}' is not in the allowed domains list"
+            raise FetchError(msg)
+
+    # Resolve hostname and ensure it does not point to a private or loopback IP.
+    try:
+        addrinfo_list = socket.getaddrinfo(hostname, parsed.port, type=socket.SOCK_STREAM)
+    except OSError as exc:
+        msg = f"Failed to resolve hostname '{hostname}': {exc}"
+        raise FetchError(msg) from exc
+
+    for family, _socktype, _proto, _canonname, sockaddr in addrinfo_list:
+        ip_str = None
+        if family == socket.AF_INET:
+            ip_str = sockaddr[0]
+        elif family == socket.AF_INET6:
+            ip_str = sockaddr[0]
+
+        if not ip_str:
+            continue
+
+        ip = ipaddress.ip_address(ip_str)
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_multicast
+            or ip.is_reserved
+            or ip.is_unspecified
+        ):
+            msg = f"Resolved IP address '{ip}' for hostname '{hostname}' is not allowed"
+            raise FetchError(msg)
 
 
 async def fetch_election_results(
