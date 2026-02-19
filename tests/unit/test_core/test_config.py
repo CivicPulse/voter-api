@@ -64,3 +64,34 @@ class TestSettings:
         monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "0")
         with pytest.raises(ValidationError):
             Settings()  # type: ignore[call-arg]
+
+    def test_database_schema_default_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """database_schema defaults to None."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://localhost/db")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key-that-is-at-least-32-characters-long")
+        settings = Settings(_env_file=None)  # type: ignore[call-arg]
+        assert settings.database_schema is None
+
+    def test_database_schema_valid_value(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """database_schema accepts valid schema names like pr_42."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://localhost/db")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key-that-is-at-least-32-characters-long")
+        monkeypatch.setenv("DATABASE_SCHEMA", "pr_42")
+        settings = Settings(_env_file=None)  # type: ignore[call-arg]
+        assert settings.database_schema == "pr_42"
+
+    def test_database_schema_rejects_injection(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """database_schema rejects SQL injection attempts."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://localhost/db")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key-that-is-at-least-32-characters-long")
+        monkeypatch.setenv("DATABASE_SCHEMA", "pr-42; DROP SCHEMA")
+        with pytest.raises(ValidationError, match="Invalid database_schema"):
+            Settings(_env_file=None)  # type: ignore[call-arg]
+
+    def test_database_schema_rejects_leading_number(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """database_schema rejects names starting with a digit."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://localhost/db")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key-that-is-at-least-32-characters-long")
+        monkeypatch.setenv("DATABASE_SCHEMA", "42pr")
+        with pytest.raises(ValidationError, match="Invalid database_schema"):
+            Settings(_env_file=None)  # type: ignore[call-arg]

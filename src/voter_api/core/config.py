@@ -3,7 +3,9 @@
 All configuration is loaded from environment variables following 12-factor principles.
 """
 
-from pydantic import Field
+import re
+
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,6 +22,20 @@ class Settings(BaseSettings):
     database_url: str = Field(
         description="PostgreSQL+PostGIS async connection string",
     )
+    database_schema: str | None = Field(
+        default=None,
+        description="PostgreSQL schema for isolated environments (e.g., pr_42)",
+    )
+
+    @field_validator("database_schema")
+    @classmethod
+    def validate_database_schema(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        if not re.match(r"^[a-z_][a-z0-9_]{0,62}$", v):
+            msg = "Invalid database_schema: must match ^[a-z_][a-z0-9_]{0,62}$"
+            raise ValueError(msg)
+        return v
 
     # JWT
     jwt_secret_key: str = Field(min_length=32, description="Secret key for signing JWTs (minimum 32 characters)")

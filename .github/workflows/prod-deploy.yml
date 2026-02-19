@@ -1,0 +1,87 @@
+# Deploy to production when CI passes on main, or on manual trigger.
+
+name: Production Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to deploy (default: main)"
+        required: false
+        default: main
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    permissions:
+      contents: read
+
+    environment:
+      name: production
+      url: https://voteapi.civpulse.org
+
+    env:
+      PIKU: piku@${{ vars.PIKU_HOST }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha || github.event.inputs.ref || 'main' }}
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Configure SSH for piku
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PIKU_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ vars.PIKU_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy to piku
+        run: |
+          git remote add piku "${PIKU}:voter-api"
+          git push piku HEAD:refs/heads/main
+
+      - name: Wait for health
+        run: |
+          URL="https://voteapi.civpulse.org/api/v1/health"
+          echo "Waiting for ${URL}..."
+          for i in $(seq 1 10); do
+            if curl -sf --max-time 10 "${URL}"; then
+              echo ""
+              echo "Production is healthy!"
+              exit 0
+            fi
+            echo "Attempt ${i}/10 failed, retrying in 15s..."
+            sleep 15
+          done
+          echo "Production did not respond after 10 attempts"
+          exit 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Run deploy-check
+        run: |
+          uv sync
+          uv run voter-api deploy-check --url https://voteapi.civpulse.org --verbose
