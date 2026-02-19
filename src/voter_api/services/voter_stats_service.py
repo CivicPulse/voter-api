@@ -51,10 +51,31 @@ async def get_voter_stats_for_boundary(
             return None
 
         voter_column = getattr(Voter, voter_field)
+
+        # Normalize numeric identifiers to handle zero-padding mismatches between
+        # boundary shapefiles and the voter CSV. Shapefile integer fields produce
+        # bare strings like "5", while the GA SOS voter CSV uses zero-padded forms
+        # like "005" or "0005". Trying all common padded forms with IN (...) lets
+        # PostgreSQL use the existing B-tree index on each equality check.
+        if boundary_identifier.isdigit():
+            num_val = int(boundary_identifier)
+            normalized_ids = list(
+                {
+                    boundary_identifier,
+                    str(num_val),
+                    str(num_val).zfill(2),
+                    str(num_val).zfill(3),
+                    str(num_val).zfill(4),
+                }
+            )
+            id_filter = voter_column.in_(normalized_ids)
+        else:
+            id_filter = voter_column == boundary_identifier
+
         query = (
             select(Voter.status, func.count(Voter.id))
             .where(
-                voter_column == boundary_identifier,
+                id_filter,
                 Voter.present_in_latest_import.is_(True),
             )
             .group_by(Voter.status)
