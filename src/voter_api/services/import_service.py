@@ -14,6 +14,48 @@ from voter_api.models.import_job import ImportJob
 from voter_api.models.voter import Voter
 from voter_api.schemas.imports import ImportDiffResponse
 
+# asyncpg has a hard limit of 32767 query parameters
+_IN_CLAUSE_BATCH = 5000
+
+
+async def _soft_delete_absent_voters(
+    session: AsyncSession,
+    county: str | None,
+    imported_reg_numbers: set[str],
+) -> int:
+    """Soft-delete voters from the given county not present in the current import.
+
+    Args:
+        session: Database session.
+        county: County name to scope the soft-delete (skip if None).
+        imported_reg_numbers: Registration numbers seen in this import.
+
+    Returns:
+        Number of voters soft-deleted.
+    """
+    if not county:
+        return 0
+
+    existing_result = await session.execute(
+        select(Voter.voter_registration_number).where(
+            Voter.county == county,
+            Voter.present_in_latest_import.is_(True),
+        )
+    )
+    previous_reg_numbers = set(existing_result.scalars().all())
+    absent_list = list(previous_reg_numbers - imported_reg_numbers)
+
+    now = datetime.now(UTC)
+    for i in range(0, len(absent_list), _IN_CLAUSE_BATCH):
+        batch = absent_list[i : i + _IN_CLAUSE_BATCH]
+        await session.execute(
+            update(Voter)
+            .where(Voter.voter_registration_number.in_(batch))
+            .values(present_in_latest_import=False, soft_deleted_at=now)
+        )
+
+    return len(absent_list)
+
 
 async def create_import_job(
     session: AsyncSession,
@@ -77,14 +119,9 @@ async def process_voter_import(
     errors: list[dict] = []
     imported_reg_numbers: set[str] = set()
     updated_reg_numbers: set[str] = set()
+    import_county: str | None = None
 
     try:
-        # Get existing registration numbers for diff
-        existing_result = await session.execute(
-            select(Voter.voter_registration_number).where(Voter.present_in_latest_import.is_(True))
-        )
-        previous_reg_numbers = set(existing_result.scalars().all())
-
         chunk_offset = job.last_processed_offset or 0
         for chunk_idx, chunk in enumerate(parse_csv_chunks(file_path, batch_size)):
             if chunk_idx < chunk_offset:
@@ -93,6 +130,12 @@ async def process_voter_import(
             # Convert chunk to records, replacing NaN with None
             records = [{k: (None if pd.isna(v) else v) for k, v in row.items()} for row in chunk.to_dict("records")]
             total += len(records)
+
+            # Detect county from first batch for scoped soft-delete
+            if import_county is None and records:
+                import_county = records[0].get("county")
+                if import_county:
+                    logger.info(f"Detected county: {import_county}")
 
             valid_records, failed_records = validate_batch(records)
             failed += len(failed_records)
@@ -177,16 +220,8 @@ async def process_voter_import(
             job.last_processed_offset = chunk_idx + 1
             await session.commit()
 
-        # Soft-delete absent voters and update job status in one transaction
-        absent_reg_numbers = previous_reg_numbers - imported_reg_numbers
-        if absent_reg_numbers:
-            await session.execute(
-                update(Voter)
-                .where(Voter.voter_registration_number.in_(absent_reg_numbers))
-                .values(present_in_latest_import=False, soft_deleted_at=datetime.now(UTC))
-            )
-
-        soft_deleted = len(absent_reg_numbers)
+        # Soft-delete absent voters scoped to the imported county
+        soft_deleted = await _soft_delete_absent_voters(session, import_county, imported_reg_numbers)
 
         # Update job status and commit everything atomically
         job.status = "completed"

@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from voter_api.schemas.common import PaginationMeta
 from voter_api.schemas.county_metadata import CountyMetadataResponse
 from voter_api.schemas.precinct_metadata import PrecinctMetadataResponse
+from voter_api.schemas.voter_stats import VoterRegistrationStatsResponse
 
 
 class BoundaryTypesResponse(BaseModel):
@@ -38,6 +39,7 @@ class BoundaryDetailResponse(BoundarySummaryResponse):
     properties: dict | None = None
     county_metadata: CountyMetadataResponse | None = None
     precinct_metadata: PrecinctMetadataResponse | None = None
+    voter_stats: VoterRegistrationStatsResponse | None = None
 
 
 class PaginatedBoundaryResponse(BaseModel):

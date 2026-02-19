@@ -1,4 +1,4 @@
-"""Import CLI commands for voter files and boundary files."""
+"""Import CLI commands for voter files, boundary files, and voter history."""
 
 import asyncio
 import tempfile
@@ -7,7 +7,10 @@ from pathlib import Path
 import typer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from voter_api.cli.voter_history_cmd import import_voter_history
+
 import_app = typer.Typer()
+import_app.command("voter-history")(import_voter_history)
 
 
 @import_app.command("voters")

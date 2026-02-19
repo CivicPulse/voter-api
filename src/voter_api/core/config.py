@@ -128,6 +128,12 @@ class Settings(BaseSettings):
         description="Congress.gov API key for federal representative data",
     )
 
+    # Environment
+    environment: str = Field(
+        default="production",
+        description="Deployment environment name (e.g. production, dev, staging)",
+    )
+
     # API
     api_v1_prefix: str = Field(
         default="/api/v1",
