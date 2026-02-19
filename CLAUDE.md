@@ -174,7 +174,11 @@ External traffic reaches the app via a Cloudflare Tunnel (`hatchweb`), not direc
 
 - **Domains**: `voteapi-dev.hatchtech.dev` (dev), `voteapi.civpulse.org` (prod), `voteapi.kerryhatcher.com` (legacy) — all DNS managed by Cloudflare
 - **Tunnel route**: `HTTP://localhost:80` (Cloudflare terminates TLS at the edge)
-- Let's Encrypt certs are issued via ACME HTTP-01 through the tunnel. Piku also generates SSL listeners on port 443 — if another site on the server defines conflicting SSL protocol options (e.g. `ssl` vs `ssl http2`), piku's nginx config test will fail and delete the config. The hatchertechnology.com site was disabled to resolve this
+- **SSL disabled on piku**: Cloudflare handles TLS termination, so SSL was removed from piku entirely. Two changes were made on the server:
+  1. `acme.sh` renamed to `acme.sh.disabled` (`~/.acme.sh/acme.sh.disabled`) — prevents Let's Encrypt cert issuance
+  2. `piku.py` patched to remove SSL listen/cert directives from `NGINX_COMMON_FRAGMENT` — nginx configs only listen on port 80
+  - To re-enable SSL: `mv ~/.acme.sh/acme.sh.disabled ~/.acme.sh/acme.sh` and revert the piku.py patch, then redeploy all apps
+  - These patches will be lost if piku is updated — re-apply after any `piku update` (same as the uv sync patch)
 
 ### Server prerequisites (one-time setup)
 
