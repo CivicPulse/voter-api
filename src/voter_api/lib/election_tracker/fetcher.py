@@ -4,9 +4,9 @@ Uses httpx for async HTTP requests with timeout and error handling.
 Includes SSRF protection via domain allowlisting.
 """
 
-from urllib.parse import urlparse
 import ipaddress
 import socket
+from urllib.parse import urlparse
 
 import httpx
 from loguru import logger
@@ -27,12 +27,13 @@ def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
 
     This enforces:
         * Scheme must be http or https.
-        * Hostname must be in the allowed_domains list (if provided).
+        * ``allowed_domains`` is non-empty.
+        * Hostname must be in the allowed_domains list.
         * All resolved IP addresses must be public (no private/loopback/etc.).
 
     Args:
         url: The URL to validate.
-        allowed_domains: List of allowed domain names (lowercase).
+        allowed_domains: Non-empty list of allowed domain names (lowercase).
 
     Raises:
         FetchError: If the URL is not safe or the hostname is not allowed.
@@ -49,11 +50,14 @@ def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
         msg = "URL must include a hostname"
         raise FetchError(msg)
 
-    # If an allowlist is provided, enforce membership.
-    if allowed_domains:
-        if hostname not in allowed_domains:
-            msg = f"Domain '{hostname}' is not in the allowed domains list"
-            raise FetchError(msg)
+    # Require a non-empty allowlist to prevent unrestricted outbound requests.
+    if not allowed_domains:
+        msg = "allowed_domains must be a non-empty list"
+        raise FetchError(msg)
+
+    if hostname not in allowed_domains:
+        msg = f"Domain '{hostname}' is not in the allowed domains list"
+        raise FetchError(msg)
 
     # Resolve hostname and ensure it does not point to a private or loopback IP.
     try:
@@ -64,9 +68,7 @@ def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
 
     for family, _socktype, _proto, _canonname, sockaddr in addrinfo_list:
         ip_str = None
-        if family == socket.AF_INET:
-            ip_str = sockaddr[0]
-        elif family == socket.AF_INET6:
+        if family == socket.AF_INET or family == socket.AF_INET6:
             ip_str = sockaddr[0]
 
         if not ip_str:
@@ -88,15 +90,16 @@ def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
 async def fetch_election_results(
     url: str,
     timeout: float = 30.0,
-    allowed_domains: list[str] | None = None,
+    *,
+    allowed_domains: list[str],
 ) -> SoSFeed:
     """Fetch and parse election results from a SoS feed URL.
 
     Args:
         url: The SoS JSON feed URL.
         timeout: HTTP request timeout in seconds.
-        allowed_domains: List of allowed domain names for SSRF protection.
-            If None, domain validation is skipped.
+        allowed_domains: Non-empty list of allowed domain names for SSRF
+            protection. Required to ensure every request is validated.
 
     Returns:
         A validated SoSFeed instance.
@@ -104,8 +107,7 @@ async def fetch_election_results(
     Raises:
         FetchError: If the HTTP request fails or the response is invalid.
     """
-    if allowed_domains is not None:
-        validate_url_domain(url, allowed_domains)
+    validate_url_domain(url, allowed_domains)
 
     try:
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
