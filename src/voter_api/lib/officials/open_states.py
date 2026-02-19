@@ -84,7 +84,7 @@ class OpenStatesProvider(BaseOfficialsProvider):
             "jurisdiction": "Georgia",
             "org_classification": org_classification,
             "include": "offices",
-            "per_page": 100,
+            "per_page": 50,
         }
         return await self._fetch_people(params)
 
@@ -154,15 +154,17 @@ class OpenStatesProvider(BaseOfficialsProvider):
             result: dict[str, Any] = response.json()
             return result
         except httpx.HTTPStatusError as exc:
+            body = exc.response.text[:500]
             logger.error(
-                "Open States API error: {} {} for {}",
+                "Open States API error: {} {} for {} — {}",
                 exc.response.status_code,
                 exc.response.reason_phrase,
                 path,
+                body,
             )
             raise OfficialsProviderError(
                 self.provider_name,
-                f"HTTP {exc.response.status_code}: {exc.response.reason_phrase}",
+                f"HTTP {exc.response.status_code}: {exc.response.reason_phrase} — {body}",
                 status_code=exc.response.status_code,
             ) from exc
         except httpx.RequestError as exc:

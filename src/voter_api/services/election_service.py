@@ -5,7 +5,7 @@ Orchestrates election CRUD, result fetching, and data assembly.
 
 import asyncio
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from loguru import logger
@@ -15,7 +15,11 @@ from sqlalchemy.orm import selectinload
 
 from voter_api.core.config import get_settings
 from voter_api.lib.election_tracker import (
+    ElectionType,
+    FetchError,
     IngestionResult,
+    SoSFeed,
+    detect_election_type,
     fetch_election_results,
     ingest_election_results,
 )
@@ -28,8 +32,14 @@ from voter_api.schemas.election import (
     ElectionResultFeature,
     ElectionResultFeatureCollection,
     ElectionResultsResponse,
+    ElectionStatus,
     ElectionSummary,
     ElectionUpdateRequest,
+    FeedImportedElection,
+    FeedImportPreviewResponse,
+    FeedImportRequest,
+    FeedImportResponse,
+    FeedRaceSummary,
     PrecinctCandidateResult,
     PrecinctElectionResultFeature,
     PrecinctElectionResultFeatureCollection,
@@ -38,6 +48,10 @@ from voter_api.schemas.election import (
     RefreshResponse,
     VoteMethodResult,
 )
+
+
+class DuplicateElectionError(ValueError):
+    """Raised when attempting to create an election that already exists."""
 
 
 def _ballot_option_to_candidate(opt: dict) -> CandidateResult:
@@ -72,25 +86,41 @@ async def create_election(
         The created Election instance.
 
     Raises:
-        ValueError: If an election with the same name and date exists.
+        DuplicateElectionError: If a duplicate election exists (by name+date or feed+ballot_item).
     """
-    existing = await session.execute(
-        select(Election).where(
-            Election.name == request.name,
-            Election.election_date == request.election_date,
+    if request.ballot_item_id is not None:
+        existing = await session.execute(
+            select(Election).where(
+                Election.data_source_url == str(request.data_source_url),
+                Election.ballot_item_id == request.ballot_item_id,
+            )
         )
-    )
-    if existing.scalar_one_or_none() is not None:
-        msg = f"An election with name '{request.name}' and date '{request.election_date}' already exists."
-        raise ValueError(msg)
+        if existing.scalar_one_or_none() is not None:
+            msg = (
+                f"An election for ballot item '{request.ballot_item_id}' "
+                f"from '{request.data_source_url}' already exists."
+            )
+            raise DuplicateElectionError(msg)
+    else:
+        existing = await session.execute(
+            select(Election).where(
+                Election.name == request.name,
+                Election.election_date == request.election_date,
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            msg = f"An election with name '{request.name}' and date '{request.election_date}' already exists."
+            raise DuplicateElectionError(msg)
 
     election = Election(
         name=request.name,
         election_date=request.election_date,
         election_type=request.election_type,
         district=request.district,
+        status=request.status,
         data_source_url=str(request.data_source_url),
         refresh_interval_seconds=request.refresh_interval_seconds,
+        ballot_item_id=request.ballot_item_id,
     )
     session.add(election)
     await session.commit()
@@ -165,6 +195,7 @@ def build_detail_response(election: Election) -> ElectionDetailResponse:
         last_refreshed_at=election.last_refreshed_at,
         precincts_reporting=precincts_reporting,
         precincts_participating=precincts_participating,
+        ballot_item_id=election.ballot_item_id,
         data_source_url=election.data_source_url,
         refresh_interval_seconds=election.refresh_interval_seconds,
         created_at=election.created_at,
@@ -387,7 +418,7 @@ async def refresh_single_election(
         election.data_source_url,
         allowed_domains=settings.election_allowed_domain_list,
     )
-    ingestion = ingest_election_results(feed)
+    ingestion = ingest_election_results(feed, ballot_item_id=election.ballot_item_id)
     counties_updated = await _persist_ingestion_result(session, election.id, ingestion)
 
     now = datetime.now(UTC)
@@ -486,6 +517,7 @@ async def list_elections(
                 last_refreshed_at=election.last_refreshed_at,
                 precincts_reporting=precincts_reporting,
                 precincts_participating=precincts_participating,
+                ballot_item_id=election.ballot_item_id,
             )
         )
 
@@ -591,6 +623,7 @@ def _transpose_precinct_results(county_results_data: list[dict]) -> dict[str, di
     """
     precincts: dict[str, dict] = {}
     for opt in county_results_data:
+        # Defensive: parser now coerces nulls, but old JSONB data may still have them
         precinct_results = opt.get("precinctResults") or []
         for pr in precinct_results:
             pid = str(pr.get("id", "")).upper()
@@ -605,10 +638,11 @@ def _transpose_precinct_results(county_results_data: list[dict]) -> dict[str, di
                     "candidates": [],
                 }
 
+            # Defensive: parser now coerces nulls, but old JSONB data may still have them
             group_results = [
                 VoteMethodResult(
                     group_name=gr.get("groupName", ""),
-                    vote_count=gr.get("voteCount", 0),
+                    vote_count=gr.get("voteCount") or 0,
                 )
                 for gr in pr.get("groupResults", [])
             ]
@@ -619,7 +653,7 @@ def _transpose_precinct_results(county_results_data: list[dict]) -> dict[str, di
                     name=opt.get("name", ""),
                     political_party=opt.get("politicalParty", ""),
                     ballot_order=opt.get("ballotOrder", 1),
-                    vote_count=pr.get("voteCount", 0),
+                    vote_count=pr.get("voteCount") or 0,
                     reporting_status=pr.get("reportingStatus"),
                     group_results=group_results,
                 )
@@ -651,7 +685,7 @@ async def get_election_precinct_results_geojson(
 
     from voter_api.models.boundary import Boundary
     from voter_api.services.precinct_metadata_service import (
-        get_precinct_metadata_by_county_and_ids,
+        get_precinct_metadata_by_county_multi_strategy,
     )
 
     election = await get_election_by_id(session, election_id)
@@ -675,8 +709,9 @@ async def get_election_precinct_results_geojson(
 
         # Batch lookup precinct metadata for geometry
         precinct_ids = list(precinct_map.keys())
-        metadata_map = await get_precinct_metadata_by_county_and_ids(
-            session, county_row.county_name_normalized, precinct_ids
+        precinct_names = {pid: pdata["precinct_name"] for pid, pdata in precinct_map.items()}
+        metadata_map = await get_precinct_metadata_by_county_multi_strategy(
+            session, county_row.county_name_normalized, precinct_ids, precinct_names
         )
 
         # Batch fetch boundary geometries
@@ -763,6 +798,218 @@ async def refresh_all_active_elections(session: AsyncSession) -> int:
             logger.exception("Failed to refresh election {}", election.id)
 
     return refreshed
+
+
+async def preview_feed_import(
+    data_source_url: str,
+) -> FeedImportPreviewResponse:
+    """Fetch and analyze a feed to preview available races before import.
+
+    Args:
+        data_source_url: The SoS feed URL to preview.
+
+    Returns:
+        FeedImportPreviewResponse with race summaries.
+
+    Raises:
+        FetchError: If feed cannot be fetched or parsed.
+        ValueError: If feed contains an invalid election date.
+    """
+    settings = get_settings()
+    feed = await fetch_election_results(
+        data_source_url,
+        allowed_domains=settings.election_allowed_domain_list,
+    )
+
+    races = []
+    for ballot_item in feed.results.ballotItems:
+        races.append(
+            FeedRaceSummary(
+                ballot_item_id=ballot_item.id,
+                name=ballot_item.name,
+                candidate_count=len(ballot_item.ballotOptions),
+                statewide_precincts_participating=ballot_item.precinctsParticipating,
+                statewide_precincts_reporting=ballot_item.precinctsReporting,
+            )
+        )
+
+    election_date = _parse_feed_date(feed)
+
+    return FeedImportPreviewResponse(
+        data_source_url=data_source_url,
+        election_date=election_date,
+        election_name=feed.electionName,
+        detected_election_type=detect_election_type(feed.electionName),
+        races=races,
+    )
+
+
+def _parse_feed_date(feed: SoSFeed) -> date:
+    """Parse and validate the election date from a SoS feed.
+
+    Args:
+        feed: Parsed SoS feed data.
+
+    Returns:
+        The parsed election date.
+
+    Raises:
+        ValueError: If feed contains an invalid election date.
+    """
+    try:
+        return date.fromisoformat(feed.electionDate)
+    except ValueError as e:
+        msg = f"Feed contains invalid election date '{feed.electionDate}': {e}"
+        raise ValueError(msg) from e
+
+
+def _resolve_feed_metadata(
+    feed: SoSFeed,
+    request_election_type: ElectionType | None,
+) -> tuple[date, ElectionType, ElectionStatus]:
+    """Parse feed date and resolve election type and status.
+
+    Returns:
+        Tuple of (election_date, election_type, status).
+
+    Raises:
+        ValueError: If feed contains an invalid election date.
+    """
+    election_date = _parse_feed_date(feed)
+
+    if request_election_type is not None:
+        election_type = request_election_type
+    else:
+        election_type = detect_election_type(feed.electionName)
+        logger.info(
+            "Auto-detected election type '{}' from feed name '{}'",
+            election_type,
+            feed.electionName,
+        )
+
+    status: ElectionStatus = "finalized" if datetime.now(UTC).date() - election_date > timedelta(days=14) else "active"
+    if status == "finalized":
+        logger.info(
+            "Auto-finalizing import: election date {} is more than 14 days ago",
+            election_date,
+        )
+
+    return election_date, election_type, status
+
+
+async def import_feed(
+    session: AsyncSession,
+    request: FeedImportRequest,
+) -> FeedImportResponse:
+    """Import all races from an SoS feed as separate elections.
+
+    Creates one Election record per ballot item in the feed. Optionally
+    performs an initial refresh for each election.
+
+    Args:
+        session: Async database session.
+        request: Feed import configuration.
+
+    Returns:
+        FeedImportResponse with created election details.
+
+    Raises:
+        FetchError: If feed cannot be fetched or parsed.
+        ValueError: If feed contains no races.
+    """
+    settings = get_settings()
+    feed = await fetch_election_results(
+        str(request.data_source_url),
+        allowed_domains=settings.election_allowed_domain_list,
+    )
+
+    if not feed.results.ballotItems:
+        msg = "Feed contains no ballot items (races)."
+        raise ValueError(msg)
+
+    election_date, election_type, status = _resolve_feed_metadata(feed, request.election_type)
+    created_elections: list[FeedImportedElection] = []
+    skipped = 0
+
+    for ballot_item in feed.results.ballotItems:
+        election_name = f"{feed.electionName} - {ballot_item.name}"
+        district = ballot_item.name
+
+        create_request = ElectionCreateRequest(
+            name=election_name,
+            election_date=election_date,
+            election_type=election_type,
+            district=district,
+            data_source_url=request.data_source_url,
+            refresh_interval_seconds=request.refresh_interval_seconds,
+            ballot_item_id=ballot_item.id,
+            status=status,
+        )
+
+        try:
+            election = await create_election(session, create_request)
+            logger.info(
+                "Created election {} for ballot item {} ({})",
+                election.id,
+                ballot_item.id,
+                ballot_item.name,
+            )
+        except DuplicateElectionError as e:
+            logger.warning("Skipping ballot item {}: {}", ballot_item.id, e)
+            skipped += 1
+            continue
+
+        refreshed = False
+        precincts_reporting = None
+        precincts_participating = None
+
+        if request.auto_refresh and status == "active":
+            try:
+                refresh_result = await refresh_single_election(session, election.id)
+                refreshed = True
+                precincts_reporting = refresh_result.precincts_reporting
+                precincts_participating = refresh_result.precincts_participating
+            except (FetchError, ValueError) as e:
+                logger.warning(
+                    "Initial refresh failed for election {} ({}): {}",
+                    election.id,
+                    ballot_item.id,
+                    e,
+                )
+        elif request.auto_refresh and status == "finalized":
+            try:
+                ingestion = ingest_election_results(feed, ballot_item_id=ballot_item.id)
+                await _persist_ingestion_result(session, election.id, ingestion)
+                election.last_refreshed_at = datetime.now(UTC)
+                await session.commit()
+                refreshed = True
+                precincts_reporting = ingestion.statewide.precincts_reporting
+                precincts_participating = ingestion.statewide.precincts_participating
+            except Exception as e:
+                logger.warning(
+                    "Result ingestion failed for finalized election {} ({}): {}",
+                    election.id,
+                    ballot_item.id,
+                    e,
+                )
+
+        created_elections.append(
+            FeedImportedElection(
+                election_id=election.id,
+                ballot_item_id=ballot_item.id,
+                name=election_name,
+                election_date=election_date,
+                status=status,
+                refreshed=refreshed,
+                precincts_reporting=precincts_reporting,
+                precincts_participating=precincts_participating,
+            )
+        )
+
+    return FeedImportResponse(
+        elections_skipped=skipped,
+        elections=created_elections,
+    )
 
 
 async def election_refresh_loop(

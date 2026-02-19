@@ -218,3 +218,6 @@ __marimo__/
 docs/notes.md
 logs/status_line.json
 docs/voter_data_sample_from_state.csv
+
+# SOS feed research samples
+data/sos-feeds-research/

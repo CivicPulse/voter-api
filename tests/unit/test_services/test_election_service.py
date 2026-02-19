@@ -25,6 +25,7 @@ from voter_api.schemas.election import (
     VoteMethodResult,
 )
 from voter_api.services.election_service import (
+    DuplicateElectionError,
     _ballot_option_to_candidate,
     _persist_ingestion_result,
     _transpose_precinct_results,
@@ -55,6 +56,7 @@ def _mock_election(**overrides: object) -> MagicMock:
     election.status = "active"
     election.data_source_url = "https://results.enr.clarityelections.com/feed.json"
     election.refresh_interval_seconds = 120
+    election.ballot_item_id = None
     election.last_refreshed_at = None
     election.created_at = datetime(2026, 2, 1, tzinfo=UTC)
     election.updated_at = datetime(2026, 2, 1, tzinfo=UTC)
@@ -237,8 +239,64 @@ class TestCreateElection:
             data_source_url="https://results.enr.clarityelections.com/feed.json",
         )
 
-        with pytest.raises(ValueError, match="already exists"):
+        with pytest.raises(DuplicateElectionError, match="already exists"):
             await create_election(session, request)
+
+    @pytest.mark.asyncio
+    async def test_creates_election_with_ballot_item_id(self):
+        """create_election sets ballot_item_id when provided."""
+        session = _mock_session_with_scalar(None)
+
+        request = ElectionCreateRequest(
+            name="Test Election - PSC District 2",
+            election_date=date(2026, 2, 17),
+            election_type="special",
+            district="PSC - District 2",
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            ballot_item_id="S10",
+        )
+
+        await create_election(session, request)
+        session.add.assert_called_once()
+        added_election = session.add.call_args[0][0]
+        assert added_election.ballot_item_id == "S10"
+
+    @pytest.mark.asyncio
+    async def test_duplicate_ballot_item_id_raises(self):
+        """Duplicate detection uses data_source_url + ballot_item_id when ballot_item_id set."""
+        existing = _mock_election(ballot_item_id="S10")
+        session = _mock_session_with_scalar(existing)
+
+        request = ElectionCreateRequest(
+            name="Test Election - PSC District 2",
+            election_date=date(2026, 2, 17),
+            election_type="special",
+            district="PSC - District 2",
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            ballot_item_id="S10",
+        )
+
+        with pytest.raises(DuplicateElectionError, match="ballot item 'S10'"):
+            await create_election(session, request)
+
+    @pytest.mark.asyncio
+    async def test_creates_election_with_explicit_status(self):
+        """create_election passes status to the Election constructor."""
+        session = _mock_session_with_scalar(None)
+
+        request = ElectionCreateRequest(
+            name="Old Election",
+            election_date=date(2025, 1, 1),
+            election_type="special",
+            district="State Senate - District 18",
+            data_source_url="https://results.sos.ga.gov/feed.json",
+            status="finalized",
+        )
+
+        await create_election(session, request)
+        session.add.assert_called_once()
+        added_election = session.add.call_args[0][0]
+        assert added_election.status == "finalized"
 
 
 # --- Tests for get_election_by_id ---
@@ -639,6 +697,50 @@ class TestRefreshSingleElection:
         assert result.counties_updated == 1
         session.commit.assert_awaited_once()
 
+    @pytest.mark.asyncio
+    async def test_passes_ballot_item_id_to_ingester(self):
+        """refresh_single_election passes ballot_item_id to ingest_election_results."""
+        election = _mock_election(ballot_item_id="S10")
+        election_id = election.id
+
+        session = AsyncMock()
+        election_query = MagicMock()
+        election_query.scalar_one_or_none.return_value = election
+
+        statewide_mock = MagicMock()
+        statewide_mock.scalar_one_or_none.return_value = None
+        session.execute = AsyncMock(side_effect=[election_query, statewide_mock])
+
+        mock_ingestion = IngestionResult(
+            statewide=StatewideResultData(
+                precincts_participating=100,
+                precincts_reporting=95,
+                results_data=[],
+                source_created_at=None,
+            ),
+            counties=[],
+        )
+
+        with (
+            patch(
+                "voter_api.services.election_service.fetch_election_results",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "voter_api.services.election_service.get_settings",
+                return_value=_mock_settings(),
+            ),
+            patch(
+                "voter_api.services.election_service.ingest_election_results",
+                return_value=mock_ingestion,
+            ) as mock_ingest,
+        ):
+            result = await refresh_single_election(session, election_id)
+
+        mock_ingest.assert_called_once()
+        assert mock_ingest.call_args[1]["ballot_item_id"] == "S10"
+        assert isinstance(result, RefreshResponse)
+
 
 # --- Tests for list_elections ---
 
@@ -977,6 +1079,32 @@ class TestTransposePrecinctResults:
         cand = result["P01"]["candidates"][0]
         assert cand.ballot_order == 3
 
+    def test_null_vote_count_coerced_to_zero(self):
+        """NULL voteCount in precinct or group results is coerced to 0 (GH-27)."""
+        data = [
+            {
+                "id": "1",
+                "name": "Candidate A",
+                "politicalParty": "Rep",
+                "precinctResults": [
+                    {
+                        "id": "P01",
+                        "name": "Precinct 1",
+                        "voteCount": None,
+                        "groupResults": [
+                            {"groupName": "Election Day", "voteCount": None},
+                            {"groupName": "Advance Voting", "voteCount": 10},
+                        ],
+                    },
+                ],
+            },
+        ]
+        result = _transpose_precinct_results(data)
+        cand = result["P01"]["candidates"][0]
+        assert cand.vote_count == 0
+        assert cand.group_results[0].vote_count == 0
+        assert cand.group_results[1].vote_count == 10
+
 
 # --- Tests for get_election_precinct_results_geojson ---
 
@@ -1025,6 +1153,9 @@ class TestGetElectionPrecinctResultsGeoJSON:
         mock_meta = MagicMock()
         mock_meta.boundary_id = uuid.uuid4()
         mock_meta.precinct_id = "ANNX"
+        mock_meta.precinct_name = "Annex"
+        mock_meta.sos_id = None
+        mock_meta.county_name = "Houston"
 
         mock_boundary_row = MagicMock()
         mock_boundary_row.id = mock_meta.boundary_id
@@ -1148,9 +1279,9 @@ class TestGetElectionPrecinctResultsGeoJSON:
         session.execute = AsyncMock(side_effect=[election_query, county_query, meta_query])
 
         with patch(
-            "voter_api.services.precinct_metadata_service.get_precinct_metadata_by_county_and_ids",
+            "voter_api.services.precinct_metadata_service.get_precinct_metadata_by_county_multi_strategy",
             new_callable=AsyncMock,
             return_value={},
         ) as mock_lookup:
             await get_election_precinct_results_geojson(session, election.id)
-            mock_lookup.assert_awaited_once_with(session, "Houston", ["P01"])
+            mock_lookup.assert_awaited_once_with(session, "Houston", ["P01"], {"P01": "Precinct 1"})
