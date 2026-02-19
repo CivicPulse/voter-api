@@ -1,0 +1,125 @@
+# Deploy a preview environment for each pull request.
+# Each PR gets its own piku app, database schema, and public URL.
+
+name: Preview Deploy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    environment:
+      name: preview
+      url: https://pr-${{ github.event.pull_request.number }}.${{ vars.PREVIEW_DOMAIN }}
+
+    env:
+      APP_NAME: voter-api-pr-${{ github.event.pull_request.number }}
+      PR_NUM: ${{ github.event.pull_request.number }}
+      PIKU: piku@${{ vars.PIKU_HOST }}
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Install Postgres client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Create preview database schema
+        env:
+          DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
+        run: |
+          echo "Creating schema: pr_${PR_NUM}"
+          psql "${DATABASE_URL}" -c "CREATE SCHEMA IF NOT EXISTS pr_${PR_NUM};"
+
+      - name: Configure SSH for piku
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PIKU_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ vars.PIKU_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy app to piku
+        env:
+          PREVIEW_DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
+          JWT_SECRET_KEY: ${{ secrets.PREVIEW_JWT_SECRET_KEY }}
+        run: |
+          # Replace postgresql:// with postgresql+asyncpg:// for the app
+          ASYNC_DB_URL="${PREVIEW_DATABASE_URL/postgresql:\/\//postgresql+asyncpg:\/\/}"
+
+          git remote add piku "${PIKU}:${APP_NAME}"
+
+          # First push creates the app in piku. On a brand-new app the
+          # release worker (Alembic) will fail because env vars aren't
+          # set yet — that's expected and harmless.
+          git push piku HEAD:refs/heads/main --force || true
+
+          # Now the app exists, so config:set works.
+          ssh ${PIKU} config:set ${APP_NAME} \
+            DATABASE_URL="${ASYNC_DB_URL}" \
+            DATABASE_SCHEMA="pr_${PR_NUM}" \
+            JWT_SECRET_KEY="${JWT_SECRET_KEY}" \
+            NGINX_SERVER_NAME="pr-${PR_NUM}.${{ vars.PREVIEW_DOMAIN }}" \
+            ELECTION_REFRESH_ENABLED=false \
+            CORS_ORIGIN_REGEX=".*" \
+            BIND_ADDRESS=0.0.0.0
+
+          # Re-deploy now that config is in place so migrations run
+          # against the correct schema. Capture output to detect silent
+          # nginx failures (piku deletes broken configs and continues).
+          DEPLOY_OUTPUT=$(git push piku HEAD:refs/heads/main --force 2>&1)
+          echo "$DEPLOY_OUTPUT"
+
+          if echo "$DEPLOY_OUTPUT" | grep -q "removing broken nginx config"; then
+            echo "::error::nginx config was rejected — check server nginx configs for conflicts"
+            exit 1
+          fi
+
+      - name: Smoke test
+        run: |
+          URL="https://pr-${PR_NUM}.${{ vars.PREVIEW_DOMAIN }}/api/v1/health"
+          echo "Waiting for ${URL}..."
+          for i in $(seq 1 10); do
+            if curl -sf --max-time 10 "${URL}"; then
+              echo ""
+              echo "Preview is up!"
+              exit 0
+            fi
+            echo "Attempt ${i}/10 failed, retrying in 15s..."
+            sleep 15
+          done
+          echo "Preview did not respond after 10 attempts"
+          exit 1
+
+      - name: Comment preview URL on PR
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-tag: preview-deploy
+          body: |
+            ### Preview Environment
+
+            | Resource | URL |
+            |----------|-----|
+            | **API** | https://pr-${{ github.event.pull_request.number }}.${{ vars.PREVIEW_DOMAIN }} |
+            | **API Docs** | https://pr-${{ github.event.pull_request.number }}.${{ vars.PREVIEW_DOMAIN }}/docs |
+
+            _Last deployed: `${{ github.sha }}` at ${{ github.event.pull_request.updated_at }}_

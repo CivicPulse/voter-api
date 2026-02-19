@@ -14,6 +14,7 @@ from voter_api.core.config import Settings, get_settings
 from voter_api.core.dependencies import get_async_session, require_role
 from voter_api.lib.publisher.manifest import ManifestCache, get_redirect_url
 from voter_api.lib.publisher.storage import fetch_manifest
+from voter_api.models.boundary import Boundary
 from voter_api.schemas.boundary import (
     BoundaryDetailResponse,
     BoundaryFeatureCollection,
@@ -23,6 +24,7 @@ from voter_api.schemas.boundary import (
     PaginatedBoundaryResponse,
 )
 from voter_api.schemas.common import PaginationMeta
+from voter_api.schemas.county_metadata import CountyMetadataResponse
 from voter_api.schemas.publish import PublishedDatasetInfo, PublishStatusResponse
 from voter_api.services.boundary_service import (
     find_containing_boundaries,
@@ -35,6 +37,7 @@ from voter_api.services.precinct_metadata_service import (
     get_precinct_metadata_batch,
     get_precinct_metadata_by_boundary,
 )
+from voter_api.services.voter_stats_service import get_voter_stats_for_boundary
 
 # Module-level manifest cache singleton
 _manifest_cache: ManifestCache | None = None
@@ -89,6 +92,30 @@ async def _try_redirect(
 
     cached = cache.get_data_unchecked() if cache.is_stale() else cache.get()
     return get_redirect_url(cached, boundary_type, county, source)
+
+
+async def _resolve_county_name(
+    session: AsyncSession,
+    boundary: Boundary,
+    county_metadata: CountyMetadataResponse | None,
+) -> str | None:
+    """Resolve the county name for voter stats on county-type boundaries.
+
+    For "county" boundaries, the boundary_identifier is a FIPS GEOID, but
+    voter records use a county name. This resolves the name from county_metadata
+    (already fetched) or fetches it if needed.
+
+    Returns:
+        County name string for county boundaries, None otherwise.
+    """
+    if boundary.boundary_type != "county":
+        return None
+
+    if county_metadata:
+        return county_metadata.name
+
+    meta = await get_county_metadata_by_geoid(session, boundary.boundary_identifier)
+    return meta.name if meta else None
 
 
 boundaries_router = APIRouter(prefix="/boundaries", tags=["boundaries"])
@@ -330,5 +357,18 @@ async def get_boundary_detail(
             from voter_api.schemas.precinct_metadata import PrecinctMetadataResponse
 
             response_data["precinct_metadata"] = PrecinctMetadataResponse.model_validate(precinct_meta)
+
+    # Include voter registration stats for boundary types with voter field mappings
+    county_meta_resp: CountyMetadataResponse | None = response_data.get("county_metadata")  # type: ignore[assignment]
+    county_name_override = await _resolve_county_name(session, boundary, county_meta_resp)
+    voter_stats = await get_voter_stats_for_boundary(
+        session,
+        boundary.boundary_type,
+        boundary.boundary_identifier,
+        county=boundary.county,
+        county_name_override=county_name_override,
+    )
+    if voter_stats:
+        response_data["voter_stats"] = voter_stats
 
     return BoundaryDetailResponse(**response_data)

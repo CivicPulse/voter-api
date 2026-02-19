@@ -38,6 +38,7 @@ class Election(Base, UUIDMixin, TimestampMixin):
     data_source_url: Mapped[str] = mapped_column(Text, nullable=False)
     ballot_item_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
+    creation_method: Mapped[str] = mapped_column(String(20), nullable=False, server_default="manual")
     last_refreshed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     refresh_interval_seconds: Mapped[int] = mapped_column(Integer, nullable=False, server_default="120")
 
@@ -56,6 +57,7 @@ class Election(Base, UUIDMixin, TimestampMixin):
         Index("idx_elections_status", "status"),
         Index("idx_elections_election_date", "election_date"),
         Index("idx_elections_ballot_item_id", "ballot_item_id"),
+        Index("idx_elections_creation_method", "creation_method"),
         Index(
             "uq_election_feed_ballot_item",
             "data_source_url",

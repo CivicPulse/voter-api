@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from voter_api import __version__
 from voter_api.core.config import get_settings
 from voter_api.core.database import dispose_engine, init_engine
 from voter_api.core.logging import setup_logging
@@ -22,7 +23,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Manage application lifecycle: init engine on startup, dispose on shutdown."""
     settings = get_settings()
     setup_logging(settings.log_level)
-    init_engine(settings.database_url, echo=False)
+    init_engine(settings.database_url, echo=False, schema=settings.database_schema)
 
     # Start election auto-refresh background task
     refresh_task = None
@@ -53,7 +54,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Voter API",
         description="Georgia Secretary of State voter data management with geospatial capabilities",
-        version="0.1.0",
+        version=__version__,
         lifespan=lifespan,
     )
 

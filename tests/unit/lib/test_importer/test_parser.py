@@ -83,6 +83,23 @@ class TestParseCsvChunks:
         chunks = list(parse_csv_chunks(f, batch_size=3))
         assert len(chunks) == 4  # 10 / 3 = 3.33 → 4 chunks
 
+    def test_alternate_header_names(self, tmp_path: Path) -> None:
+        """Parse CSV with alternate GA SoS header variants."""
+        f = tmp_path / "voters.csv"
+        f.write_text(
+            "County,Voter Registration Number,Status,Last Name,First Name,"
+            "Residence Apt Unit Number,Date of Last Contact,Mailing Apt Unit Number\n"
+            "Fulton,12345,ACTIVE,SMITH,JOHN,APT 1,1/1/2025,APT 2\n"
+        )
+        chunks = list(parse_csv_chunks(f, batch_size=10))
+        assert len(chunks) == 1
+        df = chunks[0]
+        assert "voter_registration_number" in df.columns
+        assert "residence_apt_unit_number" in df.columns
+        assert "date_of_last_contact" in df.columns
+        assert "mailing_apt_unit_number" in df.columns
+        assert df.iloc[0]["voter_registration_number"] == "12345"
+
     def test_empty_strings_become_none(self, tmp_path: Path) -> None:
         """Empty string values are converted to None."""
         f = tmp_path / "voters.csv"

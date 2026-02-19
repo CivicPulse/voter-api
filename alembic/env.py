@@ -6,7 +6,7 @@ from logging.config import fileConfig
 # Register GeoAlchemy2 types for spatial column support in autogenerate
 import geoalchemy2  # noqa: F401
 from alembic import context
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from voter_api.core.config import get_settings
@@ -45,16 +45,26 @@ def get_url() -> str:
     return settings.database_url
 
 
+def _get_schema() -> str | None:
+    """Get database schema from application settings."""
+    settings = get_settings()
+    return settings.database_schema
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
     url = get_url()
-    context.configure(
-        url=url,
-        target_metadata=target_metadata,
-        literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
-        compare_type=True,
-    )
+    schema = _get_schema()
+    configure_kwargs: dict[str, object] = {
+        "url": url,
+        "target_metadata": target_metadata,
+        "literal_binds": True,
+        "dialect_opts": {"paramstyle": "named"},
+        "compare_type": True,
+    }
+    if schema is not None:
+        configure_kwargs["version_table_schema"] = schema
+    context.configure(**configure_kwargs)
 
     with context.begin_transaction():
         context.run_migrations()
@@ -62,11 +72,16 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection) -> None:  # type: ignore[no-untyped-def]
     """Run migrations synchronously within a connection."""
-    context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-        compare_type=True,
-    )
+    schema = _get_schema()
+    configure_kwargs: dict[str, object] = {
+        "connection": connection,
+        "target_metadata": target_metadata,
+        "compare_type": True,
+    }
+    if schema is not None:
+        connection.execute(text(f'SET search_path TO "{schema}", public'))
+        configure_kwargs["version_table_schema"] = schema
+    context.configure(**configure_kwargs)
 
     with context.begin_transaction():
         context.run_migrations()
@@ -83,7 +98,11 @@ async def run_async_migrations() -> None:
         poolclass=pool.NullPool,
     )
 
+    schema = _get_schema()
     async with connectable.connect() as connection:
+        if schema is not None:
+            await connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+            await connection.commit()
         await connection.run_sync(do_run_migrations)
 
     await connectable.dispose()

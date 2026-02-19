@@ -20,6 +20,7 @@ from voter_api.services.geocoding_service import (
     get_voter_locations,
     set_primary_location,
 )
+from voter_api.services.voter_history_service import get_participation_summary
 from voter_api.services.voter_service import (
     build_voter_detail_dict,
     get_voter_detail,
@@ -113,6 +114,8 @@ async def get_voter(
     if voter is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voter not found")
     detail_dict = build_voter_detail_dict(voter)
+    summary = await get_participation_summary(session, voter.voter_registration_number)
+    detail_dict["participation_summary"] = summary
     return VoterDetailResponse(**detail_dict)
 
 

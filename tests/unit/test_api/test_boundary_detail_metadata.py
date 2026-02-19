@@ -13,6 +13,17 @@ from voter_api.api.v1.boundaries import boundaries_router
 from voter_api.core.dependencies import get_async_session
 
 
+@pytest.fixture(autouse=True)
+def _mock_voter_stats():
+    """Disable voter stats enrichment for metadata-focused tests."""
+    with patch(
+        "voter_api.api.v1.boundaries.get_voter_stats_for_boundary",
+        new_callable=AsyncMock,
+        return_value=None,
+    ):
+        yield
+
+
 @pytest.fixture
 def app() -> FastAPI:
     """Create a minimal FastAPI app with the boundaries router and mocked DB session."""
@@ -185,7 +196,8 @@ class TestBoundaryDetailCountyMetadata:
             await client.get(f"/api/v1/boundaries/{mock_boundary.id}")
 
         # Verify it was called with the boundary_identifier as GEOID
-        assert mock_get_meta.await_count == 1
+        # Called twice: once for county_metadata enrichment, once for voter stats county name resolution
+        assert mock_get_meta.await_count == 2
         call_args, _ = mock_get_meta.await_args_list[0]
         assert call_args[1] == "13067"
 

@@ -123,23 +123,42 @@ tests/
 
 ## Deployment (Piku)
 
-**Production URL**: `https://voteapi.civpulse.org`
+**Dev URL**: `https://voteapi-dev.hatchtech.dev` (piku app: `voter-api-dev`)
+**Production URL**: `https://voteapi.civpulse.org` (piku app: `voter-api`)
 **Legacy URL**: `https://voteapi.kerryhatcher.com` (still functional via CORS regex)
 
-The app deploys to a piku server (`hatchweb`) via `git push piku main`. Two git remotes are configured:
+Both environments deploy to the same piku server (`hatchweb`). Three git remotes are configured:
 
 - `origin` — GitHub (`CivicPulse/voter-api`)
-- `piku` — `piku@hatchweb.tailb56d83.ts.net:voter-api`
+- `piku` — dev (`piku@hatchweb.tailb56d83.ts.net:voter-api-dev`)
+- `piku-prod` — prod (`piku@hatchweb.tailb56d83.ts.net:voter-api`)
+
+Deploy commands:
+```bash
+git push piku main          # deploy to dev
+git push piku-prod main     # deploy to prod
+```
 
 ### Configuration files
 
 - **`Procfile`** — defines `release` (Alembic migrations) and `web` (uvicorn ASGI) workers
-- **`ENV`** — piku/nginx settings and non-secret environment variables; committed to the repo
+- **`ENV`** — piku/nginx settings and non-secret environment variables; committed to the repo. Contains **prod defaults** (hostname, logging, etc.). Dev overrides (hostname, log level) and secrets are set via `piku config:set` on the server (see Secrets below).
 
 ### Secrets
 
-Set secrets on the server via `piku config:set` — never commit them in `ENV`:
+Set secrets on the server via `piku config:set` — never commit them in `ENV`.
 
+**Dev app** (secrets + ENV overrides for dev hostname and logging):
+```bash
+ssh piku@hatchweb.tailb56d83.ts.net -- config:set voter-api-dev \
+  DATABASE_URL=postgresql+asyncpg://... \
+  JWT_SECRET_KEY=... \
+  UV_PYTHON_DOWNLOADS=auto \
+  NGINX_SERVER_NAME=voteapi-dev.hatchtech.dev \
+  LOG_LEVEL=DEBUG
+```
+
+**Prod app** (secrets only — ENV file already has prod defaults):
 ```bash
 ssh piku@hatchweb.tailb56d83.ts.net -- config:set voter-api \
   DATABASE_URL=postgresql+asyncpg://... \
@@ -147,13 +166,19 @@ ssh piku@hatchweb.tailb56d83.ts.net -- config:set voter-api \
   UV_PYTHON_DOWNLOADS=auto
 ```
 
+`config:set` values override anything in the `ENV` file.
+
 ### Ingress: Cloudflare Tunnel
 
 External traffic reaches the app via a Cloudflare Tunnel (`hatchweb`), not direct port exposure:
 
-- **Domains**: `voteapi.civpulse.org` (primary), `voteapi.kerryhatcher.com` (legacy) — both DNS managed by Cloudflare
+- **Domains**: `voteapi-dev.hatchtech.dev` (dev), `voteapi.civpulse.org` (prod), `voteapi.kerryhatcher.com` (legacy) — all DNS managed by Cloudflare
 - **Tunnel route**: `HTTP://localhost:80` (Cloudflare terminates TLS at the edge)
-- Let's Encrypt certs are issued via ACME HTTP-01 through the tunnel. Piku also generates SSL listeners on port 443 — if another site on the server defines conflicting SSL protocol options (e.g. `ssl` vs `ssl http2`), piku's nginx config test will fail and delete the config. The hatchertechnology.com site was disabled to resolve this
+- **SSL disabled on piku**: Cloudflare handles TLS termination, so SSL was removed from piku entirely. Two changes were made on the server:
+  1. `acme.sh` renamed to `acme.sh.disabled` (`~/.acme.sh/acme.sh.disabled`) — prevents Let's Encrypt cert issuance
+  2. `piku.py` patched to remove SSL listen/cert directives from `NGINX_COMMON_FRAGMENT` — nginx configs only listen on port 80
+  - To re-enable SSL: `mv ~/.acme.sh/acme.sh.disabled ~/.acme.sh/acme.sh` and revert the piku.py patch, then redeploy all apps
+  - These patches will be lost if piku is updated — re-apply after any `piku update` (same as the uv sync patch)
 
 ### Server prerequisites (one-time setup)
 
@@ -184,41 +209,42 @@ These were required on the piku server beyond the standard `piku setup`:
 
 ### Deploy flow
 
-On `git push piku main`, piku runs:
-1. `uv sync` — installs dependencies into `/home/piku/.piku/envs/voter-api`
+On `git push piku main` (dev) or `git push piku-prod main` (prod), piku runs:
+1. `uv sync` — installs dependencies into `/home/piku/.piku/envs/<app>`
 2. Writes new nginx config (with a fresh random port) and uwsgi worker config
 3. `release` worker — runs `voter-api db upgrade` (Alembic migrations)
 4. `web` worker — spawns `uvicorn --factory voter_api.main:create_app` via uwsgi `attach-daemon`
 
 Piku picks a new random port on each deploy. The `piku-uwsgi` emperor auto-restarts the vassal, and the `piku-nginx.path` systemd path watcher detects config changes and auto-reloads nginx. No manual intervention needed after `git push`.
 
+### Verification
+
+```bash
+uv run voter-api deploy-check --url https://voteapi-dev.hatchtech.dev   # dev
+uv run voter-api deploy-check                                            # prod (default URL)
+```
+
 ### Troubleshooting
 
-- **502 Bad Gateway after deploy**: Check `systemctl status piku-nginx.path` (should be `active (waiting)`) and `systemctl status piku-uwsgi` (should be `active (running)`). If either is down, restart it. Also check if uvicorn is running: `ssh piku@... -- ps voter-api`
+- **502 Bad Gateway after deploy**: Check `systemctl status piku-nginx.path` (should be `active (waiting)`) and `systemctl status piku-uwsgi` (should be `active (running)`). If either is down, restart it. Also check if uvicorn is running: `ssh piku@... -- ps <app>`
 - **"Generic app" on deploy**: `uv` is not in PATH on the server
 - **"No interpreter found for Python 3.13"**: The piku.py patch was lost (re-apply after `piku update`)
-- **Stale venv errors**: Remove and redeploy: `ssh piku@... -- run voter-api -- rm -rf /home/piku/.piku/envs/voter-api` then `ssh piku@... -- deploy voter-api`
-- **View logs**: `ssh piku@hatchweb.tailb56d83.ts.net -- logs voter-api` or check `/home/piku/.piku/logs/voter-api/web.1.log` on the server
+- **Stale venv errors**: Remove and redeploy: `ssh piku@... -- run <app> -- rm -rf /home/piku/.piku/envs/<app>` then `ssh piku@... -- deploy <app>`
+- **View dev logs**: `ssh piku@hatchweb.tailb56d83.ts.net -- logs voter-api-dev`
+- **View prod logs**: `ssh piku@hatchweb.tailb56d83.ts.net -- logs voter-api`
 
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes
+- 006-voter-history: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, Pandas, Typer, Loguru, Alembic
 - 005-elected-officials: Added `ElectedOfficial` and `ElectedOfficialSource` models (migration 015), 9 API endpoints under `/api/v1/elected-officials`, admin approval workflow (auto/approved/manual), multi-source data provider architecture
 - 004-election-tracking: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, httpx, Alembic, Typer, Loguru
-- 004-election-tracking: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 003-address-geocoding-endpoint: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, httpx, Alembic
 
 ### 005-elected-officials
 
 **Elected Officials API** — Manages canonical elected official records with multi-source data provider support. Two new tables (`elected_officials`, `elected_official_sources`) added in migration 015. Officials are linked to districts via soft join on `(boundary_type, district_identifier)`. Source records from external providers (Open States, Google Civic, etc.) are cached with full provenance. Admin approval workflow supports three states: `auto` (unreviewed), `approved` (admin-verified), `manual` (admin-entered). Nine REST endpoints cover listing, district lookup, source comparison, CRUD, and approval. JSONB `external_ids` column enables flexible cross-referencing across provider ID schemes.
 
 Key files:
-- `src/voter_api/models/elected_official.py` — `ElectedOfficial`, `ElectedOfficialSource` models, `OfficialStatus` enum
-- `src/voter_api/schemas/elected_official.py` — 7 Pydantic v2 schemas
-- `src/voter_api/api/v1/elected_officials.py` — 9 route handlers
-- `src/voter_api/services/elected_official_service.py` — service layer
-- `alembic/versions/015_elected_officials.py` — migration
-- `specs/005-elected-officials/` — OpenAPI contract and data model docs
 
 ### 002-static-dataset-publish
 
@@ -228,5 +254,5 @@ Key files:
 
 
 ## Active Technologies
-- Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, httpx, Alembic, Typer, Loguru (005-elected-officials)
-- PostgreSQL 15+ / PostGIS 3.x (existing `boundaries`, `county_metadata`, `elections`, `election_results`, `election_county_results` tables; new `elected_officials`, `elected_official_sources` tables) (005-elected-officials)
+- Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, Pandas, Typer, Loguru, Alembic (006-voter-history)
+- PostgreSQL 15+ / PostGIS 3.x (existing `voters`, `elections`, `import_jobs` tables; new `voter_history` table) (006-voter-history)
