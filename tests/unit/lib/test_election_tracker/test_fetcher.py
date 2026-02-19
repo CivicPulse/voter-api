@@ -1,5 +1,6 @@
 """Unit tests for SoS feed fetcher."""
 
+import socket
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -174,7 +175,14 @@ class TestFetchElectionResults:
             json=feed_json,
             request=httpx.Request("GET", "https://results.enr.clarityelections.com/feed.json"),
         )
-        with patch("voter_api.lib.election_tracker.fetcher.httpx.AsyncClient") as mock_client_cls:
+        fake_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", 443))]
+        with (
+            patch(
+                "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
+                return_value=fake_addrinfo,
+            ),
+            patch("voter_api.lib.election_tracker.fetcher.httpx.AsyncClient") as mock_client_cls,
+        ):
             mock_client = AsyncMock()
             mock_client.get = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -228,19 +236,88 @@ class TestValidateUrlDomain:
     """Tests for validate_url_domain()."""
 
     def test_allowed_domain_passes(self):
-        validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+        fake_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", 443))]
+        with patch(
+            "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
+            return_value=fake_addrinfo,
+        ):
+            validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
 
     def test_disallowed_domain_raises(self):
         with pytest.raises(FetchError, match="not in the allowed domains"):
             validate_url_domain("https://evil.com/data", ["sos.ga.gov"])
 
     def test_case_insensitive(self):
-        validate_url_domain("https://SOS.GA.GOV/results", ["sos.ga.gov"])
+        fake_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", 443))]
+        with patch(
+            "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
+            return_value=fake_addrinfo,
+        ):
+            validate_url_domain("https://SOS.GA.GOV/results", ["sos.ga.gov"])
 
     def test_empty_list_raises(self):
         with pytest.raises(FetchError, match="allowed_domains must be a non-empty list"):
             validate_url_domain("https://anything.com/data", [])
 
-    def test_internal_ip_blocked(self):
+    def test_raw_ip_hostname_rejected(self):
         with pytest.raises(FetchError, match="not in the allowed domains"):
             validate_url_domain("http://169.254.169.254/latest", ["sos.ga.gov"])
+
+    def test_private_ip_resolution_blocked(self):
+        """Allowed domain resolving to a private IP is blocked."""
+        fake_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("10.0.0.1", 443))]
+        with (
+            patch(
+                "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
+                return_value=fake_addrinfo,
+            ),
+            pytest.raises(FetchError, match="Resolved IP address.*is not allowed"),
+        ):
+            validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+
+    def test_loopback_ip_resolution_blocked(self):
+        """Allowed domain resolving to loopback is blocked."""
+        fake_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 443))]
+        with (
+            patch(
+                "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
+                return_value=fake_addrinfo,
+            ),
+            pytest.raises(FetchError, match="Resolved IP address.*is not allowed"),
+        ):
+            validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+
+    def test_link_local_ip_resolution_blocked(self):
+        """Allowed domain resolving to link-local (metadata) IP is blocked."""
+        fake_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("169.254.169.254", 80))]
+        with (
+            patch(
+                "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
+                return_value=fake_addrinfo,
+            ),
+            pytest.raises(FetchError, match="Resolved IP address.*is not allowed"),
+        ):
+            validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+
+    def test_ipv6_loopback_resolution_blocked(self):
+        """Allowed domain resolving to IPv6 loopback is blocked."""
+        fake_addrinfo = [(socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("::1", 443, 0, 0))]
+        with (
+            patch(
+                "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
+                return_value=fake_addrinfo,
+            ),
+            pytest.raises(FetchError, match="Resolved IP address.*is not allowed"),
+        ):
+            validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+
+    def test_dns_resolution_failure(self):
+        """DNS resolution failure raises FetchError."""
+        with (
+            patch(
+                "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
+                side_effect=OSError("Name or service not known"),
+            ),
+            pytest.raises(FetchError, match="Failed to resolve hostname"),
+        ):
+            validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
