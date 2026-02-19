@@ -1,22 +1,43 @@
 """Authentication API endpoints.
 
 POST /auth/login, POST /auth/refresh, GET /auth/me,
-GET /users, POST /users, GET /health.
+GET /users, POST /users, GET /health, GET /info.
 """
 
 import math
+import subprocess
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from voter_api import __version__
 from voter_api.core.config import Settings, get_settings
 from voter_api.core.dependencies import get_async_session, get_current_user, require_role
 from voter_api.models.user import User
 from voter_api.schemas.auth import RefreshRequest, TokenResponse, UserCreateRequest, UserResponse
 from voter_api.schemas.common import PaginationMeta, PaginationParams
 from voter_api.services import auth_service
+
+
+def _get_git_commit() -> str:
+    """Resolve the current git short SHA once at import time."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],  # noqa: S603, S607
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=Path(__file__).resolve().parent,
+        )
+        return result.stdout.strip() if result.returncode == 0 else "unknown"
+    except Exception:
+        return "unknown"
+
+
+_GIT_COMMIT = _get_git_commit()
 
 router = APIRouter(tags=["auth"])
 
@@ -25,6 +46,18 @@ router = APIRouter(tags=["auth"])
 async def health_check() -> dict:
     """Health check endpoint (no authentication required)."""
     return {"status": "healthy"}
+
+
+@router.get("/info", status_code=200)
+async def info(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Return application version, git commit, and environment."""
+    return {
+        "version": __version__,
+        "git_commit": _GIT_COMMIT,
+        "environment": settings.environment,
+    }
 
 
 @router.post("/auth/login", response_model=TokenResponse)
