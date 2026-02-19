@@ -110,7 +110,7 @@ jobs:
           exit 1
 
       - name: Comment preview URL on PR
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-tag: preview-deploy
