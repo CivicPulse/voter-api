@@ -48,7 +48,7 @@ jobs:
           psql "${DATABASE_URL}" -c "DROP SCHEMA IF EXISTS pr_${PR_NUM} CASCADE;"
 
       - name: Update PR comment
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-tag: preview-deploy
