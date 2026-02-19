@@ -1,0 +1,58 @@
+# Clean up preview environments when a PR is merged or closed.
+
+name: Preview Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    env:
+      APP_NAME: voter-api-pr-${{ github.event.pull_request.number }}
+      PR_NUM: ${{ github.event.pull_request.number }}
+      PIKU: piku@${{ vars.PIKU_HOST }}
+
+    steps:
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Configure SSH for piku
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PIKU_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ vars.PIKU_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Destroy preview app
+        run: |
+          echo "Destroying app: ${APP_NAME}"
+          ssh ${PIKU} destroy ${APP_NAME} || true
+
+      - name: Install Postgres client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Drop preview database schema
+        env:
+          DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
+        run: |
+          echo "Dropping schema: pr_${PR_NUM}"
+          psql "${DATABASE_URL}" -c "DROP SCHEMA IF EXISTS pr_${PR_NUM} CASCADE;"
+
+      - name: Update PR comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-tag: preview-deploy
+          body: |
+            ### Preview Environment Removed
+
+            The preview environment for this PR has been cleaned up.

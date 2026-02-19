@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Manage application lifecycle: init engine on startup, dispose on shutdown."""
     settings = get_settings()
     setup_logging(settings.log_level)
-    init_engine(settings.database_url, echo=False)
+    init_engine(settings.database_url, echo=False, schema=settings.database_schema)
 
     # Start election auto-refresh background task
     refresh_task = None

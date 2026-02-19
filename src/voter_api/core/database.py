@@ -34,17 +34,25 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     return _session_factory
 
 
-def init_engine(database_url: str, **kwargs: object) -> AsyncEngine:
+def init_engine(database_url: str, *, schema: str | None = None, **kwargs: object) -> AsyncEngine:
     """Create and store the async engine and session factory.
 
     Args:
         database_url: PostgreSQL async connection string.
+        schema: Optional PostgreSQL schema for isolated environments.
         **kwargs: Additional arguments passed to create_async_engine.
 
     Returns:
         The created async engine.
     """
     global _engine, _session_factory  # noqa: PLW0603
+    if schema is not None:
+        connect_args = kwargs.pop("connect_args", {})
+        if not isinstance(connect_args, dict):
+            msg = "connect_args must be a dict"
+            raise TypeError(msg)
+        connect_args["options"] = f"-c search_path={schema},public"
+        kwargs["connect_args"] = connect_args
     _engine = create_async_engine(database_url, **kwargs)
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine
