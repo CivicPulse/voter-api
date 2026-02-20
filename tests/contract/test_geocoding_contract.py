@@ -24,7 +24,7 @@ def mock_session():
 
 
 @pytest.fixture
-def app(mock_session) -> FastAPI:
+def app(mock_session: AsyncMock) -> FastAPI:
     """Create a minimal FastAPI app with geocoding router."""
     app = FastAPI()
     app.include_router(geocoding_router, prefix="/api/v1")

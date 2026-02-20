@@ -53,6 +53,17 @@ async def geocode_address(
     """Geocode a single freeform address to geographic coordinates.
 
     Public endpoint — no authentication required.
+
+    Args:
+        address: Freeform street address to geocode (1-500 characters).
+        session: Async database session (injected).
+
+    Returns:
+        Geocoded response with coordinates, confidence, and provider metadata.
+
+    Raises:
+        HTTPException: 422 if address is empty/whitespace, 404 if not geocodable,
+            502 if the geocoding provider is unavailable.
     """
     stripped = address.strip()
     if not stripped:
@@ -99,6 +110,18 @@ async def verify_address_endpoint(
     """Verify and autocomplete a freeform address.
 
     Public endpoint — no authentication required.
+
+    Args:
+        address: Freeform street address to verify (1-500 characters).
+        session: Async database session (injected).
+
+    Returns:
+        Verification result with normalized address, component validation,
+        and autocomplete suggestions.
+
+    Raises:
+        HTTPException: 422 if address is empty/whitespace, 502 if the
+            verification provider is unavailable, 500 on unexpected errors.
     """
     stripped = address.strip()
     if not stripped:
@@ -137,6 +160,19 @@ async def point_lookup_districts(
     """Look up boundary districts for a geographic point.
 
     Public endpoint — no authentication required.
+
+    Args:
+        lat: WGS84 latitude of the point to look up.
+        lng: WGS84 longitude of the point to look up.
+        accuracy: Optional GPS accuracy radius in meters (max 100).
+        session: Async database session (injected).
+
+    Returns:
+        Point lookup response with matching district boundaries.
+
+    Raises:
+        HTTPException: 422 if coordinates are outside Georgia or accuracy
+            exceeds 100m, 500 on unexpected errors.
     """
     try:
         validate_georgia_coordinates(lat, lng)
