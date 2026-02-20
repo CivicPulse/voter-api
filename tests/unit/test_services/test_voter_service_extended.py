@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.dialects import postgresql
 
-from voter_api.services.voter_service import get_voter_detail, search_voters
+from voter_api.services.voter_service import get_voter_detail, get_voter_filter_options, search_voters
 
 
 def _compile_query(stmt: object) -> str:
@@ -311,3 +311,86 @@ class TestGetVoterDetail:
 
         found = await get_voter_detail(session, uuid.uuid4())
         assert found is None
+
+
+class TestGetVoterFilterOptions:
+    """Tests for get_voter_filter_options."""
+
+    def _make_execute_result(self, rows: list[str]) -> MagicMock:
+        result = MagicMock()
+        result.all.return_value = [(v,) for v in rows]
+        return result
+
+    @pytest.mark.asyncio
+    async def test_returns_all_filter_keys(self) -> None:
+        session = AsyncMock()
+        session.execute.side_effect = [
+            self._make_execute_result(["Active", "Inactive"]),
+            self._make_execute_result(["Cobb", "Fulton"]),
+            self._make_execute_result(["05", "06"]),
+            self._make_execute_result(["34", "35"]),
+            self._make_execute_result(["55", "56"]),
+        ]
+
+        options = await get_voter_filter_options(session)
+
+        assert set(options.keys()) == {
+            "statuses",
+            "counties",
+            "congressional_districts",
+            "state_senate_districts",
+            "state_house_districts",
+        }
+
+    @pytest.mark.asyncio
+    async def test_returns_correct_values(self) -> None:
+        session = AsyncMock()
+        session.execute.side_effect = [
+            self._make_execute_result(["Active", "Inactive"]),
+            self._make_execute_result(["Cobb", "Fulton"]),
+            self._make_execute_result(["05", "06"]),
+            self._make_execute_result(["34"]),
+            self._make_execute_result(["55"]),
+        ]
+
+        options = await get_voter_filter_options(session)
+
+        assert options["statuses"] == ["Active", "Inactive"]
+        assert options["counties"] == ["Cobb", "Fulton"]
+        assert options["congressional_districts"] == ["05", "06"]
+        assert options["state_senate_districts"] == ["34"]
+        assert options["state_house_districts"] == ["55"]
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_lists_when_no_data(self) -> None:
+        session = AsyncMock()
+        session.execute.side_effect = [
+            self._make_execute_result([]),
+            self._make_execute_result([]),
+            self._make_execute_result([]),
+            self._make_execute_result([]),
+            self._make_execute_result([]),
+        ]
+
+        options = await get_voter_filter_options(session)
+
+        assert options["statuses"] == []
+        assert options["counties"] == []
+        assert options["congressional_districts"] == []
+        assert options["state_senate_districts"] == []
+        assert options["state_house_districts"] == []
+
+    @pytest.mark.asyncio
+    async def test_executes_five_queries(self) -> None:
+        session = AsyncMock()
+        session.execute.side_effect = [
+            self._make_execute_result([]),
+            self._make_execute_result([]),
+            self._make_execute_result([]),
+            self._make_execute_result([]),
+            self._make_execute_result([]),
+        ]
+
+        await get_voter_filter_options(session)
+
+        assert session.execute.call_count == 5
