@@ -5,6 +5,7 @@ using SQLAlchemy 2.x with asyncpg.
 """
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
 
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
@@ -53,6 +54,11 @@ def init_engine(database_url: str, *, schema: str | None = None, **kwargs: objec
             raise TypeError(msg)
         connect_args["options"] = f"-c search_path={schema},public"
         kwargs["connect_args"] = connect_args
+    # Only set pool defaults for connection-pooled engines (not SQLite/StaticPool)
+    uses_static_pool = kwargs.get("poolclass") is StaticPool or "sqlite" in database_url
+    if not uses_static_pool:
+        kwargs.setdefault("pool_size", 10)
+        kwargs.setdefault("max_overflow", 5)
     _engine = create_async_engine(database_url, **kwargs)
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine

@@ -2,7 +2,17 @@
 
 import typer
 
+from voter_api.core.config import get_settings
+from voter_api.core.logging import setup_logging
+
 app = typer.Typer(name="voter-api", help="Georgia voter data management CLI")
+
+
+@app.callback()
+def _main_callback() -> None:
+    """Initialize logging for all CLI commands."""
+    settings = get_settings()
+    setup_logging(settings.log_level, log_dir=settings.log_dir)
 
 
 @app.command()
@@ -34,6 +44,7 @@ def _register_subcommands() -> None:
     from voter_api.cli.import_cmd import import_app
     from voter_api.cli.officials_cmd import officials_app
     from voter_api.cli.publish_cmd import publish_app
+    from voter_api.cli.seed_cmd import seed
     from voter_api.cli.user_cmd import user_app
 
     app.add_typer(db_app, name="db", help="Database migration commands")
@@ -46,6 +57,7 @@ def _register_subcommands() -> None:
     app.add_typer(election_app, name="election", help="Election tracking commands")
     app.add_typer(officials_app, name="officials", help="Elected officials data commands")
     app.command("deploy-check")(deploy_check)
+    app.command("seed")(seed)
 
 
 _register_subcommands()

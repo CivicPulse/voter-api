@@ -1,10 +1,12 @@
 """Voter service — multi-parameter search and detail retrieval."""
 
+import asyncio
+import re
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
 from voter_api.models.voter import Voter
 
@@ -12,6 +14,7 @@ from voter_api.models.voter import Voter
 async def search_voters(
     session: AsyncSession,
     *,
+    q: str | None = None,
     voter_registration_number: str | None = None,
     first_name: str | None = None,
     last_name: str | None = None,
@@ -31,6 +34,7 @@ async def search_voters(
 
     Args:
         session: Database session.
+        q: Combined name search query (searches across first_name, last_name, middle_name).
         voter_registration_number: Exact match on registration number.
         first_name: Partial match (ILIKE) on first name.
         last_name: Partial match (ILIKE) on last name.
@@ -51,6 +55,25 @@ async def search_voters(
     """
     query = select(Voter)
     count_query = select(func.count(Voter.id))
+
+    # Combined name search (q parameter)
+    if q:
+        # Normalize: split on whitespace and punctuation so "Smith, Jane" -> ["Smith", "Jane"]
+        words = [w for w in re.split(r"[\s,;.]+", q.strip()) if w]
+        for word in words:
+            # Escape SQL wildcard chars so user input is treated as literal text.
+            # Without this, "100%" becomes ILIKE '%100%%' and "_mith" matches any
+            # single character in that position rather than a literal underscore.
+            word_escaped = word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            pattern = f"%{word_escaped}%"
+            # Each word must match at least one of the name fields
+            word_condition = or_(
+                Voter.first_name.ilike(pattern, escape="\\"),
+                Voter.last_name.ilike(pattern, escape="\\"),
+                Voter.middle_name.ilike(pattern, escape="\\"),
+            )
+            query = query.where(word_condition)
+            count_query = count_query.where(word_condition)
 
     # Exact match filters
     if voter_registration_number:
@@ -135,6 +158,52 @@ async def get_voter_detail(
     query = select(Voter).options(selectinload(Voter.geocoded_locations)).where(Voter.id == voter_id)
     result = await session.execute(query)
     return result.scalar_one_or_none()
+
+
+async def get_voter_filter_options(session: AsyncSession) -> dict[str, list[str]]:
+    """Return distinct non-null values for voter search filter dropdowns.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        Dict mapping filter field names to sorted lists of distinct values.
+    """
+
+    async def _distinct_sorted(
+        column: InstrumentedAttribute[str | None],
+        *,
+        filter_nulls: bool,
+    ) -> list[str]:
+        stmt = select(distinct(column))
+        if filter_nulls:
+            stmt = stmt.where(column.isnot(None))
+        stmt = stmt.order_by(column)
+        result = await session.execute(stmt)
+        return [row for (row,) in result.all()]
+
+    # status and county are non-nullable in the Voter model; district fields are nullable.
+    (
+        statuses,
+        counties,
+        congressional_districts,
+        state_senate_districts,
+        state_house_districts,
+    ) = await asyncio.gather(
+        _distinct_sorted(Voter.status, filter_nulls=False),
+        _distinct_sorted(Voter.county, filter_nulls=False),
+        _distinct_sorted(Voter.congressional_district, filter_nulls=True),
+        _distinct_sorted(Voter.state_senate_district, filter_nulls=True),
+        _distinct_sorted(Voter.state_house_district, filter_nulls=True),
+    )
+
+    return {
+        "statuses": statuses,
+        "counties": counties,
+        "congressional_districts": congressional_districts,
+        "state_senate_districts": state_senate_districts,
+        "state_house_districts": state_house_districts,
+    }
 
 
 def build_voter_detail_dict(voter: Voter) -> dict:
