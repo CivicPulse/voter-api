@@ -1,0 +1,1523 @@
+openapi: "3.1.0"
+info:
+  title: Meeting Records API
+  description: |
+    Core API for storing, retrieving, and searching local government meeting records.
+    Part of the CivicPulse civic transparency platform.
+  version: "1.0.0"
+
+paths:
+  # --- Governing Body Types ---
+  /api/v1/governing-body-types:
+    get:
+      operationId: listGoverningBodyTypes
+      summary: List all governing body types
+      tags: [governing-body-types]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of all governing body types
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/GoverningBodyTypeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createGoverningBodyType
+      summary: Create a new governing body type
+      tags: [governing-body-types]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoverningBodyTypeCreateRequest"
+      responses:
+        "201":
+          description: Type created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoverningBodyTypeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Type with this name already exists
+
+  # --- Governing Bodies ---
+  /api/v1/governing-bodies:
+    get:
+      operationId: listGoverningBodies
+      summary: List governing bodies with optional filters
+      tags: [governing-bodies]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by governing body type
+        - name: jurisdiction
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by jurisdiction (partial match)
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: Paginated list of governing bodies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedGoverningBodyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createGoverningBody
+      summary: Create a governing body
+      tags: [governing-bodies]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoverningBodyCreateRequest"
+      responses:
+        "201":
+          description: Governing body created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoverningBodyDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Governing body with this name and jurisdiction already exists
+
+  /api/v1/governing-bodies/{id}:
+    get:
+      operationId: getGoverningBody
+      summary: Get governing body details
+      tags: [governing-bodies]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Governing body details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoverningBodyDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateGoverningBody
+      summary: Update a governing body
+      tags: [governing-bodies]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoverningBodyUpdateRequest"
+      responses:
+        "200":
+          description: Updated governing body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoverningBodyDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteGoverningBody
+      summary: Soft-delete a governing body
+      tags: [governing-bodies]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: Governing body soft-deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Cannot delete — governing body has active meetings
+
+  # --- Meetings ---
+  /api/v1/meetings:
+    get:
+      operationId: listMeetings
+      summary: List meetings with filters
+      tags: [meetings]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: governing_body_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by governing body
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Start of date range (inclusive)
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: End of date range (inclusive)
+        - name: meeting_type
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/MeetingTypeEnum"
+          description: Filter by meeting type
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/MeetingStatusEnum"
+          description: Filter by status
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: Paginated list of meetings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedMeetingResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createMeeting
+      summary: Create a meeting
+      description: |
+        Admin-created meetings are immediately approved.
+        Contributor-created meetings are set to pending approval.
+      tags: [meetings]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeetingCreateRequest"
+      responses:
+        "201":
+          description: Meeting created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/meetings/search:
+    get:
+      operationId: searchMeetings
+      summary: Full-text search across meeting records
+      description: |
+        Searches agenda item titles, descriptions, and attachment filenames.
+        Returns results ranked by relevance with meeting context.
+      tags: [meetings]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+          description: Search query (minimum 2 characters)
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: Paginated search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedSearchResultResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: Query too short (minimum 2 characters)
+
+  /api/v1/meetings/{id}:
+    get:
+      operationId: getMeeting
+      summary: Get meeting details with child counts
+      tags: [meetings]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Meeting details with summary counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateMeeting
+      summary: Update a meeting
+      tags: [meetings]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeetingUpdateRequest"
+      responses:
+        "200":
+          description: Updated meeting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteMeeting
+      summary: Soft-delete a meeting and all children
+      tags: [meetings]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: Meeting and all child records soft-deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/meetings/{id}/approve:
+    post:
+      operationId: approveMeeting
+      summary: Approve a pending meeting
+      tags: [meetings]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Meeting approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Meeting is not in pending status
+
+  /api/v1/meetings/{id}/reject:
+    post:
+      operationId: rejectMeeting
+      summary: Reject a pending meeting
+      tags: [meetings]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeetingRejectRequest"
+      responses:
+        "200":
+          description: Meeting rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Meeting is not in pending status
+
+  # --- Agenda Items ---
+  /api/v1/meetings/{meeting_id}/agenda-items:
+    get:
+      operationId: listAgendaItems
+      summary: List agenda items for a meeting
+      tags: [agenda-items]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+      responses:
+        "200":
+          description: Ordered list of agenda items
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AgendaItemResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createAgendaItem
+      summary: Create an agenda item
+      tags: [agenda-items]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgendaItemCreateRequest"
+      responses:
+        "201":
+          description: Agenda item created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgendaItemResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/meetings/{meeting_id}/agenda-items/reorder:
+    put:
+      operationId: reorderAgendaItems
+      summary: Bulk reorder agenda items
+      tags: [agenda-items]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgendaItemReorderRequest"
+      responses:
+        "200":
+          description: Items reordered
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AgendaItemResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/meetings/{meeting_id}/agenda-items/{id}:
+    get:
+      operationId: getAgendaItem
+      summary: Get agenda item details
+      tags: [agenda-items]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Agenda item details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgendaItemResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateAgendaItem
+      summary: Update an agenda item
+      tags: [agenda-items]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgendaItemUpdateRequest"
+      responses:
+        "200":
+          description: Updated agenda item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgendaItemResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteAgendaItem
+      summary: Soft-delete an agenda item
+      tags: [agenda-items]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: Agenda item soft-deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- Attachments ---
+  /api/v1/meetings/{meeting_id}/attachments:
+    get:
+      operationId: listMeetingAttachments
+      summary: List attachments for a meeting
+      tags: [attachments]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+      responses:
+        "200":
+          description: List of attachments
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AttachmentResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: uploadMeetingAttachment
+      summary: Upload a file attachment to a meeting
+      tags: [attachments]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttachmentResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          description: File exceeds maximum size (50 MB)
+        "422":
+          description: Unsupported file format
+
+  /api/v1/meetings/{meeting_id}/agenda-items/{agenda_item_id}/attachments:
+    get:
+      operationId: listAgendaItemAttachments
+      summary: List attachments for an agenda item
+      tags: [attachments]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+        - $ref: "#/components/parameters/agenda_item_id"
+      responses:
+        "200":
+          description: List of attachments
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AttachmentResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: uploadAgendaItemAttachment
+      summary: Upload a file attachment to an agenda item
+      tags: [attachments]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+        - $ref: "#/components/parameters/agenda_item_id"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttachmentResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          description: File exceeds maximum size (50 MB)
+        "422":
+          description: Unsupported file format
+
+  /api/v1/attachments/{id}:
+    get:
+      operationId: getAttachment
+      summary: Get attachment metadata
+      tags: [attachments]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Attachment metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttachmentResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteAttachment
+      summary: Soft-delete an attachment
+      tags: [attachments]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: Attachment soft-deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/attachments/{id}/download:
+    get:
+      operationId: downloadAttachment
+      summary: Download an attachment file
+      tags: [attachments]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: 'attachment; filename="original_name.pdf"'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- Video Embeds ---
+  /api/v1/meetings/{meeting_id}/video-embeds:
+    get:
+      operationId: listMeetingVideoEmbeds
+      summary: List video embeds for a meeting
+      tags: [video-embeds]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+      responses:
+        "200":
+          description: List of video embeds
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/VideoEmbedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createMeetingVideoEmbed
+      summary: Add a video embed to a meeting
+      tags: [video-embeds]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoEmbedCreateRequest"
+      responses:
+        "201":
+          description: Video embed created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoEmbedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          description: Invalid video URL (must be YouTube or Vimeo)
+
+  /api/v1/meetings/{meeting_id}/agenda-items/{agenda_item_id}/video-embeds:
+    get:
+      operationId: listAgendaItemVideoEmbeds
+      summary: List video embeds for an agenda item
+      tags: [video-embeds]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+        - $ref: "#/components/parameters/agenda_item_id"
+      responses:
+        "200":
+          description: List of video embeds
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/VideoEmbedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createAgendaItemVideoEmbed
+      summary: Add a video embed to an agenda item
+      tags: [video-embeds]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/meeting_id"
+        - $ref: "#/components/parameters/agenda_item_id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoEmbedCreateRequest"
+      responses:
+        "201":
+          description: Video embed created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoEmbedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          description: Invalid video URL (must be YouTube or Vimeo)
+
+  /api/v1/video-embeds/{id}:
+    get:
+      operationId: getVideoEmbed
+      summary: Get video embed details
+      tags: [video-embeds]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Video embed details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoEmbedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateVideoEmbed
+      summary: Update a video embed
+      tags: [video-embeds]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoEmbedUpdateRequest"
+      responses:
+        "200":
+          description: Updated video embed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoEmbedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteVideoEmbed
+      summary: Soft-delete a video embed
+      tags: [video-embeds]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: Video embed soft-deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Resource identifier
+    meeting_id:
+      name: meeting_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Meeting identifier
+    agenda_item_id:
+      name: agenda_item_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Agenda item identifier
+    page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number (1-based)
+    page_size:
+      name: page_size
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Items per page
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    # --- Common ---
+    ErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+        code:
+          type: string
+          nullable: true
+
+    PaginationMeta:
+      type: object
+      required: [total, page, page_size, total_pages]
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+
+    # --- Enums ---
+    MeetingTypeEnum:
+      type: string
+      enum: [regular, special, work_session, emergency, public_hearing]
+
+    MeetingStatusEnum:
+      type: string
+      enum: [scheduled, completed, cancelled, postponed]
+
+    ApprovalStatusEnum:
+      type: string
+      enum: [pending, approved, rejected]
+
+    DispositionEnum:
+      type: string
+      enum: [approved, denied, tabled, no_action, informational]
+
+    VideoPlatformEnum:
+      type: string
+      enum: [youtube, vimeo]
+
+    # --- Governing Body Types ---
+    GoverningBodyTypeResponse:
+      type: object
+      required: [id, name, slug, is_default]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_default:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    GoverningBodyTypeCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+
+    # --- Governing Bodies ---
+    GoverningBodySummaryResponse:
+      type: object
+      required: [id, name, type, jurisdiction]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/GoverningBodyTypeResponse"
+        jurisdiction:
+          type: string
+        website_url:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    GoverningBodyDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/GoverningBodySummaryResponse"
+        - type: object
+          properties:
+            description:
+              type: string
+              nullable: true
+            meeting_count:
+              type: integer
+              description: Count of active meetings
+            updated_at:
+              type: string
+              format: date-time
+
+    GoverningBodyCreateRequest:
+      type: object
+      required: [name, type_id, jurisdiction]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        type_id:
+          type: string
+          format: uuid
+        jurisdiction:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        website_url:
+          type: string
+          format: uri
+          nullable: true
+
+    GoverningBodyUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        type_id:
+          type: string
+          format: uuid
+        jurisdiction:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        website_url:
+          type: string
+          format: uri
+          nullable: true
+
+    PaginatedGoverningBodyResponse:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoverningBodySummaryResponse"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    # --- Meetings ---
+    MeetingSummaryResponse:
+      type: object
+      required: [id, governing_body_id, meeting_date, meeting_type, status, approval_status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        governing_body_id:
+          type: string
+          format: uuid
+        governing_body_name:
+          type: string
+        meeting_date:
+          type: string
+          format: date-time
+        location:
+          type: string
+          nullable: true
+        meeting_type:
+          $ref: "#/components/schemas/MeetingTypeEnum"
+        status:
+          $ref: "#/components/schemas/MeetingStatusEnum"
+        approval_status:
+          $ref: "#/components/schemas/ApprovalStatusEnum"
+        external_source_url:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    MeetingDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/MeetingSummaryResponse"
+        - type: object
+          properties:
+            submitted_by:
+              type: string
+              format: uuid
+              nullable: true
+            approved_by:
+              type: string
+              format: uuid
+              nullable: true
+            approved_at:
+              type: string
+              format: date-time
+              nullable: true
+            rejection_reason:
+              type: string
+              nullable: true
+            agenda_item_count:
+              type: integer
+            attachment_count:
+              type: integer
+            video_embed_count:
+              type: integer
+            updated_at:
+              type: string
+              format: date-time
+
+    MeetingCreateRequest:
+      type: object
+      required: [governing_body_id, meeting_date, meeting_type, status]
+      properties:
+        governing_body_id:
+          type: string
+          format: uuid
+        meeting_date:
+          type: string
+          format: date-time
+        location:
+          type: string
+          maxLength: 500
+          nullable: true
+        meeting_type:
+          $ref: "#/components/schemas/MeetingTypeEnum"
+        status:
+          $ref: "#/components/schemas/MeetingStatusEnum"
+        external_source_url:
+          type: string
+          format: uri
+          nullable: true
+
+    MeetingUpdateRequest:
+      type: object
+      properties:
+        meeting_date:
+          type: string
+          format: date-time
+        location:
+          type: string
+          maxLength: 500
+          nullable: true
+        meeting_type:
+          $ref: "#/components/schemas/MeetingTypeEnum"
+        status:
+          $ref: "#/components/schemas/MeetingStatusEnum"
+        external_source_url:
+          type: string
+          format: uri
+          nullable: true
+
+    MeetingRejectRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          description: Reason for rejecting the meeting
+
+    PaginatedMeetingResponse:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingSummaryResponse"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    # --- Agenda Items ---
+    AgendaItemResponse:
+      type: object
+      required: [id, meeting_id, title, display_order]
+      properties:
+        id:
+          type: string
+          format: uuid
+        meeting_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        action_taken:
+          type: string
+          nullable: true
+        disposition:
+          $ref: "#/components/schemas/DispositionEnum"
+          nullable: true
+        display_order:
+          type: integer
+        attachment_count:
+          type: integer
+        video_embed_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AgendaItemCreateRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        description:
+          type: string
+          nullable: true
+        action_taken:
+          type: string
+          nullable: true
+        disposition:
+          $ref: "#/components/schemas/DispositionEnum"
+          nullable: true
+        display_order:
+          type: integer
+          description: Position in the agenda. If omitted, appended to end.
+
+    AgendaItemUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        description:
+          type: string
+          nullable: true
+        action_taken:
+          type: string
+          nullable: true
+        disposition:
+          $ref: "#/components/schemas/DispositionEnum"
+          nullable: true
+
+    AgendaItemReorderRequest:
+      type: object
+      required: [item_ids]
+      properties:
+        item_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Ordered list of agenda item IDs defining the new order
+
+    # --- Attachments ---
+    AttachmentResponse:
+      type: object
+      required: [id, original_filename, file_size, content_type, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        meeting_id:
+          type: string
+          format: uuid
+          nullable: true
+        agenda_item_id:
+          type: string
+          format: uuid
+          nullable: true
+        original_filename:
+          type: string
+        file_size:
+          type: integer
+          description: File size in bytes
+        content_type:
+          type: string
+        download_url:
+          type: string
+          format: uri
+          description: URL to download the file
+        created_at:
+          type: string
+          format: date-time
+
+    # --- Video Embeds ---
+    VideoEmbedResponse:
+      type: object
+      required: [id, video_url, platform]
+      properties:
+        id:
+          type: string
+          format: uuid
+        meeting_id:
+          type: string
+          format: uuid
+          nullable: true
+        agenda_item_id:
+          type: string
+          format: uuid
+          nullable: true
+        video_url:
+          type: string
+        platform:
+          $ref: "#/components/schemas/VideoPlatformEnum"
+        start_seconds:
+          type: integer
+          nullable: true
+        end_seconds:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    VideoEmbedCreateRequest:
+      type: object
+      required: [video_url]
+      properties:
+        video_url:
+          type: string
+          format: uri
+          description: YouTube or Vimeo video URL
+        start_seconds:
+          type: integer
+          minimum: 0
+          nullable: true
+        end_seconds:
+          type: integer
+          minimum: 0
+          nullable: true
+
+    VideoEmbedUpdateRequest:
+      type: object
+      properties:
+        video_url:
+          type: string
+          format: uri
+        start_seconds:
+          type: integer
+          minimum: 0
+          nullable: true
+        end_seconds:
+          type: integer
+          minimum: 0
+          nullable: true
+
+    # --- Search ---
+    SearchResultItem:
+      type: object
+      required: [agenda_item_id, title, meeting_id, meeting_date, governing_body_name]
+      properties:
+        agenda_item_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description_excerpt:
+          type: string
+          nullable: true
+          description: Snippet of the matching description text
+        meeting_id:
+          type: string
+          format: uuid
+        meeting_date:
+          type: string
+          format: date-time
+        meeting_type:
+          $ref: "#/components/schemas/MeetingTypeEnum"
+        governing_body_id:
+          type: string
+          format: uuid
+        governing_body_name:
+          type: string
+        match_source:
+          type: string
+          enum: [agenda_item, attachment_filename]
+          description: Where the match was found
+        relevance_score:
+          type: number
+          format: float
+
+    PaginatedSearchResultResponse:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchResultItem"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"

@@ -39,3 +39,19 @@ class TimestampMixin:
         onupdate=func.now(),
         nullable=False,
     )
+
+
+class SoftDeleteMixin:
+    """Mixin providing soft-delete via a deleted_at timestamp.
+
+    Records with ``deleted_at IS NOT NULL`` should be excluded from normal
+    queries. The timestamp doubles as audit metadata recording *when* the
+    deletion occurred.
+    """
+
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None,
+        index=True,
+    )
