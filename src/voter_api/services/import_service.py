@@ -437,6 +437,7 @@ async def process_voter_import(
     batch_size: int = 5000,
     *,
     skip_optimizations: bool = False,
+    max_records: int | None = None,
 ) -> ImportJob:
     """Process a voter CSV file import with bulk optimizations.
 
@@ -459,6 +460,8 @@ async def process_voter_import(
         skip_optimizations: If True, skip index drop/rebuild, autovacuum,
             and synchronous_commit changes. Use when calling within
             ``bulk_import_context``.
+        max_records: If set, stop importing after this many records.
+            Soft-delete is skipped for partial imports.
 
     Returns:
         The updated ImportJob with final counts.
@@ -518,9 +521,19 @@ async def process_voter_import(
                 f"({chunk_elapsed:.1f}s) | running total: {total} records"
             )
 
+            if max_records is not None and total >= max_records:
+                logger.info(f"Reached max_records limit ({max_records}), stopping import")
+                break
+
         # Soft-delete absent voters scoped to the imported county
-        logger.info(f"Checking for absent voters in county {import_county}")
-        soft_deleted = await _soft_delete_absent_voters(session, import_county, imported_reg_numbers)
+        # Skip when max_records is set — partial imports should not mark
+        # absent voters as deleted.
+        soft_deleted = 0
+        if max_records is None:
+            logger.info(f"Checking for absent voters in county {import_county}")
+            soft_deleted = await _soft_delete_absent_voters(session, import_county, imported_reg_numbers)
+        else:
+            logger.info("Skipping soft-delete (partial import with max_records limit)")
 
         failed = len(errors)
         succeeded = inserted + updated_count

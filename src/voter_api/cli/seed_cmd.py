@@ -80,6 +80,11 @@ def seed(
         "--skip-checksum",
         help="Skip SHA512 checksum verification",
     ),
+    max_voters: int | None = typer.Option(
+        None,
+        "--max-voters",
+        help="Limit total voter records imported (e.g., 10000 for preview environments)",
+    ),
 ) -> None:
     """Download seed data and import into the database.
 
@@ -108,6 +113,7 @@ def seed(
             download_only=download_only,
             fail_fast=fail_fast,
             skip_checksum=skip_checksum,
+            max_voters=max_voters,
         )
     )
 
@@ -120,6 +126,7 @@ async def _run_seed(
     download_only: bool,
     fail_fast: bool,
     skip_checksum: bool,
+    max_voters: int | None = None,
 ) -> None:
     """Async implementation of the seed workflow.
 
@@ -130,6 +137,7 @@ async def _run_seed(
         download_only: If True, skip database imports.
         fail_fast: If True, stop on first error.
         skip_checksum: If True, skip SHA512 verification.
+        max_voters: If set, limit total voter records imported.
     """
     from voter_api.core.config import get_settings
 
@@ -218,6 +226,7 @@ async def _run_seed(
         fail_fast=fail_fast,
         skip_checksum=skip_checksum,
         seed_result=seed_result,
+        max_voters=max_voters,
     )
 
     if not seed_result.success:
@@ -235,6 +244,7 @@ async def _run_imports(
     fail_fast: bool,
     skip_checksum: bool,
     seed_result: SeedResult,
+    max_voters: int | None = None,
 ) -> None:
     """Run database imports in dependency order.
 
@@ -248,6 +258,7 @@ async def _run_imports(
         fail_fast: Stop on first error.
         skip_checksum: Pass to boundary import.
         seed_result: Mutable result to track import outcomes.
+        max_voters: If set, limit total voter records imported.
     """
     from voter_api.core.config import get_settings
     from voter_api.core.database import dispose_engine, init_engine
@@ -296,6 +307,7 @@ async def _run_imports(
                 batch_size=settings.import_batch_size,
                 seed_result=seed_result,
                 fail_fast=fail_fast,
+                max_voters=max_voters,
             )
 
     finally:
@@ -371,18 +383,22 @@ async def _import_voters_batch(
     batch_size: int,
     seed_result: SeedResult,
     fail_fast: bool,
+    max_voters: int | None = None,
 ) -> None:
-    """Import multiple voter files with a single index lifecycle and parallel processing.
+    """Import multiple voter files with a single index lifecycle.
 
-    Drops indexes once, processes all files concurrently via asyncio.gather,
-    then rebuilds indexes and runs VACUUM ANALYZE once. Each file gets its own
-    DB session since sessions are not coroutine-safe.
+    When ``max_voters`` is None, files are processed concurrently via
+    ``asyncio.gather``. When a limit is set, files are processed
+    sequentially so a running budget can be tracked across files;
+    processing stops once the budget is exhausted.
 
     Args:
         file_paths: Voter CSV file paths.
         batch_size: Records per batch per file.
         seed_result: Mutable result to track import outcomes.
         fail_fast: If True, propagate the first error.
+        max_voters: If set, limit total voter records imported across
+            all files. Files are processed sequentially when set.
     """
     from sqlalchemy import text
 
@@ -396,10 +412,17 @@ async def _import_voters_batch(
     if not file_paths:
         return
 
+    if max_voters is not None:
+        typer.echo(f"  Voter import limited to {max_voters:,} records total")
+
     factory = get_session_factory()
 
-    async def _process_one(file_path: Path) -> None:
-        """Process a single voter file in its own session."""
+    async def _process_one(file_path: Path, max_records: int | None = None) -> int:
+        """Process a single voter file in its own session.
+
+        Returns:
+            Number of records successfully imported.
+        """
         async with factory() as session:
             # synchronous_commit is a session-level setting
             await session.execute(text("SET synchronous_commit = 'off'"))
@@ -411,22 +434,43 @@ async def _import_voters_batch(
                 file_path,
                 batch_size,
                 skip_optimizations=True,
+                max_records=max_records,
             )
             typer.echo(
                 f"  Result ({file_path.name}): {job.records_succeeded or 0} succeeded, {job.records_failed or 0} failed"
             )
+            return job.records_succeeded or 0
 
     # Use a dedicated session for the optimization lifecycle (drop/rebuild indexes)
     async with factory() as lifecycle_session, bulk_import_context(lifecycle_session):
-        tasks = [_process_one(fp) for fp in file_paths]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    for fp, result in zip(file_paths, results, strict=True):
-        if isinstance(result, Exception):
-            typer.echo(f"  IMPORT FAILED: {fp.name}: {result}", err=True)
-            seed_result.success = False
-            seed_result.import_results[f"voter:{fp.name}"] = str(result)
-            if fail_fast:
-                return
+        if max_voters is not None:
+            # Sequential processing with a running budget
+            remaining = max_voters
+            for fp in file_paths:
+                if remaining <= 0:
+                    typer.echo(f"  Skipping {fp.name} (voter limit reached)")
+                    break
+                try:
+                    imported = await _process_one(fp, max_records=remaining)
+                    remaining -= imported
+                    seed_result.import_results[f"voter:{fp.name}"] = "success"
+                except Exception as exc:
+                    typer.echo(f"  IMPORT FAILED: {fp.name}: {exc}", err=True)
+                    seed_result.success = False
+                    seed_result.import_results[f"voter:{fp.name}"] = str(exc)
+                    if fail_fast:
+                        return
         else:
-            seed_result.import_results[f"voter:{fp.name}"] = "success"
+            # Concurrent processing (no limit)
+            tasks = [_process_one(fp) for fp in file_paths]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for fp, result in zip(file_paths, results, strict=True):
+                if isinstance(result, Exception):
+                    typer.echo(f"  IMPORT FAILED: {fp.name}: {result}", err=True)
+                    seed_result.success = False
+                    seed_result.import_results[f"voter:{fp.name}"] = str(result)
+                    if fail_fast:
+                        return
+                else:
+                    seed_result.import_results[f"voter:{fp.name}"] = "success"

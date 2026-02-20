@@ -325,6 +325,7 @@ class TestSeedFullBootstrap:
             batch_size: int,
             seed_result: object,
             fail_fast: bool,
+            max_voters: int | None = None,
         ) -> None:
             order_log.append("voter")
 
@@ -610,3 +611,144 @@ class TestSeedDownloadOnly:
         assert result.exit_code == 0, result.output
         assert (data_dir / "voter" / "Bibb.csv").exists()
         assert not (data_dir / "congress.zip").exists()
+
+
+# ---------------------------------------------------------------------------
+# US4: Max Voters Limit
+# ---------------------------------------------------------------------------
+
+
+class TestSeedMaxVoters:
+    """US4: --max-voters flag limits total voter records imported."""
+
+    def test_max_voters_passed_to_voter_batch(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+        """Verify --max-voters is threaded through to _import_voters_batch."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+
+        voter_content = b"voter csv data"
+        voter_sha = hashlib.sha512(voter_content).hexdigest()
+
+        manifest = json.dumps(
+            {
+                "version": "1",
+                "updated_at": "2026-02-20T09:00:00Z",
+                "files": [
+                    {
+                        "filename": "Bibb.csv",
+                        "sha512": voter_sha,
+                        "category": "voter",
+                        "size_bytes": len(voter_content),
+                    },
+                ],
+            }
+        )
+
+        httpx_mock.add_response(url="https://test.example.com/manifest.json", text=manifest)
+        httpx_mock.add_response(url="https://test.example.com/Bibb.csv", content=voter_content)
+
+        captured_kwargs: dict = {}
+
+        async def mock_voters_batch(
+            file_paths: list[Path],
+            batch_size: int,
+            seed_result: object,
+            fail_fast: bool,
+            max_voters: int | None = None,
+        ) -> None:
+            captured_kwargs["max_voters"] = max_voters
+
+        with (
+            patch(
+                "voter_api.cli.seed_cmd._import_county_districts",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "voter_api.cli.seed_cmd._import_all_boundaries",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "voter_api.cli.seed_cmd._import_voters_batch",
+                side_effect=mock_voters_batch,
+            ),
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "seed",
+                    "--data-root",
+                    "https://test.example.com/",
+                    "--data-dir",
+                    str(data_dir),
+                    "--max-voters",
+                    "10000",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert captured_kwargs["max_voters"] == 10000
+
+    def test_max_voters_default_is_none(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+        """Verify --max-voters defaults to None (unlimited) when not specified."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+
+        voter_content = b"voter csv data"
+        voter_sha = hashlib.sha512(voter_content).hexdigest()
+
+        manifest = json.dumps(
+            {
+                "version": "1",
+                "updated_at": "2026-02-20T09:00:00Z",
+                "files": [
+                    {
+                        "filename": "Bibb.csv",
+                        "sha512": voter_sha,
+                        "category": "voter",
+                        "size_bytes": len(voter_content),
+                    },
+                ],
+            }
+        )
+
+        httpx_mock.add_response(url="https://test.example.com/manifest.json", text=manifest)
+        httpx_mock.add_response(url="https://test.example.com/Bibb.csv", content=voter_content)
+
+        captured_kwargs: dict = {}
+
+        async def mock_voters_batch(
+            file_paths: list[Path],
+            batch_size: int,
+            seed_result: object,
+            fail_fast: bool,
+            max_voters: int | None = None,
+        ) -> None:
+            captured_kwargs["max_voters"] = max_voters
+
+        with (
+            patch(
+                "voter_api.cli.seed_cmd._import_county_districts",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "voter_api.cli.seed_cmd._import_all_boundaries",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "voter_api.cli.seed_cmd._import_voters_batch",
+                side_effect=mock_voters_batch,
+            ),
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "seed",
+                    "--data-root",
+                    "https://test.example.com/",
+                    "--data-dir",
+                    str(data_dir),
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert captured_kwargs["max_voters"] is None
