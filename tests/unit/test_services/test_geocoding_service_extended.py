@@ -399,6 +399,8 @@ class TestGeocodeVoterAllProviders:
 
         geo_result = _mock_geocoding_result()
         mock_locations = [MagicMock()]
+        mock_geocoder = MagicMock()
+        mock_geocoder.provider_name = "census"
 
         with (
             patch(
@@ -408,6 +410,10 @@ class TestGeocodeVoterAllProviders:
             patch(
                 "voter_api.services.geocoding_service.get_available_providers",
                 return_value=["census"],
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_geocoder",
+                return_value=mock_geocoder,
             ),
             patch(
                 "voter_api.services.geocoding_service.cache_lookup",
@@ -433,6 +439,50 @@ class TestGeocodeVoterAllProviders:
         assert result["providers"][0]["cached"] is True
         assert result["locations"] == mock_locations
         mock_store.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_out_of_bounds_coordinates_recorded_as_error(self) -> None:
+        session = AsyncMock()
+        voter = self._make_mock_voter()
+
+        voter_result = MagicMock()
+        voter_result.scalar_one_or_none.return_value = voter
+        session.execute.return_value = voter_result
+
+        # Coordinates outside Georgia bounding box
+        out_of_bounds_result = _mock_geocoding_result(latitude=40.0, longitude=-74.0)
+        mock_geocoder = AsyncMock()
+        mock_geocoder.provider_name = "census"
+        mock_geocoder.geocode = AsyncMock(return_value=out_of_bounds_result)
+
+        with (
+            patch(
+                "voter_api.services.geocoding_service.reconstruct_address",
+                return_value="123 MAIN ST, ATLANTA, GA 30301",
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_available_providers",
+                return_value=["census"],
+            ),
+            patch(
+                "voter_api.services.geocoding_service.cache_lookup",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_geocoder",
+                return_value=mock_geocoder,
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_voter_locations",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+        ):
+            result = await geocode_voter_all_providers(session, voter.id)
+
+        assert result["providers"][0]["status"] == "error"
+        assert result["providers"][0].get("error") is not None
 
     @pytest.mark.asyncio
     async def test_success_with_provider_call(self) -> None:

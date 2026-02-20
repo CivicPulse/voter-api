@@ -176,7 +176,6 @@ async def point_lookup_districts(
 async def geocode_voter_all(
     voter_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
-    _current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> VoterGeocodeAllResponse:
     """Geocode a voter's address with all available providers (admin only).
 
@@ -190,11 +189,6 @@ async def geocode_voter_all(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
-        ) from e
-    except GeocodingProviderError as e:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Geocoding provider is temporarily unavailable. Please retry later.",
         ) from e
 
     return VoterGeocodeAllResponse(

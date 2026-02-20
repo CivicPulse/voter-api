@@ -176,6 +176,15 @@ async def geocode_voter_all_providers(
         # Check cache first
         cached = await cache_lookup(session, geocoder.provider_name, address)
         if cached:
+            try:
+                validate_georgia_coordinates(cached.latitude, cached.longitude)
+            except ValueError as e:
+                logger.warning(
+                    f"Provider {provider_name} cache hit has out-of-bounds coordinates for voter {voter_id}: {e}"
+                )
+                entry.update(status="error", error=str(e))
+                provider_results.append(entry)
+                continue
             await _store_geocoded_location(session, voter, cached, geocoder.provider_name, address)
             entry.update(
                 status="success",
@@ -198,6 +207,15 @@ async def geocode_voter_all_providers(
 
         if geo_result is None:
             entry.update(status="no_match", cached=False)
+            provider_results.append(entry)
+            continue
+
+        # Validate coordinates are within Georgia before storing
+        try:
+            validate_georgia_coordinates(geo_result.latitude, geo_result.longitude)
+        except ValueError as e:
+            logger.warning(f"Provider {provider_name} returned out-of-bounds coordinates for voter {voter_id}: {e}")
+            entry.update(status="error", error=str(e))
             provider_results.append(entry)
             continue
 
@@ -520,7 +538,7 @@ async def _geocode_with_retry(
 async def _store_geocoded_location(
     session: AsyncSession,
     voter: Voter,
-    result: GeocodingResult,
+    result: GeocodingResult | GeocoderCache,
     source_type: str,
     input_address: str,
 ) -> GeocodedLocation:

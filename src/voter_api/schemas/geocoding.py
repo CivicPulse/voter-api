@@ -135,7 +135,7 @@ class ProviderGeocodeResult(BaseModel):
     """Result from a single geocoding provider."""
 
     provider: str
-    status: str = Field(..., description="success, no_match, or error")
+    status: Literal["success", "no_match", "error"]
     cached: bool | None = None
     latitude: float | None = None
     longitude: float | None = None
