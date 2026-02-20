@@ -59,7 +59,6 @@ class TestGenerateSlug:
 class TestListTypes:
     """Tests for list_types."""
 
-    @pytest.mark.asyncio
     async def test_returns_all_types(self) -> None:
         """Returns all governing body types ordered by name."""
         types = [_mock_type(name="A"), _mock_type(name="B")]
@@ -68,7 +67,6 @@ class TestListTypes:
         assert len(result) == 2
         session.execute.assert_called_once()
 
-    @pytest.mark.asyncio
     async def test_returns_empty_list(self) -> None:
         """Returns empty list when no types exist."""
         session = _mock_session()
@@ -79,7 +77,6 @@ class TestListTypes:
 class TestCreateType:
     """Tests for create_type."""
 
-    @pytest.mark.asyncio
     async def test_creates_with_generated_slug(self) -> None:
         """Creates a type with auto-generated slug."""
         session = AsyncMock()
@@ -92,7 +89,6 @@ class TestCreateType:
         assert added_obj.slug == "water-authority"
         assert added_obj.is_default is False
 
-    @pytest.mark.asyncio
     async def test_duplicate_name_raises_value_error(self) -> None:
         """Duplicate name/slug raises ValueError."""
         session = AsyncMock()
