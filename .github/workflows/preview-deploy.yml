@@ -78,6 +78,7 @@ jobs:
             DATABASE_SCHEMA="pr_${PR_NUM}" \
             JWT_SECRET_KEY="${JWT_SECRET_KEY}" \
             NGINX_SERVER_NAME="pr-${PR_NUM}.${{ vars.PREVIEW_DOMAIN }}" \
+            ENVIRONMENT=preview \
             ELECTION_REFRESH_ENABLED=false \
             CORS_ORIGIN_REGEX=".*" \
             BIND_ADDRESS=0.0.0.0
