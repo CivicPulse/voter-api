@@ -258,6 +258,8 @@ async def update_meeting_endpoint(
             data=body.model_dump(exclude_unset=True),
             current_user=current_user,
         )
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     return await _detail_from_meeting(session, meeting)
@@ -274,7 +276,9 @@ async def delete_meeting_endpoint(
 ) -> None:
     """Soft-delete a meeting and all child records."""
     try:
-        await delete_meeting(session, meeting_id)
+        await delete_meeting(session, meeting_id, current_user=current_user)
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     logger.info(f"Admin {current_user.username} deleted meeting {meeting_id}")

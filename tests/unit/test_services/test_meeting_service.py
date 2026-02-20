@@ -253,7 +253,7 @@ class TestUpdateMeeting:
         mock_result.scalar_one_or_none.return_value = meeting
         session.execute.return_value = mock_result
 
-        with pytest.raises(ValueError, match="Permission denied"):
+        with pytest.raises(PermissionError, match="Permission denied"):
             await update_meeting(session, meeting.id, data={"status": "cancelled"}, current_user=contributor)
 
     @pytest.mark.asyncio
@@ -280,7 +280,8 @@ class TestDeleteMeeting:
 
     @pytest.mark.asyncio
     async def test_soft_deletes_with_cascade(self) -> None:
-        meeting = _mock_meeting()
+        admin = _mock_user("admin")
+        meeting = _mock_meeting(submitted_by=admin.id)
         agenda_item = MagicMock(deleted_at=None)
         attachment = MagicMock(deleted_at=None)
         video_embed = MagicMock(deleted_at=None)
@@ -304,7 +305,7 @@ class TestDeleteMeeting:
 
         session.execute = mock_execute
         session.commit = AsyncMock()
-        await delete_meeting(session, meeting.id)
+        await delete_meeting(session, meeting.id, current_user=admin)
         assert meeting.deleted_at is not None
         assert agenda_item.deleted_at is not None
         assert attachment.deleted_at is not None
@@ -313,8 +314,22 @@ class TestDeleteMeeting:
     @pytest.mark.asyncio
     async def test_not_found_raises(self) -> None:
         session = _mock_session()
+        admin = _mock_user("admin")
         with pytest.raises(ValueError, match="not found"):
-            await delete_meeting(session, uuid.uuid4())
+            await delete_meeting(session, uuid.uuid4(), current_user=admin)
+
+    @pytest.mark.asyncio
+    async def test_contributor_cannot_delete_others_meeting(self) -> None:
+        """Contributor cannot delete a meeting they did not submit."""
+        contributor = _mock_user("contributor")
+        meeting = _mock_meeting(submitted_by=uuid.uuid4())
+        session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = meeting
+        session.execute.return_value = mock_result
+
+        with pytest.raises(PermissionError, match="Permission denied"):
+            await delete_meeting(session, meeting.id, current_user=contributor)
 
 
 class TestApproveMeeting:

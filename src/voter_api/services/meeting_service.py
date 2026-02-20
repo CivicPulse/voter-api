@@ -262,7 +262,7 @@ async def update_meeting(
         raise ValueError(f"Meeting {meeting_id} not found")
 
     if current_user.role != "admin" and meeting.submitted_by != current_user.id:
-        raise ValueError("Permission denied: you may only edit your own meetings")
+        raise PermissionError("Permission denied: you may only edit your own meetings")
 
     for field_name, value in data.items():
         if field_name in _UPDATABLE_FIELDS:
@@ -277,15 +277,19 @@ async def update_meeting(
 async def delete_meeting(
     session: AsyncSession,
     meeting_id: uuid.UUID,
+    *,
+    current_user: User,
 ) -> None:
     """Soft-delete a meeting and cascade to all children.
 
     Args:
         session: Database session.
         meeting_id: The meeting UUID.
+        current_user: The authenticated user.
 
     Raises:
         ValueError: If the meeting is not found.
+        PermissionError: If the user lacks permission.
     """
     result = await session.execute(
         select(Meeting).where(
@@ -296,6 +300,9 @@ async def delete_meeting(
     meeting = result.scalar_one_or_none()
     if meeting is None:
         raise ValueError(f"Meeting {meeting_id} not found")
+
+    if current_user.role != "admin" and meeting.submitted_by != current_user.id:
+        raise PermissionError("Permission denied: you may only delete your own meetings")
 
     now = datetime.now(UTC)
     meeting.deleted_at = now

@@ -59,7 +59,8 @@ async def list_bodies(
         query = query.where(GoverningBody.type_id == type_id)
         count_query = count_query.where(GoverningBody.type_id == type_id)
     if jurisdiction is not None:
-        pattern = f"%{jurisdiction}%"
+        escaped = jurisdiction.replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
         query = query.where(GoverningBody.jurisdiction.ilike(pattern))
         count_query = count_query.where(GoverningBody.jurisdiction.ilike(pattern))
 

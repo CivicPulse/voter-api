@@ -83,6 +83,7 @@ class TestCreateType:
     async def test_creates_with_generated_slug(self) -> None:
         """Creates a type with auto-generated slug."""
         session = AsyncMock()
+        session.add = MagicMock()
         session.commit = AsyncMock()
         session.refresh = AsyncMock()
         await create_type(session, name="Water Authority", description="Manages water")
@@ -95,6 +96,7 @@ class TestCreateType:
     async def test_duplicate_name_raises_value_error(self) -> None:
         """Duplicate name/slug raises ValueError."""
         session = AsyncMock()
+        session.add = MagicMock()
         session.commit = AsyncMock(side_effect=IntegrityError("", {}, Exception()))
         session.rollback = AsyncMock()
         with pytest.raises(ValueError, match="already exists"):

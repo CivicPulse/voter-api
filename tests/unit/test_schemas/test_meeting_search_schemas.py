@@ -67,6 +67,18 @@ class TestSearchResultItem:
         with pytest.raises(ValidationError):
             SearchResultItem(**data)
 
+    def test_agenda_item_id_nullable(self):
+        """Meeting-level attachment matches return None for agenda_item_id."""
+        item = SearchResultItem(**self._valid_data(agenda_item_id=None))
+        assert item.agenda_item_id is None
+
+    def test_agenda_item_id_defaults_to_none(self):
+        """agenda_item_id defaults to None when omitted."""
+        data = self._valid_data()
+        del data["agenda_item_id"]
+        item = SearchResultItem(**data)
+        assert item.agenda_item_id is None
+
 
 class TestPaginatedSearchResultResponse:
     def test_empty_results(self):

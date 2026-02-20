@@ -15,7 +15,6 @@ from voter_api.models.meeting_video_embed import MeetingVideoEmbed
 _UPDATABLE_FIELDS: frozenset[str] = frozenset(
     {
         "video_url",
-        "platform",
         "start_seconds",
         "end_seconds",
     }
@@ -163,12 +162,12 @@ async def update_embed(
     if embed is None:
         raise ValueError(f"Video embed {embed_id} not found")
 
-    # If URL is changing, re-validate
+    # If URL is changing, re-validate and derive platform
     if "video_url" in data:
         is_valid, platform = validate_video_url(data["video_url"])
         if not is_valid:
             raise ValueError("Invalid video URL. Must be a YouTube or Vimeo URL.")
-        data["platform"] = platform
+        embed.platform = platform
 
     # Validate timestamps
     start = data.get("start_seconds", embed.start_seconds)

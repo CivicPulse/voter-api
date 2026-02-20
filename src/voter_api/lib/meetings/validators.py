@@ -50,7 +50,7 @@ def validate_file_content_type(content_type: str) -> bool:
     Returns:
         True if the content type is allowed, False otherwise.
     """
-    return content_type.lower() in ALLOWED_MIME_TYPES
+    return content_type.split(";")[0].strip().lower() in ALLOWED_MIME_TYPES
 
 
 def validate_file_extension(filename: str) -> bool:
