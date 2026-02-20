@@ -32,6 +32,15 @@ async def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
         * Hostname must be in the allowed_domains list.
         * All resolved IP addresses must be public (no private/loopback/etc.).
 
+    Note:
+        DNS resolution is performed here for validation, but ``httpx`` will
+        perform a second independent DNS lookup when making the actual request.
+        This introduces a TOCTOU window where DNS rebinding could cause the
+        hostname to resolve to a different IP at request time. This is a known
+        limitation of DNS-based SSRF protections; mitigating it fully would
+        require pinning the resolved IP and connecting directly, which is not
+        implemented here.
+
     Args:
         url: The URL to validate.
         allowed_domains: Non-empty list of allowed domain names (lowercase).
@@ -74,6 +83,7 @@ async def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
         msg = f"Failed to resolve hostname '{hostname}': {exc}"
         raise FetchError(msg) from exc
 
+    validated_count = 0
     for family, _socktype, _proto, _canonname, sockaddr in addrinfo_list:
         ip_str = None
         if family == socket.AF_INET or family == socket.AF_INET6:
@@ -86,6 +96,11 @@ async def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
         if not ip.is_global:
             msg = f"Resolved IP address '{ip}' for hostname '{hostname}' is not allowed"
             raise FetchError(msg)
+        validated_count += 1
+
+    if validated_count == 0:
+        msg = f"No valid IP addresses returned for hostname '{hostname}'"
+        raise FetchError(msg)
 
 
 async def fetch_election_results(

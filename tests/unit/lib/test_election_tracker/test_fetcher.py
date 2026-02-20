@@ -337,3 +337,27 @@ class TestValidateUrlDomain:
             pytest.raises(FetchError, match="Failed to resolve hostname"),
         ):
             await validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+
+    @pytest.mark.asyncio
+    async def test_unsupported_scheme_rejected(self):
+        """Non-http/https URL schemes are rejected before domain validation."""
+        with pytest.raises(FetchError, match="Unsupported URL scheme"):
+            await validate_url_domain("ftp://sos.ga.gov/results", ["sos.ga.gov"])
+
+    @pytest.mark.asyncio
+    async def test_missing_hostname_rejected(self):
+        """URLs without a hostname are rejected with a clear error message."""
+        with pytest.raises(FetchError, match="URL must include a hostname"):
+            await validate_url_domain("http:///path/to/resource", ["sos.ga.gov"])
+
+    @pytest.mark.asyncio
+    async def test_empty_addrinfo_raises(self):
+        """DNS returning no records raises FetchError rather than silently passing."""
+        with (
+            patch(
+                "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
+                return_value=[],
+            ),
+            pytest.raises(FetchError, match="No valid IP addresses returned"),
+        ):
+            await validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
