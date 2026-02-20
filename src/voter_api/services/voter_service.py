@@ -1,5 +1,6 @@
 """Voter service — multi-parameter search and detail retrieval."""
 
+import re
 import uuid
 
 from sqlalchemy import func, or_, select
@@ -56,8 +57,8 @@ async def search_voters(
 
     # Combined name search (q parameter)
     if q:
-        # Split query into words and search each word across first_name, last_name, middle_name
-        words = q.strip().split()
+        # Normalize: split on whitespace and punctuation so "Smith, Jane" -> ["Smith", "Jane"]
+        words = [w for w in re.split(r"[\s,;.]+", q.strip()) if w]
         for word in words:
             pattern = f"%{word}%"
             # Each word must match at least one of the name fields
