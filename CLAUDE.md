@@ -237,9 +237,9 @@ uv run voter-api deploy-check                                            # prod 
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes
+- 007-meeting-records: Added Python 3.13+ + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Alembic, Typer, Loguru, aiofiles (new — async file I/O)
 - 006-voter-history: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, Pandas, Typer, Loguru, Alembic
 - 005-elected-officials: Added `ElectedOfficial` and `ElectedOfficialSource` models (migration 015), 9 API endpoints under `/api/v1/elected-officials`, admin approval workflow (auto/approved/manual), multi-source data provider architecture
-- 004-election-tracking: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, httpx, Alembic, Typer, Loguru
 
 ### 005-elected-officials
 
@@ -255,5 +255,5 @@ Key files:
 
 
 ## Active Technologies
-- Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, Pandas, Typer, Loguru, Alembic (006-voter-history)
-- PostgreSQL 15+ / PostGIS 3.x (existing `voters`, `elections`, `import_jobs` tables; new `voter_history` table) (006-voter-history)
+- Python 3.13+ + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Alembic, Typer, Loguru, aiofiles (new — async file I/O) (007-meeting-records)
+- PostgreSQL 15+ / PostGIS 3.x (existing) + local filesystem for attachments (new) (007-meeting-records)
