@@ -286,21 +286,17 @@ async def _run_imports(
                 if fail_fast:
                     return
 
-        # Voters last
+        # Voters last — parallel processing with single index lifecycle
         voter_files = [r for r in successful_downloads if r.entry.category == FileCategory.VOTER]
         if voter_files and (category_filters is None or FileCategory.VOTER in category_filters):
             typer.echo("\n--- Importing voter files ---")
-            for r in voter_files:
-                assert r.local_path is not None
-                try:
-                    await _import_voters(r.local_path, batch_size=settings.import_batch_size)
-                    seed_result.import_results[f"voter:{r.entry.filename}"] = "success"
-                except Exception as exc:
-                    typer.echo(f"  IMPORT FAILED: {r.entry.filename}: {exc}", err=True)
-                    seed_result.success = False
-                    seed_result.import_results[f"voter:{r.entry.filename}"] = str(exc)
-                    if fail_fast:
-                        return
+            voter_paths = [r.local_path for r in voter_files if r.local_path is not None]
+            await _import_voters_batch(
+                voter_paths,
+                batch_size=settings.import_batch_size,
+                seed_result=seed_result,
+                fail_fast=fail_fast,
+            )
 
     finally:
         await dispose_engine()
@@ -368,3 +364,69 @@ async def _import_voters(file_path: Path, batch_size: int) -> None:
         typer.echo(f"  Import job: {job.id} for {file_path.name}")
         job = await process_voter_import(session, job, file_path, batch_size)
         typer.echo(f"  Result: {job.records_succeeded or 0} succeeded, {job.records_failed or 0} failed")
+
+
+async def _import_voters_batch(
+    file_paths: list[Path],
+    batch_size: int,
+    seed_result: SeedResult,
+    fail_fast: bool,
+) -> None:
+    """Import multiple voter files with a single index lifecycle and parallel processing.
+
+    Drops indexes once, processes all files concurrently via asyncio.gather,
+    then rebuilds indexes and runs VACUUM ANALYZE once. Each file gets its own
+    DB session since sessions are not coroutine-safe.
+
+    Args:
+        file_paths: Voter CSV file paths.
+        batch_size: Records per batch per file.
+        seed_result: Mutable result to track import outcomes.
+        fail_fast: If True, propagate the first error.
+    """
+    from sqlalchemy import text
+
+    from voter_api.core.database import get_session_factory
+    from voter_api.services.import_service import (
+        bulk_import_context,
+        create_import_job,
+        process_voter_import,
+    )
+
+    if not file_paths:
+        return
+
+    factory = get_session_factory()
+
+    async def _process_one(file_path: Path) -> None:
+        """Process a single voter file in its own session."""
+        async with factory() as session:
+            # synchronous_commit is a session-level setting
+            await session.execute(text("SET synchronous_commit = 'off'"))
+            job = await create_import_job(session, file_name=file_path.name)
+            typer.echo(f"  Import job: {job.id} for {file_path.name}")
+            job = await process_voter_import(
+                session,
+                job,
+                file_path,
+                batch_size,
+                skip_optimizations=True,
+            )
+            typer.echo(
+                f"  Result ({file_path.name}): {job.records_succeeded or 0} succeeded, {job.records_failed or 0} failed"
+            )
+
+    # Use a dedicated session for the optimization lifecycle (drop/rebuild indexes)
+    async with factory() as lifecycle_session, bulk_import_context(lifecycle_session):
+        tasks = [_process_one(fp) for fp in file_paths]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    for fp, result in zip(file_paths, results, strict=True):
+        if isinstance(result, Exception):
+            typer.echo(f"  IMPORT FAILED: {fp.name}: {result}", err=True)
+            seed_result.success = False
+            seed_result.import_results[f"voter:{fp.name}"] = str(result)
+            if fail_fast:
+                return
+        else:
+            seed_result.import_results[f"voter:{fp.name}"] = "success"

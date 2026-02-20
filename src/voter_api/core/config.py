@@ -70,7 +70,7 @@ class Settings(BaseSettings):
 
     # Import
     import_batch_size: int = Field(
-        default=1000,
+        default=5000,
         description="Records per import batch",
         gt=0,
     )

@@ -2,16 +2,19 @@
 
 import time
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
 from dateutil.parser import parse as parse_date
 from loguru import logger
-from sqlalchemy import literal_column, select, update
+from sqlalchemy import literal_column, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from voter_api.core.database import get_engine
 from voter_api.lib.importer import parse_csv_chunks, validate_batch
 from voter_api.models.import_job import ImportJob
 from voter_api.models.voter import Voter
@@ -30,6 +33,61 @@ _DATE_FIELDS = (
     "last_vote_date",
     "voter_created_date",
 )
+
+# Columns excluded from the ON CONFLICT UPDATE set.
+# voter_registration_number: conflict target key
+# first_seen_in_import_id: preserved from original insert
+# birth_year: immutable demographic
+# voter_created_date: set once when GA SoS creates the record
+# id: primary key
+# created_at: ORM timestamp, set once
+_UPSERT_EXCLUDE_COLUMNS = frozenset(
+    {
+        "voter_registration_number",
+        "first_seen_in_import_id",
+        "birth_year",
+        "voter_created_date",
+        "id",
+        "created_at",
+    }
+)
+
+# Indexes to drop before bulk import and rebuild afterward.
+# GIN trigram indexes first (most expensive), then composite B-tree.
+_DROPPABLE_INDEXES: list[dict[str, str]] = [
+    {
+        "name": "ix_voters_first_name_trgm",
+        "create": "CREATE INDEX ix_voters_first_name_trgm ON voters USING GIN (first_name gin_trgm_ops)",
+    },
+    {
+        "name": "ix_voters_last_name_trgm",
+        "create": "CREATE INDEX ix_voters_last_name_trgm ON voters USING GIN (last_name gin_trgm_ops)",
+    },
+    {
+        "name": "ix_voters_middle_name_trgm",
+        "create": "CREATE INDEX ix_voters_middle_name_trgm ON voters USING GIN (middle_name gin_trgm_ops)",
+    },
+    {
+        "name": "ix_voters_name_search",
+        "create": "CREATE INDEX ix_voters_name_search ON voters (last_name, first_name)",
+    },
+    {
+        "name": "ix_voters_county_status",
+        "create": "CREATE INDEX ix_voters_county_status ON voters (county, status)",
+    },
+    {
+        "name": "ix_voters_county_precinct_combo",
+        "create": "CREATE INDEX ix_voters_county_precinct_combo ON voters (county, county_precinct)",
+    },
+    {
+        "name": "ix_voters_status_present",
+        "create": "CREATE INDEX ix_voters_status_present ON voters (status, present_in_latest_import)",
+    },
+    {
+        "name": "ix_voters_city_zip",
+        "create": "CREATE INDEX ix_voters_city_zip ON voters (residence_city, residence_zipcode)",
+    },
+]
 
 
 async def _soft_delete_absent_voters(
@@ -69,6 +127,116 @@ async def _soft_delete_absent_voters(
         )
 
     return len(absent_list)
+
+
+async def _drop_import_indexes(session: AsyncSession) -> None:
+    """Drop non-essential indexes before bulk import.
+
+    Drops GIN trigram and composite B-tree indexes that are expensive
+    to maintain during writes. Safe to call even if indexes don't exist.
+
+    Args:
+        session: Database session.
+    """
+    for idx in _DROPPABLE_INDEXES:
+        await session.execute(text(f"DROP INDEX IF EXISTS {idx['name']}"))
+        logger.debug(f"Dropped index: {idx['name']}")
+    await session.commit()
+    logger.info(f"Dropped {len(_DROPPABLE_INDEXES)} indexes for bulk import")
+
+
+async def _rebuild_import_indexes(session: AsyncSession) -> None:
+    """Rebuild indexes after bulk import.
+
+    Uses elevated maintenance_work_mem for faster index creation.
+    Non-CONCURRENTLY since the import is a dedicated batch process.
+
+    Args:
+        session: Database session.
+    """
+    await session.execute(text("SET maintenance_work_mem = '512MB'"))
+    await session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+
+    for idx in _DROPPABLE_INDEXES:
+        create_sql = f"CREATE INDEX IF NOT EXISTS {idx['name']}" + idx["create"].split(idx["name"], 1)[1]
+        logger.info(f"Rebuilding index: {idx['name']}")
+        start = time.monotonic()
+        await session.execute(text(create_sql))
+        elapsed = time.monotonic() - start
+        logger.info(f"Rebuilt index {idx['name']} in {elapsed:.1f}s")
+
+    await session.execute(text("RESET maintenance_work_mem"))
+    await session.commit()
+    logger.info(f"Rebuilt all {len(_DROPPABLE_INDEXES)} indexes")
+
+
+async def _disable_autovacuum(session: AsyncSession) -> None:
+    """Disable autovacuum on the voters table for bulk import.
+
+    Args:
+        session: Database session.
+    """
+    await session.execute(text("ALTER TABLE voters SET (autovacuum_enabled = false)"))
+    await session.commit()
+    logger.info("Disabled autovacuum on voters table")
+
+
+async def _enable_autovacuum_and_vacuum(session: AsyncSession) -> None:
+    """Re-enable autovacuum and run VACUUM ANALYZE on the voters table.
+
+    VACUUM cannot run inside a transaction block, so we use the raw
+    asyncpg driver connection.
+
+    Args:
+        session: Database session.
+    """
+    await session.execute(text("ALTER TABLE voters SET (autovacuum_enabled = true)"))
+    await session.commit()
+    logger.info("Re-enabled autovacuum on voters table")
+
+    logger.info("Running VACUUM ANALYZE on voters table...")
+    start = time.monotonic()
+    engine = get_engine()
+    async with engine.connect() as vacuum_conn:
+        await vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
+        await vacuum_conn.execute(text("VACUUM ANALYZE voters"))
+    elapsed = time.monotonic() - start
+    logger.info(f"VACUUM ANALYZE completed in {elapsed:.1f}s")
+
+
+@asynccontextmanager
+async def bulk_import_context(session: AsyncSession) -> AsyncIterator[None]:
+    """Context manager for batch voter imports.
+
+    Drops indexes and disables autovacuum once on entry, then rebuilds
+    indexes and runs VACUUM ANALYZE once on exit (including on error).
+
+    Use this to wrap multiple calls to ``process_voter_import`` with
+    ``skip_optimizations=True`` so the expensive lifecycle operations
+    happen exactly once for the entire batch.
+
+    Args:
+        session: Database session for lifecycle DDL operations.
+
+    Yields:
+        None — caller processes files inside the context.
+    """
+    try:
+        await session.execute(text("SET synchronous_commit = 'off'"))
+        await _disable_autovacuum(session)
+        await _drop_import_indexes(session)
+        logger.info("Bulk import context entered: optimizations applied")
+        yield
+    finally:
+        logger.info("Bulk import context exiting: restoring database settings...")
+        try:
+            await session.rollback()
+            await session.execute(text("SET synchronous_commit = 'on'"))
+            await _rebuild_import_indexes(session)
+            await _enable_autovacuum_and_vacuum(session)
+            logger.info("Bulk import context: database settings restored")
+        except Exception:
+            logger.exception("Error during bulk import teardown — indexes may need manual rebuild")
 
 
 def _coerce_record_types(record: dict) -> None:
@@ -155,9 +323,9 @@ async def _upsert_voter_batch(
     total_inserted = 0
     total_updated = 0
 
-    # Columns to update on conflict — everything except the conflict key
-    # and first_seen_in_import_id (which should only be set on initial insert).
-    update_columns = sorted(set(records[0].keys()) - {"voter_registration_number", "first_seen_in_import_id"})
+    # Columns to update on conflict — everything except immutable columns
+    # (conflict key, PK, timestamps, demographics that don't change).
+    update_columns = sorted(set(records[0].keys()) - _UPSERT_EXCLUDE_COLUMNS)
 
     for i in range(0, len(records), _UPSERT_SUB_BATCH):
         batch = records[i : i + _UPSERT_SUB_BATCH]
@@ -266,18 +434,31 @@ async def process_voter_import(
     session: AsyncSession,
     job: ImportJob,
     file_path: Path,
-    batch_size: int = 1000,
+    batch_size: int = 5000,
+    *,
+    skip_optimizations: bool = False,
 ) -> ImportJob:
-    """Process a voter CSV file import.
+    """Process a voter CSV file import with bulk optimizations.
 
     Reads the file in chunks, validates records, upserts voters,
     soft-deletes absent voters, and generates a diff report.
+
+    Performance optimizations applied during import (unless skipped):
+    - Drops non-essential indexes, rebuilds after
+    - Sets synchronous_commit = off for the session
+    - Disables autovacuum, runs VACUUM ANALYZE after
+
+    When ``skip_optimizations=True``, the caller is responsible for
+    managing the DB optimization lifecycle (e.g., via ``bulk_import_context``).
 
     Args:
         session: Database session.
         job: The ImportJob to track progress.
         file_path: Path to the CSV file.
         batch_size: Records per processing batch.
+        skip_optimizations: If True, skip index drop/rebuild, autovacuum,
+            and synchronous_commit changes. Use when calling within
+            ``bulk_import_context``.
 
     Returns:
         The updated ImportJob with final counts.
@@ -294,6 +475,15 @@ async def process_voter_import(
     import_county: str | None = None
 
     try:
+        import_start = time.monotonic()
+        if not skip_optimizations:
+            # --- Bulk import optimizations ---
+            logger.info("Applying bulk import optimizations...")
+            await session.execute(text("SET synchronous_commit = 'off'"))
+            await _disable_autovacuum(session)
+            await _drop_import_indexes(session)
+            logger.info("Bulk import optimizations applied")
+
         chunk_offset = job.last_processed_offset or 0
         for chunk_idx, chunk in enumerate(parse_csv_chunks(file_path, batch_size)):
             if chunk_idx < chunk_offset:
@@ -347,17 +537,33 @@ async def process_voter_import(
         job.completed_at = datetime.now(UTC)
         await session.commit()
 
+        import_elapsed = time.monotonic() - import_start
         logger.info(
-            f"Import completed: {total} total, {succeeded} succeeded, "
-            f"{failed} failed, {inserted} inserted, {updated_count} updated, "
-            f"{soft_deleted} soft-deleted"
+            f"Import data phase completed in {import_elapsed:.1f}s: "
+            f"{total} total, {succeeded} succeeded, {failed} failed, "
+            f"{inserted} inserted, {updated_count} updated, {soft_deleted} soft-deleted"
         )
 
     except Exception:
+        await session.rollback()
         job.status = "failed"
         job.error_log = errors if errors else None
         await session.commit()
         raise
+
+    finally:
+        if not skip_optimizations:
+            # --- Restore database settings (always runs, even on failure) ---
+            logger.info("Restoring database settings...")
+            try:
+                # Roll back any pending failed transaction before teardown
+                await session.rollback()
+                await session.execute(text("SET synchronous_commit = 'on'"))
+                await _rebuild_import_indexes(session)
+                await _enable_autovacuum_and_vacuum(session)
+                logger.info("Database settings restored")
+            except Exception:
+                logger.exception("Error during optimization teardown — indexes may need manual rebuild")
 
     return job
 
