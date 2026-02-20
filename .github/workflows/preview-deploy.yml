@@ -121,13 +121,22 @@ jobs:
         id: create-user
         run: |
           echo "Creating API user on ${APP_NAME}..."
-          ssh ${PIKU} -- run ${APP_NAME} -- voter-api user create \
+          USER_OUTPUT=$(ssh ${PIKU} -- run ${APP_NAME} -- voter-api user create \
             --username "${{ secrets.PREVIEW_API_USER }}" \
-            --email "${{ secrets.PREVIEW_API_USER }}@preview.voter-api.local" \
+            --email "${{ secrets.PREVIEW_API_EMAIL }}" \
             --password "${{ secrets.PREVIEW_API_PASSWORD }}" \
             --role admin \
-            --if-not-exists
-          echo "API user ready."
+            --if-not-exists 2>&1)
+          echo "$USER_OUTPUT"
+
+          if echo "$USER_OUTPUT" | grep -q "created with role"; then
+            echo "API user created successfully."
+          elif echo "$USER_OUTPUT" | grep -q "already exists, skipping"; then
+            echo "API user already exists (idempotent, OK)."
+          else
+            echo "::error::API user creation failed — unexpected output from CLI"
+            exit 1
+          fi
 
       - name: Comment preview URL on PR
         if: always()
