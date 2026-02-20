@@ -30,7 +30,7 @@ async def _import_voters(file_path: Path, batch_size: int) -> None:
     from voter_api.services.import_service import create_import_job, process_voter_import
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
     try:
         factory = get_session_factory()
@@ -70,7 +70,7 @@ async def _import_boundaries(file_path: Path, boundary_type: str, source: str, c
     from voter_api.services.boundary_service import import_boundaries
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
     try:
         factory = get_session_factory()
@@ -109,7 +109,7 @@ async def _import_county_districts(file_path: Path) -> None:
     from voter_api.services.county_district_service import import_county_districts
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
     try:
         factory = get_session_factory()
@@ -325,7 +325,7 @@ async def _import_all_boundaries(
     typer.echo(f"Importing {len(entries)} boundary file(s) from {data_dir.resolve()}\n")
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
     failed_results, prepared, tmp_dirs = _validate_and_extract_boundaries(
         entries,

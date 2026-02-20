@@ -38,7 +38,7 @@ async def _create_user(
     from voter_api.services.auth_service import create_user
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
     try:
         factory = get_session_factory()
@@ -52,6 +52,8 @@ async def _create_user(
             user = await create_user(session, request)
             typer.echo(f"User '{user.username}' created with role '{user.role}'")
     except ValueError as e:
+        # NOTE: This relies on auth_service.create_user raising a ValueError
+        # whose message contains "already exists" when the user already exists.
         if if_not_exists and "already exists" in str(e):
             typer.echo(f"User '{username}' already exists, skipping (--if-not-exists)")
             return
@@ -74,7 +76,7 @@ async def _list_users() -> None:
     from voter_api.services.auth_service import list_users
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
     try:
         factory = get_session_factory()
