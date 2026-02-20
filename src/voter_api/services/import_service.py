@@ -198,7 +198,7 @@ async def _enable_autovacuum_and_vacuum(session: AsyncSession) -> None:
     start = time.monotonic()
     engine = get_engine()
     async with engine.connect() as vacuum_conn:
-        autocommit_conn = vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
+        autocommit_conn = await vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
         await autocommit_conn.execute(text("VACUUM ANALYZE voters"))
     elapsed = time.monotonic() - start
     logger.info(f"VACUUM ANALYZE completed in {elapsed:.1f}s")
