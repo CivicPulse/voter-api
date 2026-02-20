@@ -141,16 +141,16 @@
 
 ### Implementation for User Story 4
 
-- [ ] T045 [P] [US4] Create attachment schemas in `src/voter_api/schemas/meeting_attachment.py` — `AttachmentResponse` (with download_url computed field), upload is multipart/form-data (no request schema — uses `UploadFile`)
-- [ ] T046 [US4] Create attachment service in `src/voter_api/services/meeting_attachment_service.py` — `list_attachments(session, *, meeting_id, agenda_item_id)` with soft-delete filter, `get_attachment(session, attachment_id)`, `upload_attachment(session, *, file_content, filename, content_type, meeting_id, agenda_item_id, storage)` with format validation and size check via lib/meetings validators, `download_attachment(session, attachment_id, storage)` returns bytes + metadata, `delete_attachment(session, attachment_id)` soft-delete only (file preserved)
-- [ ] T047 [US4] Create attachments API routes in `src/voter_api/api/v1/attachments.py` — `POST /meetings/{mid}/attachments`, `GET /meetings/{mid}/attachments`, `POST /meetings/{mid}/agenda-items/{aid}/attachments`, `GET /meetings/{mid}/agenda-items/{aid}/attachments`, `GET /attachments/{id}`, `GET /attachments/{id}/download` (StreamingResponse with Content-Disposition), `DELETE /attachments/{id}` (admin). Inject `LocalFileStorage` via dependency
-- [ ] T048 [US4] Register attachments router in `src/voter_api/api/router.py`
+- [x] T045 [P] [US4] Create attachment schemas in `src/voter_api/schemas/meeting_attachment.py` — `AttachmentResponse` (with download_url computed field), upload is multipart/form-data (no request schema — uses `UploadFile`)
+- [x] T046 [US4] Create attachment service in `src/voter_api/services/meeting_attachment_service.py` — `list_attachments(session, *, meeting_id, agenda_item_id)` with soft-delete filter, `get_attachment(session, attachment_id)`, `upload_attachment(session, *, file_content, filename, content_type, meeting_id, agenda_item_id, storage)` with format validation and size check via lib/meetings validators, `download_attachment(session, attachment_id, storage)` returns bytes + metadata, `delete_attachment(session, attachment_id)` soft-delete only (file preserved)
+- [x] T047 [US4] Create attachments API routes in `src/voter_api/api/v1/attachments.py` — `POST /meetings/{mid}/attachments`, `GET /meetings/{mid}/attachments`, `POST /meetings/{mid}/agenda-items/{aid}/attachments`, `GET /meetings/{mid}/agenda-items/{aid}/attachments`, `GET /attachments/{id}`, `GET /attachments/{id}/download` (StreamingResponse with Content-Disposition), `DELETE /attachments/{id}` (admin). Inject `LocalFileStorage` via dependency
+- [x] T048 [US4] Register attachments router in `src/voter_api/api/router.py`
 
 ### Tests for User Story 4
 
-- [ ] T049 [P] [US4] Unit tests for attachment schemas in `tests/unit/schemas/test_attachment_schemas.py`
-- [ ] T050 [P] [US4] Unit tests for attachment service in `tests/unit/services/test_attachment_service.py` — upload with valid/invalid formats, size limit enforcement, list by meeting/agenda item, download, soft-delete
-- [ ] T051 [US4] Integration tests for attachments API in `tests/integration/api/test_attachments_api.py` — upload to meeting and agenda item, list (includes item-level attachments when listing meeting), download with correct headers, reject unsupported format (422), reject oversized file (413), soft-delete
+- [x] T049 [P] [US4] Unit tests for attachment schemas in `tests/unit/schemas/test_attachment_schemas.py`
+- [x] T050 [P] [US4] Unit tests for attachment service in `tests/unit/services/test_attachment_service.py` — upload with valid/invalid formats, size limit enforcement, list by meeting/agenda item, download, soft-delete
+- [x] T051 [US4] Integration tests for attachments API in `tests/integration/api/test_attachments_api.py` — upload to meeting and agenda item, list (includes item-level attachments when listing meeting), download with correct headers, reject unsupported format (422), reject oversized file (413), soft-delete
 
 **Checkpoint**: File attachments working. Documents can be uploaded, listed, downloaded, and soft-deleted.
 
@@ -166,16 +166,16 @@
 
 ### Implementation for User Story 5
 
-- [ ] T052 [P] [US5] Create video embed schemas in `src/voter_api/schemas/meeting_video_embed.py` — `VideoEmbedResponse`, `VideoEmbedCreateRequest` (video_url required, start_seconds/end_seconds optional), `VideoEmbedUpdateRequest`, `VideoPlatformEnum`
-- [ ] T053 [US5] Create video embed service in `src/voter_api/services/meeting_video_embed_service.py` — `list_embeds(session, *, meeting_id, agenda_item_id)` with soft-delete filter, `get_embed(session, embed_id)`, `create_embed(session, *, data, meeting_id, agenda_item_id)` with URL validation via lib/meetings validators (detect platform from URL), `update_embed()`, `delete_embed()` soft-delete
-- [ ] T054 [US5] Create video embeds API routes in `src/voter_api/api/v1/video_embeds.py` — `POST /meetings/{mid}/video-embeds`, `GET /meetings/{mid}/video-embeds`, `POST /meetings/{mid}/agenda-items/{aid}/video-embeds`, `GET /meetings/{mid}/agenda-items/{aid}/video-embeds`, `GET /video-embeds/{id}`, `PATCH /video-embeds/{id}`, `DELETE /video-embeds/{id}` (admin)
-- [ ] T055 [US5] Register video embeds router in `src/voter_api/api/router.py`
+- [x] T052 [P] [US5] Create video embed schemas in `src/voter_api/schemas/meeting_video_embed.py` — `VideoEmbedResponse`, `VideoEmbedCreateRequest` (video_url required, start_seconds/end_seconds optional), `VideoEmbedUpdateRequest`, `VideoPlatformEnum`
+- [x] T053 [US5] Create video embed service in `src/voter_api/services/meeting_video_embed_service.py` — `list_embeds(session, *, meeting_id, agenda_item_id)` with soft-delete filter, `get_embed(session, embed_id)`, `create_embed(session, *, data, meeting_id, agenda_item_id)` with URL validation via lib/meetings validators (detect platform from URL), `update_embed()`, `delete_embed()` soft-delete
+- [x] T054 [US5] Create video embeds API routes in `src/voter_api/api/v1/video_embeds.py` — `POST /meetings/{mid}/video-embeds`, `GET /meetings/{mid}/video-embeds`, `POST /meetings/{mid}/agenda-items/{aid}/video-embeds`, `GET /meetings/{mid}/agenda-items/{aid}/video-embeds`, `GET /video-embeds/{id}`, `PATCH /video-embeds/{id}`, `DELETE /video-embeds/{id}` (admin)
+- [x] T055 [US5] Register video embeds router in `src/voter_api/api/router.py`
 
 ### Tests for User Story 5
 
-- [ ] T056 [P] [US5] Unit tests for video embed schemas in `tests/unit/schemas/test_video_embed_schemas.py` — URL format, platform enum, optional timestamps
-- [ ] T057 [P] [US5] Unit tests for video embed service in `tests/unit/services/test_video_embed_service.py` — CRUD, URL validation (YouTube accepted, Vimeo accepted, other rejected), platform auto-detection, timestamp validation
-- [ ] T058 [US5] Integration tests for video embeds API in `tests/integration/api/test_video_embeds_api.py` — CRUD lifecycle for meeting-level and item-level embeds, invalid URL rejection (422), timestamp handling
+- [x] T056 [P] [US5] Unit tests for video embed schemas in `tests/unit/schemas/test_video_embed_schemas.py` — URL format, platform enum, optional timestamps
+- [x] T057 [P] [US5] Unit tests for video embed service in `tests/unit/services/test_video_embed_service.py` — CRUD, URL validation (YouTube accepted, Vimeo accepted, other rejected), platform auto-detection, timestamp validation
+- [x] T058 [US5] Integration tests for video embeds API in `tests/integration/api/test_video_embeds_api.py` — CRUD lifecycle for meeting-level and item-level embeds, invalid URL rejection (422), timestamp handling
 
 **Checkpoint**: Video embeds working. Recordings can be linked to meetings and agenda items with optional timestamps.
 
