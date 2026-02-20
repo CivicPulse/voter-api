@@ -361,3 +361,41 @@ class TestValidateUrlDomain:
             pytest.raises(FetchError, match="No valid IP addresses returned"),
         ):
             await validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+
+    @pytest.mark.asyncio
+    async def test_dns_resolution_timeout(self):
+        """DNS resolution timeout raises FetchError with a timeout message."""
+        with (
+            patch(
+                "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
+                side_effect=TimeoutError(),
+            ),
+            pytest.raises(FetchError, match="timed out"),
+        ):
+            await validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+
+    @pytest.mark.asyncio
+    async def test_reserved_ip_resolution_blocked(self):
+        """Allowed domain resolving to a reserved IP is blocked."""
+        fake_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("240.0.0.1", 443))]
+        with (
+            patch(
+                "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
+                return_value=fake_addrinfo,
+            ),
+            pytest.raises(FetchError, match="Resolved IP address.*is not allowed"),
+        ):
+            await validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
+
+    @pytest.mark.asyncio
+    async def test_unspecified_ip_resolution_blocked(self):
+        """Allowed domain resolving to the unspecified address is blocked."""
+        fake_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("0.0.0.0", 443))]  # noqa: S104
+        with (
+            patch(
+                "voter_api.lib.election_tracker.fetcher.socket.getaddrinfo",
+                return_value=fake_addrinfo,
+            ),
+            pytest.raises(FetchError, match="Resolved IP address.*is not allowed"),
+        ):
+            await validate_url_domain("https://sos.ga.gov/results", ["sos.ga.gov"])
