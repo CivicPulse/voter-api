@@ -13,7 +13,7 @@
 - Q: Should freeform address input be normalized before cache lookup, or used as-is? → A: Normalize before cache lookup — uppercase, trim whitespace, collapse multiple spaces. This ensures consistent cache hits regardless of consumer input formatting.
 - Q: What should the maximum address length be? → A: 500 characters.
 - Q: Where should address verification/autocomplete suggestions come from? → A: Initially from the existing geocoder cache (prefix-match against previously geocoded addresses). Third-party API (e.g., Google Places) will be added later. Additionally, local validation logic MUST check whether the address is well-formed (has all required fields) and normalize abbreviations (road→RD, street→ST, etc.) using existing USPS Pub 28 rules.
-- Q: Should the verification endpoint require JWT authentication or be public for autocomplete use? → A: Require JWT authentication, same as the geocoding endpoint. Prevents abuse and data exposure from the voter address cache.
+- Q: Should the verification endpoint require JWT authentication or be public for autocomplete use? → A: ~~Require JWT authentication, same as the geocoding endpoint. Prevents abuse and data exposure from the voter address cache.~~ **Updated**: All three endpoints (geocode, verify, point-lookup) are now public (no auth required) to support the Address Lookup tool for anonymous users. The global rate limit (60 req/min per IP) provides abuse protection.
 - Q: What is the maximum acceptable response time for the verification endpoint? → A: 500 milliseconds.
 - Q: How many address suggestions should the verification endpoint return at most? → A: 10.
 - Q: What is the minimum number of characters required before the verification endpoint returns suggestions? → A: 5 characters.
@@ -37,7 +37,7 @@
 
 ### User Story 1 - Geocode a Single Address (Priority: P1)
 
-As an authenticated API consumer, I want to submit a street address and receive geographic coordinates with a confidence score so that I can determine the location of any arbitrary address without needing voter records in the database.
+As an API consumer (authenticated or anonymous), I want to submit a street address and receive geographic coordinates with a confidence score so that I can determine the location of any arbitrary address without needing voter records in the database.
 
 **Why this priority**: This is the core value of the feature. Without the ability to geocode a single address on demand, none of the other stories are relevant. Currently geocoding is only available as an internal batch operation on voter records — this story makes geocoding a first-class, user-facing capability.
 
@@ -45,9 +45,9 @@ As an authenticated API consumer, I want to submit a street address and receive 
 
 **Acceptance Scenarios**:
 
-1. **Given** an authenticated user with any role (viewer, analyst, or admin), **When** they submit a valid street address (e.g., "100 Peachtree St NW, Atlanta, GA 30303"), **Then** they receive a response containing `formatted_address`, `latitude`, `longitude`, `confidence`, and `metadata`.
-2. **Given** an authenticated user, **When** they submit a valid address that the provider successfully matches, **Then** the response status is HTTP 200 and the coordinates are non-null.
-3. **Given** an unauthenticated request (no JWT or invalid JWT), **When** a geocoding request is submitted, **Then** the system returns HTTP 401 Unauthorized.
+1. **Given** any user (authenticated or anonymous), **When** they submit a valid street address (e.g., "100 Peachtree St NW, Atlanta, GA 30303"), **Then** they receive a response containing `formatted_address`, `latitude`, `longitude`, `confidence`, and `metadata`.
+2. **Given** any user, **When** they submit a valid address that the provider successfully matches, **Then** the response status is HTTP 200 and the coordinates are non-null.
+3. **Given** an anonymous request (no JWT), **When** a geocoding request is submitted, **Then** the system processes it normally — no authentication is required for this endpoint.
 
 ---
 
@@ -76,15 +76,15 @@ As an API consumer, I want to receive clear, actionable error responses when geo
 
 **Acceptance Scenarios**:
 
-1. **Given** an authenticated user, **When** they submit an empty or whitespace-only address string, **Then** the system returns HTTP 422 with a validation error explaining the address field is required and must not be blank.
-2. **Given** an authenticated user, **When** they submit an address that the geocoding provider cannot match to a location, **Then** the system returns HTTP 404 with a message indicating the address could not be geocoded.
-3. **Given** an authenticated user, **When** the external geocoding provider is unavailable or times out, **Then** the system returns HTTP 502 with a message indicating a temporary upstream failure and suggesting a retry.
+1. **Given** any user, **When** they submit an empty or whitespace-only address string, **Then** the system returns HTTP 422 with a validation error explaining the address field is required and must not be blank.
+2. **Given** any user, **When** they submit an address that the geocoding provider cannot match to a location, **Then** the system returns HTTP 404 with a message indicating the address could not be geocoded.
+3. **Given** any user, **When** the external geocoding provider is unavailable or times out, **Then** the system returns HTTP 502 with a message indicating a temporary upstream failure and suggesting a retry.
 
 ---
 
 ### User Story 4 - Verify and Autocomplete an Address (Priority: P2)
 
-As an API consumer, I want to submit a partial or malformed address and receive ranked suggestions of matching addresses so that I can verify address correctness, present autocomplete options to end users as they type, and correct malformed input before geocoding.
+As an API consumer (authenticated or anonymous), I want to submit a partial or malformed address and receive ranked suggestions of matching addresses so that I can verify address correctness, present autocomplete options to end users as they type, and correct malformed input before geocoding.
 
 **Why this priority**: Address verification complements the geocoding endpoint and enables a better user experience. Developers building forms can offer autocomplete suggestions, and programmatic consumers can validate and correct addresses before submitting them for geocoding.
 
@@ -92,16 +92,16 @@ As an API consumer, I want to submit a partial or malformed address and receive 
 
 **Acceptance Scenarios**:
 
-1. **Given** an authenticated user, **When** they submit a partial address string (e.g., "100 Peachtree"), **Then** they receive a ranked list of matching address suggestions from previously geocoded addresses in the cache.
-2. **Given** an authenticated user, **When** they submit a malformed address (e.g., "100 main street" with unabbreviated street type and no city/state/ZIP), **Then** the response includes the normalized form ("100 MAIN ST") and indicates which address components are missing.
-3. **Given** an authenticated user, **When** they submit an address that has no matches in the cache, **Then** the response returns an empty suggestions list along with any local validation feedback.
-4. **Given** an authenticated user, **When** they submit a well-formed complete address, **Then** the response confirms the address is well-formed, returns the normalized version, and includes any matching cached suggestions.
+1. **Given** any user (authenticated or anonymous), **When** they submit a partial address string (e.g., "100 Peachtree"), **Then** they receive a ranked list of matching address suggestions from previously geocoded addresses in the cache.
+2. **Given** any user, **When** they submit a malformed address (e.g., "100 main street" with unabbreviated street type and no city/state/ZIP), **Then** the response includes the normalized form ("100 MAIN ST") and indicates which address components are missing.
+3. **Given** any user, **When** they submit an address that has no matches in the cache, **Then** the response returns an empty suggestions list along with any local validation feedback.
+4. **Given** any user, **When** they submit a well-formed complete address, **Then** the response confirms the address is well-formed, returns the normalized version, and includes any matching cached suggestions.
 
 ---
 
 ### User Story 5 - Point Lookup for Boundary Districts (Priority: P1)
 
-As an authenticated API consumer, I want to submit geographic coordinates and receive a list of all boundary districts containing that point so that I can identify every district (precinct, county, congressional, state senate/house, commission, school) a location falls within.
+As an API consumer (authenticated or anonymous), I want to submit geographic coordinates and receive a list of all boundary districts containing that point so that I can identify every district (precinct, county, congressional, state senate/house, commission, school) a location falls within.
 
 **Why this priority**: This is co-P1 with geocoding because it completes the end-to-end "address lookup" flow. The frontend uses this for both address-based lookups (after geocoding) and GPS-based lookups (directly from browser geolocation). Without this endpoint, geocoded coordinates have no actionable context.
 
@@ -109,11 +109,10 @@ As an authenticated API consumer, I want to submit geographic coordinates and re
 
 **Acceptance Scenarios**:
 
-1. **Given** an authenticated user, **When** they submit valid coordinates within Georgia (e.g., lat=33.749, lng=-84.388), **Then** they receive a list of all boundary districts containing that point, each with boundary type, name, identifier, ID, and metadata.
-2. **Given** an authenticated user, **When** they submit coordinates outside the Georgia service area, **Then** the system returns HTTP 422 indicating the location is outside the supported area.
-3. **Given** an authenticated user using GPS with limited accuracy, **When** they submit coordinates with an accuracy radius that spans multiple boundaries of the same type, **Then** the system returns all potentially matching boundaries.
-4. **Given** an authenticated user, **When** they submit coordinates that fall within no loaded boundaries, **Then** the system returns an empty districts list.
-5. **Given** an unauthenticated request, **When** a point lookup is submitted, **Then** the system returns HTTP 401 Unauthorized.
+1. **Given** any user (authenticated or anonymous), **When** they submit valid coordinates within Georgia (e.g., lat=33.749, lng=-84.388), **Then** they receive a list of all boundary districts containing that point, each with boundary type, name, identifier, ID, and metadata.
+2. **Given** any user, **When** they submit coordinates outside the Georgia service area, **Then** the system returns HTTP 422 indicating the location is outside the supported area.
+3. **Given** any user using GPS with limited accuracy, **When** they submit coordinates with an accuracy radius that spans multiple boundaries of the same type, **Then** the system returns all potentially matching boundaries.
+4. **Given** any user, **When** they submit coordinates that fall within no loaded boundaries, **Then** the system returns an empty districts list.
 
 ---
 
@@ -124,7 +123,7 @@ As an authenticated API consumer, I want to submit geographic coordinates and re
 - What happens when the geocoding provider returns multiple candidate matches? The system returns the top/best match (highest confidence), consistent with existing batch geocoding behavior.
 - What happens when the address is extremely long (thousands of characters)? The system rejects it with HTTP 422 if it exceeds 500 characters.
 - What happens when the same address is submitted concurrently by multiple users? Both requests may call the provider, and both will attempt to cache the result. The second cache write is idempotent and does not cause errors.
-- What happens when the JWT token has expired? The system returns HTTP 401 Unauthorized, consistent with all other authenticated endpoints.
+- What happens when the JWT token has expired? These endpoints (geocode, verify, point-lookup) are public and do not require JWT authentication, so an expired token has no effect.
 - What happens when a verification request contains fewer than 5 characters? The system returns only local validation feedback with an empty suggestions list.
 - What happens when a verification request contains only a street number with no street name? The system returns validation feedback indicating the street name is required, with no suggestions.
 - What happens when the cache contains thousands of potential matches for a very short prefix? The system returns only the top 10 ranked results.
@@ -140,7 +139,7 @@ As an authenticated API consumer, I want to submit geographic coordinates and re
 
 - **FR-001**: All endpoints MUST use GET with query parameters. The geocode and verify endpoints accept an `address` query parameter; the point-lookup endpoint accepts `lat`, `lng`, and optional `accuracy` query parameters.
 - **FR-002**: System MUST return `formatted_address`, `latitude`, `longitude`, `confidence` (score), and a flexible `metadata` object in the geocode response when geocoding succeeds. The consumer MUST NOT be able to select or influence which provider is used (no provider input parameter). The provider name MAY be included in the response `metadata` object for informational/debugging purposes.
-- **FR-003**: System MUST require valid JWT authentication for all geocoding requests. Any authenticated role (viewer, analyst, admin) is permitted — no role-based restriction.
+- **FR-003**: The geocode, verify, and point-lookup endpoints MUST allow anonymous access — no JWT authentication is required. This enables the public Address Lookup tool on the frontend. The existing global rate limit (60 req/min per IP) provides abuse protection.
 - **FR-004**: System MUST use the existing geocoder provider infrastructure to perform address geocoding. The provider is selected internally by the system — no consumer-facing provider parameter is exposed.
 - **FR-005**: System MUST normalize the freeform address input (uppercase, trim whitespace, collapse multiple spaces) before cache lookup and provider calls. If a cached result exists for the normalized address, it MUST be returned without making an external call.
 - **FR-006**: System MUST store new geocoding results in the cache after a successful provider call so that future lookups for the same address are served from cache. On a successful geocode, the system MUST upsert a canonical address row in the `addresses` table and link the geocoder_cache entry to it via FK. Failed or unmatchable addresses MUST NOT create address rows.
@@ -153,13 +152,13 @@ As an authenticated API consumer, I want to submit geographic coordinates and re
 - **FR-013**: The verification endpoint MUST normalize the submitted address using existing USPS Publication 28 rules (e.g., STREET→ST, ROAD→RD, NORTH→N) and return the normalized form in the response.
 - **FR-014**: The verification endpoint MUST search the canonical address store (`addresses` table, joined with geocoder cache for coordinates) for addresses matching the submitted input and return up to 10 ranked suggestions.
 - **FR-015**: The verification endpoint MUST be designed with a pluggable suggestion source so that a third-party autocomplete provider (e.g., Google Places) can be added in a future iteration without changing the consumer-facing API contract.
-- **FR-016**: The verification endpoint MUST require valid JWT authentication, consistent with the geocoding endpoint.
+- **FR-016**: The verification endpoint MUST allow anonymous access, consistent with the geocoding and point-lookup endpoints.
 - **FR-017**: The verification endpoint MUST require a minimum of 5 characters of input before returning suggestions. Inputs shorter than 5 characters MUST return only local validation feedback with an empty suggestions list.
 - **FR-018**: System MUST expose a point-lookup endpoint that accepts latitude and longitude coordinates and returns all boundary districts containing that point (point-in-polygon spatial query).
 - **FR-019**: The point-lookup response MUST include for each matching boundary: boundary type, name, boundary identifier, boundary ID, and a flexible metadata object with type-specific attributes (e.g., FIPS code for counties, precinct IDs for precincts).
 - **FR-020**: The point-lookup endpoint MUST accept an optional accuracy parameter (in meters) representing GPS accuracy radius, with a maximum allowed value of 100 meters. Values exceeding 100 MUST be rejected with HTTP 422. When provided, the system MUST return all boundaries intersecting the accuracy circle, not just those containing the exact point.
 - **FR-021**: The point-lookup endpoint MUST return HTTP 422 when coordinates fall outside the Georgia service area. The Georgia service area is defined as a static bounding box: latitude 30.36°N to 35.00°N, longitude 85.61°W to 80.84°W.
-- **FR-022**: The point-lookup endpoint MUST require valid JWT authentication, consistent with the other endpoints.
+- **FR-022**: The point-lookup endpoint MUST allow anonymous access, consistent with the other public endpoints.
 - **FR-023**: The geocode endpoint MUST return HTTP 422 when a geocoded address resolves to coordinates outside the Georgia service area (static bounding box: lat 30.36–35.00°N, lng 85.61–80.84°W).
 
 ### Key Entities
@@ -182,9 +181,9 @@ As an authenticated API consumer, I want to submit geographic coordinates and re
 
 ### Measurable Outcomes
 
-- **SC-001**: Authenticated users receive geocoding results within 5 seconds for uncached addresses (dependent on external provider response time).
+- **SC-001**: Users receive geocoding results within 5 seconds for uncached addresses (dependent on external provider response time).
 - **SC-002**: Cached addresses return results in under 500 milliseconds.
-- **SC-003**: 100% of geocoding requests from authenticated users either succeed with coordinates or return a clear, documented error response (no silent failures or ambiguous errors).
+- **SC-003**: 100% of geocoding requests either succeed with coordinates or return a clear, documented error response (no silent failures or ambiguous errors).
 - **SC-004**: The endpoint handles at least 60 concurrent requests per minute without degradation, consistent with the global rate limit.
 - **SC-005**: The verification endpoint returns suggestions and validation feedback within 500 milliseconds for any input.
 - **SC-006**: Malformed addresses receive clear validation feedback identifying all missing or incorrect components.

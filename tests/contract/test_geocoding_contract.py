@@ -1,13 +1,13 @@
 """Contract tests for geocoding endpoints against OpenAPI schema."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from voter_api.api.v1.geocoding import geocoding_router
-from voter_api.core.dependencies import get_async_session, get_current_user
+from voter_api.core.dependencies import get_async_session
 from voter_api.schemas.geocoding import (
     AddressGeocodeResponse,
     AddressSuggestion,
@@ -24,21 +24,11 @@ def mock_session():
 
 
 @pytest.fixture
-def mock_user():
-    """Create a mock authenticated user."""
-    user = MagicMock()
-    user.role = "analyst"
-    user.id = "test-user-id"
-    return user
-
-
-@pytest.fixture
-def app(mock_session, mock_user) -> FastAPI:
+def app(mock_session) -> FastAPI:
     """Create a minimal FastAPI app with geocoding router."""
     app = FastAPI()
     app.include_router(geocoding_router, prefix="/api/v1")
     app.dependency_overrides[get_async_session] = lambda: mock_session
-    app.dependency_overrides[get_current_user] = lambda: mock_user
     return app
 
 

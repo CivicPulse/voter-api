@@ -49,9 +49,11 @@ async def geocode_address(
         description="Freeform street address to geocode (1-500 characters)",
     ),
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
-    _current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> AddressGeocodeResponse:
-    """Geocode a single freeform address to geographic coordinates."""
+    """Geocode a single freeform address to geographic coordinates.
+
+    Public endpoint — no authentication required.
+    """
     stripped = address.strip()
     if not stripped:
         raise HTTPException(
@@ -93,9 +95,11 @@ async def verify_address_endpoint(
         description="Freeform street address to verify (1-500 characters)",
     ),
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
-    _current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> AddressVerifyResponse:
-    """Verify and autocomplete a freeform address."""
+    """Verify and autocomplete a freeform address.
+
+    Public endpoint — no authentication required.
+    """
     stripped = address.strip()
     if not stripped:
         raise HTTPException(
@@ -129,9 +133,11 @@ async def point_lookup_districts(
         None, le=100, description="GPS accuracy radius in meters (max 100)"
     ),
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
-    _current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> PointLookupResponse:
-    """Look up boundary districts for a geographic point."""
+    """Look up boundary districts for a geographic point.
+
+    Public endpoint — no authentication required.
+    """
     try:
         validate_georgia_coordinates(lat, lng)
     except ValueError as e:
