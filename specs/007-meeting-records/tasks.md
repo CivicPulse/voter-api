@@ -209,13 +209,13 @@
 
 **Purpose**: CLI, contract tests, and final validation
 
-- [ ] T065 Create `meetings seed-types` CLI command in `src/voter_api/cli/meetings.py` — seeds default governing body types (idempotent, skips existing)
-- [ ] T066 Register meetings CLI group in the main Typer app
-- [ ] T067 Contract tests against `specs/007-meeting-records/contracts/openapi.yaml` in `tests/contract/test_meeting_records_contract.py` — verify all endpoints match the OpenAPI spec (response schemas, status codes, required fields)
-- [ ] T068 Update `.env.example` with `MEETING_UPLOAD_DIR` and `MEETING_MAX_FILE_SIZE_MB` settings
-- [ ] T069 Add `uploads/` to `.gitignore` if not already present
-- [ ] T070 Run `uv run ruff check .` and `uv run ruff format --check .` — fix any violations
-- [ ] T071 Run `uv run pytest --cov=voter_api --cov-report=term-missing` — verify 90%+ coverage, fix gaps
+- [x] T065 Create `meetings seed-types` CLI command in `src/voter_api/cli/meetings_cmd.py` — seeds default governing body types (idempotent, skips existing)
+- [x] T066 Register meetings CLI group in the main Typer app
+- [x] T067 Contract tests against `specs/007-meeting-records/contracts/openapi.yaml` in `tests/contract/test_meeting_records_contract.py` — verify all endpoints match the OpenAPI spec (response schemas, status codes, required fields)
+- [x] T068 Update `.env.example` with `MEETING_UPLOAD_DIR` and `MEETING_MAX_FILE_SIZE_MB` settings
+- [x] T069 Add `uploads/` to `.gitignore` if not already present
+- [x] T070 Run `uv run ruff check .` and `uv run ruff format --check .` — fix any violations
+- [x] T071 Run `uv run pytest --cov=voter_api --cov-report=term-missing` — verify 90%+ coverage, fix gaps
 
 ---
 

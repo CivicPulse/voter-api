@@ -32,6 +32,7 @@ def _register_subcommands() -> None:
     from voter_api.cli.export_cmd import export_app
     from voter_api.cli.geocode_cmd import geocode_app
     from voter_api.cli.import_cmd import import_app
+    from voter_api.cli.meetings_cmd import meetings_app
     from voter_api.cli.officials_cmd import officials_app
     from voter_api.cli.publish_cmd import publish_app
     from voter_api.cli.user_cmd import user_app
@@ -44,6 +45,7 @@ def _register_subcommands() -> None:
     app.add_typer(export_app, name="export", help="Data export commands")
     app.add_typer(publish_app, name="publish", help="Publish static datasets to object storage")
     app.add_typer(election_app, name="election", help="Election tracking commands")
+    app.add_typer(meetings_app, name="meetings", help="Meeting record management commands")
     app.add_typer(officials_app, name="officials", help="Elected officials data commands")
     app.command("deploy-check")(deploy_check)
 
