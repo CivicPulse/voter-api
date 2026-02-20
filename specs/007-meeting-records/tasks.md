@@ -191,15 +191,15 @@
 
 ### Implementation for User Story 6
 
-- [ ] T059 [P] [US6] Create search schemas in `src/voter_api/schemas/meeting_search.py` — `SearchResultItem` (agenda_item_id, title, description_excerpt, meeting_id, meeting_date, meeting_type, governing_body_id, governing_body_name, match_source enum, relevance_score), `PaginatedSearchResultResponse`
-- [ ] T060 [US6] Create search service in `src/voter_api/services/meeting_search_service.py` — `search_meetings(session, *, query, page, page_size, current_user)` using `plainto_tsquery('english', query)` against `agenda_items.search_vector` with `ts_rank` for relevance, UNION with attachment filename ILIKE match, JOIN to meetings and governing_bodies for context, respect approval visibility (non-admin sees only approved), minimum 2-char query enforcement
-- [ ] T061 [US6] Add search endpoint `GET /meetings/search` to `src/voter_api/api/v1/meetings.py` — query param `q` (min 2 chars), standard pagination. Must be defined BEFORE `/{id}` route to avoid path conflict
+- [x] T059 [P] [US6] Create search schemas in `src/voter_api/schemas/meeting_search.py` — `SearchResultItem` (agenda_item_id, title, description_excerpt, meeting_id, meeting_date, meeting_type, governing_body_id, governing_body_name, match_source enum, relevance_score), `PaginatedSearchResultResponse`
+- [x] T060 [US6] Create search service in `src/voter_api/services/meeting_search_service.py` — `search_meetings(session, *, query, page, page_size, current_user)` using `plainto_tsquery('english', query)` against `agenda_items.search_vector` with `ts_rank` for relevance, UNION with attachment filename ILIKE match, JOIN to meetings and governing_bodies for context, respect approval visibility (non-admin sees only approved), minimum 2-char query enforcement
+- [x] T061 [US6] Add search endpoint `GET /meetings/search` to `src/voter_api/api/v1/meetings.py` — query param `q` (min 2 chars), standard pagination. Must be defined BEFORE `/{id}` route to avoid path conflict
 
 ### Tests for User Story 6
 
-- [ ] T062 [P] [US6] Unit tests for search schemas in `tests/unit/schemas/test_meeting_search_schemas.py`
-- [ ] T063 [P] [US6] Unit tests for search service in `tests/unit/services/test_search_service.py` — query building, relevance ranking, approval filtering, minimum query length validation, empty results
-- [ ] T064 [US6] Integration tests for search API in `tests/integration/api/test_search_api.py` — search by agenda item text, search by attachment filename, relevance ranking, pagination, empty results, short query rejection (422)
+- [x] T062 [P] [US6] Unit tests for search schemas in `tests/unit/schemas/test_meeting_search_schemas.py`
+- [x] T063 [P] [US6] Unit tests for search service in `tests/unit/services/test_search_service.py` — query building, relevance ranking, approval filtering, minimum query length validation, empty results
+- [x] T064 [US6] Integration tests for search API in `tests/integration/api/test_search_api.py` — search by agenda item text, search by attachment filename, relevance ranking, pagination, empty results, short query rejection (422)
 
 **Checkpoint**: Full-text search working. Users can discover meeting topics across the entire archive.
 

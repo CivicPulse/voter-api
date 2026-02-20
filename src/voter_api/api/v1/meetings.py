@@ -18,6 +18,11 @@ from voter_api.schemas.meeting import (
     MeetingUpdateRequest,
     PaginatedMeetingResponse,
 )
+from voter_api.schemas.meeting_search import (
+    PaginatedSearchResultResponse,
+    SearchResultItem,
+)
+from voter_api.services.meeting_search_service import search_meetings
 from voter_api.services.meeting_service import (
     approve_meeting,
     create_meeting,
@@ -94,6 +99,42 @@ async def list_all_meetings(
     )
     return PaginatedMeetingResponse(
         items=[_summary_from_meeting(m) for m in meetings],
+        pagination=PaginationMeta(
+            page=page,
+            page_size=page_size,
+            total=total,
+            total_pages=(total + page_size - 1) // page_size if total > 0 else 0,
+        ),
+    )
+
+
+@meetings_router.get(
+    "/search",
+    response_model=PaginatedSearchResultResponse,
+)
+async def search_meetings_endpoint(
+    q: str = Query(..., min_length=2, description="Search query (min 2 characters)"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+) -> PaginatedSearchResultResponse:
+    """Full-text search across agenda items and attachment filenames."""
+    try:
+        items, total = await search_meetings(
+            session,
+            query=q,
+            page=page,
+            page_size=page_size,
+            current_user=current_user,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
+    return PaginatedSearchResultResponse(
+        items=[SearchResultItem(**item) for item in items],
         pagination=PaginationMeta(
             page=page,
             page_size=page_size,
