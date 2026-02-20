@@ -137,15 +137,42 @@ class TestParseCsvChunks:
         assert df.iloc[0]["state_house_district"] == "75"
         assert df.iloc[0]["county_precinct"] == "1A"
 
-    def test_unknown_columns_are_dropped(self, tmp_path: Path) -> None:
-        """Columns not in GA_SOS_COLUMN_MAP are dropped from output."""
+    def test_unknown_columns_raise_error(self, tmp_path: Path) -> None:
+        """Columns not in GA_SOS_COLUMN_MAP cause the import to halt with a bug report.
+
+        The GA SoS voter file format is considered authoritative. Any column that
+        cannot be mapped (even via case-insensitive fallback) indicates a potential
+        file format change. The import halts immediately to prevent data loss, and
+        the exception message contains a copy-paste-ready GitHub issue body.
+        """
         f = tmp_path / "voters.csv"
         f.write_text(
             "County,Voter Registration #,Status,Last Name,First Name,ExtraColumn\n"
             "Fulton,12345,ACTIVE,SMITH,JOHN,somevalue\n"
         )
-        chunks = list(parse_csv_chunks(f, batch_size=10))
-        assert "ExtraColumn" not in chunks[0].columns
+        with pytest.raises(ValueError, match="BUG REPORT") as exc_info:
+            list(parse_csv_chunks(f, batch_size=10))
+
+        error_msg = str(exc_info.value)
+        assert "ExtraColumn" in error_msg, "Bug report must name the unknown column"
+        assert "https://github.com/CivicPulse/voter-api/issues/new" in error_msg, (
+            "Bug report must include the GitHub issue URL"
+        )
+        assert str(f) in error_msg, "Bug report must include the file path"
+
+    def test_multiple_unknown_columns_all_named_in_error(self, tmp_path: Path) -> None:
+        """All unknown columns are listed in the bug report, not just the first one."""
+        f = tmp_path / "voters.csv"
+        f.write_text(
+            "County,NewFieldA,NewFieldB,Status\n"
+            "Fulton,val1,val2,ACTIVE\n"
+        )
+        with pytest.raises(ValueError, match="BUG REPORT") as exc_info:
+            list(parse_csv_chunks(f, batch_size=10))
+
+        error_msg = str(exc_info.value)
+        assert "NewFieldA" in error_msg
+        assert "NewFieldB" in error_msg
 
     def test_warning_logged_on_case_insensitive_match(self, tmp_path: Path) -> None:
         """A WARNING is emitted when a column matches only via case-insensitive fallback.
