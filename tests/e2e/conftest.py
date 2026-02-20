@@ -53,34 +53,41 @@ def settings():
 
 @pytest.fixture(scope="session")
 def admin_token(settings) -> str:
-    """JWT admin token matching the seeded admin user."""
+    """JWT admin token matching the seeded admin user.
+
+    Uses a 24-hour expiry so session-scoped tokens remain valid even for slow
+    E2E runs (default is 30 minutes, which can expire mid-session).
+    """
     return create_access_token(
         subject=ADMIN_USERNAME,
         role="admin",
         secret_key=settings.jwt_secret_key,
         algorithm=settings.jwt_algorithm,
+        expires_minutes=24 * 60,
     )
 
 
 @pytest.fixture(scope="session")
 def analyst_token(settings) -> str:
-    """JWT analyst token."""
+    """JWT analyst token (24-hour expiry for session-scoped use)."""
     return create_access_token(
         subject=ANALYST_USERNAME,
         role="analyst",
         secret_key=settings.jwt_secret_key,
         algorithm=settings.jwt_algorithm,
+        expires_minutes=24 * 60,
     )
 
 
 @pytest.fixture(scope="session")
 def viewer_token(settings) -> str:
-    """JWT viewer token."""
+    """JWT viewer token (24-hour expiry for session-scoped use)."""
     return create_access_token(
         subject=VIEWER_USERNAME,
         role="viewer",
         secret_key=settings.jwt_secret_key,
         algorithm=settings.jwt_algorithm,
+        expires_minutes=24 * 60,
     )
 
 

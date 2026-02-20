@@ -84,6 +84,7 @@ class TestAuth:
             _url("/auth/login"),
             data={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
         )
+        assert login_resp.status_code == 200
         refresh_token = login_resp.json()["refresh_token"]
 
         resp = await client.post(
@@ -236,9 +237,10 @@ class TestElections:
             "refresh_interval_seconds": 120,
         }
         create_resp = await admin_client.post(_url("/elections"), json=payload)
-        election_id = create_resp.json().get("id")
+        election_id = None
         try:
             assert create_resp.status_code == 201
+            election_id = create_resp.json().get("id")
             assert election_id is not None
 
             detail_resp = await admin_client.get(_url(f"/elections/{election_id}"))
