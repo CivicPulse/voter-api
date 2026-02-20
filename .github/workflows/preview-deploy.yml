@@ -110,7 +110,6 @@ jobs:
           exit 1
 
       - name: Seed preview with data
-        continue-on-error: true
         id: seed
         timeout-minutes: 30
         run: |
@@ -119,7 +118,6 @@ jobs:
           echo "Seed completed successfully."
 
       - name: Create API user
-        continue-on-error: true
         id: create-user
         run: |
           echo "Creating API user on ${APP_NAME}..."
@@ -132,6 +130,7 @@ jobs:
           echo "API user ready."
 
       - name: Comment preview URL on PR
+        if: always()
         uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
