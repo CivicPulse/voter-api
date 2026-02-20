@@ -1,7 +1,7 @@
 """Meeting search service — full-text search across agenda items and attachment filenames."""
 
 from loguru import logger
-from sqlalchemy import Float, String, cast, func, literal, select, text, union_all
+from sqlalchemy import ColumnElement, Float, String, cast, func, literal, select, text, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.models.agenda_item import AgendaItem
@@ -47,7 +47,7 @@ async def search_meetings(
     ts_query = func.plainto_tsquery("english", query)
 
     # Base visibility filter for meetings
-    meeting_visible = Meeting.deleted_at.is_(None)
+    meeting_visible: ColumnElement[bool] = Meeting.deleted_at.is_(None)
     if current_user and current_user.role != "admin":
         meeting_visible = meeting_visible & (
             (Meeting.approval_status == ApprovalStatus.APPROVED) | (Meeting.submitted_by == current_user.id)

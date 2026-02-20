@@ -7,12 +7,19 @@ meetings default to 'approved'; contributor-created meetings default to 'pending
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from voter_api.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
+
+if TYPE_CHECKING:
+    from voter_api.models.agenda_item import AgendaItem
+    from voter_api.models.governing_body import GoverningBody
+    from voter_api.models.meeting_attachment import MeetingAttachment
+    from voter_api.models.meeting_video_embed import MeetingVideoEmbed
 
 
 class MeetingType(enum.StrEnum):

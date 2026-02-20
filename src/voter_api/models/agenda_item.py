@@ -6,6 +6,7 @@ weighted fields (title=A, description=B) and a GIN index.
 
 import enum
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     CheckConstraint,
@@ -22,6 +23,11 @@ from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from voter_api.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
+
+if TYPE_CHECKING:
+    from voter_api.models.meeting import Meeting
+    from voter_api.models.meeting_attachment import MeetingAttachment
+    from voter_api.models.meeting_video_embed import MeetingVideoEmbed
 
 
 class Disposition(enum.StrEnum):

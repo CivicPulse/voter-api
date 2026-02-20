@@ -152,7 +152,9 @@ async def upload_agenda_item_attachment(
 ) -> AttachmentResponse:
     """Upload a file attachment to an agenda item."""
     max_file_size_bytes = settings.meeting_max_file_size_mb * 1024 * 1024
-    return await _handle_upload(file, session, storage, current_user, max_file_size_bytes, agenda_item_id=agenda_item_id)
+    return await _handle_upload(
+        file, session, storage, current_user, max_file_size_bytes, agenda_item_id=agenda_item_id
+    )
 
 
 # ---------------------------------------------------------------------------

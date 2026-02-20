@@ -5,12 +5,17 @@ partial unique constraint on (name, jurisdiction) for active records only.
 """
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from voter_api.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
+
+if TYPE_CHECKING:
+    from voter_api.models.governing_body_type import GoverningBodyType
+    from voter_api.models.meeting import Meeting
 
 
 class GoverningBody(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
