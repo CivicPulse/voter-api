@@ -13,7 +13,7 @@
 - Q: Should freeform address input be normalized before cache lookup, or used as-is? → A: Normalize before cache lookup — uppercase, trim whitespace, collapse multiple spaces. This ensures consistent cache hits regardless of consumer input formatting.
 - Q: What should the maximum address length be? → A: 500 characters.
 - Q: Where should address verification/autocomplete suggestions come from? → A: Initially from the existing geocoder cache (prefix-match against previously geocoded addresses). Third-party API (e.g., Google Places) will be added later. Additionally, local validation logic MUST check whether the address is well-formed (has all required fields) and normalize abbreviations (road→RD, street→ST, etc.) using existing USPS Pub 28 rules.
-- Q: Should the verification endpoint require JWT authentication or be public for autocomplete use? → A: ~~Require JWT authentication, same as the geocoding endpoint. Prevents abuse and data exposure from the voter address cache.~~ **Updated**: All three endpoints (geocode, verify, point-lookup) are now public (no auth required) to support the Address Lookup tool for anonymous users. The global rate limit (60 req/min per IP) provides abuse protection.
+- Q: Should the verification endpoint require JWT authentication or be public for autocomplete use? → A: ~~Require JWT authentication, same as the geocoding endpoint. Prevents abuse and data exposure from the voter address cache.~~ **Updated**: All three endpoints (geocode, verify, point-lookup) are now public (no auth required) to support the Address Lookup tool for anonymous users. The global rate limit (200 req/min per IP) provides abuse protection.
 - Q: What is the maximum acceptable response time for the verification endpoint? → A: 500 milliseconds.
 - Q: How many address suggestions should the verification endpoint return at most? → A: 10.
 - Q: What is the minimum number of characters required before the verification endpoint returns suggestions? → A: 5 characters.
@@ -139,14 +139,14 @@ As an API consumer (authenticated or anonymous), I want to submit geographic coo
 
 - **FR-001**: All endpoints MUST use GET with query parameters. The geocode and verify endpoints accept an `address` query parameter; the point-lookup endpoint accepts `lat`, `lng`, and optional `accuracy` query parameters.
 - **FR-002**: System MUST return `formatted_address`, `latitude`, `longitude`, `confidence` (score), and a flexible `metadata` object in the geocode response when geocoding succeeds. The consumer MUST NOT be able to select or influence which provider is used (no provider input parameter). The provider name MAY be included in the response `metadata` object for informational/debugging purposes.
-- **FR-003**: The geocode, verify, and point-lookup endpoints MUST allow anonymous access — no JWT authentication is required. This enables the public Address Lookup tool on the frontend. The existing global rate limit (60 req/min per IP) provides abuse protection.
+- **FR-003**: The geocode, verify, and point-lookup endpoints MUST allow anonymous access — no JWT authentication is required. This enables the public Address Lookup tool on the frontend. The existing global rate limit (200 req/min per IP) provides abuse protection.
 - **FR-004**: System MUST use the existing geocoder provider infrastructure to perform address geocoding. The provider is selected internally by the system — no consumer-facing provider parameter is exposed.
 - **FR-005**: System MUST normalize the freeform address input (uppercase, trim whitespace, collapse multiple spaces) before cache lookup and provider calls. If a cached result exists for the normalized address, it MUST be returned without making an external call.
 - **FR-006**: System MUST store new geocoding results in the cache after a successful provider call so that future lookups for the same address are served from cache. On a successful geocode, the system MUST upsert a canonical address row in the `addresses` table and link the geocoder_cache entry to it via FK. Failed or unmatchable addresses MUST NOT create address rows.
 - **FR-007**: System MUST return HTTP 422 with a descriptive validation error when the submitted address is empty, whitespace-only, or exceeds 500 characters.
 - **FR-008**: System MUST return HTTP 404 with a descriptive message when the provider cannot match the submitted address to a location.
 - **FR-009**: System MUST retry once (single retry) with a ~2-second timeout per attempt before returning HTTP 502. If both attempts fail, the system MUST return HTTP 502 with a descriptive error message indicating a temporary upstream failure and suggesting a retry. Total provider call budget MUST NOT exceed ~4 seconds to stay within the 5-second latency target (SC-001).
-- **FR-010**: System MUST respect the existing global rate limiting (60 requests per minute per IP) applied to all API endpoints.
+- **FR-010**: System MUST respect the existing global rate limiting (200 requests per minute per IP) applied to all API endpoints.
 - **FR-011**: System MUST expose a separate address verification endpoint that accepts a partial or malformed freeform address string and returns ranked address suggestions.
 - **FR-012**: The verification endpoint MUST perform local validation to determine whether the submitted address is well-formed — checking for required components (street number, street name, city, state, ZIP) and reporting which are present, missing, or malformed.
 - **FR-013**: The verification endpoint MUST normalize the submitted address using existing USPS Publication 28 rules (e.g., STREET→ST, ROAD→RD, NORTH→N) and return the normalized form in the response.
@@ -173,7 +173,7 @@ As an API consumer (authenticated or anonymous), I want to submit geographic coo
 - A new dedicated `addresses` table is introduced as the canonical address store. The existing `geocoder_cache` table is modified to reference it via FK. Cache lookup/store functions will be updated to work through the address entity.
 - The system internally manages provider selection. If additional providers are added in the future, the system can switch or prioritize providers without any change to the consumer-facing API.
 - Freeform address input is normalized (uppercase, trim, collapse whitespace) before cache lookup, ensuring consistent cache hits regardless of consumer input formatting. This normalization is compatible with the existing batch pipeline's cache keys.
-- The existing global rate limit (60 req/min per IP) provides sufficient protection against abuse. Per-endpoint rate limiting is not required at this time.
+- The existing global rate limit (200 req/min per IP) provides sufficient protection against abuse. Per-endpoint rate limiting is not required at this time.
 - This endpoint is for single-address geocoding only. Batch geocoding of arbitrary addresses (not voter records) is out of scope and can be added in a future iteration if needed.
 - Cached geocoding results do not expire in this iteration. The existing `cached_at` timestamp on `geocoder_cache` supports future time-based invalidation if needed.
 
@@ -184,7 +184,7 @@ As an API consumer (authenticated or anonymous), I want to submit geographic coo
 - **SC-001**: Users receive geocoding results within 5 seconds for uncached addresses (dependent on external provider response time).
 - **SC-002**: Cached addresses return results in under 500 milliseconds.
 - **SC-003**: 100% of geocoding requests either succeed with coordinates or return a clear, documented error response (no silent failures or ambiguous errors).
-- **SC-004**: The endpoint handles at least 60 concurrent requests per minute without degradation, consistent with the global rate limit.
+- **SC-004**: The endpoint handles at least 200 concurrent requests per minute without degradation, consistent with the global rate limit.
 - **SC-005**: The verification endpoint returns suggestions and validation feedback within 500 milliseconds for any input.
 - **SC-006**: Malformed addresses receive clear validation feedback identifying all missing or incorrect components.
 - **SC-007**: The point-lookup endpoint returns all matching boundary districts within 1 second for any valid Georgia coordinate.

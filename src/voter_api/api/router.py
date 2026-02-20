@@ -64,4 +64,8 @@ def setup_middleware(app: FastAPI, settings: Settings) -> None:
     """
     setup_cors(app, settings)
     app.add_middleware(SecurityHeadersMiddleware)
-    app.add_middleware(RateLimitMiddleware, requests_per_minute=settings.rate_limit_per_minute)
+    app.add_middleware(
+        RateLimitMiddleware,
+        requests_per_minute=settings.rate_limit_per_minute,
+        trusted_proxy_headers=settings.trusted_proxy_header_list,
+    )

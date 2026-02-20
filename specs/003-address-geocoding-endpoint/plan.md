@@ -22,7 +22,7 @@ Key architectural addition: A new canonical `addresses` table serves as the dedi
 **Target Platform**: Linux server (piku deployment on `hatchweb`)
 **Project Type**: Single (API + CLI)
 **Performance Goals**: 5s uncached geocode (SC-001), 500ms cached (SC-002), 500ms verify (SC-005), 1s point-lookup (SC-007)
-**Constraints**: 60 req/min global rate limit, Georgia service area only (static bounding box). Geocode/verify/point-lookup are public (no auth); batch/geocode-all are admin-only.
+**Constraints**: 200 req/min global rate limit, Georgia service area only (static bounding box). Geocode/verify/point-lookup are public (no auth); batch/geocode-all are admin-only.
 **Scale/Scope**: ~7M voter records, millions of unique addresses, single-server deployment
 
 ## Constitution Check
@@ -109,7 +109,7 @@ tests/
 | IV. Twelve-Factor Configuration | PASS | No new env vars needed. Georgia bbox is a domain constant. |
 | V. Developer Experience | PASS | Single `uv run voter-api db upgrade` for migrations. No new tooling. |
 | VI. API Documentation | PASS | Three new endpoints documented via FastAPI auto-generation. OpenAPI contract in `contracts/openapi.yaml`. |
-| VII. Security by Design | PASS | Public endpoints (geocode, verify, point-lookup) — no auth required. Admin endpoints (batch, geocode-all) behind `Depends(require_role("admin"))`. Input validated by Pydantic. No raw SQL. Rate limited at 60 req/min per IP. |
+| VII. Security by Design | PASS | Public endpoints (geocode, verify, point-lookup) — no auth required. Admin endpoints (batch, geocode-all) behind `Depends(require_role("admin"))`. Input validated by Pydantic. No raw SQL. Rate limited at 200 req/min per IP. |
 | VIII. CI/CD & Version Control | PASS | Feature branch workflow. Commits after each task. |
 
 **Gate result**: PASS — no violations.
