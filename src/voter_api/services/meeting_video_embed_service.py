@@ -108,6 +108,7 @@ async def create_embed(
     is_valid, platform = validate_video_url(video_url)
     if not is_valid:
         raise ValueError("Invalid video URL. Must be a YouTube or Vimeo URL.")
+    assert platform is not None  # Guaranteed by is_valid check
 
     start_seconds = data.get("start_seconds")
     end_seconds = data.get("end_seconds")
