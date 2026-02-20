@@ -71,6 +71,19 @@ GA_SOS_COLUMN_MAP: dict[str, str] = {
     "Voter Created Date": "voter_created_date",
 }
 
+# Case-insensitive fallback lookup — used when exact header match fails.
+# Handles files that use all-caps, all-lowercase, or mixed-case headers.
+# Note: GA_SOS_COLUMN_MAP intentionally contains two keys that lowercase to
+# "date of last contact" ("Date Of Last Contact" / "Date of Last Contact");
+# both map to the same field, so the collision is harmless.
+_GA_SOS_COLUMN_MAP_LOWER: dict[str, str] = {k.lower(): v for k, v in GA_SOS_COLUMN_MAP.items()}
+
+# Guard against future additions that lowercase to the same string but map to
+# *different* model fields — that would cause one column to silently shadow the other.
+assert all(GA_SOS_COLUMN_MAP[k] == _GA_SOS_COLUMN_MAP_LOWER[k.lower()] for k in GA_SOS_COLUMN_MAP), (
+    "GA_SOS_COLUMN_MAP contains keys that lowercase to the same string but map to different values."
+)
+
 
 def detect_delimiter(file_path: Path) -> str:
     """Detect the CSV delimiter by reading the first line.
@@ -133,6 +146,51 @@ def detect_encoding(file_path: Path) -> str:
     raise ValueError(msg)
 
 
+def _format_unknown_column_bug_report(
+    file_path: Path,
+    unknown_columns: list[str],
+    actual_columns: list[str],
+) -> str:
+    """Format a copy-paste-ready GitHub issue body for unexpected CSV columns.
+
+    Args:
+        file_path: Path to the CSV file that triggered the error.
+        unknown_columns: Column headers found in the file that are not in GA_SOS_COLUMN_MAP.
+        actual_columns: All column headers found in the file.
+
+    Returns:
+        A formatted bug report string suitable for pasting into a GitHub issue.
+    """
+    unknown_list = "\n".join(f"  - {col!r}" for col in unknown_columns)
+    actual_list = "\n".join(f"  - {col}" for col in actual_columns)
+    known_list = "\n".join(f"  - {col}" for col in GA_SOS_COLUMN_MAP)
+
+    return (
+        "\n"
+        "================================================================\n"
+        "BUG REPORT — Unexpected column(s) in GA SoS voter CSV\n"
+        "================================================================\n"
+        "Import halted to prevent data loss. The source file contains\n"
+        "column header(s) not recognized by the parser. This likely means\n"
+        "the GA Secretary of State changed the voter file format.\n"
+        "\n"
+        "Please file a GitHub issue and paste this entire message:\n"
+        "  https://github.com/CivicPulse/voter-api/issues/new\n"
+        "\n"
+        f"File: {file_path}\n"
+        "\n"
+        f"Unknown / unrecognized column(s) ({len(unknown_columns)}):\n"
+        f"{unknown_list}\n"
+        "\n"
+        f"All column headers found in file ({len(actual_columns)}):\n"
+        f"{actual_list}\n"
+        "\n"
+        f"Known columns in GA_SOS_COLUMN_MAP ({len(GA_SOS_COLUMN_MAP)}):\n"
+        f"{known_list}\n"
+        "================================================================\n"
+    )
+
+
 def parse_csv_chunks(
     file_path: Path,
     batch_size: int = 1000,
@@ -147,7 +205,12 @@ def parse_csv_chunks(
         DataFrame chunks with columns mapped to model field names.
 
     Raises:
-        ValueError: If the file cannot be parsed.
+        ValueError: If the file contains column headers not recognized by
+            GA_SOS_COLUMN_MAP (even after case-insensitive matching). The
+            exception message contains a copy-paste-ready bug report for
+            filing a GitHub issue. Import is halted immediately to prevent
+            data loss from an unexpected file format change.
+        ValueError: If the file cannot be parsed (bad delimiter or encoding).
     """
     delimiter = detect_delimiter(file_path)
     encoding = detect_encoding(file_path)
@@ -163,15 +226,44 @@ def parse_csv_chunks(
         keep_default_na=False,
     )
 
+    # Column headers are constant within a file; build the rename map once from
+    # the first chunk to avoid redundant work on every subsequent chunk.
+    rename_map: dict[str, str] | None = None
+
     for chunk in reader:
         # Strip whitespace from column names
         chunk.columns = chunk.columns.str.strip()
 
-        # Map column names to model field names
-        rename_map = {}
-        for csv_col in chunk.columns:
-            if csv_col in GA_SOS_COLUMN_MAP:
-                rename_map[csv_col] = GA_SOS_COLUMN_MAP[csv_col]
+        if rename_map is None:
+            # Build rename map on the first chunk; emit per-file diagnostics.
+            # GA SoS files occasionally deliver headers in all-caps or mixed case;
+            # case-insensitive fallback handles that without discarding data.
+            # Columns that are completely unrecognized halt the import immediately
+            # so that format changes are caught and reported rather than silently
+            # producing incomplete records.
+            rename_map = {}
+            unknown_columns: list[str] = []
+
+            for csv_col in chunk.columns:
+                if csv_col in GA_SOS_COLUMN_MAP:
+                    rename_map[csv_col] = GA_SOS_COLUMN_MAP[csv_col]
+                elif csv_col.lower() in _GA_SOS_COLUMN_MAP_LOWER:
+                    rename_map[csv_col] = _GA_SOS_COLUMN_MAP_LOWER[csv_col.lower()]
+                    logger.warning(
+                        f"CSV column {csv_col!r} matched via case-insensitive fallback to field "
+                        f"{_GA_SOS_COLUMN_MAP_LOWER[csv_col.lower()]!r}. "
+                        "Add the exact-case header to GA_SOS_COLUMN_MAP to suppress this warning."
+                    )
+                else:
+                    unknown_columns.append(csv_col)
+
+            if unknown_columns:
+                bug_report = _format_unknown_column_bug_report(
+                    file_path,
+                    unknown_columns,
+                    list(chunk.columns),
+                )
+                raise ValueError(bug_report)
 
         chunk = chunk.rename(columns=rename_map)
 

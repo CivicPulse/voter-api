@@ -131,6 +131,27 @@ class AddressVerifyResponse(BaseModel):
     suggestions: list[AddressSuggestion] = Field(default_factory=list)
 
 
+class ProviderGeocodeResult(BaseModel):
+    """Result from a single geocoding provider."""
+
+    provider: str
+    status: Literal["success", "no_match", "error"]
+    cached: bool | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    confidence: float | None = None
+    error: str | None = None
+
+
+class VoterGeocodeAllResponse(BaseModel):
+    """Response for POST /geocoding/voter/{voter_id}/geocode-all."""
+
+    voter_id: uuid.UUID
+    address: str
+    providers: list[ProviderGeocodeResult]
+    locations: list[GeocodedLocationResponse]
+
+
 class DistrictInfo(BaseModel):
     """A boundary district containing a queried point."""
 
