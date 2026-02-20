@@ -261,6 +261,9 @@ async def update_meeting(
     if meeting is None:
         raise ValueError(f"Meeting {meeting_id} not found")
 
+    if current_user.role != "admin" and meeting.submitted_by != current_user.id:
+        raise ValueError("Permission denied: you may only edit your own meetings")
+
     for field_name, value in data.items():
         if field_name in _UPDATABLE_FIELDS:
             setattr(meeting, field_name, value)

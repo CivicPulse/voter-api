@@ -77,7 +77,9 @@ async def search_meetings(
     )
 
     # Subquery 2: ILIKE on attachment filenames
-    like_pattern = f"%{query}%"
+    # Escape SQL wildcard characters so user input is treated as a literal string.
+    escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    like_pattern = f"%{escaped_query}%"
     attachment_query = (
         select(
             AgendaItem.id.label("agenda_item_id"),
@@ -98,7 +100,7 @@ async def search_meetings(
             MeetingAttachment.deleted_at.is_(None),
             AgendaItem.deleted_at.is_(None),
             meeting_visible,
-            cast(MeetingAttachment.original_filename, String).ilike(like_pattern),
+            cast(MeetingAttachment.original_filename, String).ilike(like_pattern, escape="\\"),
         )
     )
 
@@ -122,7 +124,7 @@ async def search_meetings(
             MeetingAttachment.deleted_at.is_(None),
             MeetingAttachment.agenda_item_id.is_(None),
             meeting_visible,
-            cast(MeetingAttachment.original_filename, String).ilike(like_pattern),
+            cast(MeetingAttachment.original_filename, String).ilike(like_pattern, escape="\\"),
         )
     )
 

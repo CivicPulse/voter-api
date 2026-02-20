@@ -16,7 +16,6 @@ from voter_api.schemas.meeting_attachment import (
     AttachmentResponse,
 )
 from voter_api.services.meeting_attachment_service import (
-    MAX_FILE_SIZE_BYTES,
     delete_attachment,
     download_attachment,
     get_attachment,
@@ -47,14 +46,15 @@ async def _handle_upload(
     session: AsyncSession,
     storage: LocalFileStorage,
     current_user: User,
+    max_file_size_bytes: int,
     meeting_id: uuid.UUID | None = None,
     agenda_item_id: uuid.UUID | None = None,
 ) -> AttachmentResponse:
     content = await file.read()
-    if len(content) > MAX_FILE_SIZE_BYTES:
+    if len(content) > max_file_size_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File exceeds maximum size of {MAX_FILE_SIZE_BYTES // (1024 * 1024)} MB",
+            detail=f"File exceeds maximum size of {max_file_size_bytes // (1024 * 1024)} MB",
         )
     try:
         attachment = await upload_attachment(
@@ -65,6 +65,7 @@ async def _handle_upload(
             meeting_id=meeting_id,
             agenda_item_id=agenda_item_id,
             storage=storage,
+            max_file_size_bytes=max_file_size_bytes,
         )
     except ValueError as e:
         error_msg = str(e)
@@ -108,9 +109,11 @@ async def upload_meeting_attachment(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_role("admin", "contributor")),
     storage: LocalFileStorage = Depends(_get_storage),
+    settings: Settings = Depends(get_settings),
 ) -> AttachmentResponse:
     """Upload a file attachment to a meeting."""
-    return await _handle_upload(file, session, storage, current_user, meeting_id=meeting_id)
+    max_file_size_bytes = settings.meeting_max_file_size_mb * 1024 * 1024
+    return await _handle_upload(file, session, storage, current_user, max_file_size_bytes, meeting_id=meeting_id)
 
 
 # ---------------------------------------------------------------------------
@@ -145,9 +148,11 @@ async def upload_agenda_item_attachment(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_role("admin", "contributor")),
     storage: LocalFileStorage = Depends(_get_storage),
+    settings: Settings = Depends(get_settings),
 ) -> AttachmentResponse:
     """Upload a file attachment to an agenda item."""
-    return await _handle_upload(file, session, storage, current_user, agenda_item_id=agenda_item_id)
+    max_file_size_bytes = settings.meeting_max_file_size_mb * 1024 * 1024
+    return await _handle_upload(file, session, storage, current_user, max_file_size_bytes, agenda_item_id=agenda_item_id)
 
 
 # ---------------------------------------------------------------------------

@@ -20,7 +20,7 @@ class MatchSourceEnum(enum.StrEnum):
 class SearchResultItem(BaseModel):
     """A single search result with meeting context."""
 
-    agenda_item_id: uuid.UUID
+    agenda_item_id: uuid.UUID | None = None
     title: str
     description_excerpt: str | None = None
     meeting_id: uuid.UUID

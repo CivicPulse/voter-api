@@ -17,9 +17,6 @@ from voter_api.models.agenda_item import AgendaItem
 from voter_api.models.meeting import Meeting
 from voter_api.models.meeting_attachment import MeetingAttachment
 
-MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
-
-
 # ---------------------------------------------------------------------------
 # Read operations
 # ---------------------------------------------------------------------------
@@ -91,6 +88,7 @@ async def upload_attachment(
     meeting_id: uuid.UUID | None = None,
     agenda_item_id: uuid.UUID | None = None,
     storage: FileStorage,
+    max_file_size_bytes: int = 50 * 1024 * 1024,
 ) -> MeetingAttachment:
     """Upload a file attachment to a meeting or agenda item.
 
@@ -102,6 +100,7 @@ async def upload_attachment(
         meeting_id: Parent meeting (exclusive with agenda_item_id).
         agenda_item_id: Parent agenda item (exclusive with meeting_id).
         storage: File storage backend.
+        max_file_size_bytes: Maximum allowed file size in bytes.
 
     Returns:
         The created MeetingAttachment.
@@ -115,8 +114,8 @@ async def upload_attachment(
         raise ValueError(f"Unsupported file format. Allowed: {allowed}")
 
     # Validate file size
-    if len(file_content) > MAX_FILE_SIZE_BYTES:
-        raise ValueError(f"File exceeds maximum size of {MAX_FILE_SIZE_BYTES // (1024 * 1024)} MB")
+    if len(file_content) > max_file_size_bytes:
+        raise ValueError(f"File exceeds maximum size of {max_file_size_bytes // (1024 * 1024)} MB")
 
     # Validate parent exists
     if meeting_id is not None:

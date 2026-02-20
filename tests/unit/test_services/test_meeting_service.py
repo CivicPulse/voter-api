@@ -239,6 +239,41 @@ class TestUpdateMeeting:
         with pytest.raises(ValueError, match="not found"):
             await update_meeting(session, uuid.uuid4(), data={"status": "cancelled"}, current_user=admin)
 
+    @pytest.mark.asyncio
+    async def test_contributor_cannot_update_others_meeting(self) -> None:
+        """Contributor cannot edit a meeting they did not submit."""
+        contributor = _mock_user("contributor")
+        other_user_id = uuid.uuid4()
+        meeting = _mock_meeting(
+            approval_status=ApprovalStatus.APPROVED,
+            submitted_by=other_user_id,  # different user
+        )
+        session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = meeting
+        session.execute.return_value = mock_result
+
+        with pytest.raises(ValueError, match="Permission denied"):
+            await update_meeting(session, meeting.id, data={"status": "cancelled"}, current_user=contributor)
+
+    @pytest.mark.asyncio
+    async def test_contributor_can_update_own_meeting(self) -> None:
+        """Contributor can edit a meeting they submitted."""
+        contributor = _mock_user("contributor")
+        meeting = _mock_meeting(
+            approval_status=ApprovalStatus.PENDING,
+            submitted_by=contributor.id,
+        )
+        session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = meeting
+        session.execute.return_value = mock_result
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+
+        result = await update_meeting(session, meeting.id, data={"status": "cancelled"}, current_user=contributor)
+        assert result.status == "cancelled"
+
 
 class TestDeleteMeeting:
     """Tests for delete_meeting."""
