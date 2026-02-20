@@ -320,7 +320,12 @@ class TestSeedFullBootstrap:
         ) -> None:
             order_log.append("boundary")
 
-        async def mock_voters(file_path: Path, batch_size: int) -> None:
+        async def mock_voters_batch(
+            file_paths: list[Path],
+            batch_size: int,
+            seed_result: object,
+            fail_fast: bool,
+        ) -> None:
             order_log.append("voter")
 
         with (
@@ -333,8 +338,8 @@ class TestSeedFullBootstrap:
                 side_effect=mock_all_boundaries,
             ),
             patch(
-                "voter_api.cli.seed_cmd._import_voters",
-                side_effect=mock_voters,
+                "voter_api.cli.seed_cmd._import_voters_batch",
+                side_effect=mock_voters_batch,
             ),
         ):
             result = runner.invoke(
@@ -534,7 +539,7 @@ class TestSeedDownloadOnly:
                 new_callable=AsyncMock,
             ) as mock_boundaries,
             patch(
-                "voter_api.cli.seed_cmd._import_voters",
+                "voter_api.cli.seed_cmd._import_voters_batch",
                 new_callable=AsyncMock,
             ) as mock_voters,
         ):
