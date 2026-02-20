@@ -15,6 +15,7 @@ def create_router(settings: Settings) -> APIRouter:
     Returns:
         Configured API router.
     """
+    from voter_api.api.v1.agenda_items import agenda_items_router
     from voter_api.api.v1.analysis import analysis_router
     from voter_api.api.v1.auth import router as auth_router
     from voter_api.api.v1.boundaries import boundaries_router
@@ -45,6 +46,7 @@ def create_router(settings: Settings) -> APIRouter:
     root_router.include_router(elections_router)
     root_router.include_router(voter_history_router)
     root_router.include_router(meetings_router)
+    root_router.include_router(agenda_items_router)
 
     return root_router
 

@@ -116,16 +116,16 @@
 
 ### Implementation for User Story 3
 
-- [ ] T038 [P] [US3] Create agenda item schemas in `src/voter_api/schemas/agenda_item.py` — `AgendaItemResponse` (with attachment_count, video_embed_count), `AgendaItemCreateRequest` (title required, display_order optional — auto-append if omitted), `AgendaItemUpdateRequest`, `AgendaItemReorderRequest` (ordered list of item UUIDs), `DispositionEnum`
-- [ ] T039 [US3] Create agenda item service in `src/voter_api/services/agenda_item_service.py` — `list_items(session, meeting_id)` ordered by display_order with soft-delete filter, `get_item(session, item_id)`, `create_item(session, *, meeting_id, data)` with gap-based ordering (gaps of 10, auto-append if no position), `update_item()`, `delete_item()` with order preservation, `reorder_items(session, meeting_id, item_ids)` atomic position reassignment
-- [ ] T040 [US3] Create agenda items API routes in `src/voter_api/api/v1/agenda_items.py` — `GET /meetings/{mid}/agenda-items`, `POST /meetings/{mid}/agenda-items` (admin/contributor), `GET /meetings/{mid}/agenda-items/{id}`, `PATCH /meetings/{mid}/agenda-items/{id}`, `DELETE /meetings/{mid}/agenda-items/{id}` (admin), `PUT /meetings/{mid}/agenda-items/reorder` (admin/contributor). Fixed route `/reorder` BEFORE parameterized `/{id}`
-- [ ] T041 [US3] Register agenda items router in `src/voter_api/api/router.py`
+- [x] T038 [P] [US3] Create agenda item schemas in `src/voter_api/schemas/agenda_item.py` — `AgendaItemResponse` (with attachment_count, video_embed_count), `AgendaItemCreateRequest` (title required, display_order optional — auto-append if omitted), `AgendaItemUpdateRequest`, `AgendaItemReorderRequest` (ordered list of item UUIDs), `DispositionEnum`
+- [x] T039 [US3] Create agenda item service in `src/voter_api/services/agenda_item_service.py` — `list_items(session, meeting_id)` ordered by display_order with soft-delete filter, `get_item(session, item_id)`, `create_item(session, *, meeting_id, data)` with gap-based ordering (gaps of 10, auto-append if no position), `update_item()`, `delete_item()` with order preservation, `reorder_items(session, meeting_id, item_ids)` atomic position reassignment
+- [x] T040 [US3] Create agenda items API routes in `src/voter_api/api/v1/agenda_items.py` — `GET /meetings/{mid}/agenda-items`, `POST /meetings/{mid}/agenda-items` (admin/contributor), `GET /meetings/{mid}/agenda-items/{id}`, `PATCH /meetings/{mid}/agenda-items/{id}`, `DELETE /meetings/{mid}/agenda-items/{id}` (admin), `PUT /meetings/{mid}/agenda-items/reorder` (admin/contributor). Fixed route `/reorder` BEFORE parameterized `/{id}`
+- [x] T041 [US3] Register agenda items router in `src/voter_api/api/router.py`
 
 ### Tests for User Story 3
 
-- [ ] T042 [P] [US3] Unit tests for agenda item schemas in `tests/unit/schemas/test_agenda_item_schemas.py` — disposition enum, optional display_order, reorder request validation
-- [ ] T043 [P] [US3] Unit tests for agenda item service in `tests/unit/services/test_agenda_item_service.py` — CRUD, gap-based ordering, auto-append, reorder logic, soft-delete order preservation
-- [ ] T044 [US3] Integration tests for agenda items API in `tests/integration/api/test_agenda_items_api.py` — CRUD lifecycle, ordering verification, reorder endpoint, soft-delete, 403 for non-admin deletes
+- [x] T042 [P] [US3] Unit tests for agenda item schemas in `tests/unit/schemas/test_agenda_item_schemas.py` — disposition enum, optional display_order, reorder request validation
+- [x] T043 [P] [US3] Unit tests for agenda item service in `tests/unit/services/test_agenda_item_service.py` — CRUD, gap-based ordering, auto-append, reorder logic, soft-delete order preservation
+- [x] T044 [US3] Integration tests for agenda items API in `tests/integration/api/test_agenda_items_api.py` — CRUD lifecycle, ordering verification, reorder endpoint, soft-delete, 403 for non-admin deletes
 
 **Checkpoint**: All P1 stories complete. Core meeting data structure (bodies → meetings → agenda items) is fully functional.
 
