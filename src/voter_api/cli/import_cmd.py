@@ -325,7 +325,7 @@ async def _import_all_boundaries(
     typer.echo(f"Importing {len(entries)} boundary file(s) from {data_dir.resolve()}\n")
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
     failed_results, prepared, tmp_dirs = _validate_and_extract_boundaries(
         entries,
