@@ -16,6 +16,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     # Database
@@ -69,7 +70,7 @@ class Settings(BaseSettings):
 
     # Import
     import_batch_size: int = Field(
-        default=1000,
+        default=5000,
         description="Records per import batch",
         gt=0,
     )
@@ -84,6 +85,10 @@ class Settings(BaseSettings):
     log_level: str = Field(
         default="INFO",
         description="Logging level",
+    )
+    log_dir: str | None = Field(
+        default=None,
+        description="Directory for log files (enables file logging with 24h rotation when set)",
     )
 
     # CORS
@@ -144,6 +149,20 @@ class Settings(BaseSettings):
         description="Maximum API requests per minute per IP address",
         gt=0,
     )
+
+    # Data Seeding
+    data_root_url: str = Field(
+        default="https://data.hatchtech.dev/",
+        description="Base URL for downloading seed data files (manifest.json + data files)",
+    )
+
+    @field_validator("data_root_url")
+    @classmethod
+    def validate_data_root_url(cls, v: str) -> str:
+        if not v.startswith("https://"):
+            msg = "data_root_url must use HTTPS"
+            raise ValueError(msg)
+        return v.rstrip("/") + "/"
 
     # R2 / S3-Compatible Object Storage
     r2_enabled: bool = Field(

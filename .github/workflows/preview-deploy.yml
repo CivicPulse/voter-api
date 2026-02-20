@@ -78,6 +78,7 @@ jobs:
             DATABASE_SCHEMA="pr_${PR_NUM}" \
             JWT_SECRET_KEY="${JWT_SECRET_KEY}" \
             NGINX_SERVER_NAME="pr-${PR_NUM}.${{ vars.PREVIEW_DOMAIN }}" \
+            ENVIRONMENT=preview \
             ELECTION_REFRESH_ENABLED=false \
             CORS_ORIGIN_REGEX=".*" \
             BIND_ADDRESS=0.0.0.0
@@ -109,7 +110,37 @@ jobs:
           echo "Preview did not respond after 10 attempts"
           exit 1
 
+      - name: Seed preview with data
+        id: seed
+        timeout-minutes: 30
+        run: |
+          echo "Running data seed on ${APP_NAME}..."
+          ssh ${PIKU} -- run ${APP_NAME} -- voter-api seed --fail-fast --max-voters 10000
+          echo "Seed completed successfully."
+
+      - name: Create API user
+        id: create-user
+        run: |
+          echo "Creating API user on ${APP_NAME}..."
+          USER_OUTPUT=$(ssh ${PIKU} -- run ${APP_NAME} -- voter-api user create \
+            --username "${{ secrets.PREVIEW_API_USER }}" \
+            --email "${{ secrets.PREVIEW_API_EMAIL }}" \
+            --password "${{ secrets.PREVIEW_API_PASSWORD }}" \
+            --role admin \
+            --if-not-exists 2>&1)
+          echo "$USER_OUTPUT"
+
+          if echo "$USER_OUTPUT" | grep -q "created with role"; then
+            echo "API user created successfully."
+          elif echo "$USER_OUTPUT" | grep -q "already exists, skipping"; then
+            echo "API user already exists (idempotent, OK)."
+          else
+            echo "::error::API user creation failed — unexpected output from CLI"
+            exit 1
+          fi
+
       - name: Comment preview URL on PR
+        if: always()
         uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -121,5 +152,17 @@ jobs:
             |----------|-----|
             | **API** | https://pr-${{ github.event.pull_request.number }}.${{ vars.PREVIEW_DOMAIN }} |
             | **API Docs** | https://pr-${{ github.event.pull_request.number }}.${{ vars.PREVIEW_DOMAIN }}/docs |
+
+            **Data seed**: ${{ steps.seed.outcome == 'success' && '✅ Seeded' || '⚠️ Seed failed (check workflow logs)' }}
+            **API user**: ${{ steps.create-user.outcome == 'success' && '✅ Ready (admin)' || '⚠️ Creation failed (check workflow logs)' }}
+
+            <details>
+            <summary>API credentials</summary>
+
+            - **Username**: (see `PREVIEW_API_USER` repo secret)
+            - **Password**: (see `PREVIEW_API_PASSWORD` repo secret)
+            - **Role**: admin
+            - **Login**: `POST /api/v1/auth/login` with form data `username` + `password`
+            </details>
 
             _Last deployed: `${{ github.sha }}` at ${{ github.event.pull_request.updated_at }}_

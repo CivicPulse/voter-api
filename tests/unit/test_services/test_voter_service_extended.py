@@ -4,8 +4,14 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from sqlalchemy.dialects import postgresql
 
 from voter_api.services.voter_service import get_voter_detail, get_voter_filter_options, search_voters
+
+
+def _compile_query(stmt: object) -> str:
+    """Compile a SQLAlchemy statement to a SQL string with literal binds for inspection."""
+    return str(stmt.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}))
 
 
 def _mock_voter(**overrides: object) -> MagicMock:
@@ -177,6 +183,152 @@ class TestSearchVoters:
             present_in_latest_import=True,
         )
         assert total == 0
+
+    @pytest.mark.asyncio
+    async def test_filter_by_q_single_word(self) -> None:
+        """Test combined name search with single word."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 1
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = [_mock_voter()]
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="Smith")
+        assert total == 1
+
+        # Verify the count query actually contains ILIKE conditions for all 3 name fields
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        assert "ILIKE" in compiled
+        assert "%Smith%" in compiled
+        # One word generates OR across 3 name fields
+        assert compiled.count("ILIKE") == 3
+
+    @pytest.mark.asyncio
+    async def test_filter_by_q_multiple_words(self) -> None:
+        """Test combined name search with multiple words — each token must appear."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 1
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = [_mock_voter()]
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="John Smith")
+        assert total == 1
+
+        # Both tokens must appear in the query (AND across words, OR across fields)
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        assert "%John%" in compiled
+        assert "%Smith%" in compiled
+        # Two words × 3 name fields = 6 ILIKE conditions
+        assert compiled.count("ILIKE") == 6
+
+    @pytest.mark.asyncio
+    async def test_filter_by_q_with_other_filters(self) -> None:
+        """Test combined name search works alongside other filters."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 1
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = [_mock_voter()]
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="Smith", county="FULTON")
+        assert total == 1
+
+        # Verify both the ILIKE name filter and the county equality filter are present
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        assert "%Smith%" in compiled
+        assert "ILIKE" in compiled
+        assert "FULTON" in compiled
+
+    @pytest.mark.asyncio
+    async def test_filter_by_q_empty_string_ignored(self) -> None:
+        """Test that empty q parameter adds no ILIKE conditions."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 2
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = [_mock_voter(), _mock_voter()]
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="")
+        assert total == 2
+
+        # No ILIKE conditions should be generated for an empty q
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        assert "ILIKE" not in compiled
+
+    @pytest.mark.asyncio
+    async def test_filter_by_q_whitespace_only_ignored(self) -> None:
+        """Test that whitespace-only q parameter adds no ILIKE conditions."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 2
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = [_mock_voter(), _mock_voter()]
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="   ")
+        assert total == 2
+
+        # Whitespace-only input produces no tokens, so no ILIKE conditions
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        assert "ILIKE" not in compiled
+
+    @pytest.mark.asyncio
+    async def test_filter_by_q_escapes_sql_wildcards(self) -> None:
+        """Test that SQL wildcard characters % and _ in q are escaped as literals."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 0
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = []
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="100%")
+        assert total == 0
+
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        # The % must be escaped so it appears as \% in the pattern, not as a wildcard
+        # The compiled SQL should contain the escaped form, not the raw user input as a wildcard
+        assert "ILIKE" in compiled
+        assert r"\%" in compiled  # escaped percent sign
+        # Must not contain the double-wildcard pattern that a raw % would produce
+        assert "100%%" not in compiled
+
+    @pytest.mark.asyncio
+    async def test_filter_by_q_escapes_underscore_wildcard(self) -> None:
+        """Test that underscore _ in q is escaped so it matches literally, not any character."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 0
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = []
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="_mith")
+        assert total == 0
+
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        # The _ must be escaped so it is treated as a literal underscore, not a single-char wildcard
+        assert "ILIKE" in compiled
+        assert r"\_" in compiled  # escaped underscore
 
 
 class TestGetVoterDetail:

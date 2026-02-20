@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from loguru import logger
 
 from voter_api.lib.importer.parser import detect_delimiter, detect_encoding, parse_csv_chunks
 
@@ -109,3 +110,83 @@ class TestParseCsvChunks:
         chunks = list(parse_csv_chunks(f, batch_size=10))
         # pandas stores empty-string replacements as NaN internally
         assert pd.isna(chunks[0].iloc[0]["middle_name"])
+
+    def test_case_insensitive_header_matching(self, tmp_path: Path) -> None:
+        """District columns with all-caps or mixed-case headers are mapped correctly.
+
+        Regression test for the bug where GA SoS files with uppercase district
+        column headers (e.g. 'CONGRESSIONAL DISTRICT') caused those fields to be
+        silently dropped, resulting in null district values on every voter record.
+        """
+        f = tmp_path / "voters.csv"
+        f.write_text(
+            "COUNTY,VOTER REGISTRATION #,STATUS,LAST NAME,FIRST NAME,"
+            "CONGRESSIONAL DISTRICT,STATE SENATE DISTRICT,STATE HOUSE DISTRICT,"
+            "COUNTY PRECINCT\n"
+            "Fulton,12345,ACTIVE,SMITH,JOHN,7,40,75,1A\n"
+        )
+        chunks = list(parse_csv_chunks(f, batch_size=10))
+        assert len(chunks) == 1
+        df = chunks[0]
+        assert "congressional_district" in df.columns, "congressional_district must be mapped from all-caps header"
+        assert "state_senate_district" in df.columns, "state_senate_district must be mapped from all-caps header"
+        assert "state_house_district" in df.columns, "state_house_district must be mapped from all-caps header"
+        assert "county_precinct" in df.columns, "county_precinct must be mapped from all-caps header"
+        assert df.iloc[0]["congressional_district"] == "7"
+        assert df.iloc[0]["state_senate_district"] == "40"
+        assert df.iloc[0]["state_house_district"] == "75"
+        assert df.iloc[0]["county_precinct"] == "1A"
+
+    def test_unknown_columns_raise_error(self, tmp_path: Path) -> None:
+        """Columns not in GA_SOS_COLUMN_MAP cause the import to halt with a bug report.
+
+        The GA SoS voter file format is considered authoritative. Any column that
+        cannot be mapped (even via case-insensitive fallback) indicates a potential
+        file format change. The import halts immediately to prevent data loss, and
+        the exception message contains a copy-paste-ready GitHub issue body.
+        """
+        f = tmp_path / "voters.csv"
+        f.write_text(
+            "County,Voter Registration #,Status,Last Name,First Name,ExtraColumn\n"
+            "Fulton,12345,ACTIVE,SMITH,JOHN,somevalue\n"
+        )
+        with pytest.raises(ValueError, match="BUG REPORT") as exc_info:
+            list(parse_csv_chunks(f, batch_size=10))
+
+        error_msg = str(exc_info.value)
+        assert "ExtraColumn" in error_msg, "Bug report must name the unknown column"
+        assert "https://github.com/CivicPulse/voter-api/issues/new" in error_msg, (
+            "Bug report must include the GitHub issue URL"
+        )
+        assert str(f) in error_msg, "Bug report must include the file path"
+
+    def test_multiple_unknown_columns_all_named_in_error(self, tmp_path: Path) -> None:
+        """All unknown columns are listed in the bug report, not just the first one."""
+        f = tmp_path / "voters.csv"
+        f.write_text("County,NewFieldA,NewFieldB,Status\nFulton,val1,val2,ACTIVE\n")
+        with pytest.raises(ValueError, match="BUG REPORT") as exc_info:
+            list(parse_csv_chunks(f, batch_size=10))
+
+        error_msg = str(exc_info.value)
+        assert "NewFieldA" in error_msg
+        assert "NewFieldB" in error_msg
+
+    def test_warning_logged_on_case_insensitive_match(self, tmp_path: Path) -> None:
+        """A WARNING is emitted when a column matches only via case-insensitive fallback.
+
+        The warning is the primary observability mechanism for this fix — it alerts
+        operators that GA_SOS_COLUMN_MAP should be updated with the exact-case header.
+        """
+        f = tmp_path / "voters.csv"
+        f.write_text("COUNTY,CONGRESSIONAL DISTRICT\nFulton,7\n")
+        captured: list[str] = []
+        handler_id = logger.add(lambda msg: captured.append(msg), level="WARNING", format="{level}: {message}")
+        try:
+            list(parse_csv_chunks(f, batch_size=10))
+        finally:
+            logger.remove(handler_id)
+
+        assert any("case-insensitive fallback" in msg for msg in captured), (
+            "Expected a WARNING log mentioning 'case-insensitive fallback' when a column header "
+            "matches only via lowercase comparison"
+        )

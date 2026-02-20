@@ -39,6 +39,15 @@ _PROVIDERS: dict[str, type[BaseGeocoder]] = {
 }
 
 
+def get_available_providers() -> list[str]:
+    """Return the names of all registered geocoder providers.
+
+    Returns:
+        Sorted list of provider name strings.
+    """
+    return sorted(_PROVIDERS.keys())
+
+
 def get_geocoder(provider: str = "census", **kwargs: Any) -> BaseGeocoder:
     """Get a geocoder instance by provider name.
 
@@ -69,6 +78,7 @@ __all__ = [
     "GeocodingResult",
     "cache_lookup",
     "cache_store",
+    "get_available_providers",
     "get_geocoder",
     "meters_to_degrees",
     "normalize_freeform_address",
