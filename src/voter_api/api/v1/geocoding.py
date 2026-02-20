@@ -17,13 +17,17 @@ from voter_api.schemas.geocoding import (
     BatchGeocodingRequest,
     CacheStatsResponse,
     DistrictInfo,
+    GeocodedLocationResponse,
     GeocodingJobResponse,
     PointLookupResponse,
+    ProviderGeocodeResult,
+    VoterGeocodeAllResponse,
 )
 from voter_api.services.boundary_service import find_boundaries_at_point
 from voter_api.services.geocoding_service import (
     create_geocoding_job,
     geocode_single_address,
+    geocode_voter_all_providers,
     get_cache_stats,
     get_geocoding_job,
     process_geocoding_job,
@@ -161,6 +165,43 @@ async def point_lookup_districts(
         longitude=lng,
         accuracy=accuracy,
         districts=districts,
+    )
+
+
+@geocoding_router.post(
+    "/voter/{voter_id}/geocode-all",
+    response_model=VoterGeocodeAllResponse,
+    dependencies=[Depends(require_role("admin"))],
+)
+async def geocode_voter_all(
+    voter_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),  # noqa: B008
+    _current_user: User = Depends(get_current_user),  # noqa: B008
+) -> VoterGeocodeAllResponse:
+    """Geocode a voter's address with all available providers (admin only).
+
+    Reconstructs the voter's residence address and runs it through every
+    registered geocoding provider, storing a GeocodedLocation for each
+    successful result.
+    """
+    try:
+        result = await geocode_voter_all_providers(session, voter_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+    except GeocodingProviderError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Geocoding provider is temporarily unavailable. Please retry later.",
+        ) from e
+
+    return VoterGeocodeAllResponse(
+        voter_id=result["voter_id"],
+        address=result["address"],
+        providers=[ProviderGeocodeResult(**p) for p in result["providers"]],
+        locations=[GeocodedLocationResponse.model_validate(loc) for loc in result["locations"]],
     )
 
 

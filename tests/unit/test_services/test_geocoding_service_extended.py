@@ -13,6 +13,7 @@ from voter_api.services.geocoding_service import (
     _set_primary,
     add_manual_location,
     create_geocoding_job,
+    geocode_voter_all_providers,
     get_cache_stats,
     get_geocoding_job,
     get_voter_locations,
@@ -340,3 +341,232 @@ class TestSetPrimary:
         session.execute.assert_awaited_once()
         assert location.is_primary is True
         session.flush.assert_awaited_once()
+
+
+class TestGeocodeVoterAllProviders:
+    """Tests for geocode_voter_all_providers."""
+
+    def _make_mock_voter(self) -> MagicMock:
+        """Create a mock voter with address components."""
+        voter = MagicMock()
+        voter.id = uuid.uuid4()
+        voter.residence_street_number = "123"
+        voter.residence_pre_direction = None
+        voter.residence_street_name = "MAIN"
+        voter.residence_street_type = "ST"
+        voter.residence_post_direction = None
+        voter.residence_apt_unit_number = None
+        voter.residence_city = "ATLANTA"
+        voter.residence_zipcode = "30301"
+        return voter
+
+    @pytest.mark.asyncio
+    async def test_voter_not_found_raises_value_error(self) -> None:
+        session = AsyncMock()
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+        session.execute.return_value = result
+
+        with pytest.raises(ValueError, match="not found"):
+            await geocode_voter_all_providers(session, uuid.uuid4())
+
+    @pytest.mark.asyncio
+    async def test_no_address_raises_value_error(self) -> None:
+        session = AsyncMock()
+        voter = self._make_mock_voter()
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = voter
+        session.execute.return_value = result
+
+        with (
+            patch(
+                "voter_api.services.geocoding_service.reconstruct_address",
+                return_value="",
+            ),
+            pytest.raises(ValueError, match="no reconstructable"),
+        ):
+            await geocode_voter_all_providers(session, voter.id)
+
+    @pytest.mark.asyncio
+    async def test_success_with_cache_hit(self) -> None:
+        session = AsyncMock()
+        voter = self._make_mock_voter()
+
+        # First call: select voter; subsequent calls: various service internals
+        voter_result = MagicMock()
+        voter_result.scalar_one_or_none.return_value = voter
+        session.execute.return_value = voter_result
+
+        geo_result = _mock_geocoding_result()
+        mock_locations = [MagicMock()]
+
+        with (
+            patch(
+                "voter_api.services.geocoding_service.reconstruct_address",
+                return_value="123 MAIN ST, ATLANTA, GA 30301",
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_available_providers",
+                return_value=["census"],
+            ),
+            patch(
+                "voter_api.services.geocoding_service.cache_lookup",
+                new_callable=AsyncMock,
+                return_value=geo_result,
+            ),
+            patch(
+                "voter_api.services.geocoding_service._store_geocoded_location",
+                new_callable=AsyncMock,
+            ) as mock_store,
+            patch(
+                "voter_api.services.geocoding_service.get_voter_locations",
+                new_callable=AsyncMock,
+                return_value=mock_locations,
+            ),
+        ):
+            result = await geocode_voter_all_providers(session, voter.id)
+
+        assert result["voter_id"] == voter.id
+        assert result["address"] == "123 MAIN ST, ATLANTA, GA 30301"
+        assert len(result["providers"]) == 1
+        assert result["providers"][0]["status"] == "success"
+        assert result["providers"][0]["cached"] is True
+        assert result["locations"] == mock_locations
+        mock_store.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_success_with_provider_call(self) -> None:
+        session = AsyncMock()
+        voter = self._make_mock_voter()
+
+        voter_result = MagicMock()
+        voter_result.scalar_one_or_none.return_value = voter
+        session.execute.return_value = voter_result
+
+        geo_result = _mock_geocoding_result()
+        mock_geocoder = AsyncMock()
+        mock_geocoder.provider_name = "census"
+        mock_geocoder.geocode = AsyncMock(return_value=geo_result)
+
+        with (
+            patch(
+                "voter_api.services.geocoding_service.reconstruct_address",
+                return_value="123 MAIN ST, ATLANTA, GA 30301",
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_available_providers",
+                return_value=["census"],
+            ),
+            patch(
+                "voter_api.services.geocoding_service.cache_lookup",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_geocoder",
+                return_value=mock_geocoder,
+            ),
+            patch(
+                "voter_api.services.geocoding_service.cache_store",
+                new_callable=AsyncMock,
+            ) as mock_cache_store,
+            patch(
+                "voter_api.services.geocoding_service._store_geocoded_location",
+                new_callable=AsyncMock,
+            ) as mock_store,
+            patch(
+                "voter_api.services.geocoding_service.get_voter_locations",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+        ):
+            result = await geocode_voter_all_providers(session, voter.id)
+
+        assert result["providers"][0]["status"] == "success"
+        assert result["providers"][0]["cached"] is False
+        mock_cache_store.assert_awaited_once()
+        mock_store.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_provider_error_recorded(self) -> None:
+        session = AsyncMock()
+        voter = self._make_mock_voter()
+
+        voter_result = MagicMock()
+        voter_result.scalar_one_or_none.return_value = voter
+        session.execute.return_value = voter_result
+
+        mock_geocoder = AsyncMock()
+        mock_geocoder.provider_name = "census"
+        mock_geocoder.geocode = AsyncMock(side_effect=GeocodingProviderError("census", "timeout"))
+
+        with (
+            patch(
+                "voter_api.services.geocoding_service.reconstruct_address",
+                return_value="123 MAIN ST, ATLANTA, GA 30301",
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_available_providers",
+                return_value=["census"],
+            ),
+            patch(
+                "voter_api.services.geocoding_service.cache_lookup",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_geocoder",
+                return_value=mock_geocoder,
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_voter_locations",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+        ):
+            result = await geocode_voter_all_providers(session, voter.id)
+
+        assert result["providers"][0]["status"] == "error"
+        assert "timeout" in result["providers"][0]["error"]
+
+    @pytest.mark.asyncio
+    async def test_no_match_recorded(self) -> None:
+        session = AsyncMock()
+        voter = self._make_mock_voter()
+
+        voter_result = MagicMock()
+        voter_result.scalar_one_or_none.return_value = voter
+        session.execute.return_value = voter_result
+
+        mock_geocoder = AsyncMock()
+        mock_geocoder.provider_name = "census"
+        mock_geocoder.geocode = AsyncMock(return_value=None)
+
+        with (
+            patch(
+                "voter_api.services.geocoding_service.reconstruct_address",
+                return_value="123 MAIN ST, ATLANTA, GA 30301",
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_available_providers",
+                return_value=["census"],
+            ),
+            patch(
+                "voter_api.services.geocoding_service.cache_lookup",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_geocoder",
+                return_value=mock_geocoder,
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_voter_locations",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+        ):
+            result = await geocode_voter_all_providers(session, voter.id)
+
+        assert result["providers"][0]["status"] == "no_match"
+        assert result["providers"][0]["cached"] is False

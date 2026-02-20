@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from voter_api.lib.geocoder import (
     cache_lookup,
     cache_store,
+    get_available_providers,
     get_geocoder,
     normalize_freeform_address,
     parse_address_components,
@@ -120,6 +121,109 @@ async def geocode_single_address(
         confidence=result.confidence_score,
         metadata=GeocodeMetadata(cached=False, provider=geocoder.provider_name),
     )
+
+
+async def geocode_voter_all_providers(
+    session: AsyncSession,
+    voter_id: uuid.UUID,
+) -> dict:
+    """Geocode a single voter's address with every registered provider.
+
+    Looks up the voter, reconstructs their residence address, then calls
+    each provider (with cache check first). Results are stored as
+    GeocodedLocation rows and returned per-provider.
+
+    Args:
+        session: Database session.
+        voter_id: The voter to geocode.
+
+    Returns:
+        Dict with ``voter_id``, ``address``, ``providers`` list, and
+        ``locations`` list.
+
+    Raises:
+        ValueError: If the voter is not found or has no reconstructable address.
+    """
+    # Look up voter
+    result = await session.execute(select(Voter).where(Voter.id == voter_id))
+    voter = result.scalar_one_or_none()
+    if voter is None:
+        msg = f"Voter {voter_id} not found"
+        raise ValueError(msg)
+
+    # Reconstruct address from voter components
+    address = reconstruct_address(
+        street_number=voter.residence_street_number,
+        pre_direction=voter.residence_pre_direction,
+        street_name=voter.residence_street_name,
+        street_type=voter.residence_street_type,
+        post_direction=voter.residence_post_direction,
+        apt_unit=voter.residence_apt_unit_number,
+        city=voter.residence_city,
+        zipcode=voter.residence_zipcode,
+    )
+    if not address:
+        msg = f"Voter {voter_id} has no reconstructable residence address"
+        raise ValueError(msg)
+
+    providers = get_available_providers()
+    provider_results: list[dict] = []
+
+    for provider_name in providers:
+        geocoder = get_geocoder(provider_name)
+        entry: dict = {"provider": provider_name, "status": "pending"}
+
+        # Check cache first
+        cached = await cache_lookup(session, geocoder.provider_name, address)
+        if cached:
+            await _store_geocoded_location(session, voter, cached, geocoder.provider_name, address)
+            entry.update(
+                status="success",
+                cached=True,
+                latitude=cached.latitude,
+                longitude=cached.longitude,
+                confidence=cached.confidence_score,
+            )
+            provider_results.append(entry)
+            continue
+
+        # Call provider
+        try:
+            geo_result = await geocoder.geocode(address)
+        except GeocodingProviderError as e:
+            logger.warning(f"Provider {provider_name} failed for voter {voter_id}: {e}")
+            entry.update(status="error", error=str(e))
+            provider_results.append(entry)
+            continue
+
+        if geo_result is None:
+            entry.update(status="no_match", cached=False)
+            provider_results.append(entry)
+            continue
+
+        # Store cache + location
+        await cache_store(session, geocoder.provider_name, address, geo_result)
+        await _store_geocoded_location(session, voter, geo_result, geocoder.provider_name, address)
+        entry.update(
+            status="success",
+            cached=False,
+            latitude=geo_result.latitude,
+            longitude=geo_result.longitude,
+            confidence=geo_result.confidence_score,
+        )
+        provider_results.append(entry)
+
+    await session.commit()
+
+    # Reload locations
+    locations = await get_voter_locations(session, voter_id)
+
+    return {
+        "voter_id": voter_id,
+        "address": address,
+        "providers": provider_results,
+        "locations": locations,
+    }
 
 
 async def verify_address(
