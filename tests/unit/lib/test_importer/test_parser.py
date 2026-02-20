@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from loguru import logger
 
 from voter_api.lib.importer.parser import detect_delimiter, detect_encoding, parse_csv_chunks
 
@@ -137,7 +138,7 @@ class TestParseCsvChunks:
         assert df.iloc[0]["county_precinct"] == "1A"
 
     def test_unknown_columns_are_dropped(self, tmp_path: Path) -> None:
-        """Columns not in GA_SOS_COLUMN_MAP are silently dropped from output."""
+        """Columns not in GA_SOS_COLUMN_MAP are dropped from output."""
         f = tmp_path / "voters.csv"
         f.write_text(
             "County,Voter Registration #,Status,Last Name,First Name,ExtraColumn\n"
@@ -145,3 +146,26 @@ class TestParseCsvChunks:
         )
         chunks = list(parse_csv_chunks(f, batch_size=10))
         assert "ExtraColumn" not in chunks[0].columns
+
+    def test_warning_logged_on_case_insensitive_match(self, tmp_path: Path) -> None:
+        """A WARNING is emitted when a column matches only via case-insensitive fallback.
+
+        The warning is the primary observability mechanism for this fix — it alerts
+        operators that GA_SOS_COLUMN_MAP should be updated with the exact-case header.
+        """
+        f = tmp_path / "voters.csv"
+        f.write_text(
+            "COUNTY,CONGRESSIONAL DISTRICT\n"
+            "Fulton,7\n"
+        )
+        captured: list[str] = []
+        handler_id = logger.add(lambda msg: captured.append(msg), level="WARNING", format="{level}: {message}")
+        try:
+            list(parse_csv_chunks(f, batch_size=10))
+        finally:
+            logger.remove(handler_id)
+
+        assert any("case-insensitive fallback" in msg for msg in captured), (
+            "Expected a WARNING log mentioning 'case-insensitive fallback' when a column header "
+            "matches only via lowercase comparison"
+        )

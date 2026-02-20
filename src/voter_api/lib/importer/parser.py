@@ -73,7 +73,17 @@ GA_SOS_COLUMN_MAP: dict[str, str] = {
 
 # Case-insensitive fallback lookup — used when exact header match fails.
 # Handles files that use all-caps, all-lowercase, or mixed-case headers.
+# Note: GA_SOS_COLUMN_MAP intentionally contains two keys that lowercase to
+# "date of last contact" ("Date Of Last Contact" / "Date of Last Contact");
+# both map to the same field, so the collision is harmless.
 _GA_SOS_COLUMN_MAP_LOWER: dict[str, str] = {k.lower(): v for k, v in GA_SOS_COLUMN_MAP.items()}
+
+# Guard against future additions that lowercase to the same string but map to
+# *different* model fields — that would cause one column to silently shadow the other.
+assert all(
+    GA_SOS_COLUMN_MAP[k] == _GA_SOS_COLUMN_MAP_LOWER[k.lower()]
+    for k in GA_SOS_COLUMN_MAP
+), "GA_SOS_COLUMN_MAP contains keys that lowercase to the same string but map to different values."
 
 
 def detect_delimiter(file_path: Path) -> str:
@@ -167,25 +177,25 @@ def parse_csv_chunks(
         keep_default_na=False,
     )
 
-    _columns_reported = False
+    # Column headers are constant within a file; build the rename map once from
+    # the first chunk to avoid redundant work on every subsequent chunk.
+    rename_map: dict[str, str] | None = None
 
     for chunk in reader:
         # Strip whitespace from column names
         chunk.columns = chunk.columns.str.strip()
 
-        # Map column names to model field names, with case-insensitive fallback.
-        # GA SoS files occasionally deliver headers in all-caps or mixed case;
-        # silently dropping those columns was the root cause of null district fields.
-        rename_map: dict[str, str] = {}
-        for csv_col in chunk.columns:
-            if csv_col in GA_SOS_COLUMN_MAP:
-                rename_map[csv_col] = GA_SOS_COLUMN_MAP[csv_col]
-            elif csv_col.lower() in _GA_SOS_COLUMN_MAP_LOWER:
-                rename_map[csv_col] = _GA_SOS_COLUMN_MAP_LOWER[csv_col.lower()]
+        if rename_map is None:
+            # Build rename map and emit per-file diagnostics on the first chunk.
+            # GA SoS files occasionally deliver headers in all-caps or mixed case;
+            # silently dropping those columns was the root cause of null district fields.
+            rename_map = {}
+            for csv_col in chunk.columns:
+                if csv_col in GA_SOS_COLUMN_MAP:
+                    rename_map[csv_col] = GA_SOS_COLUMN_MAP[csv_col]
+                elif csv_col.lower() in _GA_SOS_COLUMN_MAP_LOWER:
+                    rename_map[csv_col] = _GA_SOS_COLUMN_MAP_LOWER[csv_col.lower()]
 
-        # Log column mapping diagnostics once per file to aid debugging.
-        if not _columns_reported:
-            _columns_reported = True
             for csv_col in chunk.columns:
                 if csv_col not in GA_SOS_COLUMN_MAP and csv_col.lower() in _GA_SOS_COLUMN_MAP_LOWER:
                     logger.warning(
