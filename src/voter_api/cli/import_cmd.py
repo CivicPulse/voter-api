@@ -347,7 +347,7 @@ async def _import_all_boundaries(
             for i, outcome in enumerate(import_outcomes):
                 entry = prepared[i][0]
                 result = ImportResult(entry=entry)
-                if isinstance(outcome, Exception):
+                if isinstance(outcome, BaseException):
                     result.error = str(outcome)
                     typer.echo(f"  FAIL: {entry.zip_filename}: {outcome}")
                 else:

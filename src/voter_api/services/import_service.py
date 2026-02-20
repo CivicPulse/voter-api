@@ -336,7 +336,7 @@ async def _upsert_voter_batch(
             set_={col: stmt.excluded[col] for col in update_columns},
         )
         # xmax = 0 identifies genuinely new rows (not updated via ON CONFLICT)
-        stmt = stmt.returning(
+        stmt = stmt.returning(  # type: ignore[assignment]
             Voter.voter_registration_number,
             literal_column("(xmax = 0)::int").label("is_insert"),
         )
