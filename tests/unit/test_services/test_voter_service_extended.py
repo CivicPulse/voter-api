@@ -287,6 +287,49 @@ class TestSearchVoters:
         compiled = _compile_query(count_stmt)
         assert "ILIKE" not in compiled
 
+    @pytest.mark.asyncio
+    async def test_filter_by_q_escapes_sql_wildcards(self) -> None:
+        """Test that SQL wildcard characters % and _ in q are escaped as literals."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 0
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = []
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="100%")
+        assert total == 0
+
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        # The % must be escaped so it appears as \% in the pattern, not as a wildcard
+        # The compiled SQL should contain the escaped form, not the raw user input as a wildcard
+        assert "ILIKE" in compiled
+        assert r"\%" in compiled  # escaped percent sign
+        # Must not contain the double-wildcard pattern that a raw % would produce
+        assert "100%%" not in compiled
+
+    @pytest.mark.asyncio
+    async def test_filter_by_q_escapes_underscore_wildcard(self) -> None:
+        """Test that underscore _ in q is escaped so it matches literally, not any character."""
+        session = AsyncMock()
+
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 0
+        select_result = MagicMock()
+        select_result.scalars.return_value.all.return_value = []
+        session.execute.side_effect = [count_result, select_result]
+
+        result_voters, total = await search_voters(session, q="_mith")
+        assert total == 0
+
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        # The _ must be escaped so it is treated as a literal underscore, not a single-char wildcard
+        assert "ILIKE" in compiled
+        assert r"\_" in compiled  # escaped underscore
+
 
 class TestGetVoterDetail:
     """Tests for get_voter_detail."""

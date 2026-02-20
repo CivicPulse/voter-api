@@ -34,3 +34,4 @@ def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS ix_voters_first_name_trgm")
     op.execute("DROP INDEX IF EXISTS ix_voters_last_name_trgm")
     op.execute("DROP INDEX IF EXISTS ix_voters_middle_name_trgm")
+    op.execute("DROP EXTENSION IF EXISTS pg_trgm")
