@@ -6,7 +6,7 @@ partial unique constraint on (name, jurisdiction) for active records only.
 
 import uuid
 
-from sqlalchemy import ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -44,11 +44,12 @@ class GoverningBody(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_governing_body_name_jurisdiction",
             "name",
             "jurisdiction",
-            name="uq_governing_body_name_jurisdiction",
-            postgresql_where="deleted_at IS NULL",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
         ),
         Index("ix_governing_bodies_type_id", "type_id"),
         Index("ix_governing_bodies_jurisdiction", "jurisdiction"),

@@ -102,9 +102,7 @@ def upgrade() -> None:
     op.create_table(
         "meetings",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
-        sa.Column(
-            "governing_body_id", UUID(as_uuid=True), sa.ForeignKey("governing_bodies.id"), nullable=False
-        ),
+        sa.Column("governing_body_id", UUID(as_uuid=True), sa.ForeignKey("governing_bodies.id"), nullable=False),
         sa.Column("meeting_date", sa.DateTime(timezone=True), nullable=False),
         sa.Column("location", sa.String(500), nullable=True),
         sa.Column("meeting_type", sa.String(20), nullable=False),

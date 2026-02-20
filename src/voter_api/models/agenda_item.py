@@ -16,7 +16,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -91,11 +91,12 @@ class AgendaItem(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
             "disposition IS NULL OR disposition IN ('approved', 'denied', 'tabled', 'no_action', 'informational')",
             name="ck_agenda_item_disposition",
         ),
-        UniqueConstraint(
+        Index(
+            "uq_agenda_item_meeting_order",
             "meeting_id",
             "display_order",
-            name="uq_agenda_item_meeting_order",
-            postgresql_where="deleted_at IS NULL",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
         ),
         Index("ix_agenda_items_meeting_id", "meeting_id"),
         Index("ix_agenda_items_search_vector", "search_vector", postgresql_using="gin"),

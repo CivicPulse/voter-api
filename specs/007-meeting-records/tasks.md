@@ -60,22 +60,22 @@
 
 ### Implementation for User Story 1
 
-- [ ] T018 [P] [US1] Create governing body type schemas in `src/voter_api/schemas/governing_body_type.py` — `GoverningBodyTypeResponse` (from_attributes), `GoverningBodyTypeCreateRequest` (name required, description optional; auto-generate slug)
-- [ ] T019 [P] [US1] Create governing body schemas in `src/voter_api/schemas/governing_body.py` — `GoverningBodySummaryResponse`, `GoverningBodyDetailResponse` (extends Summary with description, meeting_count, updated_at), `GoverningBodyCreateRequest`, `GoverningBodyUpdateRequest` (all fields optional), `PaginatedGoverningBodyResponse`
-- [ ] T020 [P] [US1] Create governing body type service in `src/voter_api/services/governing_body_type_service.py` — `list_types()`, `create_type(session, *, name, description)` with slug generation and uniqueness check
-- [ ] T021 [US1] Create governing body service in `src/voter_api/services/governing_body_service.py` — `list_bodies(session, *, type_id, jurisdiction, page, page_size)` with soft-delete filter, `get_body(session, body_id)`, `create_body(session, *, data)`, `update_body(session, body_id, *, data)`, `delete_body(session, body_id)` with active-meeting check. `_UPDATABLE_FIELDS` guard
-- [ ] T022 [US1] Create governing body types API routes in `src/voter_api/api/v1/governing_body_types.py` — `GET /governing-body-types` (any role), `POST /governing-body-types` (admin only)
-- [ ] T023 [US1] Create governing bodies API routes in `src/voter_api/api/v1/governing_bodies.py` — `GET /governing-bodies` (paginated, filter by type_id, jurisdiction), `POST /governing-bodies` (admin), `GET /governing-bodies/{id}`, `PATCH /governing-bodies/{id}` (admin), `DELETE /governing-bodies/{id}` (admin, soft delete)
-- [ ] T024 [US1] Register governing body type and governing body routers in `src/voter_api/api/router.py`
+- [x] T018 [P] [US1] Create governing body type schemas in `src/voter_api/schemas/governing_body_type.py` — `GoverningBodyTypeResponse` (from_attributes), `GoverningBodyTypeCreateRequest` (name required, description optional; auto-generate slug)
+- [x] T019 [P] [US1] Create governing body schemas in `src/voter_api/schemas/governing_body.py` — `GoverningBodySummaryResponse`, `GoverningBodyDetailResponse` (extends Summary with description, meeting_count, updated_at), `GoverningBodyCreateRequest`, `GoverningBodyUpdateRequest` (all fields optional), `PaginatedGoverningBodyResponse`
+- [x] T020 [P] [US1] Create governing body type service in `src/voter_api/services/governing_body_type_service.py` — `list_types()`, `create_type(session, *, name, description)` with slug generation and uniqueness check
+- [x] T021 [US1] Create governing body service in `src/voter_api/services/governing_body_service.py` — `list_bodies(session, *, type_id, jurisdiction, page, page_size)` with soft-delete filter, `get_body(session, body_id)`, `create_body(session, *, data)`, `update_body(session, body_id, *, data)`, `delete_body(session, body_id)` with active-meeting check. `_UPDATABLE_FIELDS` guard
+- [x] T022 [US1] Create governing body types API routes in `src/voter_api/api/v1/governing_body_types.py` — `GET /governing-body-types` (any role), `POST /governing-body-types` (admin only)
+- [x] T023 [US1] Create governing bodies API routes in `src/voter_api/api/v1/governing_bodies.py` — `GET /governing-bodies` (paginated, filter by type_id, jurisdiction), `POST /governing-bodies` (admin), `GET /governing-bodies/{id}`, `PATCH /governing-bodies/{id}` (admin), `DELETE /governing-bodies/{id}` (admin, soft delete)
+- [x] T024 [US1] Register governing body type and governing body routers in `src/voter_api/api/router.py`
 
 ### Tests for User Story 1
 
-- [ ] T025 [P] [US1] Unit tests for governing body type schemas in `tests/unit/schemas/test_governing_body_type_schemas.py`
-- [ ] T026 [P] [US1] Unit tests for governing body schemas in `tests/unit/schemas/test_governing_body_schemas.py` — validation, from_attributes, optional fields on update
-- [ ] T027 [P] [US1] Unit tests for governing body type service in `tests/unit/services/test_governing_body_type_service.py` — list, create, duplicate name rejection
-- [ ] T028 [P] [US1] Unit tests for governing body service in `tests/unit/services/test_governing_body_service.py` — CRUD, soft-delete filter, deletion prevention with active meetings, pagination
-- [ ] T029 [P] [US1] Integration tests for governing body types API in `tests/integration/api/test_governing_body_types_api.py` — list types, create type (admin only), 403 for non-admin
-- [ ] T030 [P] [US1] Integration tests for governing bodies API in `tests/integration/api/test_governing_bodies_api.py` — CRUD lifecycle, pagination, filtering, soft-delete, deletion prevention, 403 for non-admin writes
+- [x] T025 [P] [US1] Unit tests for governing body type schemas in `tests/unit/test_schemas/test_governing_body_type_schemas.py`
+- [x] T026 [P] [US1] Unit tests for governing body schemas in `tests/unit/test_schemas/test_governing_body_schemas.py` — validation, from_attributes, optional fields on update
+- [x] T027 [P] [US1] Unit tests for governing body type service in `tests/unit/test_services/test_governing_body_type_service.py` — list, create, duplicate name rejection
+- [x] T028 [P] [US1] Unit tests for governing body service in `tests/unit/test_services/test_governing_body_service.py` — CRUD, soft-delete filter, deletion prevention with active meetings, pagination
+- [x] T029 [P] [US1] Integration tests for governing body types API in `tests/integration/test_api/test_governing_body_types_api.py` — list types, create type (admin only), 403 for non-admin
+- [x] T030 [P] [US1] Integration tests for governing bodies API in `tests/integration/test_api/test_governing_bodies_api.py` — CRUD lifecycle, pagination, filtering, soft-delete, deletion prevention, 403 for non-admin writes
 
 **Checkpoint**: Governing bodies fully functional. Admins can manage body types and bodies with all acceptance scenarios passing.
 
