@@ -2,6 +2,7 @@
 
 import re
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from fastapi.responses import Response
@@ -33,7 +34,9 @@ attachments_router = APIRouter(tags=["attachments"])
 # ---------------------------------------------------------------------------
 
 
-def _get_storage(settings: Settings = Depends(get_settings)) -> LocalFileStorage:
+def _get_storage(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> LocalFileStorage:
     return LocalFileStorage(settings.meeting_upload_dir)
 
 
@@ -88,12 +91,11 @@ async def _handle_upload(
 
 @attachments_router.get(
     "/meetings/{meeting_id}/attachments",
-    response_model=AttachmentListResponse,
 )
 async def list_meeting_attachments(
     meeting_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
 ) -> AttachmentListResponse:
     """List attachments for a meeting."""
     attachments = await list_attachments(session, meeting_id=meeting_id)
@@ -102,16 +104,15 @@ async def list_meeting_attachments(
 
 @attachments_router.post(
     "/meetings/{meeting_id}/attachments",
-    response_model=AttachmentResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def upload_meeting_attachment(
     meeting_id: uuid.UUID,
     file: UploadFile,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin", "contributor")),
-    storage: LocalFileStorage = Depends(_get_storage),
-    settings: Settings = Depends(get_settings),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin", "contributor"))],
+    storage: Annotated[LocalFileStorage, Depends(_get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> AttachmentResponse:
     """Upload a file attachment to a meeting."""
     max_file_size_bytes = settings.meeting_max_file_size_mb * 1024 * 1024
@@ -125,13 +126,12 @@ async def upload_meeting_attachment(
 
 @attachments_router.get(
     "/meetings/{meeting_id}/agenda-items/{agenda_item_id}/attachments",
-    response_model=AttachmentListResponse,
 )
 async def list_agenda_item_attachments(
     meeting_id: uuid.UUID,
     agenda_item_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
 ) -> AttachmentListResponse:
     """List attachments for an agenda item."""
     try:
@@ -144,17 +144,16 @@ async def list_agenda_item_attachments(
 
 @attachments_router.post(
     "/meetings/{meeting_id}/agenda-items/{agenda_item_id}/attachments",
-    response_model=AttachmentResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def upload_agenda_item_attachment(
     meeting_id: uuid.UUID,
     agenda_item_id: uuid.UUID,
     file: UploadFile,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin", "contributor")),
-    storage: LocalFileStorage = Depends(_get_storage),
-    settings: Settings = Depends(get_settings),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin", "contributor"))],
+    storage: Annotated[LocalFileStorage, Depends(_get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> AttachmentResponse:
     """Upload a file attachment to an agenda item."""
     try:
@@ -174,12 +173,11 @@ async def upload_agenda_item_attachment(
 
 @attachments_router.get(
     "/attachments/{attachment_id}",
-    response_model=AttachmentResponse,
 )
 async def get_attachment_detail(
     attachment_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
 ) -> AttachmentResponse:
     """Get attachment metadata."""
     attachment = await get_attachment(session, attachment_id)
@@ -193,9 +191,9 @@ async def get_attachment_detail(
 )
 async def download_attachment_file(
     attachment_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
-    storage: LocalFileStorage = Depends(_get_storage),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
+    storage: Annotated[LocalFileStorage, Depends(_get_storage)],
 ) -> Response:
     """Download an attachment file with proper Content-Disposition."""
     try:
@@ -218,8 +216,8 @@ async def download_attachment_file(
 )
 async def delete_attachment_endpoint(
     attachment_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin"))],
 ) -> None:
     """Soft-delete an attachment (file preserved on disk)."""
     try:

@@ -42,7 +42,7 @@ class TestSearchMeetingsValidation:
         with pytest.raises(ValueError, match="at least"):
             await search_meetings(mock_session, query=" ")
 
-    async def test_min_query_length_constant(self):
+    def test_min_query_length_constant(self):
         assert MIN_QUERY_LENGTH == 2
 
 
@@ -108,7 +108,7 @@ class TestSearchMeetingsExecution:
 
         mock_session.execute = AsyncMock(side_effect=[count_result, results_result])
 
-        items, total = await search_meetings(
+        _, total = await search_meetings(
             mock_session,
             query="test",
             page=2,
@@ -130,7 +130,7 @@ class TestSearchMeetingsExecution:
 
         mock_session.execute = AsyncMock(side_effect=[count_result, results_result])
 
-        items, total = await search_meetings(
+        _, total = await search_meetings(
             mock_session,
             query="test",
             current_user=contributor_user,
@@ -150,7 +150,7 @@ class TestSearchMeetingsExecution:
 
         mock_session.execute = AsyncMock(side_effect=[count_result, results_result])
 
-        items, total = await search_meetings(
+        _, total = await search_meetings(
             mock_session,
             query="test",
         )

@@ -86,14 +86,14 @@ def viewer_app(viewer_user: MagicMock) -> FastAPI:
 @pytest.fixture
 async def admin_client(admin_app: FastAPI) -> AsyncClient:
     transport = ASGITransport(app=admin_app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="https://test") as client:
         yield client
 
 
 @pytest.fixture
 async def viewer_client(viewer_app: FastAPI) -> AsyncClient:
     transport = ASGITransport(app=viewer_app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="https://test") as client:
         yield client
 
 

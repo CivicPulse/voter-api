@@ -1,6 +1,7 @@
 """Video embeds API endpoints — CRUD for meeting and agenda item video links."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
@@ -25,6 +26,8 @@ from voter_api.services.meeting_video_embed_service import (
 
 video_embeds_router = APIRouter(tags=["video-embeds"])
 
+_NOT_FOUND_MARKER = "not found"
+
 
 # ---------------------------------------------------------------------------
 # Meeting-level video embeds
@@ -33,12 +36,11 @@ video_embeds_router = APIRouter(tags=["video-embeds"])
 
 @video_embeds_router.get(
     "/meetings/{meeting_id}/video-embeds",
-    response_model=VideoEmbedListResponse,
 )
 async def list_meeting_video_embeds(
     meeting_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
 ) -> VideoEmbedListResponse:
     """List video embeds for a meeting."""
     embeds = await list_embeds(session, meeting_id=meeting_id)
@@ -47,21 +49,20 @@ async def list_meeting_video_embeds(
 
 @video_embeds_router.post(
     "/meetings/{meeting_id}/video-embeds",
-    response_model=VideoEmbedResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_meeting_video_embed(
     meeting_id: uuid.UUID,
     body: VideoEmbedCreateRequest,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin", "contributor"))],
 ) -> VideoEmbedResponse:
     """Add a video embed to a meeting."""
     try:
         embed = await create_embed(session, data=body.model_dump(), meeting_id=meeting_id)
     except ValueError as e:
         error_msg = str(e)
-        if "not found" in error_msg:
+        if _NOT_FOUND_MARKER in error_msg:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg) from e
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=error_msg) from e
     logger.info(f"User {current_user.username} created video embed {embed.id}")
@@ -75,13 +76,12 @@ async def create_meeting_video_embed(
 
 @video_embeds_router.get(
     "/meetings/{meeting_id}/agenda-items/{agenda_item_id}/video-embeds",
-    response_model=VideoEmbedListResponse,
 )
 async def list_agenda_item_video_embeds(
     meeting_id: uuid.UUID,
     agenda_item_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
 ) -> VideoEmbedListResponse:
     """List video embeds for an agenda item."""
     try:
@@ -94,15 +94,14 @@ async def list_agenda_item_video_embeds(
 
 @video_embeds_router.post(
     "/meetings/{meeting_id}/agenda-items/{agenda_item_id}/video-embeds",
-    response_model=VideoEmbedResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_agenda_item_video_embed(
     meeting_id: uuid.UUID,
     agenda_item_id: uuid.UUID,
     body: VideoEmbedCreateRequest,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin", "contributor"))],
 ) -> VideoEmbedResponse:
     """Add a video embed to an agenda item."""
     try:
@@ -113,7 +112,7 @@ async def create_agenda_item_video_embed(
         embed = await create_embed(session, data=body.model_dump(), agenda_item_id=agenda_item_id)
     except ValueError as e:
         error_msg = str(e)
-        if "not found" in error_msg:
+        if _NOT_FOUND_MARKER in error_msg:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg) from e
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=error_msg) from e
     logger.info(f"User {current_user.username} created video embed {embed.id}")
@@ -127,12 +126,11 @@ async def create_agenda_item_video_embed(
 
 @video_embeds_router.get(
     "/video-embeds/{embed_id}",
-    response_model=VideoEmbedResponse,
 )
 async def get_video_embed_detail(
     embed_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
 ) -> VideoEmbedResponse:
     """Get video embed details."""
     embed = await get_embed(session, embed_id)
@@ -143,20 +141,19 @@ async def get_video_embed_detail(
 
 @video_embeds_router.patch(
     "/video-embeds/{embed_id}",
-    response_model=VideoEmbedResponse,
 )
 async def update_video_embed_endpoint(
     embed_id: uuid.UUID,
     body: VideoEmbedUpdateRequest,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin", "contributor"))],
 ) -> VideoEmbedResponse:
     """Update a video embed."""
     try:
         embed = await update_embed(session, embed_id, data=body.model_dump(exclude_unset=True))
     except ValueError as e:
         error_msg = str(e)
-        if "not found" in error_msg:
+        if _NOT_FOUND_MARKER in error_msg:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg) from e
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=error_msg) from e
     logger.info(f"User {current_user.username} updated video embed {embed_id}")
@@ -169,8 +166,8 @@ async def update_video_embed_endpoint(
 )
 async def delete_video_embed_endpoint(
     embed_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin"))],
 ) -> None:
     """Soft-delete a video embed."""
     try:

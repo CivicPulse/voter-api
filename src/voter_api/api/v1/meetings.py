@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
@@ -72,18 +73,17 @@ async def _detail_from_meeting(session: AsyncSession, meeting: object) -> Meetin
 
 @meetings_router.get(
     "",
-    response_model=PaginatedMeetingResponse,
 )
 async def list_all_meetings(
-    governing_body_id: uuid.UUID | None = Query(None, description="Filter by governing body"),
-    date_from: datetime | None = Query(None, description="Start of date range"),
-    date_to: datetime | None = Query(None, description="End of date range"),
-    meeting_type: str | None = Query(None, description="Filter by meeting type"),
-    meeting_status: str | None = Query(None, alias="status", description="Filter by status"),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
+    governing_body_id: Annotated[uuid.UUID | None, Query(description="Filter by governing body")] = None,
+    date_from: Annotated[datetime | None, Query(description="Start of date range")] = None,
+    date_to: Annotated[datetime | None, Query(description="End of date range")] = None,
+    meeting_type: Annotated[str | None, Query(description="Filter by meeting type")] = None,
+    meeting_status: Annotated[str | None, Query(alias="status", description="Filter by status")] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedMeetingResponse:
     """List meetings with optional filters and approval-based visibility."""
     meetings, total = await list_meetings(
@@ -110,14 +110,13 @@ async def list_all_meetings(
 
 @meetings_router.get(
     "/search",
-    response_model=PaginatedSearchResultResponse,
 )
 async def search_meetings_endpoint(
-    q: str = Query(..., min_length=2, description="Search query (min 2 characters)"),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    q: Annotated[str, Query(min_length=2, description="Search query (min 2 characters)")],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedSearchResultResponse:
     """Full-text search across agenda items and attachment filenames."""
     try:
@@ -151,13 +150,12 @@ async def search_meetings_endpoint(
 
 @meetings_router.post(
     "",
-    response_model=MeetingDetailResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_meeting_endpoint(
     body: MeetingCreateRequest,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin", "contributor"))],
 ) -> MeetingDetailResponse:
     """Create a new meeting.
 
@@ -183,12 +181,11 @@ async def create_meeting_endpoint(
 
 @meetings_router.post(
     "/{meeting_id}/approve",
-    response_model=MeetingDetailResponse,
 )
 async def approve_meeting_endpoint(
     meeting_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin"))],
 ) -> MeetingDetailResponse:
     """Approve a pending meeting."""
     try:
@@ -203,13 +200,12 @@ async def approve_meeting_endpoint(
 
 @meetings_router.post(
     "/{meeting_id}/reject",
-    response_model=MeetingDetailResponse,
 )
 async def reject_meeting_endpoint(
     meeting_id: uuid.UUID,
     body: MeetingRejectRequest,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin"))],
 ) -> MeetingDetailResponse:
     """Reject a pending meeting with a reason."""
     try:
@@ -229,12 +225,11 @@ async def reject_meeting_endpoint(
 
 @meetings_router.get(
     "/{meeting_id}",
-    response_model=MeetingDetailResponse,
 )
 async def get_meeting_detail(
     meeting_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
 ) -> MeetingDetailResponse:
     """Get meeting detail with child counts."""
     meeting = await get_meeting(session, meeting_id, current_user)
@@ -248,13 +243,12 @@ async def get_meeting_detail(
 
 @meetings_router.patch(
     "/{meeting_id}",
-    response_model=MeetingDetailResponse,
 )
 async def update_meeting_endpoint(
     meeting_id: uuid.UUID,
     body: MeetingUpdateRequest,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin", "contributor"))],
 ) -> MeetingDetailResponse:
     """Update a meeting. Only provided fields are updated."""
     try:
@@ -275,8 +269,8 @@ async def update_meeting_endpoint(
 )
 async def delete_meeting_endpoint(
     meeting_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin"))],
 ) -> None:
     """Soft-delete a meeting and all child records."""
     try:

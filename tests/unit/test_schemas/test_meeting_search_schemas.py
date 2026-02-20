@@ -51,7 +51,7 @@ class TestSearchResultItem:
         data = self._valid_data()
         del data["relevance_score"]
         item = SearchResultItem(**data)
-        assert item.relevance_score == 0.0
+        assert item.relevance_score == pytest.approx(0.0)
 
     def test_attachment_match_source(self):
         item = SearchResultItem(**self._valid_data(match_source="attachment_filename"))

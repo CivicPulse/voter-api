@@ -1,6 +1,7 @@
 """Governing bodies API endpoints."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
@@ -62,15 +63,14 @@ async def _build_detail_response(
 
 @governing_bodies_router.get(
     "",
-    response_model=PaginatedGoverningBodyResponse,
 )
 async def list_all_bodies(
-    type_id: uuid.UUID | None = Query(None, description="Filter by governing body type ID"),
-    jurisdiction: str | None = Query(None, description="Filter by jurisdiction (partial match)"),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
+    type_id: Annotated[uuid.UUID | None, Query(description="Filter by governing body type ID")] = None,
+    jurisdiction: Annotated[str | None, Query(description="Filter by jurisdiction (partial match)")] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedGoverningBodyResponse:
     """List governing bodies with optional filters.
 
@@ -108,13 +108,12 @@ async def list_all_bodies(
 
 @governing_bodies_router.post(
     "",
-    response_model=GoverningBodyDetailResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_body_endpoint(
     body: GoverningBodyCreateRequest,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin"))],
 ) -> GoverningBodyDetailResponse:
     """Create a new governing body.
 
@@ -150,12 +149,11 @@ async def create_body_endpoint(
 
 @governing_bodies_router.get(
     "/{body_id}",
-    response_model=GoverningBodyDetailResponse,
 )
 async def get_body_detail(
     body_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
 ) -> GoverningBodyDetailResponse:
     """Get governing body detail including meeting count.
 
@@ -179,13 +177,12 @@ async def get_body_detail(
 
 @governing_bodies_router.patch(
     "/{body_id}",
-    response_model=GoverningBodyDetailResponse,
 )
 async def update_body_endpoint(
     body_id: uuid.UUID,
     body: GoverningBodyUpdateRequest,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin"))],
 ) -> GoverningBodyDetailResponse:
     """Update a governing body.
 
@@ -215,8 +212,8 @@ async def update_body_endpoint(
 )
 async def delete_body_endpoint(
     body_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin"))],
 ) -> None:
     """Soft-delete a governing body.
 

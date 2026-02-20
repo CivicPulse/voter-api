@@ -1,5 +1,7 @@
 """Governing body types API endpoints."""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,11 +25,10 @@ governing_body_types_router = APIRouter(
 
 @governing_body_types_router.get(
     "",
-    response_model=dict,
 )
 async def list_all_types(
-    session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
 ) -> dict:
     """List all governing body types.
 
@@ -46,13 +47,12 @@ async def list_all_types(
 
 @governing_body_types_router.post(
     "",
-    response_model=GoverningBodyTypeResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_type_endpoint(
     body: GoverningBodyTypeCreateRequest,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin"))],
 ) -> GoverningBodyTypeResponse:
     """Create a new governing body type.
 

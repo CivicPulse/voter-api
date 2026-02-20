@@ -51,7 +51,7 @@ class TestSearchEndpoint:
             new_callable=AsyncMock,
             return_value=(mock_results, 1),
         ):
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="https://test") as c:
                 resp = await c.get("/api/v1/meetings/search", params={"q": "budget"})
 
         assert resp.status_code == 200
@@ -67,7 +67,7 @@ class TestSearchEndpoint:
             new_callable=AsyncMock,
             return_value=([], 0),
         ):
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="https://test") as c:
                 resp = await c.get("/api/v1/meetings/search", params={"q": "nonexistent"})
 
         assert resp.status_code == 200
@@ -78,7 +78,7 @@ class TestSearchEndpoint:
     async def test_search_short_query_rejected(self):
         """Query shorter than 2 characters should be rejected by FastAPI validation."""
         app = _make_app(_mock_user())
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="https://test") as c:
             resp = await c.get("/api/v1/meetings/search", params={"q": "a"})
 
         assert resp.status_code == 422
@@ -86,7 +86,7 @@ class TestSearchEndpoint:
     async def test_search_missing_query_rejected(self):
         """Missing query parameter should return 422."""
         app = _make_app(_mock_user())
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="https://test") as c:
             resp = await c.get("/api/v1/meetings/search")
 
         assert resp.status_code == 422
@@ -98,7 +98,7 @@ class TestSearchEndpoint:
             new_callable=AsyncMock,
             return_value=([], 50),
         ):
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="https://test") as c:
                 resp = await c.get(
                     "/api/v1/meetings/search",
                     params={"q": "test", "page": 2, "page_size": 10},
@@ -133,7 +133,7 @@ class TestSearchEndpoint:
             new_callable=AsyncMock,
             return_value=(mock_results, 1),
         ):
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="https://test") as c:
                 resp = await c.get("/api/v1/meetings/search", params={"q": "minutes"})
 
         assert resp.status_code == 200
@@ -147,7 +147,7 @@ class TestSearchEndpoint:
             new_callable=AsyncMock,
             side_effect=ValueError("Search query must be at least 2 characters"),
         ):
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="https://test") as c:
                 resp = await c.get("/api/v1/meetings/search", params={"q": "ab"})
 
         assert resp.status_code == 422
@@ -160,7 +160,7 @@ class TestSearchEndpoint:
             new_callable=AsyncMock,
             return_value=([], 0),
         ):
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="https://test") as c:
                 resp = await c.get("/api/v1/meetings/search", params={"q": "test"})
 
         assert resp.status_code == 200

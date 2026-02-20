@@ -1,6 +1,7 @@
 """Agenda items API endpoints with gap-based ordering and reorder support."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
@@ -52,12 +53,11 @@ async def _response_from_item(session: AsyncSession, item: object) -> AgendaItem
 
 @agenda_items_router.get(
     "",
-    response_model=AgendaItemListResponse,
 )
 async def list_agenda_items(
     meeting_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
 ) -> AgendaItemListResponse:
     """List all agenda items for a meeting, ordered by display_order."""
     try:
@@ -75,14 +75,13 @@ async def list_agenda_items(
 
 @agenda_items_router.post(
     "",
-    response_model=AgendaItemResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_agenda_item(
     meeting_id: uuid.UUID,
     body: AgendaItemCreateRequest,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin", "contributor"))],
 ) -> AgendaItemResponse:
     """Create a new agenda item. Appended to end if display_order omitted."""
     try:
@@ -100,13 +99,12 @@ async def create_agenda_item(
 
 @agenda_items_router.put(
     "/reorder",
-    response_model=AgendaItemListResponse,
 )
 async def reorder_agenda_items(
     meeting_id: uuid.UUID,
     body: AgendaItemReorderRequest,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin", "contributor"))],
 ) -> AgendaItemListResponse:
     """Bulk reorder agenda items by providing an ordered list of item IDs."""
     try:
@@ -128,13 +126,12 @@ async def reorder_agenda_items(
 
 @agenda_items_router.get(
     "/{item_id}",
-    response_model=AgendaItemResponse,
 )
 async def get_agenda_item(
     meeting_id: uuid.UUID,
     item_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _user: Annotated[User, Depends(require_role("admin", "analyst", "viewer", "contributor"))],
 ) -> AgendaItemResponse:
     """Get agenda item detail with child counts."""
     item = await get_item(session, meeting_id, item_id)
@@ -148,14 +145,13 @@ async def get_agenda_item(
 
 @agenda_items_router.patch(
     "/{item_id}",
-    response_model=AgendaItemResponse,
 )
 async def update_agenda_item(
     meeting_id: uuid.UUID,
     item_id: uuid.UUID,
     body: AgendaItemUpdateRequest,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin", "contributor")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin", "contributor"))],
 ) -> AgendaItemResponse:
     """Update an agenda item. Only provided fields are updated."""
     try:
@@ -173,8 +169,8 @@ async def update_agenda_item(
 async def delete_agenda_item(
     meeting_id: uuid.UUID,
     item_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_role("admin")),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_role("admin"))],
 ) -> None:
     """Soft-delete an agenda item and cascade to children."""
     try:
