@@ -19,6 +19,11 @@ from tests.e2e.conftest import (
     OFFICIAL_ID,
 )
 
+# All E2E tests and their fixtures share a single session-scoped event loop.
+# This must live in the test module (not conftest.py) for pytest-asyncio to
+# pick it up for collected tests.
+pytestmark = pytest.mark.asyncio(loop_scope="session")
+
 PREFIX = "/api/v1"
 
 
@@ -112,14 +117,18 @@ class TestAuth:
             "role": "viewer",
         }
         resp = await admin_client.post(_url("/users"), json=new_user)
-        assert resp.status_code == 201
         body = resp.json()
-        assert body["username"] == new_user["username"]
-        assert body["role"] == "viewer"
-
-        # Cleanup: no DELETE /users endpoint, so remove via DB directly.
-        await db_session.execute(text("DELETE FROM users WHERE id = :id"), {"id": body["id"]})
-        await db_session.commit()
+        user_id = body.get("id")
+        try:
+            assert resp.status_code == 201
+            assert body["username"] == new_user["username"]
+            assert body["role"] == "viewer"
+        finally:
+            # Cleanup: no DELETE /users endpoint, so remove via DB directly.
+            # Runs even if assertions fail to keep the DB idempotent.
+            if user_id is not None:
+                await db_session.execute(text("DELETE FROM users WHERE id = :id"), {"id": user_id})
+                await db_session.commit()
 
 
 # ── Boundaries ─────────────────────────────────────────────────────────────
@@ -220,16 +229,20 @@ class TestElections:
             "refresh_interval_seconds": 120,
         }
         create_resp = await admin_client.post(_url("/elections"), json=payload)
-        assert create_resp.status_code == 201
-        election_id = create_resp.json()["id"]
+        election_id = create_resp.json().get("id")
+        try:
+            assert create_resp.status_code == 201
+            assert election_id is not None
 
-        detail_resp = await admin_client.get(_url(f"/elections/{election_id}"))
-        assert detail_resp.status_code == 200
-        assert detail_resp.json()["name"] == payload["name"]
-
-        # Cleanup: no DELETE /elections endpoint, so remove via DB directly.
-        await db_session.execute(text("DELETE FROM elections WHERE id = :id"), {"id": election_id})
-        await db_session.commit()
+            detail_resp = await admin_client.get(_url(f"/elections/{election_id}"))
+            assert detail_resp.status_code == 200
+            assert detail_resp.json()["name"] == payload["name"]
+        finally:
+            # Cleanup: no DELETE /elections endpoint, so remove via DB directly.
+            # Runs even if assertions fail to keep the DB idempotent.
+            if election_id is not None:
+                await db_session.execute(text("DELETE FROM elections WHERE id = :id"), {"id": election_id})
+                await db_session.commit()
 
     async def test_get_election_results_empty(self, client: httpx.AsyncClient):
         """Results endpoint returns 200 with empty data when no results ingested yet."""

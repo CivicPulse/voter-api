@@ -20,10 +20,6 @@ from voter_api.core.database import get_engine
 from voter_api.core.security import create_access_token, hash_password
 from voter_api.main import create_app, lifespan
 
-# Use a single event loop for the entire E2E session so that
-# session-scoped async fixtures (app, seed_database) share the same loop.
-pytestmark = pytest.mark.asyncio(loop_scope="session")
-
 # ---------------------------------------------------------------------------
 # App & client
 # ---------------------------------------------------------------------------
