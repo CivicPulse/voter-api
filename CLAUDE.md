@@ -238,8 +238,17 @@ uv run voter-api deploy-check                                            # prod 
 
 ## Recent Changes
 - 008-auto-data-import: Added Python 3.13 + httpx (async HTTP downloads), typer (CLI), loguru (logging), tqdm (progress bars) — all already in pyproject.toml
+- 008-auto-data-import: Voter import performance optimization — replaced row-by-row SELECT+INSERT/UPDATE with bulk PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` (via `sqlalchemy.dialects.postgresql.insert`), ~10-20x faster for large imports
 - 006-voter-history: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, Pandas, Typer, Loguru, Alembic
 - 005-elected-officials: Added `ElectedOfficial` and `ElectedOfficialSource` models (migration 015), 9 API endpoints under `/api/v1/elected-officials`, admin approval workflow (auto/approved/manual), multi-source data provider architecture
+
+### 008-auto-data-import
+
+**Voter Import Performance** — `import_service.py` was rewritten to use bulk PostgreSQL UPSERT (`INSERT ... ON CONFLICT DO UPDATE`) instead of per-record SELECT+INSERT/UPDATE. Key changes: `_prepare_records_for_db()` handles date/type coercion in a single pass, `_upsert_voter_batch()` executes bulk upserts in sub-batches of 500 rows (staying under asyncpg's 32,767 parameter limit), and `_process_chunk()` encapsulates per-chunk validation and upsert logic. Uses `RETURNING (xmax = 0)::int` to distinguish inserts from updates for accurate job counts. `first_seen_in_import_id` is excluded from the ON CONFLICT update set so it's only set on initial insert.
+
+Key files:
+
+- `src/voter_api/services/import_service.py` — bulk upsert logic (`_upsert_voter_batch`, `_prepare_records_for_db`, `_process_chunk`)
 
 ### 005-elected-officials
 
