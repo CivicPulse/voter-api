@@ -145,6 +145,20 @@ class Settings(BaseSettings):
         gt=0,
     )
 
+    # Data Seeding
+    data_root_url: str = Field(
+        default="https://data.hatchtech.dev/",
+        description="Base URL for downloading seed data files (manifest.json + data files)",
+    )
+
+    @field_validator("data_root_url")
+    @classmethod
+    def validate_data_root_url(cls, v: str) -> str:
+        if not v.startswith("https://"):
+            msg = "data_root_url must use HTTPS"
+            raise ValueError(msg)
+        return v.rstrip("/") + "/"
+
     # R2 / S3-Compatible Object Storage
     r2_enabled: bool = Field(
         default=False,
