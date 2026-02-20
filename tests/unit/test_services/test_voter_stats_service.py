@@ -104,3 +104,37 @@ class TestGetVoterStatsForBoundary:
 
         assert result is not None
         assert result.total == 800
+
+    @pytest.mark.asyncio
+    async def test_numeric_identifier_executes_query(self) -> None:
+        """Numeric boundary identifiers (e.g. bare "5" from shapefile int field) execute a query."""
+        session = _make_session([("A", 3000)])
+
+        result = await get_voter_stats_for_boundary(session, "congressional", "5")
+
+        assert result is not None
+        assert result.total == 3000
+        # Query must run — normalization should not short-circuit execution
+        session.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_zero_padded_identifier_executes_query(self) -> None:
+        """Zero-padded boundary identifiers (e.g. "005" from voter CSV) also execute a query."""
+        session = _make_session([("A", 3000)])
+
+        result = await get_voter_stats_for_boundary(session, "state_senate", "005")
+
+        assert result is not None
+        assert result.total == 3000
+        session.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_alphanumeric_identifier_uses_exact_match(self) -> None:
+        """Non-numeric identifiers (e.g. precinct codes like '001A') use exact string comparison."""
+        session = _make_session([("A", 500)])
+
+        result = await get_voter_stats_for_boundary(session, "county_precinct", "001A", county="Bibb")
+
+        assert result is not None
+        assert result.total == 500
+        session.execute.assert_awaited_once()
