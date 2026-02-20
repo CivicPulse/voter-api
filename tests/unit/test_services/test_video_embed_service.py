@@ -140,6 +140,28 @@ class TestCreateEmbed:
         assert created.end_seconds == 120
 
     @pytest.mark.asyncio
+    async def test_both_parents_raises(self) -> None:
+        session = AsyncMock()
+
+        with pytest.raises(ValueError, match="Exactly one of meeting_id or agenda_item_id"):
+            await create_embed(
+                session,
+                data={"video_url": "https://www.youtube.com/watch?v=abc"},
+                meeting_id=uuid.uuid4(),
+                agenda_item_id=uuid.uuid4(),
+            )
+
+    @pytest.mark.asyncio
+    async def test_no_parent_raises(self) -> None:
+        session = AsyncMock()
+
+        with pytest.raises(ValueError, match="Exactly one of meeting_id or agenda_item_id"):
+            await create_embed(
+                session,
+                data={"video_url": "https://www.youtube.com/watch?v=abc"},
+            )
+
+    @pytest.mark.asyncio
     async def test_invalid_timestamps_rejected(self) -> None:
         session = AsyncMock()
 

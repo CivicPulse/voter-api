@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from voter_api.services.agenda_item_service import (
     create_item,
@@ -13,6 +14,7 @@ from voter_api.services.agenda_item_service import (
     get_item_child_counts,
     list_items,
     reorder_items,
+    require_agenda_item_in_meeting,
     update_item,
 )
 
@@ -317,3 +319,79 @@ class TestReorderItems:
 
         with pytest.raises(ValueError, match="not found in meeting"):
             await reorder_items(session, meeting_id, [uuid.uuid4()])
+
+    @pytest.mark.asyncio
+    async def test_subset_raises(self) -> None:
+        session = _mock_session()
+        meeting_id = uuid.uuid4()
+        item_a = _mock_item(meeting_id=meeting_id)
+        item_b = _mock_item(meeting_id=meeting_id)
+
+        meeting_result = MagicMock()
+        meeting_result.scalar_one_or_none.return_value = meeting_id
+
+        items_result = MagicMock()
+        items_result.scalars.return_value.all.return_value = [item_a, item_b]
+
+        session.execute = AsyncMock(side_effect=[meeting_result, items_result])
+
+        with pytest.raises(ValueError, match="All active agenda items must be included"):
+            await reorder_items(session, meeting_id, [item_a.id])
+
+    @pytest.mark.asyncio
+    async def test_duplicates_raises(self) -> None:
+        session = _mock_session()
+        meeting_id = uuid.uuid4()
+
+        meeting_result = MagicMock()
+        meeting_result.scalar_one_or_none.return_value = meeting_id
+
+        items_result = MagicMock()
+        items_result.scalars.return_value.all.return_value = []
+
+        session.execute = AsyncMock(side_effect=[meeting_result, items_result])
+
+        dup_id = uuid.uuid4()
+        with pytest.raises(ValueError, match="Duplicate item IDs"):
+            await reorder_items(session, meeting_id, [dup_id, dup_id])
+
+
+class TestCreateItemIntegrity:
+    @pytest.mark.asyncio
+    async def test_duplicate_display_order_raises(self) -> None:
+        session = _mock_session()
+        meeting_id = uuid.uuid4()
+
+        meeting_result = MagicMock()
+        meeting_result.scalar_one_or_none.return_value = meeting_id
+        session.execute = AsyncMock(return_value=meeting_result)
+        session.commit = AsyncMock(side_effect=IntegrityError("", {}, Exception()))
+
+        with pytest.raises(ValueError, match="display_order .* already exists"):
+            await create_item(
+                session,
+                meeting_id=meeting_id,
+                data={"title": "Item", "display_order": 10},
+            )
+        session.rollback.assert_awaited_once()
+
+
+class TestRequireAgendaItemInMeeting:
+    @pytest.mark.asyncio
+    async def test_found(self) -> None:
+        session = _mock_session()
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = uuid.uuid4()
+        session.execute = AsyncMock(return_value=result)
+
+        await require_agenda_item_in_meeting(session, uuid.uuid4(), uuid.uuid4())
+
+    @pytest.mark.asyncio
+    async def test_not_found_raises(self) -> None:
+        session = _mock_session()
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+        session.execute = AsyncMock(return_value=result)
+
+        with pytest.raises(ValueError, match="not found in meeting"):
+            await require_agenda_item_in_meeting(session, uuid.uuid4(), uuid.uuid4())

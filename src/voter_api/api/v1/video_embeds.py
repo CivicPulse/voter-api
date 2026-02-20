@@ -14,6 +14,7 @@ from voter_api.schemas.meeting_video_embed import (
     VideoEmbedResponse,
     VideoEmbedUpdateRequest,
 )
+from voter_api.services.agenda_item_service import require_agenda_item_in_meeting
 from voter_api.services.meeting_video_embed_service import (
     create_embed,
     delete_embed,
@@ -83,6 +84,10 @@ async def list_agenda_item_video_embeds(
     _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
 ) -> VideoEmbedListResponse:
     """List video embeds for an agenda item."""
+    try:
+        await require_agenda_item_in_meeting(session, meeting_id, agenda_item_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     embeds = await list_embeds(session, agenda_item_id=agenda_item_id)
     return VideoEmbedListResponse(items=[VideoEmbedResponse.model_validate(e) for e in embeds])
 
@@ -100,6 +105,10 @@ async def create_agenda_item_video_embed(
     current_user: User = Depends(require_role("admin", "contributor")),
 ) -> VideoEmbedResponse:
     """Add a video embed to an agenda item."""
+    try:
+        await require_agenda_item_in_meeting(session, meeting_id, agenda_item_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     try:
         embed = await create_embed(session, data=body.model_dump(), agenda_item_id=agenda_item_id)
     except ValueError as e:

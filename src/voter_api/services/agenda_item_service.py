@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 from loguru import logger
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.models.agenda_item import AgendaItem
@@ -166,7 +167,11 @@ async def create_item(
         display_order=display_order,
     )
     session.add(item)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise ValueError(f"display_order {display_order} already exists for this meeting") from exc
     await session.refresh(item)
     logger.info(f"Created agenda item {item.id} at order {display_order} for meeting {meeting_id}")
     return item
@@ -282,10 +287,19 @@ async def reorder_items(
     )
     existing_items = {item.id: item for item in result.scalars().all()}
 
+    # Reject duplicate IDs
+    if len(item_ids) != len(set(item_ids)):
+        raise ValueError("Duplicate item IDs are not allowed")
+
     # Validate all provided IDs exist and belong to this meeting
     for item_id in item_ids:
         if item_id not in existing_items:
             raise ValueError(f"Agenda item {item_id} not found in meeting {meeting_id}")
+
+    # Require all active items to be included
+    missing = set(existing_items.keys()) - set(item_ids)
+    if missing:
+        raise ValueError(f"All active agenda items must be included. Missing: {missing}")
 
     # Assign new order values with gaps
     for idx, item_id in enumerate(item_ids):
@@ -302,6 +316,32 @@ async def reorder_items(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+async def require_agenda_item_in_meeting(
+    session: AsyncSession,
+    meeting_id: uuid.UUID,
+    agenda_item_id: uuid.UUID,
+) -> None:
+    """Verify that an agenda item exists and belongs to the given meeting.
+
+    Args:
+        session: Database session.
+        meeting_id: The expected parent meeting UUID.
+        agenda_item_id: The agenda item UUID.
+
+    Raises:
+        ValueError: If the agenda item is not found or doesn't belong to the meeting.
+    """
+    result = await session.execute(
+        select(AgendaItem.id).where(
+            AgendaItem.id == agenda_item_id,
+            AgendaItem.meeting_id == meeting_id,
+            AgendaItem.deleted_at.is_(None),
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        raise ValueError(f"Agenda item {agenda_item_id} not found in meeting {meeting_id}")
 
 
 async def _require_meeting(session: AsyncSession, meeting_id: uuid.UUID) -> None:

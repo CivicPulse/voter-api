@@ -133,6 +133,51 @@ class TestUploadAttachment:
                 storage=storage,
             )
 
+    @pytest.mark.asyncio
+    async def test_both_parents_raises(self) -> None:
+        session = AsyncMock()
+        storage = AsyncMock()
+
+        with pytest.raises(ValueError, match="Exactly one of meeting_id or agenda_item_id"):
+            await upload_attachment(
+                session,
+                file_content=b"pdf content",
+                filename="test.pdf",
+                content_type="application/pdf",
+                meeting_id=uuid.uuid4(),
+                agenda_item_id=uuid.uuid4(),
+                storage=storage,
+            )
+
+    @pytest.mark.asyncio
+    async def test_no_parent_raises(self) -> None:
+        session = AsyncMock()
+        storage = AsyncMock()
+
+        with pytest.raises(ValueError, match="Exactly one of meeting_id or agenda_item_id"):
+            await upload_attachment(
+                session,
+                file_content=b"pdf content",
+                filename="test.pdf",
+                content_type="application/pdf",
+                storage=storage,
+            )
+
+    @pytest.mark.asyncio
+    async def test_valid_mime_invalid_extension_raises(self) -> None:
+        session = AsyncMock()
+        storage = AsyncMock()
+
+        with pytest.raises(ValueError, match="Unsupported file format"):
+            await upload_attachment(
+                session,
+                file_content=b"binary",
+                filename="malware.exe",
+                content_type="application/pdf",
+                meeting_id=uuid.uuid4(),
+                storage=storage,
+            )
+
 
 class TestDownloadAttachment:
     @pytest.mark.asyncio

@@ -115,6 +115,10 @@ async def create_embed(
     if not validate_video_timestamps(start_seconds, end_seconds):
         raise ValueError("Invalid timestamps: end must be greater than start")
 
+    # Validate exactly one parent is provided
+    if (meeting_id is None) == (agenda_item_id is None):
+        raise ValueError("Exactly one of meeting_id or agenda_item_id must be provided")
+
     # Validate parent exists
     if meeting_id is not None:
         await _require_meeting(session, meeting_id)

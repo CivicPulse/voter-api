@@ -108,8 +108,12 @@ async def upload_attachment(
     Raises:
         ValueError: If validation fails (format, size, parent not found).
     """
-    # Validate file format
-    if not validate_file_content_type(content_type) and not validate_file_extension(filename):
+    # Validate exactly one parent is provided
+    if (meeting_id is None) == (agenda_item_id is None):
+        raise ValueError("Exactly one of meeting_id or agenda_item_id must be provided")
+
+    # Validate file format — reject if either MIME type or extension is invalid
+    if not validate_file_content_type(content_type) or not validate_file_extension(filename):
         allowed = get_allowed_extensions_display()
         raise ValueError(f"Unsupported file format. Allowed: {allowed}")
 

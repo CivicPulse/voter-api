@@ -1,5 +1,6 @@
 """Attachments API endpoints — upload, download, list, and soft-delete."""
 
+import re
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
@@ -15,6 +16,7 @@ from voter_api.schemas.meeting_attachment import (
     AttachmentListResponse,
     AttachmentResponse,
 )
+from voter_api.services.agenda_item_service import require_agenda_item_in_meeting
 from voter_api.services.meeting_attachment_service import (
     delete_attachment,
     download_attachment,
@@ -132,6 +134,10 @@ async def list_agenda_item_attachments(
     _user: User = Depends(require_role("admin", "analyst", "viewer", "contributor")),
 ) -> AttachmentListResponse:
     """List attachments for an agenda item."""
+    try:
+        await require_agenda_item_in_meeting(session, meeting_id, agenda_item_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     attachments = await list_attachments(session, agenda_item_id=agenda_item_id)
     return AttachmentListResponse(items=[_response_from_attachment(a) for a in attachments])
 
@@ -151,6 +157,10 @@ async def upload_agenda_item_attachment(
     settings: Settings = Depends(get_settings),
 ) -> AttachmentResponse:
     """Upload a file attachment to an agenda item."""
+    try:
+        await require_agenda_item_in_meeting(session, meeting_id, agenda_item_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     max_file_size_bytes = settings.meeting_max_file_size_mb * 1024 * 1024
     return await _handle_upload(
         file, session, storage, current_user, max_file_size_bytes, agenda_item_id=agenda_item_id
@@ -192,11 +202,12 @@ async def download_attachment_file(
         content, attachment = await download_attachment(session, attachment_id, storage)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    safe_name = re.sub(r'[\x00-\x1f\x7f"\\]', "_", attachment.original_filename)
     return Response(
         content=content,
         media_type=attachment.content_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{attachment.original_filename}"',
+            "Content-Disposition": f'attachment; filename="{safe_name}"',
         },
     )
 
