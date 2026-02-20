@@ -76,7 +76,7 @@ async def _list_users() -> None:
     from voter_api.services.auth_service import list_users
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
     try:
         factory = get_session_factory()
