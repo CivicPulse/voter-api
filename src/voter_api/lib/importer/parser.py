@@ -80,10 +80,9 @@ _GA_SOS_COLUMN_MAP_LOWER: dict[str, str] = {k.lower(): v for k, v in GA_SOS_COLU
 
 # Guard against future additions that lowercase to the same string but map to
 # *different* model fields — that would cause one column to silently shadow the other.
-assert all(
-    GA_SOS_COLUMN_MAP[k] == _GA_SOS_COLUMN_MAP_LOWER[k.lower()]
-    for k in GA_SOS_COLUMN_MAP
-), "GA_SOS_COLUMN_MAP contains keys that lowercase to the same string but map to different values."
+assert all(GA_SOS_COLUMN_MAP[k] == _GA_SOS_COLUMN_MAP_LOWER[k.lower()] for k in GA_SOS_COLUMN_MAP), (
+    "GA_SOS_COLUMN_MAP contains keys that lowercase to the same string but map to different values."
+)
 
 
 def detect_delimiter(file_path: Path) -> str:

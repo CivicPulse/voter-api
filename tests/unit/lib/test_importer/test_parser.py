@@ -163,10 +163,7 @@ class TestParseCsvChunks:
     def test_multiple_unknown_columns_all_named_in_error(self, tmp_path: Path) -> None:
         """All unknown columns are listed in the bug report, not just the first one."""
         f = tmp_path / "voters.csv"
-        f.write_text(
-            "County,NewFieldA,NewFieldB,Status\n"
-            "Fulton,val1,val2,ACTIVE\n"
-        )
+        f.write_text("County,NewFieldA,NewFieldB,Status\nFulton,val1,val2,ACTIVE\n")
         with pytest.raises(ValueError, match="BUG REPORT") as exc_info:
             list(parse_csv_chunks(f, batch_size=10))
 
@@ -181,10 +178,7 @@ class TestParseCsvChunks:
         operators that GA_SOS_COLUMN_MAP should be updated with the exact-case header.
         """
         f = tmp_path / "voters.csv"
-        f.write_text(
-            "COUNTY,CONGRESSIONAL DISTRICT\n"
-            "Fulton,7\n"
-        )
+        f.write_text("COUNTY,CONGRESSIONAL DISTRICT\nFulton,7\n")
         captured: list[str] = []
         handler_id = logger.add(lambda msg: captured.append(msg), level="WARNING", format="{level}: {message}")
         try:
