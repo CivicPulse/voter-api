@@ -30,6 +30,7 @@ from voter_api.models.import_job import ImportJob  # noqa: F401
 from voter_api.models.precinct_metadata import PrecinctMetadata  # noqa: F401
 from voter_api.models.user import User  # noqa: F401
 from voter_api.models.voter import Voter  # noqa: F401
+from voter_api.models.voter_history import VoterHistory  # noqa: F401
 
 config = context.config
 
