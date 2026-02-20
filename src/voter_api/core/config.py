@@ -128,6 +128,17 @@ class Settings(BaseSettings):
         description="Congress.gov API key for federal representative data",
     )
 
+    # Meeting Records
+    meeting_upload_dir: str = Field(
+        default="./uploads/meetings",
+        description="Directory for meeting attachment file storage",
+    )
+    meeting_max_file_size_mb: int = Field(
+        default=50,
+        description="Maximum file size for meeting attachments in megabytes",
+        gt=0,
+    )
+
     # Environment
     environment: str = Field(
         default="production",
