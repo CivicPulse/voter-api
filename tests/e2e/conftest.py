@@ -235,14 +235,24 @@ async def seed_database(app, settings):
     yield
 
     # Cleanup: remove seeded rows so the DB is left clean.
+    # Each statement is explicit to avoid f-string SQL construction.
     async with factory() as session:
-        for table, uid in [
-            ("elected_officials", OFFICIAL_ID),
-            ("boundaries", BOUNDARY_ID),
-            ("elections", ELECTION_ID),
-            ("users", ADMIN_USER_ID),
-            ("users", ANALYST_USER_ID),
-            ("users", VIEWER_USER_ID),
-        ]:
-            await session.execute(text(f"DELETE FROM {table} WHERE id = :id"), {"id": str(uid)})  # noqa: S608
+        await session.execute(
+            text("DELETE FROM elected_officials WHERE id = :id"), {"id": str(OFFICIAL_ID)}
+        )
+        await session.execute(
+            text("DELETE FROM boundaries WHERE id = :id"), {"id": str(BOUNDARY_ID)}
+        )
+        await session.execute(
+            text("DELETE FROM elections WHERE id = :id"), {"id": str(ELECTION_ID)}
+        )
+        await session.execute(
+            text("DELETE FROM users WHERE id = :id"), {"id": str(ADMIN_USER_ID)}
+        )
+        await session.execute(
+            text("DELETE FROM users WHERE id = :id"), {"id": str(ANALYST_USER_ID)}
+        )
+        await session.execute(
+            text("DELETE FROM users WHERE id = :id"), {"id": str(VIEWER_USER_ID)}
+        )
         await session.commit()

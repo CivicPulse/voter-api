@@ -99,7 +99,7 @@ tests/
 
 ### E2E Tests
 
-The `tests/e2e/` suite runs **53 smoke tests** against a real PostgreSQL/PostGIS database with all Alembic migrations applied. Unlike unit/integration tests (which use in-memory SQLite and mocks), E2E tests exercise the full stack: real app factory, real database, real auth, real queries.
+The `tests/e2e/` suite runs **60 smoke tests** against a real PostgreSQL/PostGIS database with all Alembic migrations applied. Unlike unit/integration tests (which use in-memory SQLite and mocks), E2E tests exercise the full stack: real app factory, real database, real auth, real queries.
 
 **CI workflow**: `.github/workflows/e2e.yml` — triggers on PRs to `main`. Spins up a `postgis/postgis:15-3.4` service container, runs `alembic upgrade head`, then `pytest tests/e2e/`.
 
@@ -126,7 +126,7 @@ DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_a
 | File | Purpose |
 |---|---|
 | `tests/e2e/conftest.py` | Session-scoped fixtures: app factory, DB seeding, authenticated HTTP clients |
-| `tests/e2e/test_smoke.py` | 53 smoke tests organized by API router |
+| `tests/e2e/test_smoke.py` | 60 smoke tests organized by API router |
 | `.github/workflows/e2e.yml` | GitHub Actions workflow with PostGIS service container |
 
 #### How the fixtures work
@@ -140,7 +140,7 @@ DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_a
 
 | Test class | Router | Tests | What it covers |
 |---|---|---|---|
-| `TestHealth` | auth | 1 | Health check |
+| `TestHealth` | auth | 2 | Health check, /info version endpoint |
 | `TestAuth` | auth | 8 | Login, refresh, /me, user CRUD, bad credentials, 401/403 |
 | `TestBoundaries` | boundaries | 6 | List, filter, detail, types, point-in-polygon, 404 |
 | `TestElections` | elections | 6 | List, detail, create, RBAC, results, 404 |
@@ -153,6 +153,7 @@ DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_a
 | `TestDatasets` | datasets | 1 | Public listing |
 | `TestPagination` | cross-cutting | 4 | Parameterized pagination, invalid page_size 422 |
 | `TestRBAC` | cross-cutting | 6 | Admin/analyst/viewer role enforcement |
+| `TestVoterHistory` | voter-history | 6 | Auth required, RBAC, participation stats |
 
 #### Updating E2E tests when the API changes
 

@@ -38,13 +38,20 @@ def _url(path: str) -> str:
 
 
 class TestHealth:
-    """GET /api/v1/health — no auth required."""
+    """GET /api/v1/health and /api/v1/info — no auth required."""
 
     async def test_health_returns_200(self, client: httpx.AsyncClient):
         resp = await client.get(_url("/health"))
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == "healthy"
+
+    async def test_info_returns_version(self, client: httpx.AsyncClient):
+        resp = await client.get(_url("/info"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "version" in body
+        assert "environment" in body
 
 
 # ── Auth ───────────────────────────────────────────────────────────────────
@@ -509,3 +516,42 @@ class TestRBAC:
 
     async def test_viewer_can_read_voters(self, viewer_client: httpx.AsyncClient):
         assert (await viewer_client.get(_url("/voters"))).status_code == 200
+
+
+# ── Voter History ──────────────────────────────────────────────────────────
+
+
+class TestVoterHistory:
+    """Smoke tests for the voter_history router (analyst/admin only)."""
+
+    async def test_voter_history_requires_auth(self, client: httpx.AsyncClient):
+        resp = await client.get(_url("/voters/FAKE123/history"))
+        assert resp.status_code == 401
+
+    async def test_voter_history_viewer_forbidden(self, viewer_client: httpx.AsyncClient):
+        resp = await viewer_client.get(_url("/voters/FAKE123/history"))
+        assert resp.status_code == 403
+
+    async def test_analyst_can_access_voter_history(self, analyst_client: httpx.AsyncClient):
+        """Analyst role bypasses RBAC — endpoint returns 200/404, not 401/403."""
+        resp = await analyst_client.get(_url("/voters/FAKE123/history"))
+        assert resp.status_code in (200, 404)
+        if resp.status_code == 200:
+            assert "items" in resp.json()
+
+    async def test_election_participation_requires_auth(self, client: httpx.AsyncClient):
+        resp = await client.get(_url(f"/elections/{ELECTION_ID}/participation"))
+        assert resp.status_code == 401
+
+    async def test_election_participation_viewer_forbidden(self, viewer_client: httpx.AsyncClient):
+        resp = await viewer_client.get(_url(f"/elections/{ELECTION_ID}/participation"))
+        assert resp.status_code == 403
+
+    async def test_election_participation_stats_accessible_to_viewer(
+        self, viewer_client: httpx.AsyncClient
+    ):
+        """Stats endpoint requires only authentication — viewer role is sufficient."""
+        resp = await viewer_client.get(_url(f"/elections/{ELECTION_ID}/participation/stats"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "election_id" in body
