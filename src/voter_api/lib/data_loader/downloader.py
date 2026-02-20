@@ -76,6 +76,7 @@ async def download_file(
     size_bytes: int,
     *,
     skip_checksum: bool = False,
+    entry: DataFileEntry | None = None,
 ) -> DownloadResult:
     """Download a single file with checksum verification and atomic writes.
 
@@ -89,16 +90,19 @@ async def download_file(
         expected_sha512: Expected SHA512 hex digest from the manifest.
         size_bytes: Expected file size in bytes (for progress bar).
         skip_checksum: If True, skip checksum verification.
+        entry: Optional manifest entry to attach to the result. If not
+            provided, a synthetic entry with ``category=REFERENCE`` is created.
 
     Returns:
         A DownloadResult indicating success or failure.
     """
-    entry = DataFileEntry(
-        filename=dest.name,
-        sha512=expected_sha512,
-        category=FileCategory.REFERENCE,  # category not used for download logic
-        size_bytes=size_bytes,
-    )
+    if entry is None:
+        entry = DataFileEntry(
+            filename=dest.name,
+            sha512=expected_sha512,
+            category=FileCategory.REFERENCE,
+            size_bytes=size_bytes,
+        )
     result = DownloadResult(entry=entry)
 
     # Skip if cached

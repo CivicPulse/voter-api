@@ -59,10 +59,28 @@ class TestDataFileEntry:
             )
 
     def test_invalid_sha512_length_raises(self) -> None:
-        with pytest.raises(ValueError, match="sha512 must be 128 hex characters"):
+        with pytest.raises(ValueError, match="sha512 must be 128 lowercase hex characters"):
             DataFileEntry(
                 filename="test.zip",
                 sha512="abc",
+                category=FileCategory.BOUNDARY,
+                size_bytes=0,
+            )
+
+    def test_invalid_sha512_non_hex_raises(self) -> None:
+        with pytest.raises(ValueError, match="sha512 must be 128 lowercase hex characters"):
+            DataFileEntry(
+                filename="test.zip",
+                sha512="z" * 128,
+                category=FileCategory.BOUNDARY,
+                size_bytes=0,
+            )
+
+    def test_invalid_sha512_uppercase_raises(self) -> None:
+        with pytest.raises(ValueError, match="sha512 must be 128 lowercase hex characters"):
+            DataFileEntry(
+                filename="test.zip",
+                sha512="A" * 128,
                 category=FileCategory.BOUNDARY,
                 size_bytes=0,
             )

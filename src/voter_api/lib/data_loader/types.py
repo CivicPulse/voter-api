@@ -6,6 +6,7 @@ individual file entries, and download/import result tracking.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING
@@ -44,8 +45,8 @@ class DataFileEntry:
         if not self.filename:
             msg = "filename must not be empty"
             raise ValueError(msg)
-        if len(self.sha512) != 128:
-            msg = f"sha512 must be 128 hex characters, got {len(self.sha512)}"
+        if not re.fullmatch(r"[a-f0-9]{128}", self.sha512):
+            msg = f"sha512 must be 128 lowercase hex characters, got {self.sha512!r:.32}"
             raise ValueError(msg)
         if self.size_bytes < 0:
             msg = "size_bytes must be non-negative"

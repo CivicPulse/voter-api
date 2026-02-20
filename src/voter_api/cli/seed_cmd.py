@@ -154,9 +154,8 @@ async def _run_seed(
             expected_sha512=entry.sha512,
             size_bytes=entry.size_bytes,
             skip_checksum=skip_checksum,
+            entry=entry,
         )
-        # Preserve the original entry (download_file creates a synthetic one)
-        result.entry = entry
         seed_result.downloads.append(result)
 
         if result.success:
@@ -312,6 +311,8 @@ async def _import_all_boundaries(
     """Import all boundaries using the existing import pipeline.
 
     Delegates to the same logic as ``voter-api import all-boundaries``.
+    Re-initializes the database engine afterward because the delegated
+    function disposes the engine in its own ``finally`` block.
 
     Args:
         data_dir: Directory containing boundary zip files.
@@ -322,6 +323,14 @@ async def _import_all_boundaries(
     from voter_api.cli.import_cmd import _import_all_boundaries as _do_import
 
     await _do_import(data_dir, skip_checksum, fail_fast, skip_files)
+
+    # Re-init engine: _do_import disposes it in its finally block,
+    # but seed_cmd._run_imports needs it for subsequent voter imports.
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import init_engine
+
+    settings = get_settings()
+    init_engine(settings.database_url)
 
 
 async def _import_voters(file_path: Path, batch_size: int) -> None:

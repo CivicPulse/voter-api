@@ -247,6 +247,64 @@ class TestDownloadFile:
         assert result.downloaded is True
         assert dest.exists()
 
+    async def test_entry_passthrough(
+        self,
+        tmp_path: Path,
+        httpx_mock,  # type: ignore[no-untyped-def]
+    ) -> None:
+        """When an entry is passed, the result uses it instead of a synthetic one."""
+        content = b"entry test"
+        sha = hashlib.sha512(content).hexdigest()
+        dest = tmp_path / "entry.zip"
+        real_entry = DataFileEntry(
+            filename="entry.zip",
+            sha512=sha,
+            category=FileCategory.BOUNDARY,
+            size_bytes=len(content),
+        )
+
+        httpx_mock.add_response(
+            url="https://data.example.com/entry.zip",
+            content=content,
+        )
+
+        result = await download_file(
+            url="https://data.example.com/entry.zip",
+            dest=dest,
+            expected_sha512=sha,
+            size_bytes=len(content),
+            entry=real_entry,
+        )
+
+        assert result.success is True
+        assert result.entry is real_entry
+        assert result.entry.category == FileCategory.BOUNDARY
+
+    async def test_default_synthetic_entry(
+        self,
+        tmp_path: Path,
+        httpx_mock,  # type: ignore[no-untyped-def]
+    ) -> None:
+        """Without entry param, a synthetic REFERENCE entry is created."""
+        content = b"synthetic test"
+        sha = hashlib.sha512(content).hexdigest()
+        dest = tmp_path / "synth.zip"
+
+        httpx_mock.add_response(
+            url="https://data.example.com/synth.zip",
+            content=content,
+        )
+
+        result = await download_file(
+            url="https://data.example.com/synth.zip",
+            dest=dest,
+            expected_sha512=sha,
+            size_bytes=len(content),
+        )
+
+        assert result.success is True
+        assert result.entry.category == FileCategory.REFERENCE
+
     async def test_http_error_response(
         self,
         tmp_path: Path,

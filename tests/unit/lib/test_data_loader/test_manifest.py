@@ -125,6 +125,15 @@ class TestFetchManifest:
         with pytest.raises(httpx.ConnectError):
             await fetch_manifest("https://data.example.com/")
 
+    async def test_invalid_updated_at_raises(self, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+        httpx_mock.add_response(
+            url="https://data.example.com/manifest.json",
+            text=_make_manifest_json(updated_at="not-a-datetime"),
+        )
+
+        with pytest.raises(ValueError, match="Invalid 'updated_at' field"):
+            await fetch_manifest("https://data.example.com/")
+
     async def test_manifest_not_object_raises(self, httpx_mock) -> None:  # type: ignore[no-untyped-def]
         httpx_mock.add_response(
             url="https://data.example.com/manifest.json",

@@ -46,7 +46,11 @@ async def fetch_manifest(data_root_url: str) -> SeedManifest:
             msg = f"Manifest missing required field: {required_key!r}"
             raise ValueError(msg)
 
-    updated_at = datetime.fromisoformat(data["updated_at"]).astimezone(UTC)
+    try:
+        updated_at = datetime.fromisoformat(data["updated_at"]).astimezone(UTC)
+    except (TypeError, ValueError) as exc:
+        msg = "Invalid 'updated_at' field: must be ISO 8601 datetime"
+        raise ValueError(msg) from exc
 
     files: list[DataFileEntry] = []
     for i, raw in enumerate(data["files"]):
