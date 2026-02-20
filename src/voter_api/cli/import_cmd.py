@@ -3,6 +3,7 @@
 import asyncio
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import typer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +17,7 @@ import_app.command("voter-history")(import_voter_history)
 @import_app.command("voters")
 def import_voters(
     file: Path = typer.Argument(..., help="Path to voter CSV file", exists=True),  # noqa: B008
-    batch_size: int = typer.Option(1000, "--batch-size", help="Records per batch"),  # noqa: B008
+    batch_size: int = typer.Option(5000, "--batch-size", help="Records per batch"),  # noqa: B008
 ) -> None:
     """Import voter data from a CSV file."""
     asyncio.run(_import_voters(file, batch_size))
@@ -29,7 +30,7 @@ async def _import_voters(file_path: Path, batch_size: int) -> None:
     from voter_api.services.import_service import create_import_job, process_voter_import
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
     try:
         factory = get_session_factory()
@@ -69,7 +70,7 @@ async def _import_boundaries(file_path: Path, boundary_type: str, source: str, c
     from voter_api.services.boundary_service import import_boundaries
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
     try:
         factory = get_session_factory()
@@ -108,7 +109,7 @@ async def _import_county_districts(file_path: Path) -> None:
     from voter_api.services.county_district_service import import_county_districts
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
     try:
         factory = get_session_factory()
@@ -134,23 +135,184 @@ def import_all_boundaries(
     asyncio.run(_import_all_boundaries(data_dir, skip_checksum, fail_fast, skip or []))
 
 
+def _validate_boundary_entry(
+    entry: Any,
+    data_dir: Path,
+    skip_checksum: bool,
+) -> str | None:
+    """Validate a single boundary entry (existence + checksum).
+
+    Args:
+        entry: Boundary manifest entry.
+        data_dir: Directory containing boundary zip files.
+        skip_checksum: Skip SHA512 verification.
+
+    Returns:
+        Error message string, or None if valid.
+    """
+    from voter_api.lib.boundary_loader import resolve_zip_path, verify_sha512
+
+    zip_path = resolve_zip_path(data_dir, entry)
+    if not zip_path.exists():
+        return f"File not found: {zip_path}"
+
+    if not skip_checksum:
+        try:
+            verify_sha512(zip_path)
+        except ValueError as e:
+            return str(e)
+
+    return None
+
+
+def _extract_boundary_entry(
+    entry: Any,
+    data_dir: Path,
+    tmp_dirs: list[tempfile.TemporaryDirectory[str]],
+) -> tuple[Path, list | None, list[dict] | None]:
+    """Extract shapefile and optionally pre-filter by state FIPS.
+
+    Args:
+        entry: Boundary manifest entry.
+        data_dir: Directory containing boundary zip files.
+        tmp_dirs: Mutable list to track temp directories for cleanup.
+
+    Returns:
+        Tuple of (shp_path, boundary_data_or_None, metadata_or_None).
+    """
+    from voter_api.lib.boundary_loader import find_shp_in_zip, resolve_zip_path
+
+    zip_path = resolve_zip_path(data_dir, entry)
+    tmp_dir = tempfile.TemporaryDirectory()
+    tmp_dirs.append(tmp_dir)
+    shp_path = find_shp_in_zip(zip_path, Path(tmp_dir.name))
+
+    if entry.state_fips:
+        boundary_data, metadata_records = _filter_by_state_fips(shp_path, entry.state_fips)
+        return shp_path, boundary_data, metadata_records
+
+    return shp_path, None, None
+
+
+def _validate_and_extract_boundaries(
+    entries: list[Any],
+    data_dir: Path,
+    skip_checksum: bool,
+    fail_fast: bool,
+) -> tuple[list[Any], list[Any], list[tempfile.TemporaryDirectory[str]]]:
+    """Validate checksums and extract shapefiles for boundary entries.
+
+    Sequential, CPU-bound phase that prepares data for parallel DB import.
+
+    Args:
+        entries: Boundary manifest entries.
+        data_dir: Directory containing boundary zip files.
+        skip_checksum: Skip SHA512 verification.
+        fail_fast: Stop on first error.
+
+    Returns:
+        Tuple of (failed_results, prepared_entries, tmp_dirs).
+        prepared_entries items are (entry, shp_path, boundary_data_or_None, metadata_or_None).
+    """
+    from voter_api.lib.boundary_loader import ImportResult
+
+    failed: list[Any] = []
+    prepared: list[Any] = []
+    tmp_dirs: list[tempfile.TemporaryDirectory[str]] = []
+
+    for idx, entry in enumerate(entries, 1):
+        typer.echo(f"[{idx}/{len(entries)}] {entry.zip_filename} ({entry.boundary_type})")
+
+        error = _validate_boundary_entry(entry, data_dir, skip_checksum)
+        if error:
+            result = ImportResult(entry=entry)
+            result.error = error
+            typer.echo(f"  SKIP: {error}")
+            failed.append(result)
+            if fail_fast:
+                break
+            continue
+
+        try:
+            shp_path, boundary_data, metadata = _extract_boundary_entry(entry, data_dir, tmp_dirs)
+            prepared.append((entry, shp_path, boundary_data, metadata))
+        except Exception as e:
+            result = ImportResult(entry=entry)
+            result.error = str(e)
+            typer.echo(f"  FAIL: {result.error}")
+            failed.append(result)
+            if fail_fast:
+                break
+
+    return failed, prepared, tmp_dirs
+
+
+async def _import_one_boundary(
+    factory: Any,
+    entry: Any,
+    shp_path: Path,
+    boundary_data: list | None,
+    metadata_records: list[dict] | None,
+) -> tuple[bool, int, str | None]:
+    """Import a single boundary file in its own session.
+
+    Args:
+        factory: Async session factory.
+        entry: Boundary manifest entry.
+        shp_path: Path to extracted shapefile.
+        boundary_data: Pre-filtered boundary data (for state_fips entries), or None.
+        metadata_records: County metadata dicts (for state_fips entries), or None.
+
+    Returns:
+        Tuple of (success, count, error_message_or_None).
+    """
+    from voter_api.services.boundary_service import import_boundaries
+
+    async with factory() as session:
+        if boundary_data is not None:
+            imported = await _import_filtered_boundaries(
+                session,
+                boundary_data,
+                entry.boundary_type,
+                entry.source,
+                entry.county,
+            )
+            meta_count = 0
+            if metadata_records:
+                from voter_api.services.county_metadata_service import import_county_metadata
+
+                meta_count = await import_county_metadata(session, metadata_records)
+
+            suffix = f", {meta_count} county metadata records" if metadata_records else ""
+            typer.echo(f"  OK: {len(imported)} boundaries imported{suffix}")
+            return True, len(imported), None
+
+        imported = await import_boundaries(
+            session,
+            file_path=shp_path,
+            boundary_type=entry.boundary_type,
+            source=entry.source,
+            county=entry.county,
+        )
+        typer.echo(f"  OK: {len(imported)} boundaries imported")
+        return True, len(imported), None
+
+
 async def _import_all_boundaries(
     data_dir: Path,
     skip_checksum: bool,
     fail_fast: bool,
     skip_files: list[str],
 ) -> None:
-    """Async implementation of all-boundaries import."""
+    """Async implementation of all-boundaries import.
+
+    Validates and extracts shapefiles sequentially (fast, CPU-bound),
+    then imports all boundary files into the database in parallel
+    since each boundary type writes to non-overlapping rows.
+    """
     from voter_api.core.config import get_settings
     from voter_api.core.database import dispose_engine, get_session_factory, init_engine
-    from voter_api.lib.boundary_loader import (
-        ImportResult,
-        find_shp_in_zip,
-        get_manifest,
-        resolve_zip_path,
-        verify_sha512,
-    )
-    from voter_api.services.boundary_service import import_boundaries
+    from voter_api.lib.boundary_loader import ImportResult, get_manifest
 
     manifest = get_manifest()
     skip_set = set(skip_files)
@@ -163,88 +325,42 @@ async def _import_all_boundaries(
     typer.echo(f"Importing {len(entries)} boundary file(s) from {data_dir.resolve()}\n")
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
-    results: list[ImportResult] = []
+    failed_results, prepared, tmp_dirs = _validate_and_extract_boundaries(
+        entries,
+        data_dir,
+        skip_checksum,
+        fail_fast,
+    )
+    results: list[ImportResult] = list(failed_results)
 
     try:
-        factory = get_session_factory()
+        if prepared:
+            factory = get_session_factory()
 
-        for entry in entries:
-            result = ImportResult(entry=entry)
-            zip_path = resolve_zip_path(data_dir, entry)
+            import_outcomes = await asyncio.gather(
+                *[_import_one_boundary(factory, entry, shp, bd, md) for entry, shp, bd, md in prepared],
+                return_exceptions=True,
+            )
 
-            typer.echo(f"[{len(results) + 1}/{len(entries)}] {entry.zip_filename} ({entry.boundary_type})")
-
-            if not zip_path.exists():
-                result.error = f"File not found: {zip_path}"
-                typer.echo(f"  SKIP: {result.error}")
+            for i, outcome in enumerate(import_outcomes):
+                entry = prepared[i][0]
+                result = ImportResult(entry=entry)
+                if isinstance(outcome, BaseException):
+                    result.error = str(outcome)
+                    typer.echo(f"  FAIL: {entry.zip_filename}: {outcome}")
+                else:
+                    success, count, error = outcome
+                    result.success = success
+                    result.count = count
+                    result.error = error
                 results.append(result)
-                if fail_fast:
-                    break
-                continue
-
-            # Checksum verification
-            if not skip_checksum:
-                try:
-                    verify_sha512(zip_path)
-                except ValueError as e:
-                    result.error = str(e)
-                    typer.echo(f"  FAIL: {result.error}")
-                    results.append(result)
-                    if fail_fast:
-                        break
-                    continue
-
-            # Extract and import
-            try:
-                with tempfile.TemporaryDirectory() as tmp_dir:
-                    shp_path = find_shp_in_zip(zip_path, Path(tmp_dir))
-
-                    async with factory() as session:
-                        if entry.state_fips:
-                            # Filter to matching state before import
-                            boundary_data, metadata_records = _filter_by_state_fips(shp_path, entry.state_fips)
-                            imported = await _import_filtered_boundaries(
-                                session, boundary_data, entry.boundary_type, entry.source, entry.county
-                            )
-
-                            # Import county metadata from the same shapefile
-                            if metadata_records:
-                                from voter_api.services.county_metadata_service import import_county_metadata
-
-                                meta_count = await import_county_metadata(session, metadata_records)
-                        else:
-                            metadata_records = []
-                            meta_count = 0
-                            imported = await import_boundaries(
-                                session,
-                                file_path=shp_path,
-                                boundary_type=entry.boundary_type,
-                                source=entry.source,
-                                county=entry.county,
-                            )
-
-                    result.success = True
-                    result.count = len(imported)
-                    if metadata_records:
-                        typer.echo(f"  OK: {result.count} boundaries imported, {meta_count} county metadata records")
-                    else:
-                        typer.echo(f"  OK: {result.count} boundaries imported")
-
-            except Exception as e:
-                result.error = str(e)
-                typer.echo(f"  FAIL: {result.error}")
-                if fail_fast:
-                    results.append(result)
-                    break
-
-            results.append(result)
-
     finally:
+        for td in tmp_dirs:
+            td.cleanup()
         await dispose_engine()
 
-    # Print summary
     _print_summary(results)
 
     if any(not r.success for r in results):

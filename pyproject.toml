@@ -43,6 +43,8 @@ dev = [
     "bandit>=1.9.3",
     "time-machine>=3.2.0",
     "types-aiofiles>=25.1.0.20251011",
+    "pytest-httpx>=0.36.0",
+    "types-tqdm>=4.67.3.20260205",
 ]
 
 [project.scripts]
