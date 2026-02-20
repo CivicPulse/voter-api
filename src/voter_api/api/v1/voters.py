@@ -12,6 +12,7 @@ from voter_api.schemas.geocoding import GeocodedLocationResponse, ManualGeocodin
 from voter_api.schemas.voter import (
     PaginatedVoterResponse,
     VoterDetailResponse,
+    VoterFilterOptions,
     VoterSummaryResponse,
 )
 from voter_api.services.geocoding_service import (
@@ -23,6 +24,7 @@ from voter_api.services.voter_history_service import get_participation_summary
 from voter_api.services.voter_service import (
     build_voter_detail_dict,
     get_voter_detail,
+    get_voter_filter_options,
     search_voters,
 )
 
@@ -78,6 +80,24 @@ async def search_voters_endpoint(
             total_pages=(total + page_size - 1) // page_size,
         ),
     )
+
+
+@voters_router.get(
+    "/filters",
+    response_model=VoterFilterOptions,
+)
+async def get_filter_options(
+    session: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_user),
+) -> VoterFilterOptions:
+    """Return distinct values for each voter search filter field.
+
+    Queries the database for all non-null distinct values currently present in
+    the voters table. Use this endpoint to populate dropdown/select components
+    in search UIs.
+    """
+    options = await get_voter_filter_options(session)
+    return VoterFilterOptions(**options)
 
 
 @voters_router.get(

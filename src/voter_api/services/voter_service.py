@@ -1,10 +1,11 @@
 """Voter service — multi-parameter search and detail retrieval."""
 
+import asyncio
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
 from voter_api.models.voter import Voter
 
@@ -135,6 +136,52 @@ async def get_voter_detail(
     query = select(Voter).options(selectinload(Voter.geocoded_locations)).where(Voter.id == voter_id)
     result = await session.execute(query)
     return result.scalar_one_or_none()
+
+
+async def get_voter_filter_options(session: AsyncSession) -> dict[str, list[str]]:
+    """Return distinct non-null values for voter search filter dropdowns.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        Dict mapping filter field names to sorted lists of distinct values.
+    """
+
+    async def _distinct_sorted(
+        column: InstrumentedAttribute[str | None],
+        *,
+        filter_nulls: bool,
+    ) -> list[str]:
+        stmt = select(distinct(column))
+        if filter_nulls:
+            stmt = stmt.where(column.isnot(None))
+        stmt = stmt.order_by(column)
+        result = await session.execute(stmt)
+        return [row for (row,) in result.all()]
+
+    # status and county are non-nullable in the Voter model; district fields are nullable.
+    (
+        statuses,
+        counties,
+        congressional_districts,
+        state_senate_districts,
+        state_house_districts,
+    ) = await asyncio.gather(
+        _distinct_sorted(Voter.status, filter_nulls=False),
+        _distinct_sorted(Voter.county, filter_nulls=False),
+        _distinct_sorted(Voter.congressional_district, filter_nulls=True),
+        _distinct_sorted(Voter.state_senate_district, filter_nulls=True),
+        _distinct_sorted(Voter.state_house_district, filter_nulls=True),
+    )
+
+    return {
+        "statuses": statuses,
+        "counties": counties,
+        "congressional_districts": congressional_districts,
+        "state_senate_districts": state_senate_districts,
+        "state_house_districts": state_house_districts,
+    }
 
 
 def build_voter_detail_dict(voter: Voter) -> dict:
