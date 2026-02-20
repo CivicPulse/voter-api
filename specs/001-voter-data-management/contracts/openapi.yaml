@@ -139,6 +139,12 @@ paths:
       summary: Search and list voters
       operationId: searchVoters
       parameters:
+        - name: q
+          in: query
+          description: Combined name search across first, last, and middle name fields. Supports partial matching and multiple words.
+          schema:
+            type: string
+          example: "John Smith"
         - name: voter_registration_number
           in: query
           schema:

@@ -1,9 +1,10 @@
 """Voter service — multi-parameter search and detail retrieval."""
 
 import asyncio
+import re
 import uuid
 
-from sqlalchemy import distinct, func, select
+from sqlalchemy import distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
@@ -13,6 +14,7 @@ from voter_api.models.voter import Voter
 async def search_voters(
     session: AsyncSession,
     *,
+    q: str | None = None,
     voter_registration_number: str | None = None,
     first_name: str | None = None,
     last_name: str | None = None,
@@ -32,6 +34,7 @@ async def search_voters(
 
     Args:
         session: Database session.
+        q: Combined name search query (searches across first_name, last_name, middle_name).
         voter_registration_number: Exact match on registration number.
         first_name: Partial match (ILIKE) on first name.
         last_name: Partial match (ILIKE) on last name.
@@ -52,6 +55,25 @@ async def search_voters(
     """
     query = select(Voter)
     count_query = select(func.count(Voter.id))
+
+    # Combined name search (q parameter)
+    if q:
+        # Normalize: split on whitespace and punctuation so "Smith, Jane" -> ["Smith", "Jane"]
+        words = [w for w in re.split(r"[\s,;.]+", q.strip()) if w]
+        for word in words:
+            # Escape SQL wildcard chars so user input is treated as literal text.
+            # Without this, "100%" becomes ILIKE '%100%%' and "_mith" matches any
+            # single character in that position rather than a literal underscore.
+            word_escaped = word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            pattern = f"%{word_escaped}%"
+            # Each word must match at least one of the name fields
+            word_condition = or_(
+                Voter.first_name.ilike(pattern, escape="\\"),
+                Voter.last_name.ilike(pattern, escape="\\"),
+                Voter.middle_name.ilike(pattern, escape="\\"),
+            )
+            query = query.where(word_condition)
+            count_query = count_query.where(word_condition)
 
     # Exact match filters
     if voter_registration_number:
