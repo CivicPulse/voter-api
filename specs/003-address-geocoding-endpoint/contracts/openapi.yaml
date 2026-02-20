@@ -3,16 +3,13 @@ info:
   title: voter-api Address Geocoding Endpoints
   version: 0.1.0
   description: |
-    Three authenticated GET endpoints for on-demand address geocoding,
+    Three public GET endpoints for on-demand address geocoding,
     address verification/autocomplete, and point-in-polygon district lookup.
-    Part of feature 003-address-geocoding-endpoint.
+    No authentication required. Part of feature 003-address-geocoding-endpoint.
 
 servers:
   - url: /api/v1
     description: API v1 prefix
-
-security:
-  - bearerAuth: []
 
 paths:
   /geocoding/geocode:
@@ -23,11 +20,10 @@ paths:
         Accepts a freeform street address and returns geographic coordinates
         with a confidence score. Uses the existing geocoder cache for fast
         repeat lookups and falls back to the Census Bureau provider for
-        uncached addresses. Requires JWT authentication.
+        uncached addresses. Public endpoint — no authentication required.
       tags:
         - geocoding
-      security:
-        - bearerAuth: []
+      security: []
       parameters:
         - name: address
           in: query
@@ -45,12 +41,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AddressGeocodeResponse"
-        "401":
-          description: Missing or invalid JWT token
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Address could not be matched to a location
           content:
@@ -86,11 +76,10 @@ paths:
 
         Requires a minimum of 5 characters for suggestion search. Inputs
         shorter than 5 characters return only local validation feedback
-        with an empty suggestions list. Requires JWT authentication.
+        with an empty suggestions list. Public endpoint — no authentication required.
       tags:
         - geocoding
-      security:
-        - bearerAuth: []
+      security: []
       parameters:
         - name: address
           in: query
@@ -108,12 +97,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AddressVerifyResponse"
-        "401":
-          description: Missing or invalid JWT token
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "422":
           description: Validation error (empty address or too long)
           content:
@@ -129,12 +112,11 @@ paths:
         Accepts latitude and longitude coordinates and returns all boundary
         districts containing that point (point-in-polygon spatial query).
         Optionally accepts a GPS accuracy radius to return all boundaries
-        intersecting the accuracy circle. Requires JWT authentication.
-        Coordinates must be within the Georgia service area.
+        intersecting the accuracy circle. Public endpoint — no authentication
+        required. Coordinates must be within the Georgia service area.
       tags:
         - geocoding
-      security:
-        - bearerAuth: []
+      security: []
       parameters:
         - name: lat
           in: query
@@ -173,12 +155,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PointLookupResponse"
-        "401":
-          description: Missing or invalid JWT token
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "422":
           description: Coordinates outside Georgia service area or invalid parameters
           content:

@@ -34,6 +34,6 @@
 - Spec references "JWT" as the authentication mechanism, which aligns with the existing project convention rather than prescribing a new implementation.
 - "Census" is referenced as the default geocoding provider name, consistent with the existing provider registry — not an implementation detail.
 - "Geocoder cache" is referenced as an existing entity rather than specifying its schema or storage mechanism.
-- FR-010's "60 requests per minute per IP" references the existing global rate limit as a behavioral constraint, not an implementation choice.
+- FR-010's "200 requests per minute per IP" references the existing global rate limit as a behavioral constraint, not an implementation choice.
 - No new database entities are introduced — the feature fully reuses existing infrastructure.
 - All items pass validation. Spec is ready for `/speckit.clarify` or `/speckit.plan`.

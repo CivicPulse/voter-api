@@ -1,13 +1,13 @@
 """Integration tests for GET /geocoding/point-lookup endpoint."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from voter_api.api.v1.geocoding import geocoding_router
-from voter_api.core.dependencies import get_async_session, get_current_user
+from voter_api.core.dependencies import get_async_session
 
 
 @pytest.fixture
@@ -17,21 +17,11 @@ def mock_session():
 
 
 @pytest.fixture
-def mock_user():
-    """Create a mock authenticated user."""
-    user = MagicMock()
-    user.role = "analyst"
-    user.id = "test-user-id"
-    return user
-
-
-@pytest.fixture
-def app(mock_session, mock_user) -> FastAPI:
+def app(mock_session: AsyncMock) -> FastAPI:
     """Create a minimal FastAPI app with geocoding router."""
     app = FastAPI()
     app.include_router(geocoding_router, prefix="/api/v1")
     app.dependency_overrides[get_async_session] = lambda: mock_session
-    app.dependency_overrides[get_current_user] = lambda: mock_user
     return app
 
 
@@ -94,14 +84,15 @@ class TestPointLookupEndpoint:
         assert data["districts"] == []
 
     @pytest.mark.asyncio
-    async def test_unauthenticated_returns_401(self) -> None:
-        """Missing auth token returns 401."""
-        app = FastAPI()
-        app.include_router(geocoding_router, prefix="/api/v1")
-        app.dependency_overrides[get_async_session] = lambda: AsyncMock()
-        client = AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False)
-        resp = await client.get("/api/v1/geocoding/point-lookup?lat=33.749&lng=-84.388")
-        assert resp.status_code == 401
+    async def test_anonymous_access_allowed(self, client) -> None:
+        """Anonymous (unauthenticated) requests are allowed — endpoint is public."""
+        with patch(
+            "voter_api.api.v1.geocoding.find_boundaries_at_point",
+            new_callable=AsyncMock,
+            return_value=[],
+        ):
+            resp = await client.get("/api/v1/geocoding/point-lookup?lat=33.749&lng=-84.388")
+        assert resp.status_code == 200
 
     @pytest.mark.asyncio
     async def test_with_accuracy_returns_200(self, client) -> None:

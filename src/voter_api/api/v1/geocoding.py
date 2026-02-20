@@ -49,9 +49,22 @@ async def geocode_address(
         description="Freeform street address to geocode (1-500 characters)",
     ),
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
-    _current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> AddressGeocodeResponse:
-    """Geocode a single freeform address to geographic coordinates."""
+    """Geocode a single freeform address to geographic coordinates.
+
+    Public endpoint — no authentication required.
+
+    Args:
+        address: Freeform street address to geocode (1-500 characters).
+        session: Async database session (injected).
+
+    Returns:
+        Geocoded response with coordinates, confidence, and provider metadata.
+
+    Raises:
+        HTTPException: 422 if address is empty/whitespace, 404 if not geocodable,
+            502 if the geocoding provider is unavailable.
+    """
     stripped = address.strip()
     if not stripped:
         raise HTTPException(
@@ -93,9 +106,23 @@ async def verify_address_endpoint(
         description="Freeform street address to verify (1-500 characters)",
     ),
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
-    _current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> AddressVerifyResponse:
-    """Verify and autocomplete a freeform address."""
+    """Verify and autocomplete a freeform address.
+
+    Public endpoint — no authentication required.
+
+    Args:
+        address: Freeform street address to verify (1-500 characters).
+        session: Async database session (injected).
+
+    Returns:
+        Verification result with normalized address, component validation,
+        and autocomplete suggestions.
+
+    Raises:
+        HTTPException: 422 if address is empty/whitespace, 502 if the
+            verification provider is unavailable, 500 on unexpected errors.
+    """
     stripped = address.strip()
     if not stripped:
         raise HTTPException(
@@ -129,9 +156,24 @@ async def point_lookup_districts(
         None, le=100, description="GPS accuracy radius in meters (max 100)"
     ),
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
-    _current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> PointLookupResponse:
-    """Look up boundary districts for a geographic point."""
+    """Look up boundary districts for a geographic point.
+
+    Public endpoint — no authentication required.
+
+    Args:
+        lat: WGS84 latitude of the point to look up.
+        lng: WGS84 longitude of the point to look up.
+        accuracy: Optional GPS accuracy radius in meters (max 100).
+        session: Async database session (injected).
+
+    Returns:
+        Point lookup response with matching district boundaries.
+
+    Raises:
+        HTTPException: 422 if coordinates are outside Georgia or accuracy
+            exceeds 100m, 500 on unexpected errors.
+    """
     try:
         validate_georgia_coordinates(lat, lng)
     except ValueError as e:
