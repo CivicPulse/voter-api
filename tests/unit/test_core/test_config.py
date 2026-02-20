@@ -27,7 +27,7 @@ class TestSettings:
         assert settings.jwt_refresh_token_expire_days == 7
         assert settings.geocoder_default_provider == "census"
         assert settings.geocoder_batch_size == 100
-        assert settings.import_batch_size == 1000
+        assert settings.import_batch_size == 5000
         assert settings.export_dir == "./exports"
         assert settings.log_level == "INFO"
         assert settings.cors_origins == ""

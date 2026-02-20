@@ -41,6 +41,8 @@ dev = [
     "moto[s3]>=5.1.21",
     "bandit>=1.9.3",
     "time-machine>=3.2.0",
+    "pytest-httpx>=0.36.0",
+    "types-tqdm>=4.67.3.20260205",
 ]
 
 [project.scripts]

@@ -60,7 +60,12 @@ class TestInitEngine:
         """init_engine without schema does not inject connect_args."""
         with patch("voter_api.core.database.create_async_engine", return_value=MagicMock()) as mock_create:
             init_engine("postgresql+asyncpg://localhost/db", echo=False)
-            mock_create.assert_called_once_with("postgresql+asyncpg://localhost/db", echo=False)
+            mock_create.assert_called_once_with(
+                "postgresql+asyncpg://localhost/db",
+                echo=False,
+                pool_size=10,
+                max_overflow=5,
+            )
 
     def test_init_engine_with_schema(self) -> None:
         """init_engine with schema injects connect_args with search_path."""
@@ -70,7 +75,15 @@ class TestInitEngine:
                 "postgresql+asyncpg://localhost/db",
                 echo=False,
                 connect_args={"options": "-c search_path=pr_42,public"},
+                pool_size=10,
+                max_overflow=5,
             )
+
+    def test_init_engine_skips_pool_for_sqlite(self) -> None:
+        """init_engine does not set pool_size/max_overflow for SQLite URLs."""
+        with patch("voter_api.core.database.create_async_engine", return_value=MagicMock()) as mock_create:
+            init_engine("sqlite+aiosqlite:///:memory:", echo=False)
+            mock_create.assert_called_once_with("sqlite+aiosqlite:///:memory:", echo=False)
 
 
 class TestDisposeEngine:
