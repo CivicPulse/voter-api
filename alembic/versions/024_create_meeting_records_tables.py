@@ -1,7 +1,7 @@
 """Create meeting records tables.
 
-Revision ID: 023
-Revises: 022
+Revision ID: 024
+Revises: 023
 Create Date: 2026-02-19
 
 Creates 6 new tables for the meeting records feature:
@@ -21,8 +21,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
-revision: str = "023"
-down_revision: str = "022"
+revision: str = "024"
+down_revision: str = "023"
 branch_labels = None
 depends_on = None
 
