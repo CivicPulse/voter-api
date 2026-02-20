@@ -71,6 +71,10 @@ GA_SOS_COLUMN_MAP: dict[str, str] = {
     "Voter Created Date": "voter_created_date",
 }
 
+# Case-insensitive fallback lookup — used when exact header match fails.
+# Handles files that use all-caps, all-lowercase, or mixed-case headers.
+_GA_SOS_COLUMN_MAP_LOWER: dict[str, str] = {k.lower(): v for k, v in GA_SOS_COLUMN_MAP.items()}
+
 
 def detect_delimiter(file_path: Path) -> str:
     """Detect the CSV delimiter by reading the first line.
@@ -163,15 +167,34 @@ def parse_csv_chunks(
         keep_default_na=False,
     )
 
+    _columns_reported = False
+
     for chunk in reader:
         # Strip whitespace from column names
         chunk.columns = chunk.columns.str.strip()
 
-        # Map column names to model field names
-        rename_map = {}
+        # Map column names to model field names, with case-insensitive fallback.
+        # GA SoS files occasionally deliver headers in all-caps or mixed case;
+        # silently dropping those columns was the root cause of null district fields.
+        rename_map: dict[str, str] = {}
         for csv_col in chunk.columns:
             if csv_col in GA_SOS_COLUMN_MAP:
                 rename_map[csv_col] = GA_SOS_COLUMN_MAP[csv_col]
+            elif csv_col.lower() in _GA_SOS_COLUMN_MAP_LOWER:
+                rename_map[csv_col] = _GA_SOS_COLUMN_MAP_LOWER[csv_col.lower()]
+
+        # Log column mapping diagnostics once per file to aid debugging.
+        if not _columns_reported:
+            _columns_reported = True
+            for csv_col in chunk.columns:
+                if csv_col not in GA_SOS_COLUMN_MAP and csv_col.lower() in _GA_SOS_COLUMN_MAP_LOWER:
+                    logger.warning(
+                        f"CSV column {csv_col!r} matched via case-insensitive fallback to field "
+                        f"{_GA_SOS_COLUMN_MAP_LOWER[csv_col.lower()]!r}. "
+                        "Add the exact-case header to GA_SOS_COLUMN_MAP to suppress this warning."
+                    )
+                elif csv_col not in GA_SOS_COLUMN_MAP:
+                    logger.debug(f"Ignoring unknown CSV column: {csv_col!r}")
 
         chunk = chunk.rename(columns=rename_map)
 

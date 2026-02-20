@@ -109,3 +109,39 @@ class TestParseCsvChunks:
         chunks = list(parse_csv_chunks(f, batch_size=10))
         # pandas stores empty-string replacements as NaN internally
         assert pd.isna(chunks[0].iloc[0]["middle_name"])
+
+    def test_case_insensitive_header_matching(self, tmp_path: Path) -> None:
+        """District columns with all-caps or mixed-case headers are mapped correctly.
+
+        Regression test for the bug where GA SoS files with uppercase district
+        column headers (e.g. 'CONGRESSIONAL DISTRICT') caused those fields to be
+        silently dropped, resulting in null district values on every voter record.
+        """
+        f = tmp_path / "voters.csv"
+        f.write_text(
+            "COUNTY,VOTER REGISTRATION #,STATUS,LAST NAME,FIRST NAME,"
+            "CONGRESSIONAL DISTRICT,STATE SENATE DISTRICT,STATE HOUSE DISTRICT,"
+            "COUNTY PRECINCT\n"
+            "Fulton,12345,ACTIVE,SMITH,JOHN,7,40,75,1A\n"
+        )
+        chunks = list(parse_csv_chunks(f, batch_size=10))
+        assert len(chunks) == 1
+        df = chunks[0]
+        assert "congressional_district" in df.columns, "congressional_district must be mapped from all-caps header"
+        assert "state_senate_district" in df.columns, "state_senate_district must be mapped from all-caps header"
+        assert "state_house_district" in df.columns, "state_house_district must be mapped from all-caps header"
+        assert "county_precinct" in df.columns, "county_precinct must be mapped from all-caps header"
+        assert df.iloc[0]["congressional_district"] == "7"
+        assert df.iloc[0]["state_senate_district"] == "40"
+        assert df.iloc[0]["state_house_district"] == "75"
+        assert df.iloc[0]["county_precinct"] == "1A"
+
+    def test_unknown_columns_are_dropped(self, tmp_path: Path) -> None:
+        """Columns not in GA_SOS_COLUMN_MAP are silently dropped from output."""
+        f = tmp_path / "voters.csv"
+        f.write_text(
+            "County,Voter Registration #,Status,Last Name,First Name,ExtraColumn\n"
+            "Fulton,12345,ACTIVE,SMITH,JOHN,somevalue\n"
+        )
+        chunks = list(parse_csv_chunks(f, batch_size=10))
+        assert "ExtraColumn" not in chunks[0].columns
