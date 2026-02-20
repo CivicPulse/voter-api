@@ -1,5 +1,6 @@
 """Import service — orchestrates voter file import with upsert, soft-delete, and diff tracking."""
 
+import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -127,6 +128,8 @@ async def process_voter_import(
             if chunk_idx < chunk_offset:
                 continue
 
+            chunk_start = time.monotonic()
+
             # Convert chunk to records, replacing NaN with None
             records = [{k: (None if pd.isna(v) else v) for k, v in row.items()} for row in chunk.to_dict("records")]
             total += len(records)
@@ -140,6 +143,11 @@ async def process_voter_import(
             valid_records, failed_records = validate_batch(records)
             failed += len(failed_records)
 
+            logger.info(
+                f"Chunk {chunk_idx + 1}: {len(records)} records "
+                f"({len(valid_records)} valid, {len(failed_records)} failed)"
+            )
+
             for fr in failed_records:
                 errors.append(
                     {
@@ -149,6 +157,8 @@ async def process_voter_import(
                 )
 
             # Upsert valid records
+            chunk_inserted = 0
+            chunk_updated = 0
             for record in valid_records:
                 # Remove internal fields
                 record.pop("_geocodable", None)
@@ -199,6 +209,7 @@ async def process_voter_import(
                     existing_voter.soft_deleted_at = None
                     existing_voter.last_seen_in_import_id = job.id
                     updated_count += 1
+                    chunk_updated += 1
                     updated_reg_numbers.add(reg_num)
                 else:
                     # Insert new voter
@@ -210,6 +221,7 @@ async def process_voter_import(
                     )
                     session.add(voter)
                     inserted += 1
+                    chunk_inserted += 1
 
                 succeeded += 1
 
@@ -220,7 +232,15 @@ async def process_voter_import(
             job.last_processed_offset = chunk_idx + 1
             await session.commit()
 
+            chunk_elapsed = time.monotonic() - chunk_start
+            logger.info(
+                f"Chunk {chunk_idx + 1} committed: "
+                f"{chunk_inserted} inserted, {chunk_updated} updated "
+                f"({chunk_elapsed:.1f}s) | running total: {total} records"
+            )
+
         # Soft-delete absent voters scoped to the imported county
+        logger.info(f"Checking for absent voters in county {import_county}")
         soft_deleted = await _soft_delete_absent_voters(session, import_county, imported_reg_numbers)
 
         # Update job status and commit everything atomically
