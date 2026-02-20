@@ -60,12 +60,16 @@ async def search_voters(
         # Normalize: split on whitespace and punctuation so "Smith, Jane" -> ["Smith", "Jane"]
         words = [w for w in re.split(r"[\s,;.]+", q.strip()) if w]
         for word in words:
-            pattern = f"%{word}%"
+            # Escape SQL wildcard chars so user input is treated as literal text.
+            # Without this, "100%" becomes ILIKE '%100%%' and "_mith" matches any
+            # single character in that position rather than a literal underscore.
+            word_escaped = word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            pattern = f"%{word_escaped}%"
             # Each word must match at least one of the name fields
             word_condition = or_(
-                Voter.first_name.ilike(pattern),
-                Voter.last_name.ilike(pattern),
-                Voter.middle_name.ilike(pattern),
+                Voter.first_name.ilike(pattern, escape="\\"),
+                Voter.last_name.ilike(pattern, escape="\\"),
+                Voter.middle_name.ilike(pattern, escape="\\"),
             )
             query = query.where(word_condition)
             count_query = count_query.where(word_condition)

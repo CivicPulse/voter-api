@@ -4,8 +4,14 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from sqlalchemy.dialects import postgresql
 
 from voter_api.services.voter_service import get_voter_detail, search_voters
+
+
+def _compile_query(stmt: object) -> str:
+    """Compile a SQLAlchemy statement to a SQL string with literal binds for inspection."""
+    return str(stmt.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}))
 
 
 def _mock_voter(**overrides: object) -> MagicMock:
@@ -192,9 +198,17 @@ class TestSearchVoters:
         result_voters, total = await search_voters(session, q="Smith")
         assert total == 1
 
+        # Verify the count query actually contains ILIKE conditions for all 3 name fields
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        assert "ILIKE" in compiled
+        assert "%Smith%" in compiled
+        # One word generates OR across 3 name fields
+        assert compiled.count("ILIKE") == 3
+
     @pytest.mark.asyncio
     async def test_filter_by_q_multiple_words(self) -> None:
-        """Test combined name search with multiple words."""
+        """Test combined name search with multiple words — each token must appear."""
         session = AsyncMock()
 
         count_result = MagicMock()
@@ -206,9 +220,17 @@ class TestSearchVoters:
         result_voters, total = await search_voters(session, q="John Smith")
         assert total == 1
 
+        # Both tokens must appear in the query (AND across words, OR across fields)
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        assert "%John%" in compiled
+        assert "%Smith%" in compiled
+        # Two words × 3 name fields = 6 ILIKE conditions
+        assert compiled.count("ILIKE") == 6
+
     @pytest.mark.asyncio
     async def test_filter_by_q_with_other_filters(self) -> None:
-        """Test combined name search works with other filters."""
+        """Test combined name search works alongside other filters."""
         session = AsyncMock()
 
         count_result = MagicMock()
@@ -220,9 +242,16 @@ class TestSearchVoters:
         result_voters, total = await search_voters(session, q="Smith", county="FULTON")
         assert total == 1
 
+        # Verify both the ILIKE name filter and the county equality filter are present
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        assert "%Smith%" in compiled
+        assert "ILIKE" in compiled
+        assert "FULTON" in compiled
+
     @pytest.mark.asyncio
     async def test_filter_by_q_empty_string_ignored(self) -> None:
-        """Test that empty q parameter is ignored."""
+        """Test that empty q parameter adds no ILIKE conditions."""
         session = AsyncMock()
 
         count_result = MagicMock()
@@ -234,9 +263,14 @@ class TestSearchVoters:
         result_voters, total = await search_voters(session, q="")
         assert total == 2
 
+        # No ILIKE conditions should be generated for an empty q
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        assert "ILIKE" not in compiled
+
     @pytest.mark.asyncio
     async def test_filter_by_q_whitespace_only_ignored(self) -> None:
-        """Test that whitespace-only q parameter is ignored."""
+        """Test that whitespace-only q parameter adds no ILIKE conditions."""
         session = AsyncMock()
 
         count_result = MagicMock()
@@ -247,6 +281,11 @@ class TestSearchVoters:
 
         result_voters, total = await search_voters(session, q="   ")
         assert total == 2
+
+        # Whitespace-only input produces no tokens, so no ILIKE conditions
+        count_stmt = session.execute.call_args_list[0][0][0]
+        compiled = _compile_query(count_stmt)
+        assert "ILIKE" not in compiled
 
 
 class TestGetVoterDetail:
