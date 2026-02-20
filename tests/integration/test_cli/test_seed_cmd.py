@@ -60,43 +60,6 @@ def _make_manifest(files: list[dict] | None = None) -> str:
     )
 
 
-def _write_cached_file(data_dir: Path, filename: str, sha512: str) -> Path:
-    """Write a fake cached file whose SHA512 matches the given hash.
-
-    Since we can't easily produce arbitrary content matching a specific hash,
-    we write known content and return its actual hash for manifest construction.
-    """
-    content = f"content of {filename}".encode()
-    path = data_dir / filename
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(content)
-    return path
-
-
-def _make_manifest_with_real_checksums(data_dir: Path) -> str:
-    """Create manifest + cached files with matching checksums."""
-    files = []
-    for filename, category, subdir in [
-        ("counties-by-districts-2023.csv", "county_district", None),
-        ("congress-2023-shape.zip", "boundary", None),
-        ("Bibb-20260203.csv", "voter", "voter"),
-    ]:
-        content = f"content of {filename}".encode()
-        path = data_dir / subdir / filename if subdir else data_dir / filename
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(content)
-        sha = hashlib.sha512(content).hexdigest()
-        files.append(
-            {
-                "filename": filename,
-                "sha512": sha,
-                "category": category,
-                "size_bytes": len(content),
-            }
-        )
-    return json.dumps({"version": "1", "updated_at": "2026-02-20T09:00:00Z", "files": files})
-
-
 # ---------------------------------------------------------------------------
 # US1: Bootstrap a Dev/Test Environment
 # ---------------------------------------------------------------------------

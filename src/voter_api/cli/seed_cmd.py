@@ -30,11 +30,30 @@ _CATEGORY_MAP: dict[str, FileCategory] = {
 _VALID_CATEGORIES = ", ".join(sorted(_CATEGORY_MAP.keys()))
 
 
+def _validate_data_root(value: str | None) -> str | None:
+    """Validate and normalize the --data-root CLI override.
+
+    Enforces HTTPS-only URLs and ensures a trailing slash to match the
+    behavior of the Settings.data_root_url validator.
+    """
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    if not value.startswith("https://"):
+        raise typer.BadParameter("data_root must use https://")
+    if not value.endswith("/"):
+        value += "/"
+    return value
+
+
 def seed(
     data_root: str | None = typer.Option(
         None,
         "--data-root",
         help="Override the Data Root URL (default: from DATA_ROOT_URL env var)",
+        callback=_validate_data_root,
     ),
     data_dir: Path = typer.Option(
         "data",
@@ -245,11 +264,11 @@ async def _run_imports(
                 assert r.local_path is not None
                 try:
                     await _import_county_districts(r.local_path)
-                    seed_result.import_results["county_district"] = "success"
+                    seed_result.import_results[f"county_district:{r.entry.filename}"] = "success"
                 except Exception as exc:
                     typer.echo(f"  IMPORT FAILED: {r.entry.filename}: {exc}", err=True)
                     seed_result.success = False
-                    seed_result.import_results["county_district"] = str(exc)
+                    seed_result.import_results[f"county_district:{r.entry.filename}"] = str(exc)
                     if fail_fast:
                         return
 
