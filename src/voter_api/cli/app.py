@@ -2,7 +2,17 @@
 
 import typer
 
+from voter_api.core.config import get_settings
+from voter_api.core.logging import setup_logging
+
 app = typer.Typer(name="voter-api", help="Georgia voter data management CLI")
+
+
+@app.callback()
+def _main_callback() -> None:
+    """Initialize logging for all CLI commands."""
+    settings = get_settings()
+    setup_logging(settings.log_level, log_dir=settings.log_dir)
 
 
 @app.command()

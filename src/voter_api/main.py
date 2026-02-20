@@ -22,7 +22,7 @@ from voter_api.core.logging import setup_logging
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Manage application lifecycle: init engine on startup, dispose on shutdown."""
     settings = get_settings()
-    setup_logging(settings.log_level)
+    setup_logging(settings.log_level, log_dir=settings.log_dir)
     init_engine(settings.database_url, echo=False, schema=settings.database_schema)
 
     # Start election auto-refresh background task

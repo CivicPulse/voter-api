@@ -86,6 +86,10 @@ class Settings(BaseSettings):
         default="INFO",
         description="Logging level",
     )
+    log_dir: str | None = Field(
+        default=None,
+        description="Directory for log files (enables file logging with 24h rotation when set)",
+    )
 
     # CORS
     cors_origins: str = Field(
