@@ -1,6 +1,7 @@
 """Typer CLI root application with serve command."""
 
 import typer
+from pydantic import ValidationError
 
 from voter_api.core.config import get_settings
 from voter_api.core.logging import setup_logging
@@ -11,8 +12,13 @@ app = typer.Typer(name="voter-api", help="Georgia voter data management CLI")
 @app.callback()
 def _main_callback() -> None:
     """Initialize logging for all CLI commands."""
-    settings = get_settings()
-    setup_logging(settings.log_level, log_dir=settings.log_dir)
+    try:
+        settings = get_settings()
+        setup_logging(settings.log_level, log_dir=settings.log_dir)
+    except ValidationError:
+        # Commands like deploy-check don't need full settings;
+        # use default logging when required env vars are missing.
+        setup_logging("INFO")
 
 
 @app.command()
