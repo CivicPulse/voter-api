@@ -174,7 +174,7 @@ async def seed_database(app, settings):
                     (:admin_id, :admin_user, :admin_email, :hashed, 'admin', true, now()),
                     (:analyst_id, :analyst_user, 'e2e_analyst@test.com', :hashed, 'analyst', true, now()),
                     (:viewer_id, :viewer_user, 'e2e_viewer@test.com', :hashed, 'viewer', true, now())
-                ON CONFLICT (id) DO NOTHING
+                ON CONFLICT DO NOTHING
             """),
             {
                 "admin_id": str(ADMIN_USER_ID),
@@ -198,7 +198,7 @@ async def seed_database(app, settings):
                     (:id, 'E2E Test General Election', :edate, 'general', 'Statewide',
                      'https://results.enr.clarityelections.com/GA/test/json',
                      'active', 120, now(), now())
-                ON CONFLICT (id) DO NOTHING
+                ON CONFLICT DO NOTHING
             """),
             {"id": str(ELECTION_ID), "edate": date(2024, 11, 5)},
         )
@@ -217,7 +217,7 @@ async def seed_database(app, settings):
                      ),
                      '{"district_number": "1"}'::jsonb,
                      'e2e-test', now(), now())
-                ON CONFLICT (id) DO NOTHING
+                ON CONFLICT DO NOTHING
             """),
             {"id": str(BOUNDARY_ID)},
         )
@@ -232,7 +232,7 @@ async def seed_database(app, settings):
                     (:id, 'congressional', '1', 'Jane E2E Doe',
                      'Jane', 'Doe', 'Independent', 'Representative',
                      'auto', now(), now())
-                ON CONFLICT (id) DO NOTHING
+                ON CONFLICT DO NOTHING
             """),
             {"id": str(OFFICIAL_ID)},
         )

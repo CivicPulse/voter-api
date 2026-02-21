@@ -125,10 +125,11 @@ class TestAuth:
             "role": "viewer",
         }
         resp = await admin_client.post(_url("/users"), json=new_user)
-        body = resp.json()
-        user_id = body.get("id")
+        user_id = None
         try:
             assert resp.status_code == 201
+            body = resp.json()
+            user_id = body.get("id")
             assert body["username"] == new_user["username"]
             assert body["role"] == "viewer"
         finally:
