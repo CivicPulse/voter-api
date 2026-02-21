@@ -70,10 +70,16 @@ async def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
         raise FetchError(msg)
 
     # Resolve hostname and ensure it does not point to a private or loopback IP.
+    # Use asyncio.to_thread so the socket.getaddrinfo reference is patchable in tests.
     try:
-        loop = asyncio.get_running_loop()
         addrinfo_list = await asyncio.wait_for(
-            loop.getaddrinfo(hostname, parsed.port, type=socket.SOCK_STREAM),
+            asyncio.to_thread(
+                socket.getaddrinfo,
+                hostname,
+                parsed.port,
+                0,
+                socket.SOCK_STREAM,
+            ),
             timeout=5.0,
         )
     except TimeoutError as exc:
@@ -92,7 +98,11 @@ async def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
         if not ip_str:
             continue
 
-        ip = ipaddress.ip_address(ip_str)
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError as exc:
+            msg = f"Resolved address '{ip_str}' for hostname '{hostname}' is not a valid IP"
+            raise FetchError(msg) from exc
         if not ip.is_global:
             msg = f"Resolved IP address '{ip}' for hostname '{hostname}' is not allowed"
             raise FetchError(msg)
