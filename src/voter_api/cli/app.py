@@ -1,6 +1,7 @@
 """Typer CLI root application with serve command."""
 
 import typer
+from pydantic import ValidationError
 
 from voter_api.core.config import get_settings
 from voter_api.core.logging import setup_logging
@@ -11,8 +12,13 @@ app = typer.Typer(name="voter-api", help="Georgia voter data management CLI")
 @app.callback()
 def _main_callback() -> None:
     """Initialize logging for all CLI commands."""
-    settings = get_settings()
-    setup_logging(settings.log_level, log_dir=settings.log_dir)
+    try:
+        settings = get_settings()
+        setup_logging(settings.log_level, log_dir=settings.log_dir)
+    except ValidationError:
+        # Commands like deploy-check don't need full settings;
+        # use default logging when required env vars are missing.
+        setup_logging("INFO")
 
 
 @app.command()
@@ -42,6 +48,7 @@ def _register_subcommands() -> None:
     from voter_api.cli.export_cmd import export_app
     from voter_api.cli.geocode_cmd import geocode_app
     from voter_api.cli.import_cmd import import_app
+    from voter_api.cli.meetings_cmd import meetings_app
     from voter_api.cli.officials_cmd import officials_app
     from voter_api.cli.publish_cmd import publish_app
     from voter_api.cli.seed_cmd import seed
@@ -55,6 +62,7 @@ def _register_subcommands() -> None:
     app.add_typer(export_app, name="export", help="Data export commands")
     app.add_typer(publish_app, name="publish", help="Publish static datasets to object storage")
     app.add_typer(election_app, name="election", help="Election tracking commands")
+    app.add_typer(meetings_app, name="meetings", help="Meeting record management commands")
     app.add_typer(officials_app, name="officials", help="Elected officials data commands")
     app.command("deploy-check")(deploy_check)
     app.command("seed")(seed)

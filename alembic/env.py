@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from voter_api.core.config import get_settings
 from voter_api.models.address import Address  # noqa: F401
+from voter_api.models.agenda_item import AgendaItem  # noqa: F401
 from voter_api.models.analysis_result import AnalysisResult  # noqa: F401
 from voter_api.models.analysis_run import AnalysisRun  # noqa: F401
 from voter_api.models.audit_log import AuditLog  # noqa: F401
@@ -26,7 +27,12 @@ from voter_api.models.export_job import ExportJob  # noqa: F401
 from voter_api.models.geocoded_location import GeocodedLocation  # noqa: F401
 from voter_api.models.geocoder_cache import GeocoderCache  # noqa: F401
 from voter_api.models.geocoding_job import GeocodingJob  # noqa: F401
+from voter_api.models.governing_body import GoverningBody  # noqa: F401
+from voter_api.models.governing_body_type import GoverningBodyType  # noqa: F401
 from voter_api.models.import_job import ImportJob  # noqa: F401
+from voter_api.models.meeting import Meeting  # noqa: F401
+from voter_api.models.meeting_attachment import MeetingAttachment  # noqa: F401
+from voter_api.models.meeting_video_embed import MeetingVideoEmbed  # noqa: F401
 from voter_api.models.precinct_metadata import PrecinctMetadata  # noqa: F401
 from voter_api.models.user import User  # noqa: F401
 from voter_api.models.voter import Voter  # noqa: F401

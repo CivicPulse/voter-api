@@ -1,0 +1,110 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: "en-US"
+early_access: false
+
+tone_instructions: >
+  Be concise and direct. Focus on correctness, security, and async best practices.
+
+reviews:
+  profile: "assertive"
+  high_level_summary: true
+  collapse_walkthrough: false
+  commit_status: true
+  review_status: true
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    base_branches:
+      - "main"
+
+  path_filters:
+    # Exclude lock files, data, and generated artifacts
+    - "!uv.lock"
+    - "!data/**"
+    - "!specs/**"
+    - "!docs/**"
+    - "!*.md"
+    - "!logs/**"
+    - "!screenshots/**"
+    - "!.specify/**"
+
+  path_instructions:
+    - path: "src/voter_api/api/**/*.py"
+      instructions: >
+        FastAPI route handlers. Verify: proper async/await usage, correct
+        Depends() injection, Pydantic v2 response models, appropriate HTTP
+        status codes, JWT auth where required, and /api/v1/ prefix convention.
+        FastAPI Depends() in function defaults is idiomatic (not a bug).
+
+    - path: "src/voter_api/models/**/*.py"
+      instructions: >
+        SQLAlchemy 2.x async ORM models with GeoAlchemy2 for geospatial columns.
+        Check: Mapped[] type annotations, proper relationship definitions,
+        index declarations, and that geometry columns use appropriate SRID (4326).
+
+    - path: "src/voter_api/schemas/**/*.py"
+      instructions: >
+        Pydantic v2 schemas. Verify: model_config usage (not inner Config class),
+        field validators use @field_validator decorator, proper use of
+        ConfigDict, and serialization settings for datetime/geometry fields.
+
+    - path: "src/voter_api/services/**/*.py"
+      instructions: >
+        Business logic layer. Should use async SQLAlchemy sessions, not raw SQL.
+        Check for proper transaction handling, error propagation, and that
+        services call libraries in lib/ rather than reimplementing logic.
+
+    - path: "src/voter_api/lib/**/*.py"
+      instructions: >
+        Standalone libraries that must be independently testable without the
+        rest of the application. Verify: no imports from api/, services/, or
+        cli/ layers. Each library should have an explicit public API via
+        __init__.py exports.
+
+    - path: "src/voter_api/cli/**/*.py"
+      instructions: >
+        Typer CLI commands. Typer Argument/Option in function defaults is
+        idiomatic (not a bug). Commands should delegate to services, not
+        contain business logic directly.
+
+    - path: "src/voter_api/core/**/*.py"
+      instructions: >
+        Core infrastructure: config (Pydantic Settings), database engine,
+        security (JWT/bcrypt), logging (loguru). Config must use environment
+        variables only (12-factor). Hardcoded secrets in defaults are
+        acceptable for development fallbacks only.
+
+    - path: "alembic/versions/**/*.py"
+      instructions: >
+        Alembic database migrations. Verify: migration has both upgrade()
+        and downgrade() functions, uses op.create_table/op.drop_table
+        patterns, and PostGIS geometry columns include srid parameter.
+
+    - path: "tests/**/*.py"
+      instructions: >
+        Test files using pytest with pytest-asyncio. assert statements and
+        hardcoded test secrets are expected and acceptable. Check for proper
+        async test patterns and fixture usage.
+
+  tools:
+    ruff:
+      enabled: true
+
+  finishing_touches:
+    docstrings:
+      enabled: true
+    unit_tests:
+      enabled: true
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  opt_out: false
+  learnings:
+    scope: "local"
+  web_search:
+    enabled: true

@@ -158,7 +158,7 @@ async def _rebuild_import_indexes(session: AsyncSession) -> None:
     await session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
 
     for idx in _DROPPABLE_INDEXES:
-        create_sql = f"CREATE INDEX IF NOT EXISTS {idx['name']}" + idx["create"].split(idx["name"], 1)[1]
+        create_sql = idx["create"].replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS", 1)
         logger.info(f"Rebuilding index: {idx['name']}")
         start = time.monotonic()
         await session.execute(text(create_sql))
@@ -198,8 +198,8 @@ async def _enable_autovacuum_and_vacuum(session: AsyncSession) -> None:
     start = time.monotonic()
     engine = get_engine()
     async with engine.connect() as vacuum_conn:
-        await vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
-        await vacuum_conn.execute(text("VACUUM ANALYZE voters"))
+        autocommit_conn = await vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
+        await autocommit_conn.execute(text("VACUUM ANALYZE voters"))
     elapsed = time.monotonic() - start
     logger.info(f"VACUUM ANALYZE completed in {elapsed:.1f}s")
 
@@ -237,6 +237,7 @@ async def bulk_import_context(session: AsyncSession) -> AsyncIterator[None]:
             logger.info("Bulk import context: database settings restored")
         except Exception:
             logger.exception("Error during bulk import teardown — indexes may need manual rebuild")
+            raise
 
 
 def _coerce_record_types(record: dict) -> None:
@@ -250,7 +251,7 @@ def _coerce_record_types(record: dict) -> None:
                 record[field] = None
 
     birth_year = record.get("birth_year")
-    if birth_year:
+    if birth_year is not None:
         try:
             record["birth_year"] = int(birth_year)
         except (ValueError, TypeError):

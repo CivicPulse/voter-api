@@ -71,6 +71,9 @@ docs/voter_data_sample_from_state.csv
 # Exports
 exports/
 
+# Meeting uploads
+uploads/
+
 # Flask stuff:
 instance/
 .webassets-cache
