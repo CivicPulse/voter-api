@@ -221,11 +221,12 @@ class TestCreateElection:
             refresh_interval_seconds=120,
         )
 
-        await create_election(session, request)
+        result = await create_election(session, request)
         session.add.assert_called_once()
         session.commit.assert_awaited_once()
         # Service re-queries after commit (selectinload re-fetch) instead of refresh.
-        assert session.execute.call_count == 2  # duplicate check + re-fetch
+        session.refresh.assert_not_awaited()
+        assert result is not None
 
     @pytest.mark.asyncio
     async def test_duplicate_raises_value_error(self):

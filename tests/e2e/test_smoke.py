@@ -389,22 +389,38 @@ class TestGeocoding:
     """Geocoding endpoints — public reads; admin writes."""
 
     async def test_geocode_is_public(self, client: httpx.AsyncClient) -> None:
-        """Geocode endpoint is public — no auth required (returns 200/404, not 401)."""
+        """Geocode endpoint is public — no auth required.
+
+        Acceptable statuses: 200 (geocoded), 404 (no match), 502 (provider down).
+        """
         resp = await client.get(_url("/geocoding/geocode"), params={"address": "100 Peachtree St"})
-        assert resp.status_code != 401
+        assert resp.status_code in {200, 404, 502}
+        if resp.status_code == 200:
+            body = resp.json()
+            assert "formatted_address" in body
 
     async def test_verify_is_public(self, client: httpx.AsyncClient) -> None:
-        """Verify endpoint is public — no auth required."""
+        """Verify endpoint is public — no auth required.
+
+        Acceptable statuses: 200 (verified), 502 (provider down).
+        """
         resp = await client.get(_url("/geocoding/verify"), params={"address": "100 Peachtree St"})
-        assert resp.status_code != 401
+        assert resp.status_code in {200, 502}
+        if resp.status_code == 200:
+            body = resp.json()
+            assert "input_address" in body
+            assert "is_well_formed" in body
 
     async def test_point_lookup_is_public(self, client: httpx.AsyncClient) -> None:
-        """Point lookup endpoint is public — no auth required."""
+        """Point lookup endpoint is public and DB-backed — no external provider."""
         resp = await client.get(
             _url("/geocoding/point-lookup"),
             params={"lat": 33.75, "lng": -84.39},
         )
-        assert resp.status_code != 401
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "districts" in body
+        assert isinstance(body["districts"], list)
 
 
 # ── Imports ────────────────────────────────────────────────────────────────
