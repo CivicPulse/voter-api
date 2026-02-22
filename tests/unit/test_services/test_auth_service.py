@@ -11,9 +11,12 @@ from voter_api.schemas.auth import TokenResponse, UserCreateRequest
 from voter_api.services.auth_service import (
     authenticate_user,
     create_user,
+    delete_user,
     generate_tokens,
+    get_user,
     list_users,
     refresh_access_token,
+    update_user,
 )
 
 
@@ -278,3 +281,86 @@ class TestRefreshAccessToken:
 
         with pytest.raises(ValueError, match="User not found or inactive"):
             await refresh_access_token(session, refresh_token, settings)
+
+
+class TestGetUser:
+    """Tests for get_user."""
+
+    @pytest.mark.asyncio
+    async def test_returns_user_when_found(self) -> None:
+        user = _mock_user()
+        session = _mock_session_with_result(user)
+
+        result = await get_user(session, user.id)
+
+        assert result is user
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_not_found(self) -> None:
+        session = _mock_session_with_result(None)
+
+        result = await get_user(session, uuid.uuid4())
+
+        assert result is None
+
+
+class TestUpdateUser:
+    """Tests for update_user."""
+
+    @pytest.mark.asyncio
+    async def test_updates_allowed_fields(self) -> None:
+        user = _mock_user()
+        session = AsyncMock()
+
+        # No email change, so no uniqueness check needed
+        await update_user(session, user, {"role": "analyst", "is_active": False})
+
+        assert user.role == "analyst"
+        assert user.is_active is False
+        session.commit.assert_awaited_once()
+        session.refresh.assert_awaited_once_with(user)
+
+    @pytest.mark.asyncio
+    async def test_email_conflict_raises_error(self) -> None:
+        user = _mock_user(email="original@example.com")
+        other_user = _mock_user(email="taken@example.com")
+        session = _mock_session_with_result(other_user)
+
+        with pytest.raises(ValueError, match="Email already in use"):
+            await update_user(session, user, {"email": "taken@example.com"})
+
+    @pytest.mark.asyncio
+    async def test_same_email_skips_uniqueness_check(self) -> None:
+        user = _mock_user(email="same@example.com")
+        session = AsyncMock()
+
+        # Updating to the same email should not query for conflicts
+        await update_user(session, user, {"email": "same@example.com"})
+
+        session.execute.assert_not_awaited()
+        session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_ignores_non_updatable_fields(self) -> None:
+        user = _mock_user()
+        session = AsyncMock()
+
+        await update_user(session, user, {"username": "hacker"})
+
+        # username is not in _UPDATABLE_USER_FIELDS — must not be set
+        assert user.username == "testuser"
+        session.commit.assert_awaited_once()
+
+
+class TestDeleteUser:
+    """Tests for delete_user."""
+
+    @pytest.mark.asyncio
+    async def test_deletes_user(self) -> None:
+        user = _mock_user()
+        session = AsyncMock()
+
+        await delete_user(session, user)
+
+        session.delete.assert_awaited_once_with(user)
+        session.commit.assert_awaited_once()

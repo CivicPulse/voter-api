@@ -160,6 +160,19 @@ async def update_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     updates = request.model_dump(exclude_unset=True)
+
+    if current_user.id == user_id:
+        if updates.get("is_active") is False:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot deactivate your own account",
+            )
+        if "role" in updates and updates["role"] != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot downgrade your own admin role",
+            )
+
     try:
         updated = await auth_service.update_user(session, user, updates)
     except ValueError as e:

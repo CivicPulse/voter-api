@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.e2e.conftest import (
     ADMIN_PASSWORD,
+    ADMIN_USER_ID,
     ADMIN_USERNAME,
     BOUNDARY_ID,
     ELECTION_ID,
@@ -253,6 +254,43 @@ class TestAuth:
     async def test_delete_user_forbidden_for_viewer(self, viewer_client: httpx.AsyncClient) -> None:
         resp = await viewer_client.delete(_url(f"/users/{uuid.uuid4()}"))
         assert resp.status_code == 403
+
+    async def test_delete_self_returns_400(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.delete(_url(f"/users/{ADMIN_USER_ID}"))
+        assert resp.status_code == 400
+        assert "own account" in resp.json()["detail"]
+
+    async def test_patch_user_email_conflict_returns_409(self, admin_client: httpx.AsyncClient) -> None:
+        user_a = {
+            "username": f"e2e_ca_{uuid.uuid4().hex[:8]}",
+            "email": f"e2e_ca_{uuid.uuid4().hex[:8]}@test.com",
+            "password": "strongpassword123",
+            "role": "viewer",
+        }
+        user_b = {
+            "username": f"e2e_cb_{uuid.uuid4().hex[:8]}",
+            "email": f"e2e_cb_{uuid.uuid4().hex[:8]}@test.com",
+            "password": "strongpassword123",
+            "role": "viewer",
+        }
+        create_a = await admin_client.post(_url("/users"), json=user_a)
+        assert create_a.status_code == 201
+        id_a = create_a.json()["id"]
+
+        create_b = await admin_client.post(_url("/users"), json=user_b)
+        assert create_b.status_code == 201
+        id_b = create_b.json()["id"]
+
+        try:
+            # Attempt to update user_b's email to user_a's email — should conflict
+            patch_resp = await admin_client.patch(
+                _url(f"/users/{id_b}"),
+                json={"email": user_a["email"]},
+            )
+            assert patch_resp.status_code == 409
+        finally:
+            await admin_client.delete(_url(f"/users/{id_a}"))
+            await admin_client.delete(_url(f"/users/{id_b}"))
 
 
 # ── Boundaries ─────────────────────────────────────────────────────────────

@@ -37,14 +37,14 @@ class UserCreateRequest(BaseModel):
     username: str = Field(min_length=3, max_length=100)
     email: EmailStr
     password: str = Field(min_length=8)
-    role: str = Field(pattern="^(admin|analyst|viewer)$")
+    role: str = Field(pattern="^(admin|analyst|viewer|contributor)$")
 
 
 class UserUpdateRequest(BaseModel):
     """Request to partially update an existing user (all fields optional)."""
 
     email: EmailStr | None = None
-    role: str | None = Field(default=None, pattern="^(admin|analyst|viewer)$")
+    role: str | None = Field(default=None, pattern="^(admin|analyst|viewer|contributor)$")
     is_active: bool | None = None
 
 
