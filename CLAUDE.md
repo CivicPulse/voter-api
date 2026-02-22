@@ -181,8 +181,7 @@ Follow these rules whenever you add, modify, or remove API endpoints:
 
 ## Key Conventions
 
-- **Never use system python** — always prefix with `uv run` (e.g., `uv run pytest`, `uv run python`)
-- **Package management** — `uv add <pkg>`, `uv add --dev <pkg>`, `uv remove <pkg>`
+- **Never use system python** — never invoke `python`, `python3`, `pip`, or `pip3` directly. All Python commands **must** be prefixed with `uv run` (e.g., `uv run pytest`, `uv run python`, `uv run alembic`). Use `uv add <pkg>`, `uv add --dev <pkg>`, `uv remove <pkg>` for package management. Use `uv sync` to install dependencies. No exceptions.
 - **Conventional Commits** — all commit messages must follow the spec (see `docs/convential_commits.md`)
 - **12-factor config** — all configuration via environment variables, validated by Pydantic Settings; `.env.example` documents all required vars
 - **Type hints** on all functions/classes; **Google-style docstrings** on all public APIs
