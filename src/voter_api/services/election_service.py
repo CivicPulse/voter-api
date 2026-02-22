@@ -124,8 +124,15 @@ async def create_election(
     )
     session.add(election)
     await session.commit()
-    await session.refresh(election)
-    return election
+
+    # Re-fetch with result relationship eagerly loaded.  build_detail_response()
+    # accesses election.result; async sessions do not support implicit lazy
+    # loading and would raise MissingGreenlet if the relationship is left
+    # unloaded after commit.
+    result = await session.execute(
+        select(Election).options(selectinload(Election.result)).where(Election.id == election.id)
+    )
+    return result.scalar_one()
 
 
 async def get_election_by_id(
