@@ -30,6 +30,8 @@ import contextlib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from loguru import logger
+
 from voter_api.lib.geocoder.address import (
     AddressComponents,
     normalize_freeform_address,
@@ -175,7 +177,8 @@ def get_configured_providers(settings: Settings) -> list[BaseGeocoder]:
             geocoder = get_geocoder(name, **kwargs)
             if geocoder.is_configured:
                 providers.append(geocoder)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as exc:
+            logger.warning("Failed to instantiate geocoder provider '{}': {}", name, exc)
             continue
 
     return providers

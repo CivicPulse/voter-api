@@ -440,10 +440,6 @@ async def process_geocoding_job(
     job.started_at = datetime.now(UTC)
     await session.commit()
 
-    configured = {p.provider_name: p for p in get_configured_providers(get_settings())}
-    geocoder = configured.get(job.provider) or get_geocoder(job.provider)
-    semaphore = asyncio.Semaphore(rate_limit)
-
     succeeded = 0
     failed_count = 0
     cache_hits = 0
@@ -451,6 +447,13 @@ async def process_geocoding_job(
     errors: list[dict] = []
 
     try:
+        configured = {p.provider_name: p for p in get_configured_providers(get_settings())}
+        geocoder = configured.get(job.provider)
+        if geocoder is None:
+            msg = f"Provider '{job.provider}' is not configured"
+            raise ValueError(msg)
+        semaphore = asyncio.Semaphore(rate_limit)
+
         # Build voter query
         query = select(Voter).where(Voter.present_in_latest_import.is_(True))
 
