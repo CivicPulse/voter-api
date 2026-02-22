@@ -26,10 +26,10 @@ class TestNominatimResponseParsing:
         ]
         result = self.geocoder._parse_response(data)
         assert result is not None
-        assert result.latitude == 33.7490
-        assert result.longitude == -84.3880
+        assert result.latitude == pytest.approx(33.7490)
+        assert result.longitude == pytest.approx(-84.3880)
         assert result.quality == GeocodeQuality.EXACT
-        assert result.confidence_score == 0.85
+        assert result.confidence_score == pytest.approx(0.85)
         assert result.matched_address == "123 N Main St, Atlanta, GA"
 
     def test_no_results(self) -> None:
@@ -126,7 +126,7 @@ class TestNominatimGeocoderErrors:
             result = await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
 
         assert result is not None
-        assert result.latitude == 33.749
+        assert result.latitude == pytest.approx(33.749)
 
     async def test_empty_results_returns_none(self) -> None:
         geocoder = NominatimGeocoder()
@@ -148,7 +148,7 @@ class TestNominatimProperties:
         assert NominatimGeocoder().provider_name == "nominatim"
 
     def test_rate_limit_delay(self) -> None:
-        assert NominatimGeocoder().rate_limit_delay == 1.0
+        assert NominatimGeocoder().rate_limit_delay == pytest.approx(1.0)
 
     def test_requires_api_key(self) -> None:
         assert NominatimGeocoder().requires_api_key is False

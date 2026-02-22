@@ -33,10 +33,10 @@ class TestPhotonResponseParsing:
         }
         result = self.geocoder._parse_response(data)
         assert result is not None
-        assert result.latitude == 33.749
-        assert result.longitude == -84.388
+        assert result.latitude == pytest.approx(33.749)
+        assert result.longitude == pytest.approx(-84.388)
         assert result.quality == GeocodeQuality.EXACT
-        assert result.confidence_score == 0.95
+        assert result.confidence_score == pytest.approx(0.95)
         assert "123 Main St" in result.matched_address
 
     def test_street_level_match(self) -> None:
@@ -51,7 +51,7 @@ class TestPhotonResponseParsing:
         result = self.geocoder._parse_response(data)
         assert result is not None
         assert result.quality == GeocodeQuality.INTERPOLATED
-        assert result.confidence_score == 0.7
+        assert result.confidence_score == pytest.approx(0.7)
 
     def test_city_level_match(self) -> None:
         data = {
@@ -65,7 +65,7 @@ class TestPhotonResponseParsing:
         result = self.geocoder._parse_response(data)
         assert result is not None
         assert result.quality == GeocodeQuality.APPROXIMATE
-        assert result.confidence_score == 0.3
+        assert result.confidence_score == pytest.approx(0.3)
 
     def test_building_type_exact(self) -> None:
         data = {
@@ -201,7 +201,7 @@ class TestPhotonProperties:
         assert PhotonGeocoder().is_configured is True
 
     def test_rate_limit_delay_public_instance(self) -> None:
-        assert PhotonGeocoder().rate_limit_delay == 0.2
+        assert PhotonGeocoder().rate_limit_delay == pytest.approx(0.2)
 
     def test_rate_limit_delay_self_hosted(self) -> None:
-        assert PhotonGeocoder(base_url="https://my-photon.example.com").rate_limit_delay == 0.0
+        assert PhotonGeocoder(base_url="https://my-photon.example.com").rate_limit_delay == pytest.approx(0.0)

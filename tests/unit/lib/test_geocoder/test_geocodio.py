@@ -25,10 +25,10 @@ class TestGeocodioResponseParsing:
         raw = {"results": [result_data]}
         result = self.geocoder._parse_single_result(result_data, raw)
         assert result is not None
-        assert result.latitude == 33.749
-        assert result.longitude == -84.388
+        assert result.latitude == pytest.approx(33.749)
+        assert result.longitude == pytest.approx(-84.388)
         assert result.quality == GeocodeQuality.EXACT
-        assert result.confidence_score == 1.0
+        assert result.confidence_score == pytest.approx(1.0)
 
     def test_range_interpolation_quality(self) -> None:
         result_data = {
@@ -144,7 +144,7 @@ class TestGeocodioBatchGeocode:
 
         assert len(results) == 2
         assert results[0] is not None
-        assert results[0].latitude == 33.749
+        assert results[0].latitude == pytest.approx(33.749)
         assert results[1] is None
 
     async def test_batch_timeout_raises(self) -> None:

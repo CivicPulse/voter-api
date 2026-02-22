@@ -30,10 +30,10 @@ class TestGoogleMapsResponseParsing:
         }
         result = self.geocoder._parse_response(data)
         assert result is not None
-        assert result.latitude == 33.749
-        assert result.longitude == -84.388
+        assert result.latitude == pytest.approx(33.749)
+        assert result.longitude == pytest.approx(-84.388)
         assert result.quality == GeocodeQuality.EXACT
-        assert result.confidence_score == 1.0
+        assert result.confidence_score == pytest.approx(1.0)
         assert result.matched_address == "123 Main St, Atlanta, GA 30301"
 
     def test_range_interpolated(self) -> None:
@@ -51,7 +51,7 @@ class TestGoogleMapsResponseParsing:
         result = self.geocoder._parse_response(data)
         assert result is not None
         assert result.quality == GeocodeQuality.INTERPOLATED
-        assert result.confidence_score == 0.85
+        assert result.confidence_score == pytest.approx(0.85)
 
     def test_geometric_center(self) -> None:
         data = {
@@ -68,7 +68,7 @@ class TestGoogleMapsResponseParsing:
         result = self.geocoder._parse_response(data)
         assert result is not None
         assert result.quality == GeocodeQuality.APPROXIMATE
-        assert result.confidence_score == 0.6
+        assert result.confidence_score == pytest.approx(0.6)
 
     def test_zero_results(self) -> None:
         data = {"status": "ZERO_RESULTS"}

@@ -31,10 +31,10 @@ class TestMapboxResponseParsing:
         }
         result = self.geocoder._parse_response(data)
         assert result is not None
-        assert result.latitude == 33.749
-        assert result.longitude == -84.388
+        assert result.latitude == pytest.approx(33.749)
+        assert result.longitude == pytest.approx(-84.388)
         assert result.quality == GeocodeQuality.EXACT
-        assert result.confidence_score == 0.95
+        assert result.confidence_score == pytest.approx(0.95)
         assert result.matched_address == "123 Main St, Atlanta, GA 30301"
 
     def test_interpolated_address(self) -> None:
