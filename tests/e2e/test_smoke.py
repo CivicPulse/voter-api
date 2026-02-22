@@ -452,6 +452,44 @@ class TestGeocoding:
         resp = await client.get(_url("/geocoding/cache/stats"))
         assert resp.status_code == 401
 
+    async def test_providers_list_is_public(self, client: httpx.AsyncClient) -> None:
+        """Providers list endpoint is public — returns provider info and fallback order."""
+        resp = await client.get(_url("/geocoding/providers"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "providers" in body
+        assert "fallback_order" in body
+        assert isinstance(body["providers"], list)
+        assert len(body["providers"]) >= 1
+        # Census should always be present
+        names = [p["name"] for p in body["providers"]]
+        assert "census" in names
+        # Each provider should have expected fields
+        for p in body["providers"]:
+            assert "name" in p
+            assert "service_type" in p
+            assert "requires_api_key" in p
+            assert "is_configured" in p
+
+    async def test_batch_accepts_provider_string(self, admin_client: httpx.AsyncClient) -> None:
+        """Batch endpoint accepts any supported provider value (not just 'census')."""
+        resp = await admin_client.post(
+            _url("/geocoding/batch"),
+            json={"provider": "census", "fallback": False},
+        )
+        assert resp.status_code == 202
+
+    async def test_batch_fallback_enabled(self, admin_client: httpx.AsyncClient) -> None:
+        """Batch endpoint accepts fallback=True and returns 202 Accepted."""
+        resp = await admin_client.post(
+            _url("/geocoding/batch"),
+            json={"provider": "census", "fallback": True},
+        )
+        assert resp.status_code == 202
+        body = resp.json()
+        assert "id" in body
+        assert body["status"] == "pending"
+
 
 # ── Imports ────────────────────────────────────────────────────────────────
 
