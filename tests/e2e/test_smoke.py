@@ -128,11 +128,13 @@ class TestAuth:
             "role": "viewer",
         }
         resp = await admin_client.post(_url("/users"), json=new_user)
-        user_id = None
+        # Parse response before the try block so user_id is available for
+        # cleanup in finally even if an assertion fails after the resource was
+        # created (e.g., status is 201 but a later assert raises).
+        body = resp.json() if resp.status_code == 201 else {}
+        user_id: str | None = body.get("id")
         try:
             assert resp.status_code == 201
-            body = resp.json()
-            user_id = body.get("id")
             assert user_id is not None
             assert body["username"] == new_user["username"]
             assert body["role"] == "viewer"
@@ -242,10 +244,12 @@ class TestElections:
             "refresh_interval_seconds": 120,
         }
         create_resp = await admin_client.post(_url("/elections"), json=payload)
-        election_id = None
+        # Parse response before the try block so election_id is available for
+        # cleanup in finally even if an assertion fails after the resource was
+        # created (e.g., status is 201 but a later assert raises).
+        election_id: str | None = create_resp.json().get("id") if create_resp.status_code == 201 else None
         try:
             assert create_resp.status_code == 201
-            election_id = create_resp.json().get("id")
             assert election_id is not None
 
             detail_resp = await admin_client.get(_url(f"/elections/{election_id}"))
@@ -310,7 +314,13 @@ class TestElectedOfficials:
         assert resp.status_code == 403
 
     async def test_crud_lifecycle(self, admin_client: httpx.AsyncClient) -> None:
-        """Create -> read -> update -> approve -> delete an elected official."""
+        """Create -> read -> update -> approve -> delete an elected official.
+
+        Each run uses a UUID-derived ``unique`` suffix, making collisions
+        effectively impossible even on rapid-retry or parallel runs against a
+        shared database.  The elected official is deleted at the end, so no
+        cleanup of the DB is required between runs.
+        """
         unique = uuid.uuid4().hex[:8]
 
         # Create

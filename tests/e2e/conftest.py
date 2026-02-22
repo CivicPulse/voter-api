@@ -33,7 +33,7 @@ from voter_api.models.user import User
 
 ADMIN_USERNAME = "e2e_admin"
 ADMIN_EMAIL = "e2e_admin@test.com"
-ADMIN_PASSWORD = "e2e-password-123"
+ADMIN_PASSWORD = "E2e-S3cur3-P@ssw0rd-2024!"
 
 ANALYST_USERNAME = "e2e_analyst"
 VIEWER_USERNAME = "e2e_viewer"
@@ -186,6 +186,9 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         hashed = hash_password(ADMIN_PASSWORD)
 
         # --- Users --------------------------------------------------------
+        # All three seeded users share the same hashed password for simplicity.
+        # Each user has a distinct role; authentication tests use ADMIN_PASSWORD
+        # for the admin login test and a hard-coded wrong value for failure tests.
         users_data = [
             {
                 "id": ADMIN_USER_ID,
