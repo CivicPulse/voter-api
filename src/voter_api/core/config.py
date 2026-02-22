@@ -4,8 +4,9 @@ All configuration is loaded from environment variables following 12-factor princ
 """
 
 import re
+from typing import Self
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,11 +53,7 @@ class Settings(BaseSettings):
         gt=0,
     )
 
-    # Geocoding
-    geocoder_default_provider: str = Field(
-        default="census",
-        description="Default geocoding provider",
-    )
+    # Geocoding — general
     geocoder_batch_size: int = Field(
         default=100,
         description="Records per geocoding batch",
@@ -67,6 +64,108 @@ class Settings(BaseSettings):
         description="Rate limit for geocoder API calls per second",
         gt=0,
     )
+    geocoder_fallback_order: str = Field(
+        default="census,nominatim,geocodio,mapbox,google,photon",
+        description="Comma-separated provider fallback order for cascading geocoding",
+    )
+
+    # Geocoding — Nominatim (OpenStreetMap)
+    geocoder_nominatim_enabled: bool = Field(
+        default=False,
+        description="Enable Nominatim geocoder (requires GEOCODER_NOMINATIM_EMAIL per Nominatim usage policy)",
+    )
+    geocoder_nominatim_email: str = Field(
+        default="",
+        description="Email for Nominatim usage policy compliance",
+    )
+    geocoder_nominatim_timeout: float = Field(
+        default=10.0,
+        description="Nominatim request timeout in seconds",
+        gt=0,
+    )
+
+    # Geocoding — Google Maps
+    geocoder_google_enabled: bool = Field(
+        default=False,
+        description="Enable Google Maps geocoder (requires API key)",
+    )
+    geocoder_google_api_key: str | None = Field(
+        default=None,
+        description="Google Maps Geocoding API key",
+    )
+    geocoder_google_timeout: float = Field(
+        default=10.0,
+        description="Google Maps request timeout in seconds",
+        gt=0,
+    )
+
+    # Geocoding — Geocodio
+    geocoder_geocodio_enabled: bool = Field(
+        default=False,
+        description="Enable Geocodio geocoder (requires API key)",
+    )
+    geocoder_geocodio_api_key: str | None = Field(
+        default=None,
+        description="Geocodio API key",
+    )
+    geocoder_geocodio_batch_size: int = Field(
+        default=1000,
+        description="Geocodio batch size (max 10000)",
+        gt=0,
+        le=10000,
+    )
+    geocoder_geocodio_timeout: float = Field(
+        default=30.0,
+        description="Geocodio request timeout in seconds",
+        gt=0,
+    )
+
+    # Geocoding — Mapbox
+    geocoder_mapbox_enabled: bool = Field(
+        default=False,
+        description="Enable Mapbox geocoder (requires API key)",
+    )
+    geocoder_mapbox_api_key: str | None = Field(
+        default=None,
+        description="Mapbox access token",
+    )
+    geocoder_mapbox_timeout: float = Field(
+        default=10.0,
+        description="Mapbox request timeout in seconds",
+        gt=0,
+    )
+    geocoder_mapbox_batch_size: int = Field(
+        default=100,
+        description="Mapbox batch size (max 1000)",
+        gt=0,
+        le=1000,
+    )
+
+    # Geocoding — Photon (Komoot)
+    geocoder_photon_enabled: bool = Field(
+        default=True,
+        description="Enable Photon (Komoot) geocoder",
+    )
+    geocoder_photon_base_url: str = Field(
+        default="https://photon.komoot.io",
+        description="Photon geocoder base URL (self-hostable)",
+    )
+    geocoder_photon_timeout: float = Field(
+        default=10.0,
+        description="Photon request timeout in seconds",
+        gt=0,
+    )
+
+    @property
+    def geocoder_fallback_order_list(self) -> list[str]:
+        """Parse fallback order string into a list of provider names.
+
+        Returns:
+            List of provider names in fallback order.
+        """
+        if not self.geocoder_fallback_order.strip():
+            return []
+        return [p.strip().lower() for p in self.geocoder_fallback_order.split(",") if p.strip()]
 
     # Import
     import_batch_size: int = Field(
@@ -227,6 +326,21 @@ class Settings(BaseSettings):
         if not self.cors_origins.strip():
             return []
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @model_validator(mode="after")
+    def validate_nominatim_email(self) -> Self:
+        """Require a non-empty email when Nominatim is enabled.
+
+        Returns:
+            The validated settings instance.
+
+        Raises:
+            ValueError: If Nominatim is enabled but no email is configured.
+        """
+        if self.geocoder_nominatim_enabled and not self.geocoder_nominatim_email.strip():
+            msg = "GEOCODER_NOMINATIM_EMAIL must be set when GEOCODER_NOMINATIM_ENABLED is true (required by Nominatim usage policy)"
+            raise ValueError(msg)
+        return self
 
 
 def get_settings() -> Settings:
