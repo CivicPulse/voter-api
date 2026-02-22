@@ -70,8 +70,8 @@ class Settings(BaseSettings):
 
     # Geocoding — Nominatim (OpenStreetMap)
     geocoder_nominatim_enabled: bool = Field(
-        default=True,
-        description="Enable Nominatim (OpenStreetMap) geocoder",
+        default=False,
+        description="Enable Nominatim geocoder (requires GEOCODER_NOMINATIM_EMAIL per Nominatim usage policy)",
     )
     geocoder_nominatim_email: str = Field(
         default="",

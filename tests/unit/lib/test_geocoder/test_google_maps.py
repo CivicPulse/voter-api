@@ -105,7 +105,6 @@ class TestGoogleMapsResponseParsing:
 class TestGoogleMapsGeocoderErrors:
     """Tests for GoogleMapsGeocoder error differentiation."""
 
-    @pytest.mark.asyncio
     async def test_timeout_raises_provider_error(self) -> None:
         geocoder = GoogleMapsGeocoder(api_key="test-key", timeout=0.1)
         with (
@@ -115,7 +114,6 @@ class TestGoogleMapsGeocoderErrors:
             mock_get.side_effect = httpx.TimeoutException("Connection timed out")
             await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
 
-    @pytest.mark.asyncio
     async def test_connection_error_raises_provider_error(self) -> None:
         geocoder = GoogleMapsGeocoder(api_key="test-key")
         with (
@@ -125,7 +123,6 @@ class TestGoogleMapsGeocoderErrors:
             mock_get.side_effect = httpx.ConnectError("Connection refused")
             await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
 
-    @pytest.mark.asyncio
     async def test_successful_geocode(self) -> None:
         geocoder = GoogleMapsGeocoder(api_key="test-key")
         mock_response = MagicMock()

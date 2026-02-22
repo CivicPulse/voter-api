@@ -409,6 +409,7 @@ class TestGeocodeVoterAllProviders:
             ),
             patch(
                 "voter_api.services.geocoding_service.get_settings",
+                return_value=MagicMock(),
             ),
             patch(
                 "voter_api.services.geocoding_service.get_configured_providers",
@@ -461,6 +462,7 @@ class TestGeocodeVoterAllProviders:
             ),
             patch(
                 "voter_api.services.geocoding_service.get_settings",
+                return_value=MagicMock(),
             ),
             patch(
                 "voter_api.services.geocoding_service.get_configured_providers",
@@ -503,6 +505,7 @@ class TestGeocodeVoterAllProviders:
             ),
             patch(
                 "voter_api.services.geocoding_service.get_settings",
+                return_value=MagicMock(),
             ),
             patch(
                 "voter_api.services.geocoding_service.get_configured_providers",
@@ -554,6 +557,7 @@ class TestGeocodeVoterAllProviders:
             ),
             patch(
                 "voter_api.services.geocoding_service.get_settings",
+                return_value=MagicMock(),
             ),
             patch(
                 "voter_api.services.geocoding_service.get_configured_providers",
@@ -595,6 +599,7 @@ class TestGeocodeVoterAllProviders:
             ),
             patch(
                 "voter_api.services.geocoding_service.get_settings",
+                return_value=MagicMock(),
             ),
             patch(
                 "voter_api.services.geocoding_service.get_configured_providers",

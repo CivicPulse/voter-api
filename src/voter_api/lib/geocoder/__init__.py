@@ -215,9 +215,15 @@ def get_all_provider_metadata(settings: Settings) -> list[ProviderMetadata]:
         provider = configured_map.get(name)
 
         if provider is None:
-            # Not configured — try to instantiate with defaults for metadata
+            # Not configured — try to instantiate with defaults for metadata.
+            # First attempt: no args (works for census/nominatim/photon).
+            # Second attempt: empty api_key (works for google/geocodio/mapbox)
+            # so their real service_type is reported instead of a generic fallback.
             with contextlib.suppress(ValueError, TypeError):
                 provider = get_geocoder(name)
+            if provider is None:
+                with contextlib.suppress(ValueError, TypeError):
+                    provider = get_geocoder(name, api_key="")
 
         if provider:
             metadata.append(

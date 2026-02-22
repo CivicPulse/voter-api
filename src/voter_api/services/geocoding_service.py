@@ -173,7 +173,7 @@ async def geocode_single_address(
             latitude=cached.latitude,
             longitude=cached.longitude,
             confidence=cached.confidence_score,
-            metadata=GeocodeMetadata(cached=True, provider=geocoder.provider_name),
+            metadata=GeocodeMetadata(cached=True, provider=geocoder.provider_name, quality=cached.quality),
         )
 
     # Cache miss — call provider with single retry (2 attempts max)
@@ -208,7 +208,7 @@ async def geocode_single_address(
         latitude=result.latitude,
         longitude=result.longitude,
         confidence=result.confidence_score,
-        metadata=GeocodeMetadata(cached=False, provider=geocoder.provider_name),
+        metadata=GeocodeMetadata(cached=False, provider=geocoder.provider_name, quality=result.quality),
     )
 
 
@@ -440,7 +440,8 @@ async def process_geocoding_job(
     job.started_at = datetime.now(UTC)
     await session.commit()
 
-    geocoder = get_geocoder(job.provider)
+    configured = {p.provider_name: p for p in get_configured_providers(get_settings())}
+    geocoder = configured.get(job.provider) or get_geocoder(job.provider)
     semaphore = asyncio.Semaphore(rate_limit)
 
     succeeded = 0

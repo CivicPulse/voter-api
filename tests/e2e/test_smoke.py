@@ -472,7 +472,7 @@ class TestGeocoding:
             assert "is_configured" in p
 
     async def test_batch_accepts_provider_string(self, admin_client: httpx.AsyncClient) -> None:
-        """Batch endpoint accepts any provider string (not just 'census')."""
+        """Batch endpoint accepts any supported provider value (not just 'census')."""
         resp = await admin_client.post(
             _url("/geocoding/batch"),
             json={"provider": "census", "fallback": False},
