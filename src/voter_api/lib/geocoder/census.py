@@ -7,7 +7,7 @@ for address-to-coordinate resolution.
 import httpx
 from loguru import logger
 
-from voter_api.lib.geocoder.base import BaseGeocoder, GeocodingProviderError, GeocodingResult
+from voter_api.lib.geocoder.base import BaseGeocoder, GeocodeQuality, GeocodingProviderError, GeocodingResult
 
 CENSUS_API_URL = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
 DEFAULT_TIMEOUT = 30.0
@@ -89,14 +89,15 @@ class CensusGeocoder(BaseGeocoder):
                 return None
 
             matched_address = best.get("matchedAddress")
+            has_tiger_line = bool(best.get("tigerLine"))
 
-            # tigerLine presence indicates a TIGER/Line match — higher confidence
             return GeocodingResult(
                 latitude=float(lat),
                 longitude=float(lon),
-                confidence_score=1.0 if best.get("tigerLine") else 0.8,
+                confidence_score=1.0 if has_tiger_line else 0.8,
                 raw_response=data,
                 matched_address=matched_address,
+                quality=GeocodeQuality.EXACT if has_tiger_line else GeocodeQuality.INTERPOLATED,
             )
         except (KeyError, ValueError, TypeError) as e:
             logger.warning(f"Failed to parse Census geocoder response: {e}")

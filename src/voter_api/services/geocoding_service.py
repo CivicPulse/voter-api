@@ -19,7 +19,13 @@ from voter_api.lib.geocoder import (
     parse_address_components,
     reconstruct_address,
 )
-from voter_api.lib.geocoder.base import BaseGeocoder, GeocodingProviderError, GeocodingResult
+from voter_api.lib.geocoder.base import (
+    _QUALITY_RANK,
+    BaseGeocoder,
+    GeocodeQuality,
+    GeocodingProviderError,
+    GeocodingResult,
+)
 from voter_api.lib.geocoder.point_lookup import validate_georgia_coordinates
 from voter_api.lib.geocoder.verify import validate_address_components
 from voter_api.models.geocoded_location import GeocodedLocation
@@ -45,9 +51,90 @@ _SINGLE_TIMEOUT = 2.0  # 2s per attempt, max 2 attempts per FR-009
 _SINGLE_MAX_ATTEMPTS = 2
 
 
+def select_best_result(
+    results: list[tuple[str, GeocodingResult]],
+) -> tuple[str, GeocodingResult] | None:
+    """Select the best geocoding result from multiple providers.
+
+    Ranks by quality (EXACT > INTERPOLATED > APPROXIMATE), then by
+    confidence score as tiebreaker.
+
+    Args:
+        results: List of (provider_name, GeocodingResult) tuples.
+
+    Returns:
+        Best (provider_name, result) tuple, or None if empty.
+    """
+    if not results:
+        return None
+
+    def sort_key(item: tuple[str, GeocodingResult]) -> tuple[int, float]:
+        _, r = item
+        quality_rank = _QUALITY_RANK.get(r.quality, 3) if r.quality else 3
+        confidence = r.confidence_score if r.confidence_score is not None else 0.0
+        return (quality_rank, -confidence)
+
+    return min(results, key=sort_key)
+
+
+async def geocode_with_fallback(
+    session: AsyncSession,
+    address: str,
+    providers: list[BaseGeocoder],
+) -> tuple[str, GeocodingResult] | None:
+    """Try providers in order. Stop immediately on EXACT; otherwise collect and pick best.
+
+    For each provider: check cache, then call provider. If result quality is
+    EXACT, return immediately. Otherwise collect the result and try the next
+    provider. After all providers, return the best result.
+
+    Args:
+        session: Database session.
+        address: Normalized address string.
+        providers: Ordered list of geocoder instances to try.
+
+    Returns:
+        Best (provider_name, GeocodingResult) tuple, or None if all fail.
+    """
+    collected: list[tuple[str, GeocodingResult]] = []
+
+    for geocoder in providers:
+        # Check cache first
+        cached = await cache_lookup(session, geocoder.provider_name, address)
+        if cached:
+            if cached.quality == GeocodeQuality.EXACT:
+                return (geocoder.provider_name, cached)
+            collected.append((geocoder.provider_name, cached))
+            continue
+
+        # Call provider
+        try:
+            result = await geocoder.geocode(address)
+        except GeocodingProviderError as e:
+            logger.warning(f"Fallback provider {geocoder.provider_name} failed: {e}")
+            continue
+
+        if result is None:
+            continue
+
+        # Cache the result
+        await cache_store(session, geocoder.provider_name, address, result)
+
+        if result.quality == GeocodeQuality.EXACT:
+            return (geocoder.provider_name, result)
+        collected.append((geocoder.provider_name, result))
+
+        # Respect rate limit delay
+        if geocoder.rate_limit_delay > 0:
+            await asyncio.sleep(geocoder.rate_limit_delay)
+
+    return select_best_result(collected)
+
+
 async def geocode_single_address(
     session: AsyncSession,
     address_string: str,
+    provider: str = _SINGLE_PROVIDER,
 ) -> AddressGeocodeResponse | None:
     """Geocode a single freeform address string.
 
@@ -58,6 +145,7 @@ async def geocode_single_address(
     Args:
         session: Database session.
         address_string: Raw freeform address from the consumer.
+        provider: Geocoder provider name (default: census).
 
     Returns:
         AddressGeocodeResponse on success, None if provider returns no match.
@@ -70,7 +158,7 @@ async def geocode_single_address(
     if not normalized:
         return None
 
-    geocoder = get_geocoder(_SINGLE_PROVIDER, timeout=_SINGLE_TIMEOUT)
+    geocoder = get_geocoder(provider, timeout=_SINGLE_TIMEOUT)
 
     # Cache lookup
     cached = await cache_lookup(session, geocoder.provider_name, normalized)
@@ -322,17 +410,26 @@ async def process_geocoding_job(
     job: GeocodingJob,
     batch_size: int = 100,
     rate_limit: int = 5,
+    fallback: bool = False,
+    fallback_providers: list[BaseGeocoder] | None = None,
 ) -> GeocodingJob:
     """Process a batch geocoding job.
 
     Finds un-geocoded voters, reconstructs addresses, geocodes via provider
     with rate limiting and caching, and stores results.
 
+    When ``fallback`` is True, if the primary provider's result quality is
+    less than EXACT, remaining providers from the fallback list are tried.
+    The best result across all attempted providers is stored.
+
     Args:
         session: Database session.
         job: The GeocodingJob to process.
         batch_size: Voters per processing batch.
         rate_limit: Max concurrent geocoding requests.
+        fallback: Whether to use cascading fallback for non-EXACT results.
+        fallback_providers: Pre-configured fallback provider list (if None,
+            only the primary provider is used even when fallback=True).
 
     Returns:
         The updated GeocodingJob with final counts.
@@ -436,9 +533,38 @@ async def process_geocoding_job(
 
                 if geo_result:
                     await cache_store(session, geocoder.provider_name, address, geo_result)
-                    await _store_geocoded_location(session, voter, geo_result, geocoder.provider_name, address)
+                    store_provider = geocoder.provider_name
+                    store_result = geo_result
+
+                    # Fallback: if primary result is not EXACT, try remaining providers
+                    if fallback and fallback_providers and geo_result.quality != GeocodeQuality.EXACT:
+                        remaining = [p for p in fallback_providers if p.provider_name != geocoder.provider_name]
+                        fallback_best = await geocode_with_fallback(session, address, remaining)
+                        if fallback_best:
+                            fb_provider, fb_result = fallback_best
+                            fb_rank = _QUALITY_RANK.get(fb_result.quality, 3) if fb_result.quality else 3
+                            primary_rank = _QUALITY_RANK.get(geo_result.quality, 3) if geo_result.quality else 3
+                            if fb_rank < primary_rank or (
+                                fb_rank == primary_rank
+                                and (fb_result.confidence_score or 0) > (geo_result.confidence_score or 0)
+                            ):
+                                store_provider = fb_provider
+                                store_result = fb_result
+
+                    await _store_geocoded_location(session, voter, store_result, store_provider, address)
                     succeeded += 1
                 else:
+                    # Primary provider returned no result — try fallback if enabled
+                    if fallback and fallback_providers:
+                        remaining = [p for p in fallback_providers if p.provider_name != geocoder.provider_name]
+                        fallback_best = await geocode_with_fallback(session, address, remaining)
+                        if fallback_best:
+                            fb_provider, fb_result = fallback_best
+                            await _store_geocoded_location(session, voter, fb_result, fb_provider, address)
+                            succeeded += 1
+                            processed += 1
+                            continue
+
                     failed_count += 1
                     errors.append(
                         {

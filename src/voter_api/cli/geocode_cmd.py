@@ -14,9 +14,12 @@ def batch_geocode(
     provider: str = typer.Option("census", "--provider", help="Geocoder provider"),
     force: bool = typer.Option(False, "--force", help="Re-geocode already geocoded records"),  # noqa: FBT001
     batch_size: int = typer.Option(100, "--batch-size", help="Records per batch"),  # noqa: B008
+    fallback: bool = typer.Option(  # noqa: FBT001
+        False, "--fallback", help="Use cascading fallback for non-EXACT results"
+    ),
 ) -> None:
     """Run batch geocoding for voter addresses."""
-    asyncio.run(_batch_geocode(county, provider, force, batch_size))
+    asyncio.run(_batch_geocode(county, provider, force, batch_size, fallback))
 
 
 @geocode_app.command("manual")
@@ -29,14 +32,58 @@ def manual_geocode(
     asyncio.run(_manual_geocode(voter_id, lat, lon))
 
 
-async def _batch_geocode(county: str | None, provider: str, force: bool, batch_size: int) -> None:
+@geocode_app.command("providers")
+def list_providers() -> None:
+    """List available geocoding providers and their configuration status."""
+    from voter_api.core.config import get_settings
+    from voter_api.lib.geocoder import get_available_providers, get_configured_providers, get_geocoder
+
+    settings = get_settings()
+    configured = get_configured_providers(settings)
+    configured_names = {p.provider_name for p in configured}
+    all_names = get_available_providers()
+
+    typer.echo("Geocoding Providers:")
+    typer.echo(f"{'Name':<15} {'Type':<12} {'API Key':<12} {'Configured':<12} {'Rate Limit'}")
+    typer.echo("-" * 65)
+
+    for name in all_names:
+        # Get provider instance (configured or default)
+        provider = None
+        for p in configured:
+            if p.provider_name == name:
+                provider = p
+                break
+        if provider is None and name == "census":
+            provider = get_geocoder("census")
+
+        if provider:
+            typer.echo(
+                f"{name:<15} "
+                f"{provider.service_type.value:<12} "
+                f"{'yes' if provider.requires_api_key else 'no':<12} "
+                f"{'yes' if name in configured_names else 'no':<12} "
+                f"{provider.rate_limit_delay}s"
+            )
+        else:
+            typer.echo(f"{name:<15} {'?':<12} {'yes':<12} {'no':<12} N/A")
+
+    typer.echo(f"\nFallback order: {', '.join(settings.geocoder_fallback_order_list)}")
+
+
+async def _batch_geocode(county: str | None, provider: str, force: bool, batch_size: int, fallback: bool) -> None:
     """Async implementation of batch geocoding."""
     from voter_api.core.config import get_settings
     from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.lib.geocoder import get_configured_providers
     from voter_api.services.geocoding_service import create_geocoding_job, process_geocoding_job
 
     settings = get_settings()
     init_engine(settings.database_url)
+
+    fallback_providers = None
+    if fallback:
+        fallback_providers = get_configured_providers(settings)
 
     try:
         factory = get_session_factory()
@@ -49,8 +96,16 @@ async def _batch_geocode(county: str | None, provider: str, force: bool, batch_s
             )
             typer.echo(f"Geocoding job created: {job.id}")
             typer.echo(f"Provider: {provider}, County: {county or 'all'}")
+            if fallback:
+                typer.echo(f"Fallback: enabled ({len(fallback_providers or [])} providers)")
 
-            job = await process_geocoding_job(session, job, batch_size=batch_size)
+            job = await process_geocoding_job(
+                session,
+                job,
+                batch_size=batch_size,
+                fallback=fallback,
+                fallback_providers=fallback_providers,
+            )
 
             typer.echo(f"\nGeocoding {'completed' if job.status == 'completed' else 'failed'}:")
             typer.echo(f"  Total records:  {job.total_records or 0}")

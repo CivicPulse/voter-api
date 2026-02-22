@@ -7,7 +7,9 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.background import task_runner
+from voter_api.core.config import get_settings
 from voter_api.core.dependencies import get_async_session, get_current_user, require_role
+from voter_api.lib.geocoder import get_available_providers, get_configured_providers, get_geocoder
 from voter_api.lib.geocoder.base import GeocodingProviderError
 from voter_api.lib.geocoder.point_lookup import validate_georgia_coordinates
 from voter_api.models.user import User
@@ -21,6 +23,8 @@ from voter_api.schemas.geocoding import (
     GeocodingJobResponse,
     PointLookupResponse,
     ProviderGeocodeResult,
+    ProviderInfo,
+    ProvidersListResponse,
     VoterGeocodeAllResponse,
 )
 from voter_api.services.boundary_service import find_boundaries_at_point
@@ -261,6 +265,13 @@ async def trigger_batch_geocoding(
         triggered_by=current_user.id,
     )
 
+    # Resolve fallback providers if requested
+    use_fallback = request.fallback
+    fallback_providers = None
+    if use_fallback:
+        settings = get_settings()
+        fallback_providers = get_configured_providers(settings)
+
     # Run geocoding in background
     async def _run_geocoding() -> None:
         from voter_api.core.database import get_session_factory
@@ -269,7 +280,12 @@ async def trigger_batch_geocoding(
         async with factory() as bg_session:
             bg_job = await get_geocoding_job(bg_session, job.id)
             if bg_job:
-                await process_geocoding_job(bg_session, bg_job)
+                await process_geocoding_job(
+                    bg_session,
+                    bg_job,
+                    fallback=use_fallback,
+                    fallback_providers=fallback_providers,
+                )
             else:
                 logger.error(f"Background geocoding job {job.id} not found")
 
@@ -305,3 +321,53 @@ async def get_cache_statistics(
     """Get per-provider geocoding cache statistics."""
     stats = await get_cache_stats(session)
     return CacheStatsResponse(providers=stats)
+
+
+@geocoding_router.get(
+    "/providers",
+    response_model=ProvidersListResponse,
+)
+async def list_providers() -> ProvidersListResponse:
+    """List all available geocoding providers and their capabilities.
+
+    Public endpoint — no authentication required.
+    """
+    settings = get_settings()
+    configured = get_configured_providers(settings)
+    configured_names = {p.provider_name for p in configured}
+
+    providers_info: list[ProviderInfo] = []
+    for name in get_available_providers():
+        geocoder = get_geocoder(name) if name == "census" else None
+        # For providers requiring API keys, instantiate without key just to read properties
+        for p in configured:
+            if p.provider_name == name:
+                geocoder = p
+                break
+
+        if geocoder:
+            providers_info.append(
+                ProviderInfo(
+                    name=geocoder.provider_name,
+                    service_type=geocoder.service_type.value,
+                    requires_api_key=geocoder.requires_api_key,
+                    is_configured=name in configured_names,
+                    rate_limit_delay=geocoder.rate_limit_delay,
+                )
+            )
+        else:
+            # Provider not configured — provide basic info from class
+            providers_info.append(
+                ProviderInfo(
+                    name=name,
+                    service_type="individual",
+                    requires_api_key=True,
+                    is_configured=False,
+                    rate_limit_delay=0.0,
+                )
+            )
+
+    return ProvidersListResponse(
+        providers=providers_info,
+        fallback_order=settings.geocoder_fallback_order_list,
+    )
