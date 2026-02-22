@@ -25,7 +25,9 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql+asyncpg://voter_api:voter_api_e2e@localhost:5432/voter_api_e2e
+      PGUSER: voter_api
+      PGPASSWORD: voter_api_e2e
+      PGDATABASE: voter_api_e2e
       JWT_SECRET_KEY: e2e-test-secret-key-not-for-production
       JWT_ALGORITHM: HS256
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: 30
@@ -38,6 +40,9 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+
+      - name: Set DATABASE_URL
+        run: echo "DATABASE_URL=postgresql+asyncpg://${PGUSER}:${PGPASSWORD}@localhost:5432/${PGDATABASE}" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: uv sync --dev

@@ -5,6 +5,7 @@ runs ``alembic upgrade head`` before pytest, so tables already exist.
 Fixtures seed baseline data and provide authenticated HTTP clients.
 """
 
+import os
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -33,7 +34,9 @@ from voter_api.models.user import User
 
 ADMIN_USERNAME = "e2e_admin"
 ADMIN_EMAIL = "e2e_admin@test.com"
-ADMIN_PASSWORD = "E2e-S3cur3-P@ssw0rd-2024!"
+ADMIN_PASSWORD = os.environ.get(  # noqa: S105
+    "E2E_ADMIN_PASSWORD", "E2e-S3cur3-P@ssw0rd-2024!"
+)
 
 ANALYST_USERNAME = "e2e_analyst"
 VIEWER_USERNAME = "e2e_viewer"
@@ -99,9 +102,7 @@ def viewer_token(settings: Settings) -> str:
 
 
 @asynccontextmanager
-async def _make_client(
-    app: FastAPI, token: str | None = None
-) -> AsyncGenerator[httpx.AsyncClient, None]:
+async def _make_client(app: FastAPI, token: str | None = None) -> AsyncGenerator[httpx.AsyncClient]:
     """Create an ASGI-wired httpx client with optional Bearer-token auth.
 
     Shared by all role-specific client fixtures to eliminate code duplication.
@@ -113,32 +114,28 @@ async def _make_client(
 
 
 @pytest.fixture
-async def client(app: FastAPI) -> AsyncGenerator[httpx.AsyncClient, None]:
+async def client(app: FastAPI) -> AsyncGenerator[httpx.AsyncClient]:
     """Async HTTP client wired to the real FastAPI app via ASGI transport."""
     async with _make_client(app) as c:
         yield c
 
 
 @pytest.fixture
-async def admin_client(app: FastAPI, admin_token: str) -> AsyncGenerator[httpx.AsyncClient, None]:
+async def admin_client(app: FastAPI, admin_token: str) -> AsyncGenerator[httpx.AsyncClient]:
     """Async HTTP client with admin Authorization header."""
     async with _make_client(app, admin_token) as c:
         yield c
 
 
 @pytest.fixture
-async def analyst_client(
-    app: FastAPI, analyst_token: str
-) -> AsyncGenerator[httpx.AsyncClient, None]:
+async def analyst_client(app: FastAPI, analyst_token: str) -> AsyncGenerator[httpx.AsyncClient]:
     """Async HTTP client with analyst Authorization header."""
     async with _make_client(app, analyst_token) as c:
         yield c
 
 
 @pytest.fixture
-async def viewer_client(
-    app: FastAPI, viewer_token: str
-) -> AsyncGenerator[httpx.AsyncClient, None]:
+async def viewer_client(app: FastAPI, viewer_token: str) -> AsyncGenerator[httpx.AsyncClient]:
     """Async HTTP client with viewer Authorization header."""
     async with _make_client(app, viewer_token) as c:
         yield c
