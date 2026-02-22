@@ -146,7 +146,7 @@ To add a reply comment before resolving:
 ```bash
 gh api graphql -f query='
   mutation($threadId: ID!, $body: String!) {
-    addPullRequestReviewComment(input: {
+    addPullRequestReviewThreadReply(input: {
       pullRequestReviewThreadId: $threadId
       body: $body
     }) {
@@ -178,7 +178,7 @@ Add a final PR comment summarizing:
 |-----------|-----------------|-----------------|
 | List threads | `pullRequest.reviewThreads` | `first: 100` |
 | Resolve thread | `resolveReviewThread` | `threadId` (node ID from query) |
-| Reply to thread | `addPullRequestReviewComment` | `pullRequestReviewThreadId` (same node ID) |
+| Reply to thread | `addPullRequestReviewThreadReply` | `pullRequestReviewThreadId` (same node ID) |
 | Add issue comment | `addComment` | `subjectId` (PR node ID) |
 
 ## Context
