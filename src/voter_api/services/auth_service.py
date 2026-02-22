@@ -7,6 +7,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.config import Settings
@@ -207,7 +208,12 @@ async def update_user(session: AsyncSession, user: User, updates: dict) -> User:
         if field in _UPDATABLE_USER_FIELDS:
             setattr(user, field, value)
 
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError as e:
+        await session.rollback()
+        msg = "Email already in use"
+        raise ValueError(msg) from e
     await session.refresh(user)
     return user
 
