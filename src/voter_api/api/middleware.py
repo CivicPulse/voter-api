@@ -11,6 +11,38 @@ from starlette.types import ASGIApp
 
 from voter_api.core.config import Settings
 
+_DEFAULT_TRUSTED_HEADERS = ["CF-Connecting-IP", "X-Forwarded-For", "X-Real-IP"]
+
+
+def get_client_ip(request: Request, trusted_headers: list[str] | None = None) -> str:
+    """Extract the real client IP from proxy headers or direct connection.
+
+    Checks headers in priority order. For X-Forwarded-For, uses the
+    leftmost (client-supplied) IP. Falls back to request.client.host.
+
+    Args:
+        request: The incoming Starlette request.
+        trusted_headers: Ordered list of header names to check.
+            Defaults to ["CF-Connecting-IP", "X-Forwarded-For", "X-Real-IP"].
+
+    Returns:
+        The client IP address string, or "unknown" if not determinable.
+    """
+    headers = trusted_headers if trusted_headers is not None else _DEFAULT_TRUSTED_HEADERS
+
+    for header in headers:
+        value = request.headers.get(header, "").strip()
+        if not value:
+            continue
+        # X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
+        if header.lower() == "x-forwarded-for":
+            return value.split(",")[0].strip()
+        return value
+
+    if request.client:
+        return request.client.host
+    return "unknown"
+
 
 def setup_cors(app: FastAPI, settings: Settings) -> None:
     """Configure CORS middleware on the FastAPI app.
@@ -56,11 +88,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """Simple in-memory rate limiting middleware.
 
     Limits requests per IP address with a sliding window approach.
+    Uses proxy headers to identify real client IPs behind reverse proxies.
     """
 
-    def __init__(self, app: ASGIApp, requests_per_minute: int = 60) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        requests_per_minute: int = 60,
+        trusted_proxy_headers: list[str] | None = None,
+    ) -> None:
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
+        self.trusted_proxy_headers = trusted_proxy_headers
         self._request_counts: dict[str, list[float]] = defaultdict(list)
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
@@ -73,7 +112,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         Returns:
             Response, or 429 if rate limited.
         """
-        client_ip = request.client.host if request.client else "unknown"
+        client_ip = get_client_ip(request, self.trusted_proxy_headers)
         now = time.time()
         window_start = now - 60.0
 

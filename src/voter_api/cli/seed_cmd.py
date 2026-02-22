@@ -264,7 +264,7 @@ async def _run_imports(
     from voter_api.core.database import dispose_engine, init_engine
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
     try:
         # County-districts first
@@ -357,7 +357,7 @@ async def _import_all_boundaries(
     from voter_api.core.database import init_engine
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
 
 
 async def _import_voters(file_path: Path, batch_size: int) -> None:
@@ -424,7 +424,11 @@ async def _import_voters_batch(
             Number of records successfully imported.
         """
         async with factory() as session:
-            # synchronous_commit is a session-level setting
+            # Note: synchronous_commit is a PostgreSQL *connection*-level setting.
+            # bulk_import_context() sets it on the lifecycle session used for
+            # index/constraint management, but each call to factory() may use a
+            # different DB connection. We therefore disable synchronous_commit on
+            # every per-file import session as well.
             await session.execute(text("SET synchronous_commit = 'off'"))
             job = await create_import_job(session, file_name=file_path.name)
             typer.echo(f"  Import job: {job.id} for {file_path.name}")

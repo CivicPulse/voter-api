@@ -133,6 +133,17 @@ class Settings(BaseSettings):
         description="Congress.gov API key for federal representative data",
     )
 
+    # Meeting Records
+    meeting_upload_dir: str = Field(
+        default="./uploads/meetings",
+        description="Directory for meeting attachment file storage",
+    )
+    meeting_max_file_size_mb: int = Field(
+        default=50,
+        description="Maximum file size for meeting attachments in megabytes",
+        gt=0,
+    )
+
     # Environment
     environment: str = Field(
         default="production",
@@ -149,6 +160,17 @@ class Settings(BaseSettings):
         description="Maximum API requests per minute per IP address",
         gt=0,
     )
+    trusted_proxy_headers: str = Field(
+        default="CF-Connecting-IP,X-Forwarded-For,X-Real-IP",
+        description="Comma-separated list of HTTP headers to check for real client IP, in priority order",
+    )
+
+    @property
+    def trusted_proxy_header_list(self) -> list[str]:
+        """Parse trusted proxy headers string into a list."""
+        if not self.trusted_proxy_headers.strip():
+            return []
+        return [h.strip() for h in self.trusted_proxy_headers.split(",") if h.strip()]
 
     # Data Seeding
     data_root_url: str = Field(

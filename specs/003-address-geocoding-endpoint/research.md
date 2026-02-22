@@ -15,7 +15,7 @@ The existing PostgreSQL geocoder cache (`geocoder_cache` table) has a unique ind
 
 - Add operational complexity (another service to deploy on the single-server piku deployment)
 - Require data synchronization between PostgreSQL and the cache layer
-- Save only ~1ms per cache hit — imperceptible at 60 req/min rate limit
+- Save only ~1ms per cache hit — imperceptible at 200 req/min rate limit
 
 For the prefix-search autocomplete use case, a PostgreSQL `text_pattern_ops` B-tree index provides sub-millisecond prefix matching for the projected dataset size (low millions of unique addresses). This is simpler and sufficient compared to Redis sorted sets or OpenSearch.
 

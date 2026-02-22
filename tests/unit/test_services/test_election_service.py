@@ -210,7 +210,16 @@ class TestCreateElection:
 
     @pytest.mark.asyncio
     async def test_creates_new_election(self):
-        session = _mock_session_with_scalar(None)  # no existing
+        # First execute: duplicate check — no existing election
+        duplicate_check_mock = MagicMock()
+        duplicate_check_mock.scalar_one_or_none.return_value = None
+        # Second execute: re-fetch with selectinload after commit
+        mock_election = _mock_election()
+        refetch_mock = MagicMock()
+        refetch_mock.scalar_one.return_value = mock_election
+
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=[duplicate_check_mock, refetch_mock])
 
         request = ElectionCreateRequest(
             name="Test Election",
@@ -221,10 +230,12 @@ class TestCreateElection:
             refresh_interval_seconds=120,
         )
 
-        await create_election(session, request)
+        result = await create_election(session, request)
         session.add.assert_called_once()
         session.commit.assert_awaited_once()
-        session.refresh.assert_awaited_once()
+        # Service re-queries after commit (selectinload re-fetch) instead of refresh.
+        session.refresh.assert_not_awaited()
+        assert result is mock_election
 
     @pytest.mark.asyncio
     async def test_duplicate_raises_value_error(self):

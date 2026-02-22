@@ -54,6 +54,12 @@ uv run ruff format .
 # Database migrations
 uv run voter-api db upgrade
 uv run voter-api db downgrade
+
+# E2E tests (requires a running PostGIS database + env vars set)
+uv run pytest tests/e2e/ -v
+
+# E2E: collect tests without running (syntax/import check)
+uv run pytest tests/e2e/ --collect-only
 ```
 
 ## Architecture
@@ -86,10 +92,92 @@ Each library in `lib/` has an explicit public API via `__init__.py` exports and 
 
 ```
 tests/
-├── unit/           # Library and schema tests (no DB)
-├── integration/    # API, database, and CLI tests (requires PostGIS)
-└── contract/       # OpenAPI contract tests
+├── unit/           # Library and schema tests (no PostGIS, in-memory SQLite)
+├── integration/    # API, database, and CLI tests (in-memory SQLite + mocks for isolation)
+├── contract/       # OpenAPI contract tests
+└── e2e/            # End-to-end smoke tests (real PostGIS, Alembic migrations)
 ```
+
+### E2E Tests
+
+The `tests/e2e/` suite runs **61 smoke tests** against a real PostgreSQL/PostGIS database with all Alembic migrations applied. Unlike unit/integration tests (which use in-memory SQLite and mocks), E2E tests exercise the full stack: real app factory, real database, real auth, real queries.
+
+**CI workflow**: `.github/workflows/e2e.yml` — triggers on PRs to `main`. Spins up a `postgis/postgis:15-3.4` service container, runs `alembic upgrade head`, then `pytest tests/e2e/`.
+
+**Running E2E tests locally** (requires a running PostGIS instance):
+
+```bash
+# Start PostGIS via docker-compose
+docker compose up -d db
+
+# Apply migrations
+DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_api \
+  JWT_SECRET_KEY=test-secret-key-minimum-32-characters \
+  uv run alembic upgrade head
+
+# Run E2E tests
+DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_api \
+  JWT_SECRET_KEY=test-secret-key-minimum-32-characters \
+  ELECTION_REFRESH_ENABLED=false \
+  uv run pytest tests/e2e/ -v
+```
+
+#### Key files
+
+| File | Purpose |
+|---|---|
+| `tests/e2e/conftest.py` | Session-scoped fixtures: app factory, DB seeding, authenticated HTTP clients |
+| `tests/e2e/test_smoke.py` | 61 smoke tests organized by API router |
+| `.github/workflows/e2e.yml` | GitHub Actions workflow with PostGIS service container |
+
+#### How the fixtures work
+
+- **`app`** (session-scoped) — calls `create_app()` which initialises the async engine via lifespan
+- **`seed_database`** (session-scoped, autouse) — inserts baseline test data (3 users, 1 election, 1 boundary with real geometry, 1 elected official) using SQLAlchemy Core with `on_conflict_do_update` for idempotency; cleans up after the session
+- **`client`** / **`admin_client`** / **`analyst_client`** / **`viewer_client`** — `httpx.AsyncClient` instances wired to the app via `ASGITransport`; role-specific clients include a pre-set `Authorization: Bearer <jwt>` header
+- **Fixed UUIDs** — seeded rows use deterministic UUIDs (`BOUNDARY_ID`, `ELECTION_ID`, `OFFICIAL_ID`, etc.) exported from `conftest.py` so tests can reference them
+
+#### Test coverage by router
+
+| Test class | Router | Tests | What it covers |
+|---|---|---|---|
+| `TestHealth` | auth | 2 | Health check, /info version endpoint |
+| `TestAuth` | auth | 8 | Login, refresh, /me, user CRUD, bad credentials, 401/403 |
+| `TestBoundaries` | boundaries | 6 | List, filter, detail, types, point-in-polygon, 404 |
+| `TestElections` | elections | 6 | List, detail, create, RBAC, results, 404 |
+| `TestElectedOfficials` | elected-officials | 7 | List, detail, by-district, full CRUD lifecycle, sources, 404 |
+| `TestVoters` | voters | 3 | Auth required, search, 404 |
+| `TestGeocoding` | geocoding | 4 | Public geocode/verify/point-lookup endpoints; cache/stats auth enforcement |
+| `TestImports` | imports | 3 | Auth, admin list, viewer 403 |
+| `TestExports` | exports | 2 | Auth, admin list |
+| `TestAnalysis` | analysis | 3 | Auth, admin list, viewer 403 |
+| `TestDatasets` | datasets | 1 | Public listing |
+| `TestPagination` | cross-cutting | 4 | Parameterized pagination, invalid page_size 422 |
+| `TestRBAC` | cross-cutting | 6 | Admin/analyst/viewer role enforcement |
+| `TestVoterHistory` | voter-history | 6 | Auth required, RBAC, participation stats |
+
+#### Updating E2E tests when the API changes
+
+Follow these rules whenever you add, modify, or remove API endpoints:
+
+1. **New endpoint** — Add at least one smoke test to the corresponding `Test<Router>` class in `test_smoke.py`. Cover the happy path (expected status code + key response fields) and auth/RBAC if the endpoint is protected. If it's a new router, add a new test class.
+
+2. **New model/table** — If the new endpoint requires seed data, add an `INSERT` to the `seed_database` fixture in `conftest.py`. Use a fixed UUID constant (add it next to `BOUNDARY_ID`, `ELECTION_ID`, etc.) and `on_conflict_do_update(index_elements=["id"], set_={...})` for idempotency (so reruns overwrite stale rows rather than silently skipping them). Add a matching `DELETE` in the cleanup block at the bottom of the fixture.
+
+3. **Changed request/response schema** — Update any test that asserts on renamed/removed fields or sends a request body with the old shape. Search for the field name in `test_smoke.py`.
+
+4. **Changed auth requirements** — If an endpoint's auth or role requirement changes (e.g., public → admin-only), move the test to use the appropriate client fixture (`client` for public, `admin_client` / `analyst_client` / `viewer_client` for authenticated). Update or add 401/403 assertions.
+
+5. **New Alembic migration** — No test changes needed. The CI workflow runs `alembic upgrade head` before tests, so new migrations are applied automatically.
+
+6. **New boundary type** — If the new type needs E2E coverage, add a seeded boundary row to `seed_database` and a test that queries it.
+
+7. **Removing an endpoint** — Delete the corresponding test(s). If seed data is no longer needed by any test, remove it from `seed_database`.
+
+**Checklist for PR authors:**
+- [ ] Every new endpoint has at least one E2E test
+- [ ] `uv run pytest tests/e2e/ --collect-only` discovers all new tests
+- [ ] Lint passes: `uv run ruff check tests/e2e/ && uv run ruff format --check tests/e2e/`
 
 ## Key Conventions
 
@@ -100,7 +188,7 @@ tests/
 - **Type hints** on all functions/classes; **Google-style docstrings** on all public APIs
 - **Ruff** for both linting and formatting — must pass with zero violations before commit
 - **JWT-only auth** with role-based access control (admin/analyst/viewer)
-- **No raw SQL** — SQLAlchemy ORM/Core exclusively
+- **No raw SQL in application code** — SQLAlchemy ORM/Core exclusively in `src/`; test seeding/cleanup may use Core constructs
 - **API versioning** via URL prefix (`/api/v1/`)
 - **Branch strategy** — all work on feature branches, never directly on `main`
 - **Commit cadence** — commit to git after completing each task, story, or phase; do not accumulate large uncommitted changesets
@@ -239,6 +327,7 @@ uv run voter-api deploy-check                                            # prod 
 ## Recent Changes
 - 008-auto-data-import: Added Python 3.13 + httpx (async HTTP downloads), typer (CLI), loguru (logging), tqdm (progress bars) — all already in pyproject.toml
 - 008-auto-data-import: Voter import performance optimization — replaced row-by-row SELECT+INSERT/UPDATE with bulk PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` (via `sqlalchemy.dialects.postgresql.insert`), ~10-20x faster for large imports
+- 007-meeting-records: Added Python 3.13+ + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Alembic, Typer, Loguru, aiofiles (new — async file I/O)
 - 006-voter-history: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, Pandas, Typer, Loguru, Alembic
 - 005-elected-officials: Added `ElectedOfficial` and `ElectedOfficialSource` models (migration 015), 9 API endpoints under `/api/v1/elected-officials`, admin approval workflow (auto/approved/manual), multi-source data provider architecture
 
@@ -264,5 +353,7 @@ Key files:
 
 
 ## Active Technologies
+- Python 3.13+ + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Alembic, Typer, Loguru, aiofiles (new — async file I/O) (007-meeting-records)
+- PostgreSQL 15+ / PostGIS 3.x (existing) + local filesystem for attachments (new) (007-meeting-records)
 - Python 3.13 + httpx (async HTTP downloads), typer (CLI), loguru (logging), tqdm (progress bars) — all already in pyproject.toml (008-auto-data-import)
 - PostgreSQL + PostGIS (via existing import commands); local filesystem for downloaded data files (008-auto-data-import)

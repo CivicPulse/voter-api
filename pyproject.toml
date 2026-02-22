@@ -27,6 +27,7 @@ dependencies = [
     "bcrypt>=5.0.0",
     "python-dateutil>=2.9.0.post0",
     "boto3>=1.42.47",
+    "aiofiles>=25.1.0",
 ]
 
 [dependency-groups]
@@ -41,6 +42,7 @@ dev = [
     "moto[s3]>=5.1.21",
     "bandit>=1.9.3",
     "time-machine>=3.2.0",
+    "types-aiofiles>=25.1.0.20251011",
     "pytest-httpx>=0.36.0",
     "types-tqdm>=4.67.3.20260205",
 ]
@@ -58,6 +60,7 @@ packages = ["src/voter_api"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
 addopts = "-ra -q"
 filterwarnings = [
     "ignore::DeprecationWarning",
