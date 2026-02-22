@@ -100,7 +100,7 @@ tests/
 
 ### E2E Tests
 
-The `tests/e2e/` suite runs **60 smoke tests** against a real PostgreSQL/PostGIS database with all Alembic migrations applied. Unlike unit/integration tests (which use in-memory SQLite and mocks), E2E tests exercise the full stack: real app factory, real database, real auth, real queries.
+The `tests/e2e/` suite runs **61 smoke tests** against a real PostgreSQL/PostGIS database with all Alembic migrations applied. Unlike unit/integration tests (which use in-memory SQLite and mocks), E2E tests exercise the full stack: real app factory, real database, real auth, real queries.
 
 **CI workflow**: `.github/workflows/e2e.yml` — triggers on PRs to `main`. Spins up a `postgis/postgis:15-3.4` service container, runs `alembic upgrade head`, then `pytest tests/e2e/`.
 
@@ -127,7 +127,7 @@ DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_a
 | File | Purpose |
 |---|---|
 | `tests/e2e/conftest.py` | Session-scoped fixtures: app factory, DB seeding, authenticated HTTP clients |
-| `tests/e2e/test_smoke.py` | 60 smoke tests organized by API router |
+| `tests/e2e/test_smoke.py` | 61 smoke tests organized by API router |
 | `.github/workflows/e2e.yml` | GitHub Actions workflow with PostGIS service container |
 
 #### How the fixtures work
@@ -147,7 +147,7 @@ DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_a
 | `TestElections` | elections | 6 | List, detail, create, RBAC, results, 404 |
 | `TestElectedOfficials` | elected-officials | 7 | List, detail, by-district, full CRUD lifecycle, sources, 404 |
 | `TestVoters` | voters | 3 | Auth required, search, 404 |
-| `TestGeocoding` | geocoding | 3 | Public geocode/verify/point-lookup endpoints (no auth required) |
+| `TestGeocoding` | geocoding | 4 | Public geocode/verify/point-lookup endpoints; cache/stats auth enforcement |
 | `TestImports` | imports | 3 | Auth, admin list, viewer 403 |
 | `TestExports` | exports | 2 | Auth, admin list |
 | `TestAnalysis` | analysis | 3 | Auth, admin list, viewer 403 |
@@ -162,7 +162,7 @@ Follow these rules whenever you add, modify, or remove API endpoints:
 
 1. **New endpoint** — Add at least one smoke test to the corresponding `Test<Router>` class in `test_smoke.py`. Cover the happy path (expected status code + key response fields) and auth/RBAC if the endpoint is protected. If it's a new router, add a new test class.
 
-2. **New model/table** — If the new endpoint requires seed data, add an `INSERT` to the `seed_database` fixture in `conftest.py`. Use a fixed UUID constant (add it next to `BOUNDARY_ID`, `ELECTION_ID`, etc.) and `ON CONFLICT DO NOTHING`. Add a matching `DELETE` in the cleanup block at the bottom of the fixture.
+2. **New model/table** — If the new endpoint requires seed data, add an `INSERT` to the `seed_database` fixture in `conftest.py`. Use a fixed UUID constant (add it next to `BOUNDARY_ID`, `ELECTION_ID`, etc.) and `on_conflict_do_update(index_elements=["id"], set_={...})` for idempotency (so reruns overwrite stale rows rather than silently skipping them). Add a matching `DELETE` in the cleanup block at the bottom of the fixture.
 
 3. **Changed request/response schema** — Update any test that asserts on renamed/removed fields or sends a request body with the old shape. Search for the field name in `test_smoke.py`.
 

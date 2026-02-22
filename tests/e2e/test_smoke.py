@@ -138,6 +138,14 @@ class TestAuth:
             assert user_id is not None
             assert body["username"] == new_user["username"]
             assert body["role"] == "viewer"
+
+            # Verify the new user appears in the list.
+            list_resp = await admin_client.get(_url("/users"))
+            assert list_resp.status_code == 200
+            list_body = list_resp.json()
+            assert "items" in list_body
+            user_ids = [u["id"] for u in list_body["items"]]
+            assert user_id in user_ids
         finally:
             # Cleanup: no DELETE /users endpoint, so remove via DB directly.
             # Runs even if assertions fail to keep the DB idempotent.
@@ -431,6 +439,11 @@ class TestGeocoding:
         body = resp.json()
         assert "districts" in body
         assert isinstance(body["districts"], list)
+
+    async def test_cache_stats_requires_auth(self, client: httpx.AsyncClient) -> None:
+        """Cache stats endpoint requires authentication (any role)."""
+        resp = await client.get(_url("/geocoding/cache/stats"))
+        assert resp.status_code == 401
 
 
 # ── Imports ────────────────────────────────────────────────────────────────

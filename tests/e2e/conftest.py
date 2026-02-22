@@ -212,6 +212,12 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
                 "is_active": True,
             },
         ]
+        # Pre-delete any users with matching usernames that may have a different
+        # ID (e.g. from an incomplete prior run).  ON CONFLICT on the primary key
+        # alone would miss unique violations on username/email columns.
+        seeded_usernames = [u["username"] for u in users_data]
+        await session.execute(delete(User).where(User.username.in_(seeded_usernames)))
+
         for user_data in users_data:
             stmt = pg_insert(User).values(**user_data)
             stmt = stmt.on_conflict_do_update(
