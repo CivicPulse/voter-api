@@ -65,7 +65,8 @@ async def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
         msg = "allowed_domains must be a non-empty list"
         raise FetchError(msg)
 
-    if hostname not in allowed_domains:
+    normalized_allowed = {d.strip().lower() for d in allowed_domains}
+    if hostname not in normalized_allowed:
         msg = f"Domain '{hostname}' is not in the allowed domains list"
         raise FetchError(msg)
 
