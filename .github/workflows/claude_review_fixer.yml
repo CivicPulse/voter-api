@@ -1,0 +1,334 @@
+# .github/workflows/auto-resolve-conversations.yml
+#
+# This workflow uses Claude to intelligently handle unresolved pull request
+# review threads in two ways:
+#
+#   1. If the author already addressed the concern, Claude resolves the thread.
+#   2. If the concern is valid and Claude can fix it, Claude edits the code,
+#      commits the fix, pushes it, and then resolves the thread.
+#
+# SETUP REQUIRED:
+#   1. Add ANTHROPIC_API_KEY to your repository secrets.
+#   2. Ensure your repo allows Actions to create and approve pull requests:
+#      Settings > Actions > General > "Allow GitHub Actions to create and
+#      approve pull requests".
+#   3. Ensure the default GITHUB_TOKEN has write access to contents. This is
+#      the default for most repos, but org-level policies can restrict it.
+
+name: Auto-Resolve and Auto-Fix PR Conversations
+
+on:
+  pull_request:
+    types: [synchronize, reopened]
+
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to process (for manual runs)'
+        required: false
+        type: string
+
+# contents: write is now required — Claude will be committing and pushing
+# code fixes back to the PR branch.
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  resolve-and-fix:
+    name: Evaluate, Fix, and Resolve Review Threads
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      # fetch-depth: 0 gives Claude the full git history, which is useful
+      # for understanding what the author has already changed since the review.
+      # Without this, git log and git diff commands would be limited.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Explicitly check out the PR head branch by name so that Claude's
+          # commits land on the right branch and can be pushed cleanly.
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      # Configure git identity so commits made by Claude appear as the
+      # Actions bot rather than as an anonymous or broken author.
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine PR number
+        id: pr
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "number=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      # Fetch all unresolved threads once, up front, so Claude has the full
+      # picture in one structured document rather than making many API calls
+      # to discover threads incrementally. The diffHunk field is particularly
+      # valuable — it shows Claude what the code looked like when the reviewer
+      # wrote their comment, which is often different from the current state.
+      - name: Fetch unresolved review threads
+        id: fetch-threads
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh api graphql -f query='
+            query($owner: String!, $repo: String!, $pr: Int!) {
+              repository(owner: $owner, name: $repo) {
+                pullRequest(number: $pr) {
+                  reviewThreads(first: 100) {
+                    nodes {
+                      id
+                      isResolved
+                      path
+                      line
+                      comments(first: 20) {
+                        nodes {
+                          body
+                          author { login }
+                          createdAt
+                          path
+                          line
+                          originalLine
+                          diffHunk
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ' \
+            -f owner="$OWNER" \
+            -f repo="$REPO" \
+            -F pr="$PR_NUMBER" \
+            > /tmp/all-threads.json
+
+          jq '.data.repository.pullRequest.reviewThreads.nodes | map(select(.isResolved == false))' \
+            /tmp/all-threads.json > /tmp/unresolved-threads.json
+
+          UNRESOLVED_COUNT=$(jq 'length' /tmp/unresolved-threads.json)
+          echo "count=$UNRESOLVED_COUNT" >> $GITHUB_OUTPUT
+          echo "Found $UNRESOLVED_COUNT unresolved thread(s)."
+
+      - name: Skip if no unresolved threads
+        if: steps.fetch-threads.outputs.count == '0'
+        run: echo "No unresolved threads found. Nothing to do."
+
+      # This is the core step. Claude's task is now more complex than before:
+      # it must reason about each thread, potentially edit files, commit its
+      # work, and only then resolve threads. The prompt is carefully structured
+      # to enforce this ordering and to set clear guardrails on what Claude
+      # should and shouldn't change.
+      - name: Run Claude to fix and resolve threads
+        if: steps.fetch-threads.outputs.count != '0'
+        uses: anthropics/claude-code-action@beta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          REPO: ${{ github.repository }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        with:
+          allowed_tools: "bash"
+          prompt: |
+            You are a senior code review assistant embedded in a CI pipeline.
+            Your job is to process unresolved pull request review threads and
+            either fix the issues they raise or confirm they have already been
+            addressed — and then resolve them accordingly.
+
+            ## Repository and PR Context
+
+            Repository: ${{ github.repository }}
+            PR Number: #${{ steps.pr.outputs.number }}
+            Head branch: ${{ github.event.pull_request.head.ref || 'unknown' }}
+            Base branch: ${{ github.event.pull_request.base.ref || 'main' }}
+
+            You are checked out on the head branch with full git history available.
+            You have write access and can commit and push changes.
+
+            ## Unresolved Review Threads
+
+            $(cat /tmp/unresolved-threads.json)
+
+            ## Your Process — Follow These Phases in Order
+
+            ### Phase 1: Categorize Every Thread
+
+            Before touching any code, read every thread and classify it into
+            exactly one of these three categories:
+
+            **ALREADY_ADDRESSED** — The current code at the referenced location
+            already satisfies the reviewer's concern. The author fixed it in a
+            prior commit. No code change needed; just resolve the thread.
+
+            **WILL_FIX** — The reviewer raised a legitimate concern that is still
+            present in the current code, and you are confident you can implement
+            the correct fix without introducing risk or ambiguity.
+
+            **SKIP** — Use this for any of the following situations:
+            - You disagree with the reviewer's suggestion.
+            - The fix requires broader architectural changes beyond the immediate
+              code location.
+            - The thread is an open question or design discussion.
+            - You are uncertain what the correct fix would be.
+            - The fix would require changing test expectations, configuration, or
+              anything outside the direct scope of the concern.
+
+            Write out your full categorization with reasoning before proceeding.
+            This becomes the audit log for the run.
+
+            ### Phase 2: Implement Fixes for WILL_FIX Threads
+
+            For each thread categorized as WILL_FIX, edit the relevant file(s)
+            to implement the fix. Use standard shell tools (`sed`, `awk`,
+            Python one-liners, or direct file redirection) or write a small
+            script if the edit is complex. After editing, verify your change
+            looks correct by printing the relevant section with `cat -n`.
+
+            Keep fixes minimal and surgical. Only change what the reviewer
+            asked about. Do not refactor surrounding code, fix unrelated style
+            issues, or make improvements beyond the scope of the thread.
+
+            ### Phase 3: Commit and Push (if any fixes were made)
+
+            If you made any code changes, commit them now — before resolving
+            anything. Use one commit per logical fix, or batch all fixes into
+            a single commit if they are small. The commit message should
+            summarize what was addressed:
+
+            ```bash
+            git add -A
+            git commit -m "fix: address review feedback from PR #$PR_NUMBER
+
+            Auto-fixed by Claude based on unresolved review threads:
+            - <brief description of each fix>"
+
+            git push origin "$HEAD_BRANCH"
+            ```
+
+            Do not proceed to Phase 4 until the push succeeds. If the push
+            fails for any reason (conflict, permission error, etc.), stop and
+            report the error. Do not resolve any threads if the push failed.
+
+            ### Phase 4: Resolve Threads
+
+            Now resolve the threads from both ALREADY_ADDRESSED and WILL_FIX
+            categories (assuming the push in Phase 3 succeeded for WILL_FIX items).
+
+            Resolve each thread using this exact command, substituting the thread's
+            `id` value from the JSON:
+
+            ```bash
+            gh api graphql -f query='
+              mutation($threadId: ID!) {
+                resolveReviewThread(input: {threadId: $threadId}) {
+                  thread { id isResolved }
+                }
+              }
+            ' -f threadId="THREAD_ID_HERE"
+            ```
+
+            ### Phase 5: Print a Summary
+
+            At the end, print a structured summary of every thread and what
+            you did with it. Format it clearly — this will appear in the
+            Action logs and is important for human review. Include:
+            - Thread ID and file path
+            - Your categorization and reasoning
+            - Whether it was resolved
+            - For WILL_FIX items: what you changed
+
+            ## Hard Rules
+
+            - Never force-push. Always use a standard `git push`.
+            - Never modify files outside the direct scope of a thread's concern.
+            - Never resolve a thread if you are not confident the concern is met.
+            - Never create new files, delete files, or change dependencies/lock files.
+            - If a fix would require changes to more than ~20 lines of code,
+              recategorize it as SKIP — it's too risky for autonomous application.
+            - Do not leave comments on the PR. Just fix, push, and resolve.
+            - Always check, lint, and test code. Use ruff and uv
+            
+            ## Tests, checks, lints
+
+            these are some of the check that CI/CD will run so go ahead and make sure it passes before pushing. 
+
+            - uv run pytest --cov=voter_api --cov-report=term-missing --cov-fail-under=7
+            - uv run pip-audit
+            - uv run ruff check .
+            - uv run ruff format --check .
+            - uv run mypy src/voter_api/
+
+
+      # After Claude has run, post a transparency comment summarizing outcomes.
+      # This helps the PR author understand what the bot did so they can verify
+      # or revert if anything looks wrong.
+      - name: Post summary comment
+        if: steps.fetch-threads.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          # Query current state of all threads to build an accurate summary.
+          THREAD_DATA=$(gh api graphql -f query='
+            query($owner: String!, $repo: String!, $pr: Int!) {
+              repository(owner: $owner, name: $repo) {
+                pullRequest(number: $pr) {
+                  reviewThreads(first: 100) {
+                    nodes {
+                      isResolved
+                      resolvedBy { login }
+                    }
+                  }
+                }
+              }
+            }
+          ' \
+            -f owner="$OWNER" \
+            -f repo="$REPO_NAME" \
+            -F pr="$PR_NUMBER")
+
+          BOT_RESOLVED=$(echo "$THREAD_DATA" | \
+            jq '[.data.repository.pullRequest.reviewThreads.nodes[]
+                 | select(.isResolved == true and .resolvedBy.login == "github-actions[bot]")]
+                | length')
+
+          STILL_OPEN=$(echo "$THREAD_DATA" | \
+            jq '[.data.repository.pullRequest.reviewThreads.nodes[]
+                 | select(.isResolved == false)]
+                | length')
+
+          # Check whether Claude pushed any new commits by comparing the
+          # current HEAD to the SHA that triggered this workflow run.
+          ORIGINAL_SHA="${{ github.event.pull_request.head.sha }}"
+          CURRENT_SHA=$(git rev-parse HEAD)
+
+          if [ "$ORIGINAL_SHA" != "$CURRENT_SHA" ]; then
+            FIX_NOTE="Claude also pushed code fixes to address some of the feedback. Please review the new commits before merging."
+          else
+            FIX_NOTE="No code changes were needed — all resolved threads had already been addressed by the author."
+          fi
+
+          gh pr comment "$PR_NUMBER" \
+            --repo "$REPO" \
+            --body "🤖 **Auto-resolution run complete.**
+
+          $FIX_NOTE
+
+          **$BOT_RESOLVED thread(s)** were resolved automatically. **$STILL_OPEN thread(s)** remain open and require human attention.
+
+          _If any thread was resolved incorrectly, you can reopen it manually. If any code change looks wrong, feel free to amend or revert the commit._"
