@@ -3,6 +3,7 @@
 Uses PyJWT for JWT operations and bcrypt for password hashing.
 """
 
+import base64
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
@@ -110,3 +111,59 @@ def decode_token(
         jwt.InvalidTokenError: If the token is invalid.
     """
     return jwt.decode(token, secret_key, algorithms=[algorithm])
+
+
+def create_passkey_challenge_token(
+    username: str,
+    challenge_bytes: bytes,
+    secret_key: str,
+    algorithm: str = "HS256",
+    expires_minutes: int = 5,
+) -> str:
+    """Create a short-lived JWT containing a WebAuthn challenge for stateless storage.
+
+    Args:
+        username: The username initiating the passkey ceremony.
+        challenge_bytes: Raw challenge bytes from WebAuthn options generation.
+        secret_key: Secret key for signing.
+        algorithm: JWT signing algorithm.
+        expires_minutes: Token expiration in minutes (default 5).
+
+    Returns:
+        Signed JWT string with type="passkey_challenge".
+    """
+    challenge_b64 = base64.b64encode(challenge_bytes).decode()
+    expire = datetime.now(UTC) + timedelta(minutes=expires_minutes)
+    payload = {
+        "sub": username,
+        "challenge_b64": challenge_b64,
+        "exp": expire,
+        "type": "passkey_challenge",
+    }
+    return jwt.encode(payload, secret_key, algorithm=algorithm)
+
+
+def decode_passkey_challenge_token(
+    token: str,
+    secret_key: str,
+    algorithm: str = "HS256",
+) -> dict:
+    """Decode a passkey challenge JWT and return username and challenge bytes.
+
+    Args:
+        token: The passkey challenge JWT string.
+        secret_key: Secret key used for signing.
+        algorithm: JWT signing algorithm.
+
+    Returns:
+        Dict with keys "username" (str) and "challenge_b64" (str).
+
+    Raises:
+        jwt.ExpiredSignatureError: If the token has expired.
+        jwt.InvalidTokenError: If the token is invalid or not a passkey_challenge type.
+    """
+    payload = jwt.decode(token, secret_key, algorithms=[algorithm])
+    if payload.get("type") != "passkey_challenge":
+        msg = "Token is not a passkey challenge token"
+        raise jwt.InvalidTokenError(msg)
+    return {"username": payload["sub"], "challenge_b64": payload["challenge_b64"]}

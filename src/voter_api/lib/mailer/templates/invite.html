@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>You've Been Invited - {{ app_name }}</title>
+</head>
+<body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h2>You've Been Invited to {{ app_name }}</h2>
+  <p>An administrator has invited you to join <strong>{{ app_name }}</strong> as a <strong>{{ role }}</strong>.</p>
+  <p>Click the link below to create your account:</p>
+  <p>
+    <a href="{{ invite_url }}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
+      Accept Invitation
+    </a>
+  </p>
+  <p>Or copy and paste this link into your browser:</p>
+  <p style="word-break: break-all; color: #6b7280;">{{ invite_url }}</p>
+  <p><strong>This invitation expires in 7 days.</strong> If you did not expect this invitation, you can safely ignore this email.</p>
+  <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+  <p style="color: #6b7280; font-size: 12px;">{{ app_name }} — invitation</p>
+</body>
+</html>
