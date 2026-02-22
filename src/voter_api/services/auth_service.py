@@ -3,6 +3,7 @@
 Handles user authentication, creation, token generation, and refresh.
 """
 
+import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
@@ -18,6 +19,8 @@ from voter_api.core.security import (
 )
 from voter_api.models.user import User
 from voter_api.schemas.auth import TokenResponse, UserCreateRequest
+
+_UPDATABLE_USER_FIELDS: frozenset[str] = frozenset({"email", "role", "is_active"})
 
 
 async def authenticate_user(session: AsyncSession, username: str, password: str) -> User | None:
@@ -164,3 +167,57 @@ async def refresh_access_token(
         raise ValueError(msg)
 
     return generate_tokens(user, settings)
+
+
+async def get_user(session: AsyncSession, user_id: uuid.UUID) -> User | None:
+    """Get a user by ID.
+
+    Args:
+        session: The database session.
+        user_id: The UUID of the user to retrieve.
+
+    Returns:
+        The User if found, None otherwise.
+    """
+    result = await session.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
+
+
+async def update_user(session: AsyncSession, user: User, updates: dict) -> User:
+    """Update a user's fields.
+
+    Args:
+        session: The database session.
+        user: The User to update.
+        updates: Dictionary of field names to new values.
+
+    Returns:
+        The updated User.
+
+    Raises:
+        ValueError: If the new email is already in use by another user.
+    """
+    if "email" in updates and updates["email"] != user.email:
+        existing = await session.execute(select(User).where(User.email == updates["email"]))
+        if existing.scalar_one_or_none() is not None:
+            msg = "Email already in use"
+            raise ValueError(msg)
+
+    for field, value in updates.items():
+        if field in _UPDATABLE_USER_FIELDS:
+            setattr(user, field, value)
+
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+async def delete_user(session: AsyncSession, user: User) -> None:
+    """Delete a user account.
+
+    Args:
+        session: The database session.
+        user: The User to delete.
+    """
+    await session.delete(user)
+    await session.commit()
