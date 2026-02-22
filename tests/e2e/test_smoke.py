@@ -326,8 +326,8 @@ class TestElectedOfficials:
 
         Each run uses a UUID-derived ``unique`` suffix, making collisions
         effectively impossible even on rapid-retry or parallel runs against a
-        shared database.  The elected official is deleted at the end, so no
-        cleanup of the DB is required between runs.
+        shared database.  Cleanup is wrapped in try/finally so the resource is
+        deleted even if a mid-test assertion fails.
         """
         unique = uuid.uuid4().hex[:8]
 
@@ -340,37 +340,44 @@ class TestElectedOfficials:
             "title": "Representative",
         }
         create_resp = await admin_client.post(_url("/elected-officials"), json=create_payload)
-        assert create_resp.status_code == 201
-        official_id = create_resp.json()["id"]
+        # Extract the ID before try so cleanup works even if a later assert fails.
+        official_id: str | None = create_resp.json().get("id") if create_resp.status_code == 201 else None
+        try:
+            assert create_resp.status_code == 201
+            assert official_id is not None
 
-        # Read
-        get_resp = await admin_client.get(_url(f"/elected-officials/{official_id}"))
-        assert get_resp.status_code == 200
-        assert get_resp.json()["full_name"] == create_payload["full_name"]
+            # Read
+            get_resp = await admin_client.get(_url(f"/elected-officials/{official_id}"))
+            assert get_resp.status_code == 200
+            assert get_resp.json()["full_name"] == create_payload["full_name"]
 
-        # Update
-        update_resp = await admin_client.patch(
-            _url(f"/elected-officials/{official_id}"),
-            json={"party": "Nonpartisan"},
-        )
-        assert update_resp.status_code == 200
-        assert update_resp.json()["party"] == "Nonpartisan"
+            # Update
+            update_resp = await admin_client.patch(
+                _url(f"/elected-officials/{official_id}"),
+                json={"party": "Nonpartisan"},
+            )
+            assert update_resp.status_code == 200
+            assert update_resp.json()["party"] == "Nonpartisan"
 
-        # Approve
-        approve_resp = await admin_client.post(
-            _url(f"/elected-officials/{official_id}/approve"),
-            json={},
-        )
-        assert approve_resp.status_code == 200
-        assert approve_resp.json()["status"] == "approved"
+            # Approve
+            approve_resp = await admin_client.post(
+                _url(f"/elected-officials/{official_id}/approve"),
+                json={},
+            )
+            assert approve_resp.status_code == 200
+            assert approve_resp.json()["status"] == "approved"
 
-        # Delete
-        delete_resp = await admin_client.delete(_url(f"/elected-officials/{official_id}"))
-        assert delete_resp.status_code == 204
+            # Delete
+            delete_resp = await admin_client.delete(_url(f"/elected-officials/{official_id}"))
+            assert delete_resp.status_code == 204
 
-        # Verify gone
-        gone_resp = await admin_client.get(_url(f"/elected-officials/{official_id}"))
-        assert gone_resp.status_code == 404
+            # Verify gone
+            gone_resp = await admin_client.get(_url(f"/elected-officials/{official_id}"))
+            assert gone_resp.status_code == 404
+        finally:
+            # Cleanup: delete via API if still present (runs even if assertions fail).
+            if official_id is not None:
+                await admin_client.delete(_url(f"/elected-officials/{official_id}"))
 
     async def test_get_official_sources(self, client: httpx.AsyncClient) -> None:
         resp = await client.get(_url(f"/elected-officials/{OFFICIAL_ID}/sources"))
