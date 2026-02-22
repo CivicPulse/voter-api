@@ -408,12 +408,12 @@ class TestGeocodeVoterAllProviders:
                 return_value="123 MAIN ST, ATLANTA, GA 30301",
             ),
             patch(
-                "voter_api.services.geocoding_service.get_available_providers",
-                return_value=["census"],
+                "voter_api.services.geocoding_service.get_settings",
+                return_value=MagicMock(),
             ),
             patch(
-                "voter_api.services.geocoding_service.get_geocoder",
-                return_value=mock_geocoder,
+                "voter_api.services.geocoding_service.get_configured_providers",
+                return_value=[mock_geocoder],
             ),
             patch(
                 "voter_api.services.geocoding_service.cache_lookup",
@@ -461,17 +461,17 @@ class TestGeocodeVoterAllProviders:
                 return_value="123 MAIN ST, ATLANTA, GA 30301",
             ),
             patch(
-                "voter_api.services.geocoding_service.get_available_providers",
-                return_value=["census"],
+                "voter_api.services.geocoding_service.get_settings",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_configured_providers",
+                return_value=[mock_geocoder],
             ),
             patch(
                 "voter_api.services.geocoding_service.cache_lookup",
                 new_callable=AsyncMock,
                 return_value=None,
-            ),
-            patch(
-                "voter_api.services.geocoding_service.get_geocoder",
-                return_value=mock_geocoder,
             ),
             patch(
                 "voter_api.services.geocoding_service.get_voter_locations",
@@ -504,17 +504,17 @@ class TestGeocodeVoterAllProviders:
                 return_value="123 MAIN ST, ATLANTA, GA 30301",
             ),
             patch(
-                "voter_api.services.geocoding_service.get_available_providers",
-                return_value=["census"],
+                "voter_api.services.geocoding_service.get_settings",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_configured_providers",
+                return_value=[mock_geocoder],
             ),
             patch(
                 "voter_api.services.geocoding_service.cache_lookup",
                 new_callable=AsyncMock,
                 return_value=None,
-            ),
-            patch(
-                "voter_api.services.geocoding_service.get_geocoder",
-                return_value=mock_geocoder,
             ),
             patch(
                 "voter_api.services.geocoding_service.cache_store",
@@ -556,17 +556,17 @@ class TestGeocodeVoterAllProviders:
                 return_value="123 MAIN ST, ATLANTA, GA 30301",
             ),
             patch(
-                "voter_api.services.geocoding_service.get_available_providers",
-                return_value=["census"],
+                "voter_api.services.geocoding_service.get_settings",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_configured_providers",
+                return_value=[mock_geocoder],
             ),
             patch(
                 "voter_api.services.geocoding_service.cache_lookup",
                 new_callable=AsyncMock,
                 return_value=None,
-            ),
-            patch(
-                "voter_api.services.geocoding_service.get_geocoder",
-                return_value=mock_geocoder,
             ),
             patch(
                 "voter_api.services.geocoding_service.get_voter_locations",
@@ -598,17 +598,17 @@ class TestGeocodeVoterAllProviders:
                 return_value="123 MAIN ST, ATLANTA, GA 30301",
             ),
             patch(
-                "voter_api.services.geocoding_service.get_available_providers",
-                return_value=["census"],
+                "voter_api.services.geocoding_service.get_settings",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "voter_api.services.geocoding_service.get_configured_providers",
+                return_value=[mock_geocoder],
             ),
             patch(
                 "voter_api.services.geocoding_service.cache_lookup",
                 new_callable=AsyncMock,
                 return_value=None,
-            ),
-            patch(
-                "voter_api.services.geocoding_service.get_geocoder",
-                return_value=mock_geocoder,
             ),
             patch(
                 "voter_api.services.geocoding_service.get_voter_locations",

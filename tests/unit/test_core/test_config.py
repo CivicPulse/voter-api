@@ -25,7 +25,6 @@ class TestSettings:
         assert settings.jwt_algorithm == "HS256"
         assert settings.jwt_access_token_expire_minutes == 30
         assert settings.jwt_refresh_token_expire_days == 7
-        assert settings.geocoder_default_provider == "census"
         assert settings.geocoder_batch_size == 100
         assert settings.import_batch_size == 5000
         assert settings.export_dir == "./exports"

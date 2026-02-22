@@ -36,8 +36,9 @@ class BatchGeocodingRequest(BaseModel):
     """Request to trigger a batch geocoding job."""
 
     county: str | None = None
-    provider: Literal["census"] = "census"
+    provider: Literal["census", "nominatim", "google", "geocodio", "mapbox", "photon"] = "census"
     force_regeocode: bool = False
+    fallback: bool = Field(default=False, description="Use cascading fallback for non-EXACT results")
 
 
 class GeocodingJobResponse(BaseModel):
@@ -83,6 +84,7 @@ class GeocodeMetadata(BaseModel):
 
     cached: bool
     provider: str
+    quality: str | None = None
 
     model_config = {"extra": "allow"}
 
@@ -150,6 +152,23 @@ class VoterGeocodeAllResponse(BaseModel):
     address: str
     providers: list[ProviderGeocodeResult]
     locations: list[GeocodedLocationResponse]
+
+
+class ProviderInfo(BaseModel):
+    """Information about a geocoding provider."""
+
+    name: str
+    service_type: str
+    requires_api_key: bool
+    is_configured: bool
+    rate_limit_delay: float
+
+
+class ProvidersListResponse(BaseModel):
+    """Response for GET /geocoding/providers."""
+
+    providers: list[ProviderInfo]
+    fallback_order: list[str]
 
 
 class DistrictInfo(BaseModel):

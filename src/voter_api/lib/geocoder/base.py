@@ -2,6 +2,34 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import StrEnum
+
+
+class GeocodeQuality(StrEnum):
+    """Quality level of a geocoding result, from most to least precise."""
+
+    EXACT = "exact"
+    INTERPOLATED = "interpolated"
+    APPROXIMATE = "approximate"
+    NO_MATCH = "no_match"
+    FAILED = "failed"
+
+
+# Ranking for quality comparison (lower = better)
+QUALITY_RANK: dict[GeocodeQuality, int] = {
+    GeocodeQuality.EXACT: 0,
+    GeocodeQuality.INTERPOLATED: 1,
+    GeocodeQuality.APPROXIMATE: 2,
+    GeocodeQuality.NO_MATCH: 3,
+    GeocodeQuality.FAILED: 4,
+}
+
+
+class GeocodeServiceType(StrEnum):
+    """Whether a provider supports individual or batch geocoding natively."""
+
+    INDIVIDUAL = "individual"
+    BATCH = "batch"
 
 
 @dataclass
@@ -13,6 +41,7 @@ class GeocodingResult:
     confidence_score: float | None = None
     raw_response: dict | None = None
     matched_address: str | None = None
+    quality: GeocodeQuality | None = None
 
     def __post_init__(self) -> None:
         if not (-90 <= self.latitude <= 90):
@@ -52,6 +81,26 @@ class BaseGeocoder(ABC):
     @abstractmethod
     def provider_name(self) -> str:
         """Unique name identifying this geocoder provider."""
+
+    @property
+    def service_type(self) -> GeocodeServiceType:
+        """Whether this provider supports batch or individual geocoding natively."""
+        return GeocodeServiceType.INDIVIDUAL
+
+    @property
+    def requires_api_key(self) -> bool:
+        """Whether this provider requires an API key to function."""
+        return False
+
+    @property
+    def is_configured(self) -> bool:
+        """Whether this provider has all required configuration (e.g., API keys)."""
+        return True
+
+    @property
+    def rate_limit_delay(self) -> float:
+        """Minimum delay in seconds between requests (for rate-limited providers)."""
+        return 0.0
 
     @abstractmethod
     async def geocode(self, address: str) -> GeocodingResult | None:

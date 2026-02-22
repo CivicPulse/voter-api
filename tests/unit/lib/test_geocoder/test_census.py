@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from voter_api.lib.geocoder.base import GeocodingProviderError
+from voter_api.lib.geocoder.base import GeocodeQuality, GeocodingProviderError
 from voter_api.lib.geocoder.census import CensusGeocoder
 
 
@@ -16,7 +16,7 @@ class TestCensusResponseParsing:
         self.geocoder = CensusGeocoder()
 
     def test_successful_match(self) -> None:
-        """Successful address match returns GeocodingResult."""
+        """Successful address match returns GeocodingResult with quality."""
         data = {
             "result": {
                 "addressMatches": [
@@ -34,6 +34,7 @@ class TestCensusResponseParsing:
         assert result.longitude == -84.3880
         assert result.confidence_score == 1.0
         assert result.matched_address == "123 N MAIN ST, ATLANTA, GA, 30301"
+        assert result.quality == GeocodeQuality.EXACT
 
     def test_no_matches(self) -> None:
         """No matches returns None."""
@@ -77,7 +78,7 @@ class TestCensusResponseParsing:
             self.geocoder._parse_response(data)
 
     def test_no_tigerline_lower_confidence(self) -> None:
-        """Result without tigerLine gets lower confidence."""
+        """Result without tigerLine gets lower confidence and INTERPOLATED quality."""
         data = {
             "result": {
                 "addressMatches": [
@@ -91,6 +92,7 @@ class TestCensusResponseParsing:
         result = self.geocoder._parse_response(data)
         assert result is not None
         assert result.confidence_score == 0.8
+        assert result.quality == GeocodeQuality.INTERPOLATED
 
 
 class TestCensusGeocoderErrorDifferentiation:
