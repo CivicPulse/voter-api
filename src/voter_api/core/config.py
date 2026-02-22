@@ -53,10 +53,6 @@ class Settings(BaseSettings):
     )
 
     # Geocoding — general
-    geocoder_default_provider: str = Field(
-        default="census",
-        description="Default geocoding provider",
-    )
     geocoder_batch_size: int = Field(
         default=100,
         description="Records per geocoding batch",

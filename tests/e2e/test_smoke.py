@@ -479,6 +479,17 @@ class TestGeocoding:
         )
         assert resp.status_code == 202
 
+    async def test_batch_fallback_enabled(self, admin_client: httpx.AsyncClient) -> None:
+        """Batch endpoint accepts fallback=True and returns 202 Accepted."""
+        resp = await admin_client.post(
+            _url("/geocoding/batch"),
+            json={"provider": "census", "fallback": True},
+        )
+        assert resp.status_code == 202
+        body = resp.json()
+        assert "job_id" in body
+        assert body["status"] == "pending"
+
 
 # ── Imports ────────────────────────────────────────────────────────────────
 

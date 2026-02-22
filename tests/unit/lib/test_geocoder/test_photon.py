@@ -182,10 +182,10 @@ class TestPhotonGeocoderErrors:
         with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_response) as mock_get:
             await geocoder.geocode("test")
 
-        # Verify it used the custom base URL
+        # Verify it used the custom base URL (exact match to prevent partial-path bypass)
         call_args = mock_get.call_args
         called_url = call_args[0][0] if call_args[0] else str(call_args)
-        assert called_url.startswith("https://my-photon.example.com/")
+        assert called_url == "https://my-photon.example.com/api"
 
 
 class TestPhotonProperties:

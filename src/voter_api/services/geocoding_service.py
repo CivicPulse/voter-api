@@ -10,10 +10,11 @@ from shapely.geometry import Point
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from voter_api.core.config import get_settings
 from voter_api.lib.geocoder import (
     cache_lookup,
     cache_store,
-    get_available_providers,
+    get_configured_providers,
     get_geocoder,
     normalize_freeform_address,
     parse_address_components,
@@ -254,11 +255,12 @@ async def geocode_voter_all_providers(
         msg = f"Voter {voter_id} has no reconstructable residence address"
         raise ValueError(msg)
 
-    providers = get_available_providers()
+    settings = get_settings()
+    configured = get_configured_providers(settings)
     provider_results: list[dict] = []
 
-    for provider_name in providers:
-        geocoder = get_geocoder(provider_name)
+    for geocoder in configured:
+        provider_name = geocoder.provider_name
         entry: dict = {"provider": provider_name, "status": "pending"}
 
         # Check cache first
