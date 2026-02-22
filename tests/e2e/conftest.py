@@ -304,7 +304,5 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         await session.execute(delete(ElectedOfficial).where(ElectedOfficial.id == OFFICIAL_ID))
         await session.execute(delete(Boundary).where(Boundary.id == BOUNDARY_ID))
         await session.execute(delete(Election).where(Election.id == ELECTION_ID))
-        await session.execute(delete(User).where(User.id == ADMIN_USER_ID))
-        await session.execute(delete(User).where(User.id == ANALYST_USER_ID))
-        await session.execute(delete(User).where(User.id == VIEWER_USER_ID))
+        await session.execute(delete(User).where(User.id.in_([ADMIN_USER_ID, ANALYST_USER_ID, VIEWER_USER_ID])))
         await session.commit()
