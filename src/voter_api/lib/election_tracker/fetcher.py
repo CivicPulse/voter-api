@@ -23,6 +23,33 @@ class FetchError(Exception):
         self.status_code = status_code
 
 
+def _check_resolved_ips(addrinfo_list: list, hostname: str) -> None:
+    """Verify every resolved IP is globally routable.
+
+    Raises:
+        FetchError: If any IP is non-global, unparseable, or no IPs were validated.
+    """
+    validated_count = 0
+    for family, _socktype, _proto, _canonname, sockaddr in addrinfo_list:
+        if family not in (socket.AF_INET, socket.AF_INET6):
+            continue
+
+        ip_str = sockaddr[0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError as exc:
+            msg = f"Resolved address '{ip_str}' for hostname '{hostname}' is not a valid IP"
+            raise FetchError(msg) from exc
+        if not ip.is_global:
+            msg = f"Resolved IP address '{ip}' for hostname '{hostname}' is not allowed"
+            raise FetchError(msg)
+        validated_count += 1
+
+    if validated_count == 0:
+        msg = f"No valid IP addresses returned for hostname '{hostname}'"
+        raise FetchError(msg)
+
+
 async def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
     """Validate that a URL is safe to request and in the allowed domains list.
 
@@ -90,28 +117,7 @@ async def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
         msg = f"Failed to resolve hostname '{hostname}': {exc}"
         raise FetchError(msg) from exc
 
-    validated_count = 0
-    for family, _socktype, _proto, _canonname, sockaddr in addrinfo_list:
-        ip_str = None
-        if family == socket.AF_INET or family == socket.AF_INET6:
-            ip_str = sockaddr[0]
-
-        if not ip_str:
-            continue
-
-        try:
-            ip = ipaddress.ip_address(ip_str)
-        except ValueError as exc:
-            msg = f"Resolved address '{ip_str}' for hostname '{hostname}' is not a valid IP"
-            raise FetchError(msg) from exc
-        if not ip.is_global:
-            msg = f"Resolved IP address '{ip}' for hostname '{hostname}' is not allowed"
-            raise FetchError(msg)
-        validated_count += 1
-
-    if validated_count == 0:
-        msg = f"No valid IP addresses returned for hostname '{hostname}'"
-        raise FetchError(msg)
+    _check_resolved_ips(addrinfo_list, hostname)
 
 
 async def fetch_election_results(
