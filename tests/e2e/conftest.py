@@ -7,6 +7,7 @@ Fixtures seed baseline data and provide authenticated HTTP clients.
 
 import uuid
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from datetime import date
 
 import httpx
@@ -97,38 +98,49 @@ def viewer_token(settings: Settings) -> str:
     )
 
 
+@asynccontextmanager
+async def _make_client(
+    app: FastAPI, token: str | None = None
+) -> AsyncGenerator[httpx.AsyncClient, None]:
+    """Create an ASGI-wired httpx client with optional Bearer-token auth.
+
+    Shared by all role-specific client fixtures to eliminate code duplication.
+    """
+    transport = ASGITransport(app=app)
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    async with httpx.AsyncClient(transport=transport, base_url="http://e2e", headers=headers) as c:
+        yield c
+
+
 @pytest.fixture
-async def client(app: FastAPI) -> AsyncGenerator[httpx.AsyncClient]:
+async def client(app: FastAPI) -> AsyncGenerator[httpx.AsyncClient, None]:
     """Async HTTP client wired to the real FastAPI app via ASGI transport."""
-    transport = ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://e2e") as c:
+    async with _make_client(app) as c:
         yield c
 
 
 @pytest.fixture
-async def admin_client(app: FastAPI, admin_token: str) -> AsyncGenerator[httpx.AsyncClient]:
+async def admin_client(app: FastAPI, admin_token: str) -> AsyncGenerator[httpx.AsyncClient, None]:
     """Async HTTP client with admin Authorization header."""
-    transport = ASGITransport(app=app)
-    headers = {"Authorization": f"Bearer {admin_token}"}
-    async with httpx.AsyncClient(transport=transport, base_url="http://e2e", headers=headers) as c:
+    async with _make_client(app, admin_token) as c:
         yield c
 
 
 @pytest.fixture
-async def analyst_client(app: FastAPI, analyst_token: str) -> AsyncGenerator[httpx.AsyncClient]:
+async def analyst_client(
+    app: FastAPI, analyst_token: str
+) -> AsyncGenerator[httpx.AsyncClient, None]:
     """Async HTTP client with analyst Authorization header."""
-    transport = ASGITransport(app=app)
-    headers = {"Authorization": f"Bearer {analyst_token}"}
-    async with httpx.AsyncClient(transport=transport, base_url="http://e2e", headers=headers) as c:
+    async with _make_client(app, analyst_token) as c:
         yield c
 
 
 @pytest.fixture
-async def viewer_client(app: FastAPI, viewer_token: str) -> AsyncGenerator[httpx.AsyncClient]:
+async def viewer_client(
+    app: FastAPI, viewer_token: str
+) -> AsyncGenerator[httpx.AsyncClient, None]:
     """Async HTTP client with viewer Authorization header."""
-    transport = ASGITransport(app=app)
-    headers = {"Authorization": f"Bearer {viewer_token}"}
-    async with httpx.AsyncClient(transport=transport, base_url="http://e2e", headers=headers) as c:
+    async with _make_client(app, viewer_token) as c:
         yield c
 
 
