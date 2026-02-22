@@ -108,5 +108,3 @@ knowledge_base:
     scope: "local"
   web_search:
     enabled: true
-
-

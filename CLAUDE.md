@@ -92,8 +92,8 @@ Each library in `lib/` has an explicit public API via `__init__.py` exports and 
 
 ```
 tests/
-├── unit/           # Library and schema tests (no PostGIS, uses in-memory SQLite)
-├── integration/    # API, database, and CLI tests (in-memory SQLite + mocks)
+├── unit/           # Library and schema tests (no PostGIS, in-memory SQLite)
+├── integration/    # API, database, and CLI tests (in-memory SQLite + mocks for isolation)
 ├── contract/       # OpenAPI contract tests
 └── e2e/            # End-to-end smoke tests (real PostGIS, Alembic migrations)
 ```
@@ -133,7 +133,7 @@ DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_a
 #### How the fixtures work
 
 - **`app`** (session-scoped) — calls `create_app()` which initialises the async engine via lifespan
-- **`seed_database`** (session-scoped, autouse) — inserts baseline test data (3 users, 1 election, 1 boundary with real geometry, 1 elected official) using raw SQL with `ON CONFLICT DO NOTHING` for idempotency; cleans up after the session
+- **`seed_database`** (session-scoped, autouse) — inserts baseline test data (3 users, 1 election, 1 boundary with real geometry, 1 elected official) using SQLAlchemy Core with `on_conflict_do_update` for idempotency; cleans up after the session
 - **`client`** / **`admin_client`** / **`analyst_client`** / **`viewer_client`** — `httpx.AsyncClient` instances wired to the app via `ASGITransport`; role-specific clients include a pre-set `Authorization: Bearer <jwt>` header
 - **Fixed UUIDs** — seeded rows use deterministic UUIDs (`BOUNDARY_ID`, `ELECTION_ID`, `OFFICIAL_ID`, etc.) exported from `conftest.py` so tests can reference them
 
@@ -188,7 +188,7 @@ Follow these rules whenever you add, modify, or remove API endpoints:
 - **Type hints** on all functions/classes; **Google-style docstrings** on all public APIs
 - **Ruff** for both linting and formatting — must pass with zero violations before commit
 - **JWT-only auth** with role-based access control (admin/analyst/viewer)
-- **No raw SQL** — SQLAlchemy ORM/Core exclusively
+- **No raw SQL in application code** — SQLAlchemy ORM/Core exclusively in `src/`; test seeding/cleanup may use Core constructs
 - **API versioning** via URL prefix (`/api/v1/`)
 - **Branch strategy** — all work on feature branches, never directly on `main`
 - **Commit cadence** — commit to git after completing each task, story, or phase; do not accumulate large uncommitted changesets
