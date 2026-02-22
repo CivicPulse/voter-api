@@ -134,7 +134,7 @@ jobs:
       # should and shouldn't change.
       - name: Run Claude to fix and resolve threads
         if: steps.fetch-threads.outputs.count != '0'
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@v1        # was @beta
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -142,11 +142,9 @@ jobs:
           REPO: ${{ github.repository }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         with:
-          # The correct input name is direct_prompt, not prompt.
-          # Note: $(cat ...) shell substitution does NOT work inside a YAML
-          # string — it won't be evaluated. Instead, we tell Claude to read
-          # the file itself as its first bash action, which works because
-          # allowed_tools: bash gives it full shell access.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}   # replaces anthropic_api_key
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          allowed_tools: "bash"
           direct_prompt: |
             You are a senior code review assistant embedded in a CI pipeline.
             Your job is to process unresolved pull request review threads and
