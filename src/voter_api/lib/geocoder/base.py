@@ -16,7 +16,7 @@ class GeocodeQuality(StrEnum):
 
 
 # Ranking for quality comparison (lower = better)
-_QUALITY_RANK: dict[GeocodeQuality, int] = {
+QUALITY_RANK: dict[GeocodeQuality, int] = {
     GeocodeQuality.EXACT: 0,
     GeocodeQuality.INTERPOLATED: 1,
     GeocodeQuality.APPROXIMATE: 2,

@@ -26,6 +26,8 @@ Public API:
 
 from __future__ import annotations
 
+import contextlib
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from voter_api.lib.geocoder.address import (
@@ -35,6 +37,7 @@ from voter_api.lib.geocoder.address import (
     reconstruct_address,
 )
 from voter_api.lib.geocoder.base import (
+    QUALITY_RANK,
     BaseGeocoder,
     GeocodeQuality,
     GeocodeServiceType,
@@ -154,11 +157,15 @@ def get_configured_providers(settings: Settings) -> list[BaseGeocoder]:
         },
     }
 
-    # Return in fallback order, filtered to enabled + configured
+    # Return in fallback order, filtered to enabled + configured (deduplicated)
     fallback_order = settings.geocoder_fallback_order_list
     providers: list[BaseGeocoder] = []
+    seen: set[str] = set()
 
     for name in fallback_order:
+        if name in seen:
+            continue
+        seen.add(name)
         config = provider_configs.get(name)
         if config is None or not config.get("enabled", False):
             continue
@@ -174,9 +181,73 @@ def get_configured_providers(settings: Settings) -> list[BaseGeocoder]:
     return providers
 
 
+@dataclass
+class ProviderMetadata:
+    """Metadata about a geocoding provider (configured or not)."""
+
+    name: str
+    service_type: str
+    requires_api_key: bool
+    is_configured: bool
+    rate_limit_delay: float
+
+
+def get_all_provider_metadata(settings: Settings) -> list[ProviderMetadata]:
+    """Return metadata for all registered providers.
+
+    For configured providers, metadata is read from the live instance.
+    For unconfigured providers that can be instantiated without API keys
+    (e.g., Census, Nominatim, Photon), metadata is read from a default
+    instance. Providers that require mandatory constructor args fall back
+    to conservative defaults.
+
+    Args:
+        settings: Application settings.
+
+    Returns:
+        List of ProviderMetadata for every registered provider.
+    """
+    configured = get_configured_providers(settings)
+    configured_map = {p.provider_name: p for p in configured}
+
+    metadata: list[ProviderMetadata] = []
+    for name in get_available_providers():
+        provider = configured_map.get(name)
+
+        if provider is None:
+            # Not configured — try to instantiate with defaults for metadata
+            with contextlib.suppress(ValueError, TypeError):
+                provider = get_geocoder(name)
+
+        if provider:
+            metadata.append(
+                ProviderMetadata(
+                    name=provider.provider_name,
+                    service_type=provider.service_type.value,
+                    requires_api_key=provider.requires_api_key,
+                    is_configured=name in configured_map,
+                    rate_limit_delay=provider.rate_limit_delay,
+                )
+            )
+        else:
+            # Provider requires mandatory args — use conservative defaults
+            metadata.append(
+                ProviderMetadata(
+                    name=name,
+                    service_type="individual",
+                    requires_api_key=True,
+                    is_configured=False,
+                    rate_limit_delay=0.0,
+                )
+            )
+
+    return metadata
+
+
 __all__ = [
     "AddressComponents",
     "BaseGeocoder",
+    "QUALITY_RANK",
     "BaseSuggestionSource",
     "CensusGeocoder",
     "GeocodioGeocoder",
@@ -188,8 +259,10 @@ __all__ = [
     "MapboxGeocoder",
     "NominatimGeocoder",
     "PhotonGeocoder",
+    "ProviderMetadata",
     "cache_lookup",
     "cache_store",
+    "get_all_provider_metadata",
     "get_available_providers",
     "get_configured_providers",
     "get_geocoder",

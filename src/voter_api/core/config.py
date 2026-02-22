@@ -161,7 +161,11 @@ class Settings(BaseSettings):
 
     @property
     def geocoder_fallback_order_list(self) -> list[str]:
-        """Parse fallback order string into a list of provider names."""
+        """Parse fallback order string into a list of provider names.
+
+        Returns:
+            List of provider names in fallback order.
+        """
         if not self.geocoder_fallback_order.strip():
             return []
         return [p.strip().lower() for p in self.geocoder_fallback_order.split(",") if p.strip()]

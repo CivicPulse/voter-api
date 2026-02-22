@@ -36,37 +36,23 @@ def manual_geocode(
 def list_providers() -> None:
     """List available geocoding providers and their configuration status."""
     from voter_api.core.config import get_settings
-    from voter_api.lib.geocoder import get_available_providers, get_configured_providers, get_geocoder
+    from voter_api.lib.geocoder import get_all_provider_metadata
 
     settings = get_settings()
-    configured = get_configured_providers(settings)
-    configured_names = {p.provider_name for p in configured}
-    all_names = get_available_providers()
+    metadata = get_all_provider_metadata(settings)
 
     typer.echo("Geocoding Providers:")
     typer.echo(f"{'Name':<15} {'Type':<12} {'API Key':<12} {'Configured':<12} {'Rate Limit'}")
     typer.echo("-" * 65)
 
-    for name in all_names:
-        # Get provider instance (configured or default)
-        provider = None
-        for p in configured:
-            if p.provider_name == name:
-                provider = p
-                break
-        if provider is None and name == "census":
-            provider = get_geocoder("census")
-
-        if provider:
-            typer.echo(
-                f"{name:<15} "
-                f"{provider.service_type.value:<12} "
-                f"{'yes' if provider.requires_api_key else 'no':<12} "
-                f"{'yes' if name in configured_names else 'no':<12} "
-                f"{provider.rate_limit_delay}s"
-            )
-        else:
-            typer.echo(f"{name:<15} {'?':<12} {'yes':<12} {'no':<12} N/A")
+    for m in metadata:
+        typer.echo(
+            f"{m.name:<15} "
+            f"{m.service_type:<12} "
+            f"{'yes' if m.requires_api_key else 'no':<12} "
+            f"{'yes' if m.is_configured else 'no':<12} "
+            f"{m.rate_limit_delay}s"
+        )
 
     typer.echo(f"\nFallback order: {', '.join(settings.geocoder_fallback_order_list)}")
 

@@ -36,7 +36,7 @@ class BatchGeocodingRequest(BaseModel):
     """Request to trigger a batch geocoding job."""
 
     county: str | None = None
-    provider: str = "census"
+    provider: Literal["census", "nominatim", "google", "geocodio", "mapbox", "photon"] = "census"
     force_regeocode: bool = False
     fallback: bool = Field(default=False, description="Use cascading fallback for non-EXACT results")
 

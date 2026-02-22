@@ -77,7 +77,6 @@ class TestNominatimQualityMapping:
 class TestNominatimGeocoderErrors:
     """Tests for NominatimGeocoder error differentiation."""
 
-    @pytest.mark.asyncio
     async def test_timeout_raises_provider_error(self) -> None:
         geocoder = NominatimGeocoder(timeout=0.1)
         with (
@@ -87,7 +86,6 @@ class TestNominatimGeocoderErrors:
             mock_get.side_effect = httpx.TimeoutException("Connection timed out")
             await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
 
-    @pytest.mark.asyncio
     async def test_http_error_raises_provider_error(self) -> None:
         geocoder = NominatimGeocoder()
         mock_response = httpx.Response(status_code=429, request=httpx.Request("GET", "http://test"))
@@ -101,7 +99,6 @@ class TestNominatimGeocoderErrors:
             await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
         assert exc_info.value.status_code == 429
 
-    @pytest.mark.asyncio
     async def test_connection_error_raises_provider_error(self) -> None:
         geocoder = NominatimGeocoder()
         with (
@@ -111,7 +108,6 @@ class TestNominatimGeocoderErrors:
             mock_get.side_effect = httpx.ConnectError("Connection refused")
             await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
 
-    @pytest.mark.asyncio
     async def test_successful_match_returns_result(self) -> None:
         geocoder = NominatimGeocoder()
         mock_response = MagicMock()
@@ -132,7 +128,6 @@ class TestNominatimGeocoderErrors:
         assert result is not None
         assert result.latitude == 33.749
 
-    @pytest.mark.asyncio
     async def test_empty_results_returns_none(self) -> None:
         geocoder = NominatimGeocoder()
         mock_response = MagicMock()

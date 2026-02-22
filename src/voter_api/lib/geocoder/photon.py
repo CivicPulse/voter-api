@@ -59,6 +59,11 @@ class PhotonGeocoder(BaseGeocoder):
     def provider_name(self) -> str:
         return "photon"
 
+    @property
+    def rate_limit_delay(self) -> float:
+        """Minimum delay between requests (public Photon has undocumented rate limits)."""
+        return 0.2 if self._base_url == DEFAULT_BASE_URL else 0.0
+
     async def geocode(self, address: str) -> GeocodingResult | None:
         """Geocode an address using the Photon API.
 

@@ -69,7 +69,6 @@ class TestGeocodioResponseParsing:
 class TestGeocodioGeocoderErrors:
     """Tests for GeocodioGeocoder error differentiation."""
 
-    @pytest.mark.asyncio
     async def test_timeout_raises_provider_error(self) -> None:
         geocoder = GeocodioGeocoder(api_key="test-key", timeout=0.1)
         with (
@@ -79,7 +78,6 @@ class TestGeocodioGeocoderErrors:
             mock_get.side_effect = httpx.TimeoutException("Connection timed out")
             await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
 
-    @pytest.mark.asyncio
     async def test_successful_geocode(self) -> None:
         geocoder = GeocodioGeocoder(api_key="test-key")
         mock_response = MagicMock()
@@ -102,7 +100,6 @@ class TestGeocodioGeocoderErrors:
         assert result is not None
         assert result.quality == GeocodeQuality.EXACT
 
-    @pytest.mark.asyncio
     async def test_empty_results_returns_none(self) -> None:
         geocoder = GeocodioGeocoder(api_key="test-key")
         mock_response = MagicMock()
@@ -119,7 +116,6 @@ class TestGeocodioGeocoderErrors:
 class TestGeocodioBatchGeocode:
     """Tests for Geocodio batch geocoding."""
 
-    @pytest.mark.asyncio
     async def test_batch_geocode(self) -> None:
         geocoder = GeocodioGeocoder(api_key="test-key", batch_size=2)
         mock_response = MagicMock()
@@ -151,7 +147,6 @@ class TestGeocodioBatchGeocode:
         assert results[0].latitude == 33.749
         assert results[1] is None
 
-    @pytest.mark.asyncio
     async def test_batch_timeout_raises(self) -> None:
         geocoder = GeocodioGeocoder(api_key="test-key")
         with (

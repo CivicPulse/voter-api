@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from voter_api.core.background import task_runner
 from voter_api.core.config import get_settings
 from voter_api.core.dependencies import get_async_session, get_current_user, require_role
-from voter_api.lib.geocoder import get_available_providers, get_configured_providers, get_geocoder
+from voter_api.lib.geocoder import get_all_provider_metadata, get_configured_providers
 from voter_api.lib.geocoder.base import GeocodingProviderError
 from voter_api.lib.geocoder.point_lookup import validate_georgia_coordinates
 from voter_api.models.user import User
@@ -333,39 +333,18 @@ async def list_providers() -> ProvidersListResponse:
     Public endpoint — no authentication required.
     """
     settings = get_settings()
-    configured = get_configured_providers(settings)
-    configured_names = {p.provider_name for p in configured}
+    metadata = get_all_provider_metadata(settings)
 
-    providers_info: list[ProviderInfo] = []
-    for name in get_available_providers():
-        geocoder = get_geocoder(name) if name == "census" else None
-        # For providers requiring API keys, instantiate without key just to read properties
-        for p in configured:
-            if p.provider_name == name:
-                geocoder = p
-                break
-
-        if geocoder:
-            providers_info.append(
-                ProviderInfo(
-                    name=geocoder.provider_name,
-                    service_type=geocoder.service_type.value,
-                    requires_api_key=geocoder.requires_api_key,
-                    is_configured=name in configured_names,
-                    rate_limit_delay=geocoder.rate_limit_delay,
-                )
-            )
-        else:
-            # Provider not configured — provide basic info from class
-            providers_info.append(
-                ProviderInfo(
-                    name=name,
-                    service_type="individual",
-                    requires_api_key=True,
-                    is_configured=False,
-                    rate_limit_delay=0.0,
-                )
-            )
+    providers_info = [
+        ProviderInfo(
+            name=m.name,
+            service_type=m.service_type,
+            requires_api_key=m.requires_api_key,
+            is_configured=m.is_configured,
+            rate_limit_delay=m.rate_limit_delay,
+        )
+        for m in metadata
+    ]
 
     return ProvidersListResponse(
         providers=providers_info,

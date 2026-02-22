@@ -134,7 +134,6 @@ class TestPhotonBuildAddress:
 class TestPhotonGeocoderErrors:
     """Tests for PhotonGeocoder error differentiation."""
 
-    @pytest.mark.asyncio
     async def test_timeout_raises_provider_error(self) -> None:
         geocoder = PhotonGeocoder(timeout=0.1)
         with (
@@ -144,7 +143,6 @@ class TestPhotonGeocoderErrors:
             mock_get.side_effect = httpx.TimeoutException("Connection timed out")
             await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
 
-    @pytest.mark.asyncio
     async def test_connection_error_raises_provider_error(self) -> None:
         geocoder = PhotonGeocoder()
         with (
@@ -154,7 +152,6 @@ class TestPhotonGeocoderErrors:
             mock_get.side_effect = httpx.ConnectError("Connection refused")
             await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
 
-    @pytest.mark.asyncio
     async def test_successful_geocode(self) -> None:
         geocoder = PhotonGeocoder()
         mock_response = MagicMock()
@@ -175,7 +172,6 @@ class TestPhotonGeocoderErrors:
         assert result is not None
         assert result.quality == GeocodeQuality.EXACT
 
-    @pytest.mark.asyncio
     async def test_custom_base_url(self) -> None:
         geocoder = PhotonGeocoder(base_url="https://my-photon.example.com")
         mock_response = MagicMock()
@@ -188,7 +184,8 @@ class TestPhotonGeocoderErrors:
 
         # Verify it used the custom base URL
         call_args = mock_get.call_args
-        assert "my-photon.example.com" in str(call_args)
+        called_url = call_args[0][0] if call_args[0] else str(call_args)
+        assert called_url.startswith("https://my-photon.example.com/")
 
 
 class TestPhotonProperties:
@@ -203,5 +200,8 @@ class TestPhotonProperties:
     def test_is_configured(self) -> None:
         assert PhotonGeocoder().is_configured is True
 
-    def test_rate_limit_delay_default(self) -> None:
-        assert PhotonGeocoder().rate_limit_delay == 0.0
+    def test_rate_limit_delay_public_instance(self) -> None:
+        assert PhotonGeocoder().rate_limit_delay == 0.2
+
+    def test_rate_limit_delay_self_hosted(self) -> None:
+        assert PhotonGeocoder(base_url="https://my-photon.example.com").rate_limit_delay == 0.0

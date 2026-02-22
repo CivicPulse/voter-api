@@ -63,7 +63,7 @@ class MapboxGeocoder(BaseGeocoder):
         Raises:
             GeocodingProviderError: On transport or service errors.
         """
-        params = {
+        params: dict[str, str | int] = {
             "q": address,
             "access_token": self._api_key,
             "country": "us",

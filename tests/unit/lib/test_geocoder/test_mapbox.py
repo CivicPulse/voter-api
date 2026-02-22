@@ -116,7 +116,6 @@ class TestMapboxQualityMapping:
 class TestMapboxGeocoderErrors:
     """Tests for MapboxGeocoder error differentiation."""
 
-    @pytest.mark.asyncio
     async def test_timeout_raises_provider_error(self) -> None:
         geocoder = MapboxGeocoder(api_key="test-key", timeout=0.1)
         with (
@@ -126,7 +125,6 @@ class TestMapboxGeocoderErrors:
             mock_get.side_effect = httpx.TimeoutException("Connection timed out")
             await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
 
-    @pytest.mark.asyncio
     async def test_successful_geocode(self) -> None:
         geocoder = MapboxGeocoder(api_key="test-key")
         mock_response = MagicMock()
@@ -156,7 +154,6 @@ class TestMapboxGeocoderErrors:
 class TestMapboxBatchGeocode:
     """Tests for Mapbox batch geocoding."""
 
-    @pytest.mark.asyncio
     async def test_batch_geocode(self) -> None:
         geocoder = MapboxGeocoder(api_key="test-key", batch_size=2)
         mock_response = MagicMock()

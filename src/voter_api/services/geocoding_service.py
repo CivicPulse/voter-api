@@ -20,7 +20,7 @@ from voter_api.lib.geocoder import (
     reconstruct_address,
 )
 from voter_api.lib.geocoder.base import (
-    _QUALITY_RANK,
+    QUALITY_RANK,
     BaseGeocoder,
     GeocodeQuality,
     GeocodingProviderError,
@@ -70,7 +70,7 @@ def select_best_result(
 
     def sort_key(item: tuple[str, GeocodingResult]) -> tuple[int, float]:
         _, r = item
-        quality_rank = _QUALITY_RANK.get(r.quality, 3) if r.quality else 3
+        quality_rank = QUALITY_RANK.get(r.quality, 3) if r.quality else 3
         confidence = r.confidence_score if r.confidence_score is not None else 0.0
         return (quality_rank, -confidence)
 
@@ -541,15 +541,9 @@ async def process_geocoding_job(
                         remaining = [p for p in fallback_providers if p.provider_name != geocoder.provider_name]
                         fallback_best = await geocode_with_fallback(session, address, remaining)
                         if fallback_best:
-                            fb_provider, fb_result = fallback_best
-                            fb_rank = _QUALITY_RANK.get(fb_result.quality, 3) if fb_result.quality else 3
-                            primary_rank = _QUALITY_RANK.get(geo_result.quality, 3) if geo_result.quality else 3
-                            if fb_rank < primary_rank or (
-                                fb_rank == primary_rank
-                                and (fb_result.confidence_score or 0) > (geo_result.confidence_score or 0)
-                            ):
-                                store_provider = fb_provider
-                                store_result = fb_result
+                            best = select_best_result([(geocoder.provider_name, geo_result), fallback_best])
+                            if best:
+                                store_provider, store_result = best
 
                     await _store_geocoded_location(session, voter, store_result, store_provider, address)
                     succeeded += 1
