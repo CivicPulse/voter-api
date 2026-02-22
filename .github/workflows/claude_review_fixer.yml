@@ -48,7 +48,7 @@ jobs:
       # for understanding what the author has already changed since the review.
       # Without this, git log and git diff commands would be limited.
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           # Explicitly check out the PR head branch by name so that Claude's
