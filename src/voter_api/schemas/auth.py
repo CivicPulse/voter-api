@@ -40,6 +40,14 @@ class UserCreateRequest(BaseModel):
     role: str = Field(pattern="^(admin|analyst|viewer)$")
 
 
+class UserUpdateRequest(BaseModel):
+    """Request to partially update an existing user (all fields optional)."""
+
+    email: EmailStr | None = None
+    role: str | None = Field(default=None, pattern="^(admin|analyst|viewer)$")
+    is_active: bool | None = None
+
+
 class UserResponse(BaseModel):
     """User information response."""
 

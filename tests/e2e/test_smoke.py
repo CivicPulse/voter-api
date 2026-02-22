@@ -147,11 +147,112 @@ class TestAuth:
             user_ids = [u["id"] for u in list_body["items"]]
             assert user_id in user_ids
         finally:
-            # Cleanup: no DELETE /users endpoint, so remove via DB directly.
-            # Runs even if assertions fail to keep the DB idempotent.
+            # Cleanup via DELETE endpoint now available.
             if user_id is not None:
-                await db_session.execute(delete(User).where(User.id == uuid.UUID(user_id)))
-                await db_session.commit()
+                await admin_client.delete(_url(f"/users/{user_id}"))
+
+    async def test_get_user_by_id(self, admin_client: httpx.AsyncClient) -> None:
+        new_user = {
+            "username": f"e2e_get_{uuid.uuid4().hex[:8]}",
+            "email": f"e2e_get_{uuid.uuid4().hex[:8]}@test.com",
+            "password": "strongpassword123",
+            "role": "viewer",
+        }
+        create_resp = await admin_client.post(_url("/users"), json=new_user)
+        assert create_resp.status_code == 201
+        user_id = create_resp.json()["id"]
+        try:
+            resp = await admin_client.get(_url(f"/users/{user_id}"))
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["id"] == user_id
+            assert body["username"] == new_user["username"]
+            assert body["role"] == "viewer"
+        finally:
+            await admin_client.delete(_url(f"/users/{user_id}"))
+
+    async def test_get_user_by_id_not_found(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.get(_url(f"/users/{uuid.uuid4()}"))
+        assert resp.status_code == 404
+
+    async def test_patch_user_email_and_role(self, admin_client: httpx.AsyncClient) -> None:
+        new_user = {
+            "username": f"e2e_patch_{uuid.uuid4().hex[:8]}",
+            "email": f"e2e_patch_{uuid.uuid4().hex[:8]}@test.com",
+            "password": "strongpassword123",
+            "role": "viewer",
+        }
+        create_resp = await admin_client.post(_url("/users"), json=new_user)
+        assert create_resp.status_code == 201
+        user_id = create_resp.json()["id"]
+        try:
+            new_email = f"e2e_patched_{uuid.uuid4().hex[:8]}@test.com"
+            patch_resp = await admin_client.patch(
+                _url(f"/users/{user_id}"),
+                json={"email": new_email, "role": "analyst"},
+            )
+            assert patch_resp.status_code == 200
+            body = patch_resp.json()
+            assert body["email"] == new_email
+            assert body["role"] == "analyst"
+            # Username unchanged
+            assert body["username"] == new_user["username"]
+        finally:
+            await admin_client.delete(_url(f"/users/{user_id}"))
+
+    async def test_patch_user_suspend(self, admin_client: httpx.AsyncClient) -> None:
+        new_user = {
+            "username": f"e2e_suspend_{uuid.uuid4().hex[:8]}",
+            "email": f"e2e_suspend_{uuid.uuid4().hex[:8]}@test.com",
+            "password": "strongpassword123",
+            "role": "viewer",
+        }
+        create_resp = await admin_client.post(_url("/users"), json=new_user)
+        assert create_resp.status_code == 201
+        user_id = create_resp.json()["id"]
+        try:
+            patch_resp = await admin_client.patch(
+                _url(f"/users/{user_id}"),
+                json={"is_active": False},
+            )
+            assert patch_resp.status_code == 200
+            assert patch_resp.json()["is_active"] is False
+        finally:
+            await admin_client.delete(_url(f"/users/{user_id}"))
+
+    async def test_patch_user_not_found(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.patch(_url(f"/users/{uuid.uuid4()}"), json={"role": "analyst"})
+        assert resp.status_code == 404
+
+    async def test_patch_user_forbidden_for_viewer(self, viewer_client: httpx.AsyncClient) -> None:
+        resp = await viewer_client.patch(_url(f"/users/{uuid.uuid4()}"), json={"role": "analyst"})
+        assert resp.status_code == 403
+
+    async def test_delete_user(self, admin_client: httpx.AsyncClient) -> None:
+        new_user = {
+            "username": f"e2e_del_{uuid.uuid4().hex[:8]}",
+            "email": f"e2e_del_{uuid.uuid4().hex[:8]}@test.com",
+            "password": "strongpassword123",
+            "role": "viewer",
+        }
+        create_resp = await admin_client.post(_url("/users"), json=new_user)
+        assert create_resp.status_code == 201
+        user_id = create_resp.json()["id"]
+
+        delete_resp = await admin_client.delete(_url(f"/users/{user_id}"))
+        assert delete_resp.status_code == 204
+
+        # Verify the user is gone
+        get_resp = await admin_client.get(_url(f"/users/{user_id}"))
+        assert get_resp.status_code == 404
+
+    async def test_delete_user_not_found(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.delete(_url(f"/users/{uuid.uuid4()}"))
+        assert resp.status_code == 404
+
+    async def test_delete_user_forbidden_for_viewer(self, viewer_client: httpx.AsyncClient) -> None:
+        resp = await viewer_client.delete(_url(f"/users/{uuid.uuid4()}"))
+        assert resp.status_code == 403
 
 
 # ── Boundaries ─────────────────────────────────────────────────────────────
