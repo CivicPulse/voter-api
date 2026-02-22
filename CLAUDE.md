@@ -147,7 +147,7 @@ DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_a
 | `TestElections` | elections | 6 | List, detail, create, RBAC, results, 404 |
 | `TestElectedOfficials` | elected-officials | 7 | List, detail, by-district, full CRUD lifecycle, sources, 404 |
 | `TestVoters` | voters | 3 | Auth required, search, 404 |
-| `TestGeocoding` | geocoding | 3 | Auth enforcement on all endpoints |
+| `TestGeocoding` | geocoding | 3 | Public geocode/verify/point-lookup endpoints (no auth required) |
 | `TestImports` | imports | 3 | Auth, admin list, viewer 403 |
 | `TestExports` | exports | 2 | Auth, admin list |
 | `TestAnalysis` | analysis | 3 | Auth, admin list, viewer 403 |

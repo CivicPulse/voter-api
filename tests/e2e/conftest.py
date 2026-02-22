@@ -244,22 +244,10 @@ async def seed_database(app, settings):
     # Cleanup: remove seeded rows so the DB is left clean.
     # Each statement is explicit to avoid f-string SQL construction.
     async with factory() as session:
-        await session.execute(
-            text("DELETE FROM elected_officials WHERE id = :id"), {"id": str(OFFICIAL_ID)}
-        )
-        await session.execute(
-            text("DELETE FROM boundaries WHERE id = :id"), {"id": str(BOUNDARY_ID)}
-        )
-        await session.execute(
-            text("DELETE FROM elections WHERE id = :id"), {"id": str(ELECTION_ID)}
-        )
-        await session.execute(
-            text("DELETE FROM users WHERE id = :id"), {"id": str(ADMIN_USER_ID)}
-        )
-        await session.execute(
-            text("DELETE FROM users WHERE id = :id"), {"id": str(ANALYST_USER_ID)}
-        )
-        await session.execute(
-            text("DELETE FROM users WHERE id = :id"), {"id": str(VIEWER_USER_ID)}
-        )
+        await session.execute(text("DELETE FROM elected_officials WHERE id = :id"), {"id": str(OFFICIAL_ID)})
+        await session.execute(text("DELETE FROM boundaries WHERE id = :id"), {"id": str(BOUNDARY_ID)})
+        await session.execute(text("DELETE FROM elections WHERE id = :id"), {"id": str(ELECTION_ID)})
+        await session.execute(text("DELETE FROM users WHERE id = :id"), {"id": str(ADMIN_USER_ID)})
+        await session.execute(text("DELETE FROM users WHERE id = :id"), {"id": str(ANALYST_USER_ID)})
+        await session.execute(text("DELETE FROM users WHERE id = :id"), {"id": str(VIEWER_USER_ID)})
         await session.commit()
