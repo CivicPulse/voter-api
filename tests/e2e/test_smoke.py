@@ -487,7 +487,7 @@ class TestGeocoding:
         )
         assert resp.status_code == 202
         body = resp.json()
-        assert "job_id" in body
+        assert "id" in body
         assert body["status"] == "pending"
 
 
