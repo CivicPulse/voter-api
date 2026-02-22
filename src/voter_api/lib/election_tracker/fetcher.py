@@ -70,7 +70,8 @@ async def validate_url_domain(url: str, allowed_domains: list[str]) -> None:
 
     Args:
         url: The URL to validate.
-        allowed_domains: Non-empty list of allowed domain names (lowercase).
+        allowed_domains: Non-empty list of allowed domain names. Entries are
+            normalized (stripped, lowercased) before comparison.
 
     Raises:
         FetchError: If the URL is not safe or the hostname is not allowed.
