@@ -30,9 +30,12 @@ on:
 
 # contents: write is now required — Claude will be committing and pushing
 # code fixes back to the PR branch.
+# id-token: write is required — claude-code-action@beta uses OIDC to
+# authenticate with Anthropic's Claude Code OAuth system.
 permissions:
   pull-requests: write
   contents: write
+  id-token: write
 
 jobs:
   resolve-and-fix:
@@ -135,13 +138,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
           REPO: ${{ github.repository }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         with:
-          allowed_tools: "bash"
-          prompt: |
+          # The correct input name is direct_prompt, not prompt.
+          # Note: $(cat ...) shell substitution does NOT work inside a YAML
+          # string — it won't be evaluated. Instead, we tell Claude to read
+          # the file itself as its first bash action, which works because
+          # allowed_tools: bash gives it full shell access.
+          direct_prompt: |
             You are a senior code review assistant embedded in a CI pipeline.
             Your job is to process unresolved pull request review threads and
             either fix the issues they raise or confirm they have already been
@@ -159,7 +165,10 @@ jobs:
 
             ## Unresolved Review Threads
 
-            $(cat /tmp/unresolved-threads.json)
+            Start by running this command to load the thread data before doing
+            anything else:
+
+              cat /tmp/unresolved-threads.json
 
             ## Your Process — Follow These Phases in Order
 
@@ -200,22 +209,30 @@ jobs:
             asked about. Do not refactor surrounding code, fix unrelated style
             issues, or make improvements beyond the scope of the thread.
 
-            ### Phase 3: Commit and Push (if any fixes were made)
+            ### Phase 3: Run Checks, Then Commit and Push
 
-            If you made any code changes, commit them now — before resolving
-            anything. Use one commit per logical fix, or batch all fixes into
-            a single commit if they are small. The commit message should
-            summarize what was addressed:
+            Before committing, run the full CI check suite to verify nothing
+            is broken by your changes:
 
-            ```bash
-            git add -A
-            git commit -m "fix: address review feedback from PR #$PR_NUMBER
+              uv run ruff check .
+              uv run ruff format --check .
+              uv run mypy src/voter_api/
+              uv run pytest --cov=voter_api --cov-report=term-missing --cov-fail-under=7
+              uv run pip-audit
+
+            If any check fails due to your edit, fix the failure before
+            proceeding. If you cannot resolve a check failure caused by your
+            own change, revert that edit and recategorize the thread as SKIP.
+
+            Once all checks pass, commit and push:
+
+              git add -A
+              git commit -m "fix: address review feedback from PR #$PR_NUMBER
 
             Auto-fixed by Claude based on unresolved review threads:
             - <brief description of each fix>"
 
-            git push origin "$HEAD_BRANCH"
-            ```
+              git push origin "$HEAD_BRANCH"
 
             Do not proceed to Phase 4 until the push succeeds. If the push
             fails for any reason (conflict, permission error, etc.), stop and
@@ -229,15 +246,13 @@ jobs:
             Resolve each thread using this exact command, substituting the thread's
             `id` value from the JSON:
 
-            ```bash
-            gh api graphql -f query='
-              mutation($threadId: ID!) {
-                resolveReviewThread(input: {threadId: $threadId}) {
-                  thread { id isResolved }
+              gh api graphql -f query='
+                mutation($threadId: ID!) {
+                  resolveReviewThread(input: {threadId: $threadId}) {
+                    thread { id isResolved }
+                  }
                 }
-              }
-            ' -f threadId="THREAD_ID_HERE"
-            ```
+              ' -f threadId="THREAD_ID_HERE"
 
             ### Phase 5: Print a Summary
 
@@ -258,18 +273,13 @@ jobs:
             - If a fix would require changes to more than ~20 lines of code,
               recategorize it as SKIP — it's too risky for autonomous application.
             - Do not leave comments on the PR. Just fix, push, and resolve.
-            - Always check, lint, and test code. Use ruff and uv
-            
-            ## Tests, checks, lints
 
-            these are some of the check that CI/CD will run so go ahead and make sure it passes before pushing. 
-
-            - uv run pytest --cov=voter_api --cov-report=term-missing --cov-fail-under=7
-            - uv run pip-audit
-            - uv run ruff check .
-            - uv run ruff format --check .
-            - uv run mypy src/voter_api/
-
+          allowed_tools: "bash"
+          # Pass the API key and GitHub token as action inputs rather than
+          # environment variables — the action reads these from `with:` inputs,
+          # not from the environment, so env-only won't work.
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       # After Claude has run, post a transparency comment summarizing outcomes.
       # This helps the PR author understand what the bot did so they can verify
