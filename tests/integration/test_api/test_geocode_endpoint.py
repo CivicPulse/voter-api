@@ -1,106 +1,33 @@
 """Integration tests for geocoding API endpoints."""
 
 import uuid
-from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
-from httpx import ASGITransport, AsyncClient
 
 from voter_api.api.v1.geocoding import geocoding_router
-from voter_api.core.dependencies import get_async_session, get_current_user
 from voter_api.lib.geocoder.base import GeocodingProviderError, GeocodingResult
 
-
-@pytest.fixture
-def mock_session() -> AsyncMock:
-    """Create a mock async session."""
-    return AsyncMock()
-
-
-@pytest.fixture
-def mock_admin_user() -> MagicMock:
-    """Mock admin user for dependency override."""
-    user = MagicMock()
-    user.role = "admin"
-    user.id = uuid.UUID("00000000-0000-0000-0000-000000000001")
-    user.username = "admin"
-    user.is_active = True
-    return user
-
-
-@pytest.fixture
-def mock_viewer_user() -> MagicMock:
-    """Mock viewer user for dependency override."""
-    user = MagicMock()
-    user.role = "viewer"
-    user.id = uuid.UUID("00000000-0000-0000-0000-000000000003")
-    user.username = "viewer"
-    user.is_active = True
-    return user
+from .conftest import make_test_app
 
 
 @pytest.fixture
 def app(mock_session: AsyncMock) -> FastAPI:
     """Create a minimal FastAPI app with geocoding router (no auth override)."""
-    app = FastAPI()
-    app.include_router(geocoding_router, prefix="/api/v1")
-    app.dependency_overrides[get_async_session] = lambda: mock_session
-    return app
+    return make_test_app(geocoding_router, mock_session)
 
 
 @pytest.fixture
 def admin_app(mock_session: AsyncMock, mock_admin_user: MagicMock) -> FastAPI:
     """FastAPI app with admin auth."""
-    app = FastAPI()
-    app.include_router(geocoding_router, prefix="/api/v1")
-    app.dependency_overrides[get_async_session] = lambda: mock_session
-    app.dependency_overrides[get_current_user] = lambda: mock_admin_user
-    return app
+    return make_test_app(geocoding_router, mock_session, user=mock_admin_user)
 
 
 @pytest.fixture
 def viewer_app(mock_session: AsyncMock, mock_viewer_user: MagicMock) -> FastAPI:
     """FastAPI app with viewer auth."""
-    app = FastAPI()
-    app.include_router(geocoding_router, prefix="/api/v1")
-    app.dependency_overrides[get_async_session] = lambda: mock_session
-    app.dependency_overrides[get_current_user] = lambda: mock_viewer_user
-    return app
-
-
-@pytest.fixture
-async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
-    """Create an async test client (no auth)."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",  # NOSONAR — in-memory ASGI transport, no real HTTP
-        follow_redirects=False,
-    ) as c:
-        yield c
-
-
-@pytest.fixture
-async def admin_client(admin_app: FastAPI) -> AsyncGenerator[AsyncClient]:
-    """Create an async test client with admin auth."""
-    async with AsyncClient(
-        transport=ASGITransport(app=admin_app),
-        base_url="http://test",  # NOSONAR — in-memory ASGI transport, no real HTTP
-        follow_redirects=False,
-    ) as c:
-        yield c
-
-
-@pytest.fixture
-async def viewer_client(viewer_app: FastAPI) -> AsyncGenerator[AsyncClient]:
-    """Create an async test client with viewer auth."""
-    async with AsyncClient(
-        transport=ASGITransport(app=viewer_app),
-        base_url="http://test",  # NOSONAR — in-memory ASGI transport, no real HTTP
-        follow_redirects=False,
-    ) as c:
-        yield c
+    return make_test_app(geocoding_router, mock_session, user=mock_viewer_user)
 
 
 @pytest.fixture
