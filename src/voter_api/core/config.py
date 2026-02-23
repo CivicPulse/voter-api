@@ -338,7 +338,10 @@ class Settings(BaseSettings):
             ValueError: If Nominatim is enabled but no email is configured.
         """
         if self.geocoder_nominatim_enabled and not self.geocoder_nominatim_email.strip():
-            msg = "GEOCODER_NOMINATIM_EMAIL must be set when GEOCODER_NOMINATIM_ENABLED is true (required by Nominatim usage policy)"
+            msg = (
+                "GEOCODER_NOMINATIM_EMAIL must be set when GEOCODER_NOMINATIM_ENABLED"
+                " is true (required by Nominatim usage policy)"
+            )
             raise ValueError(msg)
         return self
 
