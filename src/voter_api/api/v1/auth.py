@@ -235,13 +235,7 @@ async def password_reset_request(
 ) -> MessageResponse:
     """Request a password reset email (enumeration-safe; always 202)."""
     mailer = _get_mailer(settings)
-    try:
-        await auth_service.request_password_reset(session, mailer, settings, str(request.email))
-    except MailDeliveryError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=_MAIL_DELIVERY_ERROR,
-        ) from None
+    await auth_service.request_password_reset(session, mailer, settings, str(request.email))
     return MessageResponse(message="If that email is registered, a reset link has been sent.")
 
 

@@ -288,22 +288,21 @@ class TestPasswordResetRequest:
             )
         assert resp.status_code == 202
 
-    async def test_mail_delivery_failure_returns_503(self, public_client: AsyncClient) -> None:
-        from voter_api.lib.mailer import MailDeliveryError
-
+    async def test_mail_delivery_failure_still_returns_202(self, public_client: AsyncClient) -> None:
+        """Delivery failures are handled inside the service; endpoint stays enumeration-safe."""
         with (
             patch("voter_api.api.v1.auth._get_mailer", return_value=MagicMock()),
             patch(
                 "voter_api.api.v1.auth.auth_service.request_password_reset",
                 new_callable=AsyncMock,
-                side_effect=MailDeliveryError("Mailgun error"),
+                return_value=None,
             ),
         ):
             resp = await public_client.post(
                 "/api/v1/auth/password-reset/request",
                 json={"email": "user@example.com"},
             )
-        assert resp.status_code == 503
+        assert resp.status_code == 202
 
     async def test_invalid_email_returns_422(self, public_client: AsyncClient) -> None:
         resp = await public_client.post(

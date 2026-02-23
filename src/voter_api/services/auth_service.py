@@ -332,8 +332,8 @@ async def request_password_reset(
     """Initiate a password reset for the given email address.
 
     Always returns without error to prevent email enumeration. Rate-limited
-    to one request per RESET_RATE_LIMIT_MINUTES. On delivery failure the row
-    is NOT persisted (fail-fast).
+    to one request per RESET_RATE_LIMIT_MINUTES. On delivery failure, logs a
+    warning and returns silently (enumeration-safe); prior tokens are preserved.
 
     Args:
         session: The database session.
@@ -364,15 +364,12 @@ async def request_password_reset(
         )
         return
 
-    # (B) Delete all prior tokens for this user
-    await session.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == user.id))
-
     # Generate raw token + hash
     raw_token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
     expires_at = now + timedelta(hours=24)
 
-    # Send email — fail-fast: do NOT persist on delivery failure
+    # Send email first — stay enumeration-safe on delivery failure
     reset_url = f"token={raw_token}"  # clients construct full URL; we embed only the token value
     try:
         await mailer.send_template(
@@ -384,10 +381,14 @@ async def request_password_reset(
                 "reset_url": reset_url,
             },
         )
-    except MailDeliveryError as exc:
-        raise exc  # propagate; no row persisted
+    except MailDeliveryError:
+        logger.warning("security.password_reset.delivery_failed")
+        return  # stay enumeration-safe; do not invalidate existing tokens
 
-    # Commit only after successful delivery
+    # Delete prior tokens only after successful delivery
+    await session.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == user.id))
+
+    # Persist only after successful delivery
     row = PasswordResetToken(
         user_id=user.id,
         token_hash=token_hash,

@@ -33,6 +33,7 @@ jobs:
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: 30
       JWT_REFRESH_TOKEN_EXPIRE_DAYS: 7
       ELECTION_REFRESH_ENABLED: "false"
+      TOTP_SECRET_ENCRYPTION_KEY: FKmjoLHL6TNBR6v4nUEFMckeF3P_K7Ba1pbwgP8fR_g=
       LOG_LEVEL: WARNING
     steps:
       - uses: actions/checkout@v6
