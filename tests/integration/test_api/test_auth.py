@@ -187,7 +187,7 @@ class TestLogin:
         with patch("voter_api.api.v1.auth.auth_service.authenticate_user", new_callable=AsyncMock, return_value=None):
             resp = await public_client.post(
                 "/api/v1/auth/login",
-                json={"username": "nobody", "password": "wrongpass"},
+                json={"username": "nobody", "password": "wrongpass"},  # NOSONAR
             )
         assert resp.status_code == 401
 
@@ -340,7 +340,7 @@ class TestPasswordResetConfirm:
     async def test_short_password_returns_422(self, public_client: AsyncClient) -> None:
         resp = await public_client.post(
             "/api/v1/auth/password-reset/confirm",
-            json={"token": "tok", "new_password": "short"},
+            json={"token": "tok", "new_password": "short"},  # NOSONAR
         )
         assert resp.status_code == 422
 

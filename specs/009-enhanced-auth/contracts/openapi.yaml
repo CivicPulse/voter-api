@@ -44,13 +44,13 @@ paths:
             examples:
               password_only:
                 summary: Standard login (no TOTP)
-                value: { username: "alice", password: "s3cur3p@ss" }
+                value: { username: "alice", password: "********" }  # NOSONAR — example value
               with_totp:
                 summary: Login with TOTP code
-                value: { username: "alice", password: "s3cur3p@ss", totp_code: "123456" }
+                value: { username: "alice", password: "********", totp_code: "123456" }  # NOSONAR — example value
               with_recovery:
                 summary: Login with TOTP recovery code
-                value: { username: "alice", password: "s3cur3p@ss", totp_code: "ABCD1234EFGH5678" }
+                value: { username: "alice", password: "********", totp_code: "ABCD1234EFGH5678" }  # NOSONAR — example value
       responses:
         "200":
           description: Authenticated — returns token pair
