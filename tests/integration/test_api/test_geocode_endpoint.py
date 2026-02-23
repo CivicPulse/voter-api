@@ -1,15 +1,71 @@
 """Integration tests for geocoding API endpoints."""
 
 import uuid
+from contextlib import contextmanager
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
 
 from voter_api.api.v1.geocoding import geocoding_router
-from voter_api.lib.geocoder.base import GeocodingProviderError, GeocodingResult
+from voter_api.lib.geocoder.base import GeocodingProviderError
+from voter_api.models.geocoding_job import GeocodingJob
+from voter_api.schemas.geocoding import AddressGeocodeResponse, CacheProviderStats, GeocodeMetadata
 
 from .conftest import make_test_app
+
+
+def _make_geocoding_job(
+    *,
+    job_id: uuid.UUID | None = None,
+    provider: str = "census",
+    status: str = "pending",
+    county: str | None = None,
+    total_records: int | None = None,
+    processed: int | None = None,
+    succeeded: int | None = None,
+    failed: int | None = None,
+) -> GeocodingJob:
+    """Build a GeocodingJob ORM object for use in mocks."""
+    return GeocodingJob(
+        id=job_id or uuid.uuid4(),
+        provider=provider,
+        status=status,
+        force_regeocode=False,
+        county=county,
+        total_records=total_records,
+        processed=processed,
+        succeeded=succeeded,
+        failed=failed,
+        created_at=datetime.now(UTC),
+    )
+
+
+def _make_geocode_response(*, cached: bool = False, provider: str = "census") -> AddressGeocodeResponse:
+    """Build an AddressGeocodeResponse for use in mocks."""
+    return AddressGeocodeResponse(
+        formatted_address="100 PEACHTREE ST NW, ATLANTA, GA 30303",
+        latitude=33.7589985,
+        longitude=-84.3879824,
+        confidence=1.0,
+        metadata=GeocodeMetadata(cached=cached, provider=provider),
+    )
+
+
+@contextmanager
+def _patch_batch_create(mock_job: GeocodingJob):
+    """Patch create_geocoding_job and task_runner for batch endpoint tests."""
+    with (
+        patch(
+            "voter_api.api.v1.geocoding.create_geocoding_job",
+            new_callable=AsyncMock,
+            return_value=mock_job,
+        ),
+        patch("voter_api.api.v1.geocoding.task_runner") as mock_runner,
+    ):
+        mock_runner.submit_task = MagicMock()
+        yield mock_runner
 
 
 @pytest.fixture
@@ -30,36 +86,16 @@ def viewer_app(mock_session: AsyncMock, mock_viewer_user: MagicMock) -> FastAPI:
     return make_test_app(geocoding_router, mock_session, user=mock_viewer_user)
 
 
-@pytest.fixture
-def mock_geocode_result():
-    """A successful geocode result in Georgia."""
-    return GeocodingResult(
-        latitude=33.7589985,
-        longitude=-84.3879824,
-        confidence_score=1.0,
-        raw_response={"result": {"addressMatches": [{"matchedAddress": "100 PEACHTREE ST NW, ATLANTA, GA 30303"}]}},
-        matched_address="100 PEACHTREE ST NW, ATLANTA, GA 30303",
-    )
-
-
 class TestGeocodeEndpoint:
     """Tests for GET /api/v1/geocoding/geocode."""
 
-    async def test_valid_address_returns_200(self, client, mock_geocode_result) -> None:
+    async def test_valid_address_returns_200(self, client) -> None:
         """Valid address returns 200 with required fields."""
-        with (
-            patch("voter_api.api.v1.geocoding.geocode_single_address", new_callable=AsyncMock) as mock_geocode,
+        with patch(
+            "voter_api.api.v1.geocoding.geocode_single_address",
+            new_callable=AsyncMock,
+            return_value=_make_geocode_response(),
         ):
-            from voter_api.schemas.geocoding import AddressGeocodeResponse, GeocodeMetadata
-
-            mock_geocode.return_value = AddressGeocodeResponse(
-                formatted_address="100 PEACHTREE ST NW, ATLANTA, GA 30303",
-                latitude=33.7589985,
-                longitude=-84.3879824,
-                confidence=1.0,
-                metadata=GeocodeMetadata(cached=False, provider="census"),
-            )
-
             resp = await client.get("/api/v1/geocoding/geocode?address=100+Peachtree+St+NW,+Atlanta,+GA+30303")
 
         assert resp.status_code == 200
@@ -90,70 +126,30 @@ class TestGeocodeEndpoint:
 
     async def test_anonymous_access_allowed(self, client) -> None:
         """Anonymous (unauthenticated) requests are allowed — endpoint is public."""
-        from voter_api.schemas.geocoding import AddressGeocodeResponse, GeocodeMetadata
-
-        mock_response = AddressGeocodeResponse(
-            formatted_address="100 MAIN ST, ATLANTA, GA 30303",
-            latitude=33.749,
-            longitude=-84.388,
-            confidence=0.95,
-            metadata=GeocodeMetadata(cached=False, provider="census"),
-        )
         with patch(
             "voter_api.api.v1.geocoding.geocode_single_address",
             new_callable=AsyncMock,
-            return_value=mock_response,
+            return_value=_make_geocode_response(),
         ):
             resp = await client.get("/api/v1/geocoding/geocode?address=100+Main+St")
         assert resp.status_code == 200
 
 
 class TestGeocodeCacheBehavior:
-    """Tests for US2: cached results returned with metadata.cached=true."""
+    """Tests for US2: cached results returned with metadata.cached flag."""
 
-    async def test_cached_result_has_cached_true(self, client) -> None:
-        """Cached result has metadata.cached=true."""
-        from voter_api.schemas.geocoding import AddressGeocodeResponse, GeocodeMetadata
-
-        cached_response = AddressGeocodeResponse(
-            formatted_address="100 PEACHTREE ST NW, ATLANTA, GA 30303",
-            latitude=33.7589985,
-            longitude=-84.3879824,
-            confidence=1.0,
-            metadata=GeocodeMetadata(cached=True, provider="census"),
-        )
+    @pytest.mark.parametrize("cached", [True, False], ids=["cached", "uncached"])
+    async def test_cache_flag_matches_response(self, client, cached: bool) -> None:
+        """Response metadata.cached reflects whether the result was served from cache."""
         with patch(
             "voter_api.api.v1.geocoding.geocode_single_address",
             new_callable=AsyncMock,
-            return_value=cached_response,
+            return_value=_make_geocode_response(cached=cached),
         ):
             resp = await client.get("/api/v1/geocoding/geocode?address=100+Peachtree+St+NW,+Atlanta,+GA+30303")
 
         assert resp.status_code == 200
-        data = resp.json()
-        assert data["metadata"]["cached"] is True
-
-    async def test_uncached_result_has_cached_false(self, client) -> None:
-        """Fresh result has metadata.cached=false."""
-        from voter_api.schemas.geocoding import AddressGeocodeResponse, GeocodeMetadata
-
-        fresh_response = AddressGeocodeResponse(
-            formatted_address="100 PEACHTREE ST NW, ATLANTA, GA 30303",
-            latitude=33.7589985,
-            longitude=-84.3879824,
-            confidence=1.0,
-            metadata=GeocodeMetadata(cached=False, provider="census"),
-        )
-        with patch(
-            "voter_api.api.v1.geocoding.geocode_single_address",
-            new_callable=AsyncMock,
-            return_value=fresh_response,
-        ):
-            resp = await client.get("/api/v1/geocoding/geocode?address=100+Peachtree+St+NW,+Atlanta,+GA+30303")
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["metadata"]["cached"] is False
+        assert resp.json()["metadata"]["cached"] is cached
 
 
 class TestGeocodeErrorPaths:
@@ -198,26 +194,7 @@ class TestBatchGeocodingEndpoint:
 
     async def test_admin_creates_job_returns_202(self, admin_client) -> None:
         """Admin request creates a geocoding job and returns 202 with job fields."""
-        from datetime import UTC, datetime
-
-        from voter_api.models.geocoding_job import GeocodingJob
-
-        mock_job = GeocodingJob(
-            id=uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001"),
-            provider="census",
-            status="pending",
-            force_regeocode=False,
-            created_at=datetime.now(UTC),
-        )
-        with (
-            patch(
-                "voter_api.api.v1.geocoding.create_geocoding_job",
-                new_callable=AsyncMock,
-                return_value=mock_job,
-            ),
-            patch("voter_api.api.v1.geocoding.task_runner") as mock_runner,
-        ):
-            mock_runner.submit_task = MagicMock()
+        with _patch_batch_create(_make_geocoding_job()):
             resp = await admin_client.post("/api/v1/geocoding/batch", json={"provider": "census"})
 
         assert resp.status_code == 202
@@ -228,58 +205,18 @@ class TestBatchGeocodingEndpoint:
 
     async def test_accepts_fallback_true(self, admin_client) -> None:
         """Batch endpoint accepts fallback=True and creates job."""
-        from datetime import UTC, datetime
-
-        from voter_api.models.geocoding_job import GeocodingJob
-
-        mock_job = GeocodingJob(
-            id=uuid.UUID("aaaaaaaa-0000-0000-0000-000000000002"),
-            provider="census",
-            status="pending",
-            force_regeocode=False,
-            created_at=datetime.now(UTC),
-        )
-        with (
-            patch(
-                "voter_api.api.v1.geocoding.create_geocoding_job",
-                new_callable=AsyncMock,
-                return_value=mock_job,
-            ),
-            patch("voter_api.api.v1.geocoding.task_runner") as mock_runner,
-        ):
-            mock_runner.submit_task = MagicMock()
+        with _patch_batch_create(_make_geocoding_job()):
             resp = await admin_client.post("/api/v1/geocoding/batch", json={"provider": "census", "fallback": True})
 
         assert resp.status_code == 202
 
     async def test_accepts_county_filter(self, admin_client) -> None:
         """Batch endpoint accepts optional county filter."""
-        from datetime import UTC, datetime
-
-        from voter_api.models.geocoding_job import GeocodingJob
-
-        mock_job = GeocodingJob(
-            id=uuid.UUID("aaaaaaaa-0000-0000-0000-000000000003"),
-            provider="census",
-            county="FULTON",
-            status="pending",
-            force_regeocode=False,
-            created_at=datetime.now(UTC),
-        )
-        with (
-            patch(
-                "voter_api.api.v1.geocoding.create_geocoding_job",
-                new_callable=AsyncMock,
-                return_value=mock_job,
-            ),
-            patch("voter_api.api.v1.geocoding.task_runner") as mock_runner,
-        ):
-            mock_runner.submit_task = MagicMock()
+        with _patch_batch_create(_make_geocoding_job(county="FULTON")):
             resp = await admin_client.post("/api/v1/geocoding/batch", json={"provider": "census", "county": "FULTON"})
 
         assert resp.status_code == 202
-        data = resp.json()
-        assert data["county"] == "FULTON"
+        assert resp.json()["county"] == "FULTON"
 
     async def test_viewer_cannot_create_batch_returns_403(self, viewer_client) -> None:
         """Viewer role cannot create batch job (admin-only endpoint returns 403)."""
@@ -297,8 +234,7 @@ class TestGeocodingJobStatus:
 
     async def test_requires_auth_returns_401(self, client) -> None:
         """Unauthenticated request returns 401."""
-        job_id = uuid.uuid4()
-        resp = await client.get(f"/api/v1/geocoding/status/{job_id}")
+        resp = await client.get(f"/api/v1/geocoding/status/{uuid.uuid4()}")
         assert resp.status_code == 401
 
     async def test_unknown_job_returns_404(self, admin_client) -> None:
@@ -314,21 +250,9 @@ class TestGeocodingJobStatus:
 
     async def test_returns_job_fields(self, admin_client) -> None:
         """Returns 200 with geocoding job fields for authenticated user."""
-        from datetime import UTC, datetime
-
-        from voter_api.models.geocoding_job import GeocodingJob
-
         job_id = uuid.UUID("bbbbbbbb-0000-0000-0000-000000000001")
-        mock_job = GeocodingJob(
-            id=job_id,
-            provider="census",
-            status="completed",
-            force_regeocode=False,
-            total_records=10,
-            processed=10,
-            succeeded=8,
-            failed=2,
-            created_at=datetime.now(UTC),
+        mock_job = _make_geocoding_job(
+            job_id=job_id, status="completed", total_records=10, processed=10, succeeded=8, failed=2
         )
         with patch(
             "voter_api.api.v1.geocoding.get_geocoding_job",
@@ -348,22 +272,11 @@ class TestGeocodingJobStatus:
 
     async def test_viewer_can_access(self, viewer_client) -> None:
         """Viewer role can access job status (requires any auth, not admin-only)."""
-        from datetime import UTC, datetime
-
-        from voter_api.models.geocoding_job import GeocodingJob
-
         job_id = uuid.UUID("bbbbbbbb-0000-0000-0000-000000000002")
-        mock_job = GeocodingJob(
-            id=job_id,
-            provider="census",
-            status="pending",
-            force_regeocode=False,
-            created_at=datetime.now(UTC),
-        )
         with patch(
             "voter_api.api.v1.geocoding.get_geocoding_job",
             new_callable=AsyncMock,
-            return_value=mock_job,
+            return_value=_make_geocoding_job(job_id=job_id),
         ):
             resp = await viewer_client.get(f"/api/v1/geocoding/status/{job_id}")
 
@@ -381,10 +294,6 @@ class TestCacheStatsEndpoint:
 
     async def test_returns_provider_stats(self, admin_client) -> None:
         """Returns 200 with per-provider cache statistics."""
-        from datetime import UTC, datetime
-
-        from voter_api.schemas.geocoding import CacheProviderStats
-
         mock_stats = [
             CacheProviderStats(
                 provider="census",
