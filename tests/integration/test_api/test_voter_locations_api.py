@@ -1,6 +1,7 @@
 """Integration tests for voter geocoded-location endpoints."""
 
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -14,13 +15,13 @@ from voter_api.models.geocoded_location import GeocodedLocation
 
 
 @pytest.fixture
-def mock_session():
+def mock_session() -> AsyncMock:
     """Create a mock async session."""
     return AsyncMock()
 
 
 @pytest.fixture
-def mock_admin_user():
+def mock_admin_user() -> MagicMock:
     """Mock admin user for dependency override."""
     user = MagicMock()
     user.role = "admin"
@@ -31,7 +32,7 @@ def mock_admin_user():
 
 
 @pytest.fixture
-def mock_viewer_user():
+def mock_viewer_user() -> MagicMock:
     """Mock viewer user for dependency override."""
     user = MagicMock()
     user.role = "viewer"
@@ -71,21 +72,36 @@ def viewer_app(mock_session: AsyncMock, mock_viewer_user: MagicMock) -> FastAPI:
 
 
 @pytest.fixture
-def client(app: FastAPI) -> AsyncClient:
+async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Async test client (no auth)."""
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False)
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        follow_redirects=False,
+    ) as c:
+        yield c
 
 
 @pytest.fixture
-def admin_client(admin_app: FastAPI) -> AsyncClient:
+async def admin_client(admin_app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Async test client with admin auth."""
-    return AsyncClient(transport=ASGITransport(app=admin_app), base_url="http://test", follow_redirects=False)
+    async with AsyncClient(
+        transport=ASGITransport(app=admin_app),
+        base_url="http://test",
+        follow_redirects=False,
+    ) as c:
+        yield c
 
 
 @pytest.fixture
-def viewer_client(viewer_app: FastAPI) -> AsyncClient:
+async def viewer_client(viewer_app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Async test client with viewer auth."""
-    return AsyncClient(transport=ASGITransport(app=viewer_app), base_url="http://test", follow_redirects=False)
+    async with AsyncClient(
+        transport=ASGITransport(app=viewer_app),
+        base_url="http://test",
+        follow_redirects=False,
+    ) as c:
+        yield c
 
 
 def _make_location(
@@ -112,7 +128,6 @@ def _make_location(
 class TestManualGeocodedLocationEndpoint:
     """Tests for POST /api/v1/voters/{voter_id}/geocoded-locations/manual."""
 
-    @pytest.mark.asyncio
     async def test_requires_auth_returns_401(self, client) -> None:
         """Unauthenticated request returns 401."""
         voter_id = uuid.uuid4()
@@ -122,7 +137,6 @@ class TestManualGeocodedLocationEndpoint:
         )
         assert resp.status_code == 401
 
-    @pytest.mark.asyncio
     async def test_viewer_can_add_manual_location(self, viewer_client) -> None:
         """Any authenticated user (including viewer) can add a manual location (auth required, no role restriction)."""
         voter_id = uuid.UUID("cccccccc-0000-0000-0000-000000000001")
@@ -140,7 +154,6 @@ class TestManualGeocodedLocationEndpoint:
 
         assert resp.status_code == 201
 
-    @pytest.mark.asyncio
     async def test_returns_location_fields(self, admin_client) -> None:
         """Returns 201 with all expected GeocodedLocationResponse fields."""
         voter_id = uuid.UUID("cccccccc-0000-0000-0000-000000000002")
@@ -166,7 +179,6 @@ class TestManualGeocodedLocationEndpoint:
         assert data["source_type"] == "manual"
         assert data["is_primary"] is True
 
-    @pytest.mark.asyncio
     async def test_set_as_primary_flag_forwarded(self, admin_client) -> None:
         """set_as_primary=True is forwarded to the service."""
         voter_id = uuid.UUID("cccccccc-0000-0000-0000-000000000003")
@@ -193,7 +205,6 @@ class TestManualGeocodedLocationEndpoint:
         assert call_kwargs["set_as_primary"] is True
         assert call_kwargs["source_type"] == "field-survey"
 
-    @pytest.mark.asyncio
     async def test_invalid_source_type_returns_422(self, admin_client) -> None:
         """Invalid source_type (not manual/field-survey) returns 422."""
         voter_id = uuid.uuid4()
@@ -207,7 +218,6 @@ class TestManualGeocodedLocationEndpoint:
 class TestSetPrimaryGeocodedLocationEndpoint:
     """Tests for PUT /api/v1/voters/{voter_id}/geocoded-locations/{location_id}/set-primary."""
 
-    @pytest.mark.asyncio
     async def test_requires_auth_returns_401(self, client) -> None:
         """Unauthenticated request returns 401."""
         voter_id = uuid.uuid4()
@@ -215,7 +225,6 @@ class TestSetPrimaryGeocodedLocationEndpoint:
         resp = await client.put(f"/api/v1/voters/{voter_id}/geocoded-locations/{location_id}/set-primary")
         assert resp.status_code == 401
 
-    @pytest.mark.asyncio
     async def test_viewer_cannot_set_primary_returns_403(self, viewer_client) -> None:
         """Viewer role cannot set primary (admin-only endpoint returns 403)."""
         voter_id = uuid.uuid4()
@@ -223,7 +232,6 @@ class TestSetPrimaryGeocodedLocationEndpoint:
         resp = await viewer_client.put(f"/api/v1/voters/{voter_id}/geocoded-locations/{location_id}/set-primary")
         assert resp.status_code == 403
 
-    @pytest.mark.asyncio
     async def test_unknown_location_returns_404(self, admin_client) -> None:
         """Non-existent location ID returns 404."""
         voter_id = uuid.uuid4()
@@ -237,7 +245,6 @@ class TestSetPrimaryGeocodedLocationEndpoint:
         assert resp.status_code == 404
         assert "not found" in resp.json()["detail"].lower()
 
-    @pytest.mark.asyncio
     async def test_admin_sets_primary_returns_200(self, admin_client) -> None:
         """Admin can set a location as primary; returns 200 with location fields."""
         voter_id = uuid.UUID("cccccccc-0000-0000-0000-000000000004")

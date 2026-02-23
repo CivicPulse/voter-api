@@ -1,6 +1,7 @@
 """Integration tests for geocoding API endpoints."""
 
 import uuid
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -70,21 +71,36 @@ def viewer_app(mock_session: AsyncMock, mock_viewer_user: MagicMock) -> FastAPI:
 
 
 @pytest.fixture
-def client(app: FastAPI) -> AsyncClient:
+async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Create an async test client (no auth)."""
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False)
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        follow_redirects=False,
+    ) as c:
+        yield c
 
 
 @pytest.fixture
-def admin_client(admin_app: FastAPI) -> AsyncClient:
+async def admin_client(admin_app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Create an async test client with admin auth."""
-    return AsyncClient(transport=ASGITransport(app=admin_app), base_url="http://test", follow_redirects=False)
+    async with AsyncClient(
+        transport=ASGITransport(app=admin_app),
+        base_url="http://test",
+        follow_redirects=False,
+    ) as c:
+        yield c
 
 
 @pytest.fixture
-def viewer_client(viewer_app: FastAPI) -> AsyncClient:
+async def viewer_client(viewer_app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Create an async test client with viewer auth."""
-    return AsyncClient(transport=ASGITransport(app=viewer_app), base_url="http://test", follow_redirects=False)
+    async with AsyncClient(
+        transport=ASGITransport(app=viewer_app),
+        base_url="http://test",
+        follow_redirects=False,
+    ) as c:
+        yield c
 
 
 @pytest.fixture
