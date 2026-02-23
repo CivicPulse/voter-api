@@ -142,7 +142,7 @@ async def login(
     request: LoginRequest,
     session: Annotated[AsyncSession, Depends(get_async_session)],
     settings: Annotated[Settings, Depends(get_settings)],
-) -> TokenResponse:
+) -> TokenResponse | JSONResponse:
     """Authenticate user and return JWT tokens.
 
     Accepts JSON body with username, password, and optional totp_code.
