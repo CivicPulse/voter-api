@@ -10,7 +10,6 @@ deleting a user sets those columns to NULL rather than raising a FK
 constraint violation.
 """
 
-import sqlalchemy as sa
 from alembic import op
 
 revision: str = "025"

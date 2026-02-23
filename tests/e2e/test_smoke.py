@@ -150,7 +150,8 @@ class TestAuth:
         finally:
             # Cleanup via DELETE endpoint now available.
             if user_id is not None:
-                await admin_client.delete(_url(f"/users/{user_id}"))
+                cleanup = await admin_client.delete(_url(f"/users/{user_id}"))
+                assert cleanup.status_code in (204, 404)
 
     async def test_get_user_by_id(self, admin_client: httpx.AsyncClient) -> None:
         new_user = {
@@ -170,7 +171,8 @@ class TestAuth:
             assert body["username"] == new_user["username"]
             assert body["role"] == "viewer"
         finally:
-            await admin_client.delete(_url(f"/users/{user_id}"))
+            cleanup = await admin_client.delete(_url(f"/users/{user_id}"))
+            assert cleanup.status_code in (204, 404)
 
     async def test_get_user_by_id_not_found(self, admin_client: httpx.AsyncClient) -> None:
         resp = await admin_client.get(_url(f"/users/{uuid.uuid4()}"))
@@ -199,7 +201,8 @@ class TestAuth:
             # Username unchanged
             assert body["username"] == new_user["username"]
         finally:
-            await admin_client.delete(_url(f"/users/{user_id}"))
+            cleanup = await admin_client.delete(_url(f"/users/{user_id}"))
+            assert cleanup.status_code in (204, 404)
 
     async def test_patch_user_suspend(self, admin_client: httpx.AsyncClient) -> None:
         new_user = {
@@ -219,7 +222,8 @@ class TestAuth:
             assert patch_resp.status_code == 200
             assert patch_resp.json()["is_active"] is False
         finally:
-            await admin_client.delete(_url(f"/users/{user_id}"))
+            cleanup = await admin_client.delete(_url(f"/users/{user_id}"))
+            assert cleanup.status_code in (204, 404)
 
     async def test_patch_user_not_found(self, admin_client: httpx.AsyncClient) -> None:
         resp = await admin_client.patch(_url(f"/users/{uuid.uuid4()}"), json={"role": "analyst"})
@@ -255,6 +259,18 @@ class TestAuth:
         resp = await viewer_client.delete(_url(f"/users/{uuid.uuid4()}"))
         assert resp.status_code == 403
 
+    async def test_get_user_by_id_unauthenticated(self, client: httpx.AsyncClient) -> None:
+        resp = await client.get(_url(f"/users/{uuid.uuid4()}"))
+        assert resp.status_code == 401
+
+    async def test_patch_user_unauthenticated(self, client: httpx.AsyncClient) -> None:
+        resp = await client.patch(_url(f"/users/{uuid.uuid4()}"), json={"role": "analyst"})
+        assert resp.status_code == 401
+
+    async def test_delete_user_unauthenticated(self, client: httpx.AsyncClient) -> None:
+        resp = await client.delete(_url(f"/users/{uuid.uuid4()}"))
+        assert resp.status_code == 401
+
     async def test_delete_self_returns_400(self, admin_client: httpx.AsyncClient) -> None:
         resp = await admin_client.delete(_url(f"/users/{ADMIN_USER_ID}"))
         assert resp.status_code == 400
@@ -289,8 +305,9 @@ class TestAuth:
             )
             assert patch_resp.status_code == 409
         finally:
-            await admin_client.delete(_url(f"/users/{id_a}"))
-            await admin_client.delete(_url(f"/users/{id_b}"))
+            for uid in (id_a, id_b):
+                cleanup = await admin_client.delete(_url(f"/users/{uid}"))
+                assert cleanup.status_code in (204, 404)
 
 
 # ── Boundaries ─────────────────────────────────────────────────────────────

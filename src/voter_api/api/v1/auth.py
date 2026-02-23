@@ -159,7 +159,7 @@ async def update_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    updates = request.model_dump(exclude_unset=True)
+    updates = request.model_dump(exclude_unset=True, exclude_none=True)
 
     if current_user.id == user_id:
         if updates.get("is_active") is False:

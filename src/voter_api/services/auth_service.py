@@ -205,7 +205,7 @@ async def update_user(session: AsyncSession, user: User, updates: dict) -> User:
             raise ValueError(msg)
 
     for field, value in updates.items():
-        if field in _UPDATABLE_USER_FIELDS:
+        if field in _UPDATABLE_USER_FIELDS and value is not None:
             setattr(user, field, value)
 
     try:
