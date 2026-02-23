@@ -1,7 +1,6 @@
 """Per-provider database caching layer for geocoding results."""
 
 import contextlib
-import copy
 import uuid
 from datetime import UTC, datetime
 
@@ -70,10 +69,12 @@ async def cache_store(
         result: Geocoding result to cache.
         address_id: Optional FK to the canonical address record.
     """
-    # Embed quality in raw_response for cache round-tripping (avoids migration)
+    # Embed quality in raw_response for cache round-tripping (avoids migration).
+    # A shallow copy is intentional: we only add a top-level string key (_quality)
+    # and never mutate any nested structures, so shared references are safe.
     raw = result.raw_response
     if result.quality is not None:
-        raw = copy.deepcopy(raw) if raw else {}
+        raw = dict(raw) if raw else {}
         raw["_quality"] = result.quality.value
 
     entry = GeocoderCache(

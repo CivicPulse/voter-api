@@ -4,8 +4,9 @@ All configuration is loaded from environment variables following 12-factor princ
 """
 
 import re
+from typing import Self
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -325,6 +326,21 @@ class Settings(BaseSettings):
         if not self.cors_origins.strip():
             return []
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @model_validator(mode="after")
+    def validate_nominatim_email(self) -> Self:
+        """Require a non-empty email when Nominatim is enabled.
+
+        Returns:
+            The validated settings instance.
+
+        Raises:
+            ValueError: If Nominatim is enabled but no email is configured.
+        """
+        if self.geocoder_nominatim_enabled and not self.geocoder_nominatim_email.strip():
+            msg = "GEOCODER_NOMINATIM_EMAIL must be set when GEOCODER_NOMINATIM_ENABLED is true (required by Nominatim usage policy)"
+            raise ValueError(msg)
+        return self
 
 
 def get_settings() -> Settings:

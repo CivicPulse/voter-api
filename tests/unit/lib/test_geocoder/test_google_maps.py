@@ -13,7 +13,7 @@ class TestGoogleMapsResponseParsing:
     """Tests for Google Maps API response parsing."""
 
     def setup_method(self) -> None:
-        self.geocoder = GoogleMapsGeocoder(api_key="test-key")
+        self.geocoder: GoogleMapsGeocoder = GoogleMapsGeocoder(api_key="test-key")
 
     def test_successful_rooftop_match(self) -> None:
         data = {

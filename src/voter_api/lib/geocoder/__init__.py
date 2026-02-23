@@ -178,7 +178,7 @@ def get_configured_providers(settings: Settings) -> list[BaseGeocoder]:
             if geocoder.is_configured:
                 providers.append(geocoder)
         except (ValueError, TypeError) as exc:
-            logger.warning("Failed to instantiate provider {}: {}", name, exc)
+            logger.warning("Failed to instantiate geocoder provider '{}': {}", name, exc)
             continue
 
     return providers
