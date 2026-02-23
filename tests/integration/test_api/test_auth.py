@@ -633,6 +633,50 @@ class TestTOTPLockoutFlow:
         assert resp.status_code == 200
 
 
+class TestTOTPReplayPrevention:
+    """Submit the same valid TOTP code twice within 30s → second call returns mfa_invalid (FR-020)."""
+
+    async def test_replay_same_code_returns_403(self, public_client: AsyncClient) -> None:
+        user = _mock_user()
+        token_resp = TokenResponse(access_token="a", refresh_token="r", token_type="bearer", expires_in=1800)
+        call_count = 0
+
+        async def _side_effect(
+            session: object,
+            username: str,
+            password: str,
+            totp_code: str | None = None,
+        ) -> object:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return user  # first attempt succeeds
+            raise MFARequiredException(error_code="mfa_invalid", detail="TOTP code already used")
+
+        with (
+            patch(
+                "voter_api.api.v1.auth.auth_service.authenticate_user",
+                side_effect=_side_effect,
+            ),
+            patch(
+                "voter_api.api.v1.auth.auth_service.generate_tokens",
+                return_value=token_resp,
+            ),
+        ):
+            first = await public_client.post(
+                "/api/v1/auth/login",
+                json={"username": "testadmin", "password": "password1", "totp_code": "123456"},
+            )
+            assert first.status_code == 200
+
+            second = await public_client.post(
+                "/api/v1/auth/login",
+                json={"username": "testadmin", "password": "password1", "totp_code": "123456"},
+            )
+        assert second.status_code == 403
+        assert second.json()["detail"]["error_code"] == "mfa_invalid"
+
+
 # ---------------------------------------------------------------------------
 # Passkeys — US4
 # ---------------------------------------------------------------------------
