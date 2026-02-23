@@ -226,7 +226,7 @@ class TestAuth:
         """POST /auth/password-reset/confirm with bad token → 400."""
         resp = await client.post(
             _url("/auth/password-reset/confirm"),
-            json={"token": "invalid-token-xyz", "new_password": "NewStr0ngP@ss!"},
+            json={"token": "invalid-token-xyz", "new_password": "NewStr0ngP@ss!"},  # NOSONAR
         )
         assert resp.status_code == 400
 
@@ -262,7 +262,7 @@ class TestAuth:
         """POST /auth/invite/accept with bad token → 400."""
         resp = await client.post(
             _url("/auth/invite/accept"),
-            json={"token": "bad-token-xyz", "username": "newuser", "password": "Str0ngP@ssw0rd!"},
+            json={"token": "bad-token-xyz", "username": "newuser", "password": "Str0ngP@ssw0rd!"},  # NOSONAR
         )
         assert resp.status_code == 400
 

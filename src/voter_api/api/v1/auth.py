@@ -72,6 +72,8 @@ _GIT_COMMIT = _get_git_commit()
 
 router = APIRouter(tags=["auth"])
 
+_MAIL_DELIVERY_ERROR = "Email delivery failed. Please try again."
+
 
 def _get_mailer(settings: Settings) -> MailgunMailer:
     """Build a MailgunMailer from settings."""
@@ -238,7 +240,7 @@ async def password_reset_request(
     except MailDeliveryError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Email delivery failed. Please try again.",
+            detail=_MAIL_DELIVERY_ERROR,
         ) from None
     return MessageResponse(message="If that email is registered, a reset link has been sent.")
 
@@ -277,7 +279,7 @@ async def create_invite(
     except MailDeliveryError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Email delivery failed. Please try again.",
+            detail=_MAIL_DELIVERY_ERROR,
         ) from None
     return InviteResponse.model_validate(invite)
 
@@ -328,7 +330,7 @@ async def resend_invite(
     except MailDeliveryError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Email delivery failed. Please try again.",
+            detail=_MAIL_DELIVERY_ERROR,
         ) from None
     return InviteResponse.model_validate(invite)
 
