@@ -20,7 +20,6 @@ def mailer() -> MailgunMailer:
 class TestSendEmail:
     """Tests for MailgunMailer.send_email."""
 
-    @pytest.mark.asyncio
     async def test_send_email_calls_mailgun_with_correct_payload(self, mailer: MailgunMailer) -> None:
         mock_response = MagicMock(status_code=200)
         mock_messages = AsyncMock()
@@ -42,7 +41,6 @@ class TestSendEmail:
         assert "Test App" in data["from"]
         assert "noreply@test.mailgun.org" in data["from"]
 
-    @pytest.mark.asyncio
     async def test_send_email_uses_correct_domain(self, mailer: MailgunMailer) -> None:
         mock_response = MagicMock(status_code=200)
         mock_messages = AsyncMock()
@@ -59,7 +57,6 @@ class TestSendEmail:
         domain = call_kwargs.kwargs.get("domain") or call_kwargs[1].get("domain")
         assert domain == "test.mailgun.org"
 
-    @pytest.mark.asyncio
     async def test_send_email_raises_on_non_2xx_status(self, mailer: MailgunMailer) -> None:
         mock_response = MagicMock(status_code=400)
         mock_messages = AsyncMock()
@@ -75,7 +72,6 @@ class TestSendEmail:
         ):
             await mailer.send_email("user@example.com", "Subject", "<p>body</p>")
 
-    @pytest.mark.asyncio
     async def test_send_email_raises_on_500_status(self, mailer: MailgunMailer) -> None:
         mock_response = MagicMock(status_code=500)
         mock_messages = AsyncMock()

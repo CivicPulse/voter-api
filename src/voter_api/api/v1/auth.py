@@ -85,8 +85,11 @@ def _get_mailer(settings: Settings) -> MailgunMailer:
 
 def _get_totp_manager(settings: Settings) -> TOTPManager:
     """Build a TOTPManager from settings."""
+    if not settings.totp_secret_encryption_key:
+        msg = "TOTP_SECRET_ENCRYPTION_KEY must be configured to use TOTP features"
+        raise RuntimeError(msg)
     return TOTPManager(
-        encryption_key=settings.totp_secret_encryption_key or "",
+        encryption_key=settings.totp_secret_encryption_key,
         issuer=settings.webauthn_rp_name,
     )
 

@@ -148,7 +148,7 @@ def decode_passkey_challenge_token(
     secret_key: str,
     algorithm: str = "HS256",
 ) -> dict:
-    """Decode a passkey challenge JWT and return username and challenge bytes.
+    """Decode a passkey challenge JWT and return username + base64 challenge.
 
     Args:
         token: The passkey challenge JWT string.

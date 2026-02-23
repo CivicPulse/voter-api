@@ -94,8 +94,11 @@ async def authenticate_user(
         from voter_api.core.config import get_settings
 
         settings = get_settings()
+        if not settings.totp_secret_encryption_key:
+            msg = "TOTP_SECRET_ENCRYPTION_KEY must be configured to use TOTP features"
+            raise RuntimeError(msg)
         totp_manager = TOTPManager(
-            encryption_key=settings.totp_secret_encryption_key or "",
+            encryption_key=settings.totp_secret_encryption_key,
             issuer=settings.webauthn_rp_name,
         )
         now = datetime.now(UTC)
@@ -161,6 +164,7 @@ async def authenticate_user(
                 if totp_cred.failed_attempts >= settings.totp_max_attempts:
                     totp_cred.locked_until = now + timedelta(minutes=settings.totp_lockout_minutes)
                     totp_cred.failed_attempts = 0
+                    await session.commit()
                     logger.warning(
                         "security.totp.locked_out username={username}",
                         username=username,
@@ -174,6 +178,7 @@ async def authenticate_user(
                     username=username,
                     attempts=totp_cred.failed_attempts,
                 )
+                await session.commit()
                 raise MFARequiredException(error_code="mfa_invalid", detail="Invalid TOTP code")
 
             # Successful TOTP verification

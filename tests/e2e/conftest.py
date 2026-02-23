@@ -172,6 +172,7 @@ ELECTION_ID = uuid.UUID("00000000-0000-0000-0000-000000000010")
 OFFICIAL_ID = uuid.UUID("00000000-0000-0000-0000-000000000020")
 BOUNDARY_ID = uuid.UUID("00000000-0000-0000-0000-000000000030")
 INVITE_ID = uuid.UUID("00000000-0000-0000-0000-000000000040")
+TOTP_CREDENTIAL_ID = uuid.UUID("00000000-0000-0000-0000-000000000041")
 
 TOTP_USERNAME = "e2e_totp_user"
 INVITE_EMAIL = "e2e_invite@test.com"
@@ -257,9 +258,25 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
 
         # --- TOTP credential for TOTP_USER -----------------------------------
         await session.execute(delete(TOTPCredential).where(TOTPCredential.user_id == TOTP_USER_ID))
+
+        # Encrypt a known TOTP secret using the configured Fernet key so that
+        # the credential can be decrypted by the real TOTPManager in E2E tests.
+        fernet_key = settings.totp_secret_encryption_key or ""
+        if fernet_key:
+            from cryptography.fernet import Fernet
+
+            encrypted_secret = (
+                Fernet(fernet_key.encode() if isinstance(fernet_key, str) else fernet_key)
+                .encrypt(b"JBSWY3DPEHPK3PXP")
+                .decode()
+            )
+        else:
+            encrypted_secret = "fake_encrypted_secret_for_e2e_tests"
+
         totp_cred_data = {
+            "id": TOTP_CREDENTIAL_ID,
             "user_id": TOTP_USER_ID,
-            "encrypted_secret": "fake_encrypted_secret_for_e2e_tests",
+            "encrypted_secret": encrypted_secret,
             "is_verified": True,
             "failed_attempts": 0,
             "locked_until": None,
@@ -268,8 +285,9 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         }
         stmt = pg_insert(TOTPCredential).values(**totp_cred_data)
         stmt = stmt.on_conflict_do_update(
-            index_elements=["user_id"],
+            index_elements=["id"],
             set_={
+                "user_id": stmt.excluded.user_id,
                 "encrypted_secret": stmt.excluded.encrypted_secret,
                 "is_verified": stmt.excluded.is_verified,
                 "failed_attempts": stmt.excluded.failed_attempts,
