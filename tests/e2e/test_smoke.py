@@ -289,15 +289,17 @@ class TestAuth:
             "password": "strongpassword123",
             "role": "viewer",
         }
-        create_a = await admin_client.post(_url("/users"), json=user_a)
-        assert create_a.status_code == 201
-        id_a = create_a.json()["id"]
-
-        create_b = await admin_client.post(_url("/users"), json=user_b)
-        assert create_b.status_code == 201
-        id_b = create_b.json()["id"]
-
+        id_a: str | None = None
+        id_b: str | None = None
         try:
+            create_a = await admin_client.post(_url("/users"), json=user_a)
+            assert create_a.status_code == 201
+            id_a = create_a.json()["id"]
+
+            create_b = await admin_client.post(_url("/users"), json=user_b)
+            assert create_b.status_code == 201
+            id_b = create_b.json()["id"]
+
             # Attempt to update user_b's email to user_a's email — should conflict
             patch_resp = await admin_client.patch(
                 _url(f"/users/{id_b}"),
@@ -306,8 +308,9 @@ class TestAuth:
             assert patch_resp.status_code == 409
         finally:
             for uid in (id_a, id_b):
-                cleanup = await admin_client.delete(_url(f"/users/{uid}"))
-                assert cleanup.status_code in (204, 404)
+                if uid is not None:
+                    cleanup = await admin_client.delete(_url(f"/users/{uid}"))
+                    assert cleanup.status_code in (204, 404)
 
 
 # ── Boundaries ─────────────────────────────────────────────────────────────

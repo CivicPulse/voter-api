@@ -140,7 +140,19 @@ async def get_user_by_id(
     _current_user: Annotated[User, Depends(require_role("admin"))],
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> User:
-    """Get a user by ID (admin only)."""
+    """Get a user by ID (admin only).
+
+    Args:
+        user_id: The UUID of the user to retrieve.
+        _current_user: The authenticated admin user (enforces role; unused directly).
+        session: The async database session.
+
+    Returns:
+        The requested User record.
+
+    Raises:
+        HTTPException: 404 if no user with the given ID exists.
+    """
     user = await auth_service.get_user(session, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -154,7 +166,25 @@ async def update_user(
     current_user: Annotated[User, Depends(require_role("admin"))],
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> User:
-    """Update an existing user's details (admin only)."""
+    """Update an existing user's details (admin only).
+
+    All request fields are optional; only provided fields are updated. Admins
+    cannot deactivate their own account or downgrade their own role.
+
+    Args:
+        user_id: The UUID of the user to update.
+        request: Partial update payload (email, role, and/or is_active).
+        current_user: The authenticated admin user performing the update.
+        session: The async database session.
+
+    Returns:
+        The updated User record.
+
+    Raises:
+        HTTPException: 404 if the user is not found, 400 if the admin attempts
+            to deactivate their own account or downgrade their own role,
+            409 if the requested email is already in use.
+    """
     user = await auth_service.get_user(session, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -188,7 +218,21 @@ async def delete_user(
     current_user: Annotated[User, Depends(require_role("admin"))],
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> None:
-    """Delete a user account (admin only)."""
+    """Delete a user account (admin only). Returns 204 No Content on success.
+
+    Related nullable foreign keys (meetings.submitted_by, meetings.approved_by,
+    elected_officials.approved_by_id) are automatically set to NULL via the
+    ON DELETE SET NULL constraint added in migration 025.
+
+    Args:
+        user_id: The UUID of the user to delete.
+        current_user: The authenticated admin user performing the deletion.
+        session: The async database session.
+
+    Raises:
+        HTTPException: 400 if the admin attempts to delete their own account,
+            404 if no user with the given ID exists.
+    """
     if current_user.id == user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
