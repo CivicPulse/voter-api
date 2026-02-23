@@ -490,6 +490,48 @@ class TestGeocoding:
         assert "id" in body
         assert body["status"] == "pending"
 
+    async def test_batch_requires_admin(self, client: httpx.AsyncClient) -> None:
+        """Batch endpoint requires authentication — anonymous request returns 401."""
+        resp = await client.post(
+            _url("/geocoding/batch"),
+            json={"provider": "census"},
+        )
+        assert resp.status_code == 401
+
+    async def test_status_requires_auth(self, client: httpx.AsyncClient) -> None:
+        """Job status endpoint requires authentication — anonymous request returns 401."""
+        resp = await client.get(_url(f"/geocoding/status/{uuid.uuid4()}"))
+        assert resp.status_code == 401
+
+    async def test_status_returns_job(self, admin_client: httpx.AsyncClient) -> None:
+        """Job status endpoint returns a job record for a known job ID.
+
+        Creates a batch job via the batch endpoint, then retrieves its status.
+        """
+        create_resp = await admin_client.post(
+            _url("/geocoding/batch"),
+            json={"provider": "census", "fallback": False},
+        )
+        assert create_resp.status_code == 202
+        job_id = create_resp.json()["id"]
+
+        status_resp = await admin_client.get(_url(f"/geocoding/status/{job_id}"))
+        assert status_resp.status_code == 200
+        body = status_resp.json()
+        assert body["id"] == job_id
+        assert "status" in body
+        assert "provider" in body
+
+    async def test_geocode_all_requires_admin(self, client: httpx.AsyncClient) -> None:
+        """Voter geocode-all endpoint requires authentication — anonymous returns 401."""
+        resp = await client.post(_url(f"/geocoding/voter/{uuid.uuid4()}/geocode-all"))
+        assert resp.status_code == 401
+
+    async def test_geocode_all_unknown_voter_returns_404(self, admin_client: httpx.AsyncClient) -> None:
+        """Voter geocode-all returns 404 for an unknown voter ID."""
+        resp = await admin_client.post(_url(f"/geocoding/voter/{uuid.uuid4()}/geocode-all"))
+        assert resp.status_code == 404
+
 
 # ── Imports ────────────────────────────────────────────────────────────────
 
@@ -610,6 +652,16 @@ class TestRBAC:
 
     async def test_viewer_can_read_voters(self, viewer_client: httpx.AsyncClient) -> None:
         assert (await viewer_client.get(_url("/voters"))).status_code == 200
+
+    async def test_viewer_cannot_trigger_batch_geocoding(self, viewer_client: httpx.AsyncClient) -> None:
+        """Viewer role cannot trigger batch geocoding (admin-only) — returns 403."""
+        resp = await viewer_client.post(_url("/geocoding/batch"), json={"provider": "census"})
+        assert resp.status_code == 403
+
+    async def test_analyst_cannot_trigger_batch_geocoding(self, analyst_client: httpx.AsyncClient) -> None:
+        """Analyst role cannot trigger batch geocoding (admin-only) — returns 403."""
+        resp = await analyst_client.post(_url("/geocoding/batch"), json={"provider": "census"})
+        assert resp.status_code == 403
 
 
 # ── Voter History ──────────────────────────────────────────────────────────
