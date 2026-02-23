@@ -8,7 +8,7 @@ Fixtures seed baseline data and provide authenticated HTTP clients.
 import hashlib
 import os
 import uuid
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Generator
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -418,7 +418,7 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
 
 
 @pytest.fixture(scope="session", autouse=True)
-def mock_mailer() -> AsyncGenerator[MagicMock]:
+def mock_mailer() -> Generator[MagicMock]:
     """Mock MailgunMailer for the entire E2E session to prevent real email delivery.
 
     Patches the factory function used by auth route handlers so no request

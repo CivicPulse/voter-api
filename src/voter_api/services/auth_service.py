@@ -659,6 +659,12 @@ async def accept_invite(
         msg = "Username already taken"
         raise ValueError(msg)
 
+    # Check email uniqueness (invite email may have been registered after issuance)
+    existing_email = await session.execute(select(User).where(User.email == row.email))
+    if existing_email.scalar_one_or_none() is not None:
+        msg = "Email already registered"
+        raise ValueError(msg)
+
     user = User(
         username=username,
         email=row.email,

@@ -6,6 +6,7 @@ and passkey registration/login. All service calls and external dependencies
 """
 
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -132,18 +133,21 @@ def viewer_app(mock_session: AsyncMock, mock_viewer_user: MagicMock) -> FastAPI:
 
 
 @pytest.fixture
-def public_client(public_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=public_app), base_url="https://test")
+async def public_client(public_app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=public_app), base_url="https://test") as client:
+        yield client
 
 
 @pytest.fixture
-def admin_client(admin_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=admin_app), base_url="https://test")
+async def admin_client(admin_app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=admin_app), base_url="https://test") as client:
+        yield client
 
 
 @pytest.fixture
-def viewer_client(viewer_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=viewer_app), base_url="https://test")
+async def viewer_client(viewer_app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=viewer_app), base_url="https://test") as client:
+        yield client
 
 
 # ---------------------------------------------------------------------------

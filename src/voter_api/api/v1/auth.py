@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from voter_api import __version__
 from voter_api.core.config import Settings, get_settings
 from voter_api.core.dependencies import get_async_session, get_current_user, require_role
-from voter_api.lib.mailer import MailgunMailer
+from voter_api.lib.mailer import MailDeliveryError, MailgunMailer
 from voter_api.lib.passkey import PasskeyManager
 from voter_api.lib.totp import TOTPManager
 from voter_api.models.user import User
@@ -75,10 +75,13 @@ router = APIRouter(tags=["auth"])
 
 def _get_mailer(settings: Settings) -> MailgunMailer:
     """Build a MailgunMailer from settings."""
+    if not settings.mailgun_api_key or not settings.mailgun_domain or not settings.mailgun_from_email:
+        msg = "MAILGUN_API_KEY, MAILGUN_DOMAIN, and MAILGUN_FROM_EMAIL must be configured"
+        raise RuntimeError(msg)
     return MailgunMailer(
-        api_key=settings.mailgun_api_key or "",
-        domain=settings.mailgun_domain or "",
-        from_email=settings.mailgun_from_email or "",
+        api_key=settings.mailgun_api_key,
+        domain=settings.mailgun_domain,
+        from_email=settings.mailgun_from_email,
         from_name=settings.mailgun_from_name,
     )
 
@@ -229,8 +232,6 @@ async def password_reset_request(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> MessageResponse:
     """Request a password reset email (enumeration-safe; always 202)."""
-    from voter_api.lib.mailer import MailDeliveryError
-
     mailer = _get_mailer(settings)
     try:
         await auth_service.request_password_reset(session, mailer, settings, str(request.email))
@@ -273,6 +274,11 @@ async def create_invite(
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+    except MailDeliveryError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Email delivery failed. Please try again.",
+        ) from None
     return InviteResponse.model_validate(invite)
 
 
@@ -319,6 +325,11 @@ async def resend_invite(
         invite = await auth_service.resend_invite(session, mailer, settings, invite_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except MailDeliveryError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Email delivery failed. Please try again.",
+        ) from None
     return InviteResponse.model_validate(invite)
 
 
@@ -442,7 +453,7 @@ async def passkey_register_verify(
             request.challenge_token,
             request.name,
         )
-    except (ValueError, Exception) as e:
+    except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     return PasskeyResponse.model_validate(passkey)
 
