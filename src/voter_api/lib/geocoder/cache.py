@@ -1,6 +1,7 @@
 """Per-provider database caching layer for geocoding results."""
 
 import contextlib
+import copy
 import uuid
 from datetime import UTC, datetime
 
@@ -72,7 +73,7 @@ async def cache_store(
     # Embed quality in raw_response for cache round-tripping (avoids migration)
     raw = result.raw_response
     if result.quality is not None:
-        raw = dict(raw) if raw else {}
+        raw = copy.deepcopy(raw) if raw else {}
         raw["_quality"] = result.quality.value
 
     entry = GeocoderCache(
