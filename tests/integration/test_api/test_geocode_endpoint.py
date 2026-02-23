@@ -14,13 +14,13 @@ from voter_api.lib.geocoder.base import GeocodingProviderError, GeocodingResult
 
 
 @pytest.fixture
-def mock_session():
+def mock_session() -> AsyncMock:
     """Create a mock async session."""
     return AsyncMock()
 
 
 @pytest.fixture
-def mock_admin_user():
+def mock_admin_user() -> MagicMock:
     """Mock admin user for dependency override."""
     user = MagicMock()
     user.role = "admin"
@@ -31,7 +31,7 @@ def mock_admin_user():
 
 
 @pytest.fixture
-def mock_viewer_user():
+def mock_viewer_user() -> MagicMock:
     """Mock viewer user for dependency override."""
     user = MagicMock()
     user.role = "viewer"
@@ -118,7 +118,6 @@ def mock_geocode_result():
 class TestGeocodeEndpoint:
     """Tests for GET /api/v1/geocoding/geocode."""
 
-    @pytest.mark.asyncio
     async def test_valid_address_returns_200(self, client, mock_geocode_result) -> None:
         """Valid address returns 200 with required fields."""
         with (
@@ -146,26 +145,22 @@ class TestGeocodeEndpoint:
         assert "cached" in data["metadata"]
         assert "provider" in data["metadata"]
 
-    @pytest.mark.asyncio
     async def test_empty_address_returns_422(self, client) -> None:
         """Empty address returns 422 validation error."""
         resp = await client.get("/api/v1/geocoding/geocode?address=")
         assert resp.status_code == 422
 
-    @pytest.mark.asyncio
     async def test_whitespace_only_returns_422(self, client) -> None:
         """Whitespace-only address returns 422."""
         resp = await client.get("/api/v1/geocoding/geocode?address=%20%20%20")
         assert resp.status_code == 422
 
-    @pytest.mark.asyncio
     async def test_address_too_long_returns_422(self, client) -> None:
         """Address exceeding 500 chars returns 422."""
         long_addr = "A" * 501
         resp = await client.get(f"/api/v1/geocoding/geocode?address={long_addr}")
         assert resp.status_code == 422
 
-    @pytest.mark.asyncio
     async def test_anonymous_access_allowed(self, client) -> None:
         """Anonymous (unauthenticated) requests are allowed — endpoint is public."""
         from voter_api.schemas.geocoding import AddressGeocodeResponse, GeocodeMetadata
@@ -189,7 +184,6 @@ class TestGeocodeEndpoint:
 class TestGeocodeCacheBehavior:
     """Tests for US2: cached results returned with metadata.cached=true."""
 
-    @pytest.mark.asyncio
     async def test_cached_result_has_cached_true(self, client) -> None:
         """Cached result has metadata.cached=true."""
         from voter_api.schemas.geocoding import AddressGeocodeResponse, GeocodeMetadata
@@ -212,7 +206,6 @@ class TestGeocodeCacheBehavior:
         data = resp.json()
         assert data["metadata"]["cached"] is True
 
-    @pytest.mark.asyncio
     async def test_uncached_result_has_cached_false(self, client) -> None:
         """Fresh result has metadata.cached=false."""
         from voter_api.schemas.geocoding import AddressGeocodeResponse, GeocodeMetadata
@@ -239,7 +232,6 @@ class TestGeocodeCacheBehavior:
 class TestGeocodeErrorPaths:
     """Tests for US3: graceful geocoding failure handling."""
 
-    @pytest.mark.asyncio
     async def test_unmatchable_address_returns_404(self, client) -> None:
         """Address that cannot be geocoded returns 404 with descriptive message."""
         with patch(
@@ -254,7 +246,6 @@ class TestGeocodeErrorPaths:
         assert "detail" in data
         assert "could not be geocoded" in data["detail"]
 
-    @pytest.mark.asyncio
     async def test_provider_timeout_returns_502(self, client) -> None:
         """Provider timeout returns 502 with retry suggestion."""
         with patch(
@@ -273,13 +264,11 @@ class TestGeocodeErrorPaths:
 class TestBatchGeocodingEndpoint:
     """Tests for POST /api/v1/geocoding/batch (admin-only)."""
 
-    @pytest.mark.asyncio
     async def test_requires_auth_returns_401(self, client) -> None:
         """Unauthenticated request returns 401."""
         resp = await client.post("/api/v1/geocoding/batch", json={"provider": "census"})
         assert resp.status_code == 401
 
-    @pytest.mark.asyncio
     async def test_admin_creates_job_returns_202(self, admin_client) -> None:
         """Admin request creates a geocoding job and returns 202 with job fields."""
         from datetime import UTC, datetime
@@ -310,7 +299,6 @@ class TestBatchGeocodingEndpoint:
         assert data["status"] == "pending"
         assert data["provider"] == "census"
 
-    @pytest.mark.asyncio
     async def test_accepts_fallback_true(self, admin_client) -> None:
         """Batch endpoint accepts fallback=True and creates job."""
         from datetime import UTC, datetime
@@ -337,7 +325,6 @@ class TestBatchGeocodingEndpoint:
 
         assert resp.status_code == 202
 
-    @pytest.mark.asyncio
     async def test_accepts_county_filter(self, admin_client) -> None:
         """Batch endpoint accepts optional county filter."""
         from datetime import UTC, datetime
@@ -367,7 +354,11 @@ class TestBatchGeocodingEndpoint:
         data = resp.json()
         assert data["county"] == "FULTON"
 
-    @pytest.mark.asyncio
+    async def test_viewer_cannot_create_batch_returns_403(self, viewer_client) -> None:
+        """Viewer role cannot create batch job (admin-only endpoint returns 403)."""
+        resp = await viewer_client.post("/api/v1/geocoding/batch", json={"provider": "census"})
+        assert resp.status_code == 403
+
     async def test_invalid_provider_returns_422(self, admin_client) -> None:
         """Invalid provider value returns 422 (schema validation)."""
         resp = await admin_client.post("/api/v1/geocoding/batch", json={"provider": "not-a-real-provider"})
@@ -377,14 +368,12 @@ class TestBatchGeocodingEndpoint:
 class TestGeocodingJobStatus:
     """Tests for GET /api/v1/geocoding/status/{job_id} (any authenticated user)."""
 
-    @pytest.mark.asyncio
     async def test_requires_auth_returns_401(self, client) -> None:
         """Unauthenticated request returns 401."""
         job_id = uuid.uuid4()
         resp = await client.get(f"/api/v1/geocoding/status/{job_id}")
         assert resp.status_code == 401
 
-    @pytest.mark.asyncio
     async def test_unknown_job_returns_404(self, admin_client) -> None:
         """Unknown job ID returns 404."""
         with patch(
@@ -396,7 +385,6 @@ class TestGeocodingJobStatus:
         assert resp.status_code == 404
         assert "not found" in resp.json()["detail"].lower()
 
-    @pytest.mark.asyncio
     async def test_returns_job_fields(self, admin_client) -> None:
         """Returns 200 with geocoding job fields for authenticated user."""
         from datetime import UTC, datetime
@@ -431,7 +419,6 @@ class TestGeocodingJobStatus:
         assert data["succeeded"] == 8
         assert data["failed"] == 2
 
-    @pytest.mark.asyncio
     async def test_viewer_can_access(self, viewer_client) -> None:
         """Viewer role can access job status (requires any auth, not admin-only)."""
         from datetime import UTC, datetime
@@ -460,13 +447,11 @@ class TestGeocodingJobStatus:
 class TestCacheStatsEndpoint:
     """Tests for GET /api/v1/geocoding/cache/stats (any authenticated user)."""
 
-    @pytest.mark.asyncio
     async def test_requires_auth_returns_401(self, client) -> None:
         """Unauthenticated request returns 401."""
         resp = await client.get("/api/v1/geocoding/cache/stats")
         assert resp.status_code == 401
 
-    @pytest.mark.asyncio
     async def test_returns_provider_stats(self, admin_client) -> None:
         """Returns 200 with per-provider cache statistics."""
         from datetime import UTC, datetime
@@ -495,7 +480,6 @@ class TestCacheStatsEndpoint:
         assert data["providers"][0]["provider"] == "census"
         assert data["providers"][0]["cached_count"] == 42
 
-    @pytest.mark.asyncio
     async def test_empty_cache_returns_empty_list(self, admin_client) -> None:
         """Returns 200 with empty list when cache is empty."""
         with patch(
@@ -508,7 +492,6 @@ class TestCacheStatsEndpoint:
         assert resp.status_code == 200
         assert resp.json()["providers"] == []
 
-    @pytest.mark.asyncio
     async def test_viewer_can_access(self, viewer_client) -> None:
         """Viewer role can access cache stats (requires any auth, not admin-only)."""
         with patch(
