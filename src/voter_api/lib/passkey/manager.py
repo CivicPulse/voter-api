@@ -14,10 +14,13 @@ from webauthn.helpers import (
 )
 from webauthn.helpers.structs import (
     AuthenticatorSelectionCriteria,
+    PublicKeyCredentialCreationOptions,
     PublicKeyCredentialDescriptor,
+    PublicKeyCredentialRequestOptions,
     ResidentKeyRequirement,
     UserVerificationRequirement,
 )
+from webauthn.registration.verify_registration_response import VerifiedRegistration
 
 
 class PasskeyManager:
@@ -42,7 +45,7 @@ class PasskeyManager:
         user_id: bytes,
         username: str,
         existing_credentials: list[bytes] | None = None,
-    ) -> tuple[object, bytes]:
+    ) -> tuple[PublicKeyCredentialCreationOptions, bytes]:
         """Generate WebAuthn registration options.
 
         Args:
@@ -72,7 +75,7 @@ class PasskeyManager:
         self,
         credential_response: dict,
         expected_challenge: bytes,
-    ) -> object:
+    ) -> VerifiedRegistration:
         """Verify a WebAuthn registration credential response.
 
         Args:
@@ -98,7 +101,7 @@ class PasskeyManager:
     def generate_authentication_options(
         self,
         credentials: list[bytes],
-    ) -> tuple[object, bytes]:
+    ) -> tuple[PublicKeyCredentialRequestOptions, bytes]:
         """Generate WebAuthn authentication options for a list of credentials.
 
         Args:

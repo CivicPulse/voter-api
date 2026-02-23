@@ -1,13 +1,19 @@
 """Auth token models: PasswordResetToken and UserInvite."""
 
-import uuid
-from datetime import datetime
+from __future__ import annotations
+
+import uuid  # noqa: TC003
+from datetime import datetime  # noqa: TC003
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from voter_api.models.base import Base, UUIDMixin
+
+if TYPE_CHECKING:
+    from voter_api.models.user import User
 
 
 class PasswordResetToken(Base, UUIDMixin):
@@ -34,7 +40,7 @@ class PasswordResetToken(Base, UUIDMixin):
         nullable=False,
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="password_reset_tokens")  # noqa: F821
+    user: Mapped[User] = relationship("User", back_populates="password_reset_tokens")
 
 
 class UserInvite(Base, UUIDMixin):
@@ -64,4 +70,4 @@ class UserInvite(Base, UUIDMixin):
         nullable=False,
     )
 
-    invited_by: Mapped["User | None"] = relationship("User", back_populates="sent_invites")  # noqa: F821
+    invited_by: Mapped[User | None] = relationship("User", back_populates="sent_invites")

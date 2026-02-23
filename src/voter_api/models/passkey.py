@@ -1,13 +1,19 @@
 """Passkey (WebAuthn credential) model."""
 
-import uuid
-from datetime import datetime
+from __future__ import annotations
+
+import uuid  # noqa: TC003
+from datetime import datetime  # noqa: TC003
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer, LargeBinary, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from voter_api.models.base import Base, UUIDMixin
+
+if TYPE_CHECKING:
+    from voter_api.models.user import User
 
 
 class Passkey(Base, UUIDMixin):
@@ -37,4 +43,4 @@ class Passkey(Base, UUIDMixin):
     )
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    user: Mapped["User"] = relationship("User", back_populates="passkeys")  # noqa: F821
+    user: Mapped[User] = relationship("User", back_populates="passkeys")

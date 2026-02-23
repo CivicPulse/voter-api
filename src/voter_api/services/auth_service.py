@@ -88,6 +88,9 @@ async def authenticate_user(
     totp_cred = totp_result.scalar_one_or_none()
 
     if totp_cred is not None and totp_cred.is_verified:
+        if totp_code is None:
+            raise MFARequiredException(error_code="mfa_required", detail="TOTP code required")
+
         from voter_api.core.config import get_settings
 
         settings = get_settings()
@@ -96,9 +99,6 @@ async def authenticate_user(
             issuer=settings.webauthn_rp_name,
         )
         now = datetime.now(UTC)
-
-        if totp_code is None:
-            raise MFARequiredException(error_code="mfa_required", detail="TOTP code required")
 
         is_recovery = len(totp_code) > 6
 

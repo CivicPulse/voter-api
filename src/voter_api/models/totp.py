@@ -1,13 +1,19 @@
 """TOTP credential and recovery code models."""
 
-import uuid
-from datetime import datetime
+from __future__ import annotations
+
+import uuid  # noqa: TC003
+from datetime import datetime  # noqa: TC003
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from voter_api.models.base import Base, UUIDMixin
+
+if TYPE_CHECKING:
+    from voter_api.models.user import User
 
 
 class TOTPCredential(Base, UUIDMixin):
@@ -38,7 +44,7 @@ class TOTPCredential(Base, UUIDMixin):
         nullable=False,
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="totp_credential")  # noqa: F821
+    user: Mapped[User] = relationship("User", back_populates="totp_credential")
 
 
 class TOTPRecoveryCode(Base, UUIDMixin):
@@ -64,4 +70,4 @@ class TOTPRecoveryCode(Base, UUIDMixin):
         nullable=False,
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="totp_recovery_codes")  # noqa: F821
+    user: Mapped[User] = relationship("User", back_populates="totp_recovery_codes")

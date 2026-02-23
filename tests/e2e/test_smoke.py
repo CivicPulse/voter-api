@@ -167,7 +167,7 @@ class TestAuth:
     async def test_password_reset_unknown_email_still_202(self, client: httpx.AsyncClient) -> None:
         resp = await client.post(
             _url("/auth/password-reset/request"),
-            json={"email": "nobody@nowhere.invalid"},
+            json={"email": "nobody@example.com"},
         )
         assert resp.status_code == 202
 
