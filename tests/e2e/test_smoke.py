@@ -21,7 +21,6 @@ from tests.e2e.conftest import (
     OFFICIAL_ID,
 )
 from voter_api.models.election import Election
-from voter_api.models.user import User
 
 # All E2E tests and their fixtures share a single session-scoped event loop.
 # This must live in the test module (not conftest.py) for pytest-asyncio to
@@ -121,7 +120,7 @@ class TestAuth:
         resp = await viewer_client.get(_url("/users"))
         assert resp.status_code == 403
 
-    async def test_create_and_list_user(self, admin_client: httpx.AsyncClient, db_session: AsyncSession) -> None:
+    async def test_create_and_list_user(self, admin_client: httpx.AsyncClient) -> None:
         new_user = {
             "username": f"e2e_tmp_{uuid.uuid4().hex[:8]}",
             "email": f"e2e_tmp_{uuid.uuid4().hex[:8]}@test.com",
@@ -275,6 +274,26 @@ class TestAuth:
         resp = await admin_client.delete(_url(f"/users/{ADMIN_USER_ID}"))
         assert resp.status_code == 400
         assert "own account" in resp.json()["detail"]
+
+    async def test_patch_self_deactivate_returns_400(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.patch(
+            _url(f"/users/{ADMIN_USER_ID}"),
+            json={"is_active": False},
+        )
+        assert resp.status_code == 400
+        assert "Cannot deactivate your own account" in resp.json()["detail"]
+
+    async def test_patch_self_downgrade_returns_400(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.patch(
+            _url(f"/users/{ADMIN_USER_ID}"),
+            json={"role": "viewer"},
+        )
+        assert resp.status_code == 400
+        assert "Cannot downgrade your own admin role" in resp.json()["detail"]
+
+    async def test_get_user_by_id_forbidden_for_viewer(self, viewer_client: httpx.AsyncClient) -> None:
+        resp = await viewer_client.get(_url(f"/users/{ADMIN_USER_ID}"))
+        assert resp.status_code == 403
 
     async def test_patch_user_email_conflict_returns_409(self, admin_client: httpx.AsyncClient) -> None:
         user_a = {
