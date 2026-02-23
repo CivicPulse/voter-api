@@ -1,7 +1,7 @@
 """Create user_invites table.
 
-Revision ID: 026
-Revises: 025
+Revision ID: 027
+Revises: 026
 Create Date: 2026-02-22
 """
 
@@ -9,8 +9,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
-revision: str = "026"
-down_revision: str = "025"
+revision: str = "027"
+down_revision: str = "026"
 branch_labels = None
 depends_on = None
 

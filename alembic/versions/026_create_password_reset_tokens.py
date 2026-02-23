@@ -1,7 +1,7 @@
 """Create password_reset_tokens table.
 
-Revision ID: 025
-Revises: 024
+Revision ID: 026
+Revises: 025
 Create Date: 2026-02-22
 """
 
@@ -9,8 +9,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
-revision: str = "025"
-down_revision: str = "024"
+revision: str = "026"
+down_revision: str = "025"
 branch_labels = None
 depends_on = None
 

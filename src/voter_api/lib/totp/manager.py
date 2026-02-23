@@ -113,7 +113,7 @@ class TOTPManager:
             True if the raw_code hashes to one of the stored_hashes.
         """
         submitted_hash = hashlib.sha256(raw_code.encode()).hexdigest()
-        return submitted_hash in stored_hashes
+        return any(secrets.compare_digest(submitted_hash, h) for h in stored_hashes)
 
     def _decrypt_secret(self, encrypted_secret: str) -> str:
         """Decrypt a Fernet-encrypted TOTP secret.

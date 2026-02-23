@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class LoginRequest(BaseModel):
@@ -107,7 +107,7 @@ class InviteResponse(BaseModel):
     accepted_at: datetime | None
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = {"from_attributes": True}
 
 
 class PaginatedInvites(BaseModel):
@@ -202,7 +202,7 @@ class PasskeyResponse(BaseModel):
     registered_at: datetime
     last_used_at: datetime | None
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = {"from_attributes": True}
 
 
 class PasskeyRenameRequest(BaseModel):

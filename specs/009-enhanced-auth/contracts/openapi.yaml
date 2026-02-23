@@ -101,7 +101,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
-        "500":
+        "503":
           description: Email delivery failed
           content:
             application/json:
@@ -156,15 +156,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InviteResponse"
-        "400":
-          description: Email already associated with an existing account
+        "409":
+          description: Email already associated with an existing account or pending invite
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: Forbidden — admin role required
-        "500":
+        "503":
           description: Email delivery failed — invite not persisted
           content:
             application/json:

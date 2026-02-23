@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import JSONResponse
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -150,18 +151,18 @@ async def login(
     try:
         user = await auth_service.authenticate_user(session, request.username, request.password, request.totp_code)
     except MFARequiredException as exc:
-        raise HTTPException(
+        return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=MFARequiredError(detail=exc.detail, error_code=exc.error_code).model_dump(),
-        ) from exc
+            content=MFARequiredError(detail=exc.detail, error_code=exc.error_code).model_dump(),
+        )
     except TOTPLockedException as exc:
-        raise HTTPException(
+        return JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=TOTPLockedError(
+            content=TOTPLockedError(
                 detail=exc.detail,
                 locked_until=exc.locked_until,
             ).model_dump(mode="json"),
-        ) from exc
+        )
 
     if user is None:
         raise HTTPException(

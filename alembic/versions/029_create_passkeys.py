@@ -1,7 +1,7 @@
 """Create passkeys table.
 
-Revision ID: 028
-Revises: 027
+Revision ID: 029
+Revises: 028
 Create Date: 2026-02-22
 """
 
@@ -9,8 +9,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
-revision: str = "028"
-down_revision: str = "027"
+revision: str = "029"
+down_revision: str = "028"
 branch_labels = None
 depends_on = None
 

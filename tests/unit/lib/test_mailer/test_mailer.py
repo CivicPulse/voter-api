@@ -17,17 +17,26 @@ def mailer() -> MailgunMailer:
     )
 
 
+@pytest.fixture()
+def mock_mailgun_client():
+    """Shared Mailgun AsyncClient mock with configurable response status."""
+    mock_response = MagicMock(status_code=200)
+    mock_messages = AsyncMock()
+    mock_messages.create = AsyncMock(return_value=mock_response)
+    mock_client_instance = AsyncMock()
+    mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
+    mock_client_instance.__aexit__ = AsyncMock(return_value=None)
+    mock_client_instance.messages = mock_messages
+    return mock_client_instance, mock_messages, mock_response
+
+
 class TestSendEmail:
     """Tests for MailgunMailer.send_email."""
 
-    async def test_send_email_calls_mailgun_with_correct_payload(self, mailer: MailgunMailer) -> None:
-        mock_response = MagicMock(status_code=200)
-        mock_messages = AsyncMock()
-        mock_messages.create = AsyncMock(return_value=mock_response)
-        mock_client_instance = AsyncMock()
-        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
-        mock_client_instance.__aexit__ = AsyncMock(return_value=None)
-        mock_client_instance.messages = mock_messages
+    async def test_send_email_calls_mailgun_with_correct_payload(
+        self, mailer: MailgunMailer, mock_mailgun_client: tuple
+    ) -> None:
+        mock_client_instance, mock_messages, _ = mock_mailgun_client
 
         with patch("voter_api.lib.mailer.mailer.AsyncClient", return_value=mock_client_instance):
             await mailer.send_email("user@example.com", "Test Subject", "<p>Hello</p>")
@@ -41,14 +50,8 @@ class TestSendEmail:
         assert "Test App" in data["from"]
         assert "noreply@test.mailgun.org" in data["from"]
 
-    async def test_send_email_uses_correct_domain(self, mailer: MailgunMailer) -> None:
-        mock_response = MagicMock(status_code=200)
-        mock_messages = AsyncMock()
-        mock_messages.create = AsyncMock(return_value=mock_response)
-        mock_client_instance = AsyncMock()
-        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
-        mock_client_instance.__aexit__ = AsyncMock(return_value=None)
-        mock_client_instance.messages = mock_messages
+    async def test_send_email_uses_correct_domain(self, mailer: MailgunMailer, mock_mailgun_client: tuple) -> None:
+        mock_client_instance, mock_messages, _ = mock_mailgun_client
 
         with patch("voter_api.lib.mailer.mailer.AsyncClient", return_value=mock_client_instance):
             await mailer.send_email("user@example.com", "Subject", "<p>body</p>")
@@ -57,14 +60,9 @@ class TestSendEmail:
         domain = call_kwargs.kwargs.get("domain") or call_kwargs[1].get("domain")
         assert domain == "test.mailgun.org"
 
-    async def test_send_email_raises_on_non_2xx_status(self, mailer: MailgunMailer) -> None:
-        mock_response = MagicMock(status_code=400)
-        mock_messages = AsyncMock()
-        mock_messages.create = AsyncMock(return_value=mock_response)
-        mock_client_instance = AsyncMock()
-        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
-        mock_client_instance.__aexit__ = AsyncMock(return_value=None)
-        mock_client_instance.messages = mock_messages
+    async def test_send_email_raises_on_non_2xx_status(self, mailer: MailgunMailer, mock_mailgun_client: tuple) -> None:
+        mock_client_instance, _, mock_response = mock_mailgun_client
+        mock_response.status_code = 400
 
         with (
             patch("voter_api.lib.mailer.mailer.AsyncClient", return_value=mock_client_instance),
@@ -72,14 +70,9 @@ class TestSendEmail:
         ):
             await mailer.send_email("user@example.com", "Subject", "<p>body</p>")
 
-    async def test_send_email_raises_on_500_status(self, mailer: MailgunMailer) -> None:
-        mock_response = MagicMock(status_code=500)
-        mock_messages = AsyncMock()
-        mock_messages.create = AsyncMock(return_value=mock_response)
-        mock_client_instance = AsyncMock()
-        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
-        mock_client_instance.__aexit__ = AsyncMock(return_value=None)
-        mock_client_instance.messages = mock_messages
+    async def test_send_email_raises_on_500_status(self, mailer: MailgunMailer, mock_mailgun_client: tuple) -> None:
+        mock_client_instance, _, mock_response = mock_mailgun_client
+        mock_response.status_code = 500
 
         with (
             patch("voter_api.lib.mailer.mailer.AsyncClient", return_value=mock_client_instance),

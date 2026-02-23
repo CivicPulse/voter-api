@@ -24,6 +24,7 @@ from tests.e2e.conftest import (
     TOTP_USER_ID,
     TOTP_USERNAME,
 )
+from voter_api.models.auth_tokens import UserInvite
 from voter_api.models.election import Election
 
 # All E2E tests and their fixtures share a single session-scoped event loop.
@@ -367,8 +368,6 @@ class TestAuth:
             assert body["role"] == "viewer"
         finally:
             if invite_id is not None:
-                from voter_api.models.auth_tokens import UserInvite
-
                 await db_session.execute(delete(UserInvite).where(UserInvite.id == uuid.UUID(invite_id)))
                 await db_session.commit()
 
@@ -380,7 +379,7 @@ class TestAuth:
         )
         assert resp.status_code == 403
         body = resp.json()
-        assert body["detail"]["error_code"] == "mfa_required"
+        assert body["error_code"] == "mfa_required"
 
     async def test_passkey_registration_options_returns_200(self, admin_client: httpx.AsyncClient) -> None:
         """Authenticated user can get passkey registration options."""
@@ -427,7 +426,7 @@ class TestAuth:
         resp = await admin_client.delete(_url(f"/users/invites/{uuid.uuid4()}"))
         assert resp.status_code == 404
 
-    async def test_resend_invite_returns_200(self, admin_client: httpx.AsyncClient, db_session: AsyncSession) -> None:
+    async def test_resend_invite_returns_200(self, admin_client: httpx.AsyncClient) -> None:
         """POST /users/invites/{id}/resend → 200 with refreshed token."""
         resp = await admin_client.post(_url(f"/users/invites/{INVITE_ID}/resend"))
         assert resp.status_code == 200
@@ -446,33 +445,30 @@ class TestAuth:
 
     # ── TOTP Enroll / Confirm / Disable / Recovery Count ─────────────────
 
-    async def test_totp_enroll_returns_200(self, admin_client: httpx.AsyncClient) -> None:
-        """POST /auth/totp/enroll (authenticated) → 200 with provisioning URI."""
-        resp = await admin_client.post(_url("/auth/totp/enroll"))
-        assert resp.status_code == 200
-        body = resp.json()
-        assert "provisioning_uri" in body
-        assert "qr_code_svg" in body
+    async def test_totp_enroll_confirm_disable_lifecycle(self, admin_client: httpx.AsyncClient) -> None:
+        """TOTP lifecycle: enroll → confirm (bad code) → disable, with guaranteed cleanup."""
+        try:
+            # Enroll
+            resp = await admin_client.post(_url("/auth/totp/enroll"))
+            assert resp.status_code == 200
+            body = resp.json()
+            assert "provisioning_uri" in body
+            assert "qr_code_svg" in body
+
+            # Confirm with bad code
+            resp = await admin_client.post(
+                _url("/auth/totp/confirm"),
+                json={"code": "000000"},
+            )
+            assert resp.status_code == 400
+        finally:
+            # Always clean up pending TOTP enrollment
+            await admin_client.delete(_url("/auth/totp"))
 
     async def test_totp_enroll_requires_auth(self, client: httpx.AsyncClient) -> None:
         """POST /auth/totp/enroll (unauthenticated) → 401."""
         resp = await client.post(_url("/auth/totp/enroll"))
         assert resp.status_code == 401
-
-    async def test_totp_confirm_bad_code_returns_400(self, admin_client: httpx.AsyncClient) -> None:
-        """POST /auth/totp/confirm with wrong code → 400."""
-        # Enroll first to create pending credential
-        await admin_client.post(_url("/auth/totp/enroll"))
-        resp = await admin_client.post(
-            _url("/auth/totp/confirm"),
-            json={"code": "000000"},
-        )
-        assert resp.status_code == 400
-
-    async def test_totp_disable_returns_204(self, admin_client: httpx.AsyncClient) -> None:
-        """DELETE /auth/totp (authenticated) → 204."""
-        resp = await admin_client.delete(_url("/auth/totp"))
-        assert resp.status_code == 204
 
     async def test_totp_recovery_codes_count_returns_200(self, admin_client: httpx.AsyncClient) -> None:
         """GET /auth/totp/recovery-codes/count → 200."""

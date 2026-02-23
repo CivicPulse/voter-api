@@ -139,16 +139,22 @@ async def authenticate_user(
             )
         else:
             # 6-digit TOTP code path
-            if totp_cred.locked_until is not None and totp_cred.locked_until.replace(tzinfo=UTC) > now:
-                logger.warning(
-                    "security.totp.locked username={username} locked_until={locked_until}",
-                    username=username,
-                    locked_until=totp_cred.locked_until,
-                )
-                raise TOTPLockedException(
-                    locked_until=totp_cred.locked_until,
-                    detail=f"TOTP is locked until {totp_cred.locked_until.isoformat()}",
-                )
+            if totp_cred.locked_until is not None:
+                locked_until = totp_cred.locked_until
+                if locked_until.tzinfo is None:
+                    locked_until = locked_until.replace(tzinfo=UTC)
+                else:
+                    locked_until = locked_until.astimezone(UTC)
+                if locked_until > now:
+                    logger.warning(
+                        "security.totp.locked username={username} locked_until={locked_until}",
+                        username=username,
+                        locked_until=locked_until,
+                    )
+                    raise TOTPLockedException(
+                        locked_until=locked_until,
+                        detail=f"TOTP is locked until {locked_until.isoformat()}",
+                    )
 
             # Replay check (FR-020)
             if totp_cred.last_used_otp == totp_code and totp_cred.last_used_otp_at is not None:

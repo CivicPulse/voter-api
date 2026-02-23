@@ -206,7 +206,7 @@ class TestLogin:
                 json={"username": "testadmin", "password": "testpassword123"},
             )
         assert resp.status_code == 403
-        assert resp.json()["detail"]["error_code"] == "mfa_required"
+        assert resp.json()["error_code"] == "mfa_required"
 
     async def test_invalid_totp_returns_403(self, public_client: AsyncClient) -> None:
         with patch(
@@ -219,7 +219,7 @@ class TestLogin:
                 json={"username": "testadmin", "password": "testpassword123", "totp_code": "000000"},
             )
         assert resp.status_code == 403
-        assert resp.json()["detail"]["error_code"] == "mfa_invalid"
+        assert resp.json()["error_code"] == "mfa_invalid"
 
     async def test_totp_lockout_returns_429(self, public_client: AsyncClient) -> None:
         locked = datetime(2026, 3, 1, 12, 0, tzinfo=UTC)
@@ -233,7 +233,7 @@ class TestLogin:
                 json={"username": "testadmin", "password": "testpassword123", "totp_code": "000000"},
             )
         assert resp.status_code == 429
-        assert "locked_until" in resp.json()["detail"]
+        assert "locked_until" in resp.json()
 
     async def test_login_with_valid_totp_returns_200(self, public_client: AsyncClient) -> None:
         user = _mock_user()
@@ -620,7 +620,7 @@ class TestTOTPLockoutFlow:
                 json={"username": "testadmin", "password": "password1", "totp_code": "000000"},
             )
         assert final.status_code == 429
-        assert "locked_until" in final.json()["detail"]
+        assert "locked_until" in final.json()
 
     async def test_recovery_code_bypasses_lockout(self, public_client: AsyncClient) -> None:
         user = _mock_user()
@@ -677,7 +677,7 @@ class TestTOTPReplayPrevention:
                 json={"username": "testadmin", "password": "password1", "totp_code": "123456"},
             )
         assert second.status_code == 403
-        assert second.json()["detail"]["error_code"] == "mfa_invalid"
+        assert second.json()["error_code"] == "mfa_invalid"
 
 
 # ---------------------------------------------------------------------------

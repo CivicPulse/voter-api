@@ -2,13 +2,14 @@
 
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 from mailgun.client import AsyncClient  # type: ignore[import-untyped]
 
 _TEMPLATE_DIR = Path(__file__).parent / "templates"
 _jinja_env = Environment(
     loader=FileSystemLoader(str(_TEMPLATE_DIR)),
     autoescape=select_autoescape(["html"]),
+    undefined=StrictUndefined,
 )
 
 
@@ -55,7 +56,10 @@ class MailgunMailer:
                 domain=self._domain,
             )
         status = getattr(response, "status_code", None) or getattr(response, "status", None)
-        if status is not None and (status < 200 or status >= 300):
+        if status is None:
+            msg = "Mailgun response missing status code"
+            raise MailDeliveryError(msg)
+        if status < 200 or status >= 300:
             msg = f"Mailgun delivery failed with status {status}"
             raise MailDeliveryError(msg)
 

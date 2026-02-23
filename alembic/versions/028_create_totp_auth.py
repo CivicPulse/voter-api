@@ -1,7 +1,7 @@
 """Create TOTP authentication tables.
 
-Revision ID: 027
-Revises: 026
+Revision ID: 028
+Revises: 027
 Create Date: 2026-02-22
 
 Creates two tables:
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
-revision: str = "027"
-down_revision: str = "026"
+revision: str = "028"
+down_revision: str = "027"
 branch_labels = None
 depends_on = None
 

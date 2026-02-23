@@ -33,7 +33,6 @@ jobs:
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: 30
       JWT_REFRESH_TOKEN_EXPIRE_DAYS: 7
       ELECTION_REFRESH_ENABLED: "false"
-      TOTP_SECRET_ENCRYPTION_KEY: FKmjoLHL6TNBR6v4nUEFMckeF3P_K7Ba1pbwgP8fR_g=
       LOG_LEVEL: WARNING
     steps:
       - uses: actions/checkout@v6
@@ -41,6 +40,9 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+
+      - name: Generate TOTP encryption key
+        run: echo "TOTP_SECRET_ENCRYPTION_KEY=$(uv run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> "$GITHUB_ENV"
 
       - name: Set DATABASE_URL
         run: echo "DATABASE_URL=postgresql+asyncpg://${PGUSER}:${PGPASSWORD}@localhost:5432/${PGDATABASE}" >> "$GITHUB_ENV"

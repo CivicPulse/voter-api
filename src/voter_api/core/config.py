@@ -340,6 +340,24 @@ class Settings(BaseSettings):
         description="Expected origin for passkey ceremonies (e.g. https://example.com)",
     )
 
+    @field_validator("webauthn_origin")
+    @classmethod
+    def validate_webauthn_origin(cls, v: str) -> str:
+        """Require HTTPS for webauthn_origin except localhost development."""
+        if not (v.startswith("https://") or v.startswith("http://localhost")):
+            msg = "webauthn_origin must use HTTPS (or http://localhost for development)"
+            raise ValueError(msg)
+        return v
+
+    @model_validator(mode="after")
+    def validate_mailgun_config(self) -> Self:
+        """Require all Mailgun fields when any are set."""
+        fields = (self.mailgun_api_key, self.mailgun_domain, self.mailgun_from_email)
+        if any(fields) and not all(fields):
+            msg = "MAILGUN_API_KEY, MAILGUN_DOMAIN, and MAILGUN_FROM_EMAIL must all be set together"
+            raise ValueError(msg)
+        return self
+
     # R2 / S3-Compatible Object Storage
     r2_enabled: bool = Field(
         default=False,
