@@ -5,11 +5,13 @@ runs ``alembic upgrade head`` before pytest, so tables already exist.
 Fixtures seed baseline data and provide authenticated HTTP clients.
 """
 
+import hashlib
 import os
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -23,9 +25,11 @@ from voter_api.core.config import Settings, get_settings
 from voter_api.core.database import get_engine
 from voter_api.core.security import create_access_token, hash_password
 from voter_api.main import create_app, lifespan
+from voter_api.models.auth_tokens import UserInvite
 from voter_api.models.boundary import Boundary
 from voter_api.models.elected_official import ElectedOfficial
 from voter_api.models.election import Election
+from voter_api.models.totp import TOTPCredential
 from voter_api.models.user import User
 
 # ---------------------------------------------------------------------------
@@ -163,9 +167,16 @@ async def db_session(app: FastAPI) -> AsyncGenerator[AsyncSession]:
 ADMIN_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 ANALYST_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
 VIEWER_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000003")
+TOTP_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000004")
 ELECTION_ID = uuid.UUID("00000000-0000-0000-0000-000000000010")
 OFFICIAL_ID = uuid.UUID("00000000-0000-0000-0000-000000000020")
 BOUNDARY_ID = uuid.UUID("00000000-0000-0000-0000-000000000030")
+INVITE_ID = uuid.UUID("00000000-0000-0000-0000-000000000040")
+
+TOTP_USERNAME = "e2e_totp_user"
+INVITE_EMAIL = "e2e_invite@test.com"
+# Raw invite token for E2E tests (hash stored in DB)
+INVITE_TOKEN = "e2e_test_invite_token_abc123"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -212,6 +223,18 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
                 "is_active": True,
             },
         ]
+        # Include the TOTP-enrolled user alongside the standard seeded users.
+        users_data.append(
+            {
+                "id": TOTP_USER_ID,
+                "username": TOTP_USERNAME,
+                "email": "e2e_totp@test.com",
+                "hashed_password": hashed,
+                "role": "viewer",
+                "is_active": True,
+            }
+        )
+
         # Pre-delete any users with matching usernames that may have a different
         # ID (e.g. from an incomplete prior run).  ON CONFLICT on the primary key
         # alone would miss unique violations on username/email columns.
@@ -231,6 +254,52 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
                 },
             )
             await session.execute(stmt)
+
+        # --- TOTP credential for TOTP_USER -----------------------------------
+        await session.execute(delete(TOTPCredential).where(TOTPCredential.user_id == TOTP_USER_ID))
+        totp_cred_data = {
+            "user_id": TOTP_USER_ID,
+            "encrypted_secret": "fake_encrypted_secret_for_e2e_tests",
+            "is_verified": True,
+            "failed_attempts": 0,
+            "locked_until": None,
+            "last_used_otp": None,
+            "last_used_otp_at": None,
+        }
+        stmt = pg_insert(TOTPCredential).values(**totp_cred_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["user_id"],
+            set_={
+                "encrypted_secret": stmt.excluded.encrypted_secret,
+                "is_verified": stmt.excluded.is_verified,
+                "failed_attempts": stmt.excluded.failed_attempts,
+            },
+        )
+        await session.execute(stmt)
+
+        # --- Pending invite -----------------------------------------------
+        now = datetime.now(UTC)
+        invite_token_hash = hashlib.sha256(INVITE_TOKEN.encode()).hexdigest()
+        await session.execute(delete(UserInvite).where(UserInvite.id == INVITE_ID))
+        invite_data = {
+            "id": INVITE_ID,
+            "email": INVITE_EMAIL,
+            "role": "viewer",
+            "invited_by_id": ADMIN_USER_ID,
+            "token_hash": invite_token_hash,
+            "expires_at": now + timedelta(days=7),
+            "accepted_at": None,
+        }
+        stmt = pg_insert(UserInvite).values(**invite_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "token_hash": stmt.excluded.token_hash,
+                "expires_at": stmt.excluded.expires_at,
+                "accepted_at": stmt.excluded.accepted_at,
+            },
+        )
+        await session.execute(stmt)
 
         # --- Election -----------------------------------------------------
         election_data = {
@@ -319,8 +388,26 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
 
     # Cleanup: remove seeded rows so the DB is left clean.
     async with factory() as session:
+        await session.execute(delete(UserInvite).where(UserInvite.id == INVITE_ID))
+        await session.execute(delete(TOTPCredential).where(TOTPCredential.user_id == TOTP_USER_ID))
         await session.execute(delete(ElectedOfficial).where(ElectedOfficial.id == OFFICIAL_ID))
         await session.execute(delete(Boundary).where(Boundary.id == BOUNDARY_ID))
         await session.execute(delete(Election).where(Election.id == ELECTION_ID))
-        await session.execute(delete(User).where(User.id.in_([ADMIN_USER_ID, ANALYST_USER_ID, VIEWER_USER_ID])))
+        await session.execute(
+            delete(User).where(User.id.in_([ADMIN_USER_ID, ANALYST_USER_ID, VIEWER_USER_ID, TOTP_USER_ID]))
+        )
         await session.commit()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def mock_mailer() -> AsyncGenerator[MagicMock]:
+    """Mock MailgunMailer for the entire E2E session to prevent real email delivery.
+
+    Patches the factory function used by auth route handlers so no request
+    ever reaches the Mailgun API during E2E tests.
+    """
+    mock = MagicMock()
+    mock.send_template = AsyncMock(return_value=None)
+    mock.send_email = AsyncMock(return_value=None)
+    with patch("voter_api.api.v1.auth._get_mailer", return_value=mock):
+        yield mock

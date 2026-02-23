@@ -16,7 +16,26 @@ from voter_api.schemas.analysis import (
     PaginatedAnalysisResultResponse,
     PaginatedAnalysisRunResponse,
 )
-from voter_api.schemas.auth import TokenResponse, UserResponse
+from voter_api.schemas.auth import (
+    InviteAccept,
+    InviteCreate,
+    InviteResponse,
+    LoginRequest,
+    MessageResponse,
+    MFARequiredError,
+    PasskeyLoginOptionsResponse,
+    PasskeyLoginVerifyRequest,
+    PasskeyRegistrationOptionsResponse,
+    PasskeyResponse,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    TokenResponse,
+    TOTPConfirmRequest,
+    TOTPConfirmResponse,
+    TOTPEnrollmentResponse,
+    TOTPLockedError,
+    UserResponse,
+)
 from voter_api.schemas.boundary import (
     BoundaryDetailResponse,
     BoundarySummaryResponse,
@@ -290,3 +309,117 @@ class TestExportSchemas:
             pagination=PaginationMeta(total=0, page=1, page_size=20, total_pages=1),
         )
         assert len(resp.items) == 0
+
+
+class TestEnhancedAuthSchemas:
+    """Verify 009-enhanced-auth schemas match OpenAPI contract structure."""
+
+    def test_login_request_no_totp(self) -> None:
+        req = LoginRequest(username="alice", password="password123")
+        data = req.model_dump()
+        assert "username" in data
+        assert "password" in data
+        assert data["totp_code"] is None
+
+    def test_login_request_with_totp(self) -> None:
+        req = LoginRequest(username="alice", password="password123", totp_code="123456")
+        assert req.totp_code == "123456"
+
+    def test_password_reset_request(self) -> None:
+        req = PasswordResetRequest(email="user@example.com")
+        data = req.model_dump()
+        assert "email" in data
+
+    def test_password_reset_confirm(self) -> None:
+        req = PasswordResetConfirm(token="abc123", new_password="newpassword123")
+        data = req.model_dump()
+        assert "token" in data
+        assert "new_password" in data
+
+    def test_message_response(self) -> None:
+        resp = MessageResponse(message="Success")
+        assert resp.message == "Success"
+
+    def test_invite_create(self) -> None:
+        req = InviteCreate(email="invitee@example.com", role="viewer")
+        assert req.model_dump()["role"] == "viewer"
+
+    def test_invite_response(self) -> None:
+        resp = InviteResponse(
+            id=uuid4(),
+            email="invitee@example.com",
+            role="viewer",
+            invited_by_id=None,
+            expires_at=datetime.now(UTC),
+            accepted_at=None,
+            created_at=datetime.now(UTC),
+        )
+        data = resp.model_dump()
+        assert "email" in data
+        assert "role" in data
+
+    def test_invite_accept(self) -> None:
+        req = InviteAccept(token="abc123", username="newuser", password="password123")
+        data = req.model_dump()
+        assert "token" in data
+        assert "username" in data
+
+    def test_totp_enrollment_response(self) -> None:
+        resp = TOTPEnrollmentResponse(
+            provisioning_uri="otpauth://totp/App:alice?secret=ABC&issuer=App",
+            qr_code_svg="<svg>...</svg>",
+        )
+        data = resp.model_dump()
+        assert "provisioning_uri" in data
+        assert "qr_code_svg" in data
+
+    def test_totp_confirm_request_valid(self) -> None:
+        req = TOTPConfirmRequest(code="123456")
+        assert req.code == "123456"
+
+    def test_totp_confirm_response(self) -> None:
+        codes = [f"RCOV{i:02d}ABCDEFGHIJ" for i in range(10)]
+        resp = TOTPConfirmResponse(recovery_codes=codes)
+        assert len(resp.recovery_codes) == 10
+
+    def test_mfa_required_error(self) -> None:
+        err = MFARequiredError(detail="TOTP required", error_code="mfa_required")
+        assert err.model_dump()["error_code"] == "mfa_required"
+
+    def test_totp_locked_error(self) -> None:
+        err = TOTPLockedError(detail="Locked", locked_until=datetime.now(UTC))
+        assert "locked_until" in err.model_dump()
+
+    def test_passkey_response(self) -> None:
+        resp = PasskeyResponse(
+            id=uuid4(),
+            name="My iPhone",
+            registered_at=datetime.now(UTC),
+            last_used_at=None,
+        )
+        data = resp.model_dump()
+        assert "name" in data
+        assert data["last_used_at"] is None
+
+    def test_passkey_registration_options_response(self) -> None:
+        resp = PasskeyRegistrationOptionsResponse(
+            options={"challenge": "abc123"},
+            challenge_token="eyJ...",
+        )
+        assert "options" in resp.model_dump()
+        assert "challenge_token" in resp.model_dump()
+
+    def test_passkey_login_options_response(self) -> None:
+        resp = PasskeyLoginOptionsResponse(
+            options={"allowCredentials": []},
+            challenge_token="eyJ...",
+        )
+        assert "options" in resp.model_dump()
+
+    def test_passkey_login_verify_request(self) -> None:
+        req = PasskeyLoginVerifyRequest(
+            username="alice",
+            credential_response={"id": "abc"},
+            challenge_token="eyJ...",
+        )
+        assert req.username == "alice"

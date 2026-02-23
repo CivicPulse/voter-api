@@ -13,11 +13,13 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.e2e.conftest import (
+    ADMIN_EMAIL,
     ADMIN_PASSWORD,
     ADMIN_USERNAME,
     BOUNDARY_ID,
     ELECTION_ID,
     OFFICIAL_ID,
+    TOTP_USERNAME,
 )
 from voter_api.models.election import Election
 from voter_api.models.user import User
@@ -66,7 +68,7 @@ class TestAuth:
     async def test_login_returns_tokens(self, client: httpx.AsyncClient) -> None:
         resp = await client.post(
             _url("/auth/login"),
-            data={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
+            json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -77,7 +79,7 @@ class TestAuth:
     async def test_login_bad_password_returns_401(self, client: httpx.AsyncClient) -> None:
         resp = await client.post(
             _url("/auth/login"),
-            data={"username": ADMIN_USERNAME, "password": "wrong-password"},
+            json={"username": ADMIN_USERNAME, "password": "wrong-password"},
         )
         assert resp.status_code == 401
 
@@ -85,7 +87,7 @@ class TestAuth:
         # First login to get tokens.
         login_resp = await client.post(
             _url("/auth/login"),
-            data={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
+            json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
         )
         assert login_resp.status_code == 200
         refresh_token = login_resp.json()["refresh_token"]
@@ -152,6 +154,69 @@ class TestAuth:
             if user_id is not None:
                 await db_session.execute(delete(User).where(User.id == uuid.UUID(user_id)))
                 await db_session.commit()
+
+    async def test_password_reset_request_returns_202(self, client: httpx.AsyncClient) -> None:
+        """POST /auth/password-reset/request always returns 202 (enumeration-safe)."""
+        resp = await client.post(
+            _url("/auth/password-reset/request"),
+            json={"email": ADMIN_EMAIL},
+        )
+        assert resp.status_code == 202
+        assert "message" in resp.json()
+
+    async def test_password_reset_unknown_email_still_202(self, client: httpx.AsyncClient) -> None:
+        resp = await client.post(
+            _url("/auth/password-reset/request"),
+            json={"email": "nobody@nowhere.invalid"},
+        )
+        assert resp.status_code == 202
+
+    async def test_create_invite_admin_returns_201(
+        self, admin_client: httpx.AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Admin creates invite → 201."""
+        unique_email = f"smoke_invite_{uuid.uuid4().hex[:8]}@test.com"
+        resp = await admin_client.post(
+            _url("/users/invites"),
+            json={"email": unique_email, "role": "viewer"},
+        )
+        body = resp.json() if resp.status_code == 201 else {}
+        invite_id: str | None = body.get("id")
+        try:
+            assert resp.status_code == 201
+            assert body["role"] == "viewer"
+        finally:
+            if invite_id is not None:
+                from voter_api.models.auth_tokens import UserInvite
+
+                await db_session.execute(delete(UserInvite).where(UserInvite.id == uuid.UUID(invite_id)))
+                await db_session.commit()
+
+    async def test_totp_login_without_code_returns_403(self, client: httpx.AsyncClient) -> None:
+        """TOTP-enabled user login without totp_code → 403 mfa_required."""
+        resp = await client.post(
+            _url("/auth/login"),
+            json={"username": TOTP_USERNAME, "password": ADMIN_PASSWORD},
+        )
+        assert resp.status_code == 403
+        body = resp.json()
+        assert body["detail"]["error_code"] == "mfa_required"
+
+    async def test_passkey_registration_options_returns_200(self, admin_client: httpx.AsyncClient) -> None:
+        """Authenticated user can get passkey registration options."""
+        resp = await admin_client.post(_url("/auth/passkeys/register/options"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "options" in body
+        assert "challenge_token" in body
+
+    async def test_passkey_login_options_unknown_user_returns_404(self, client: httpx.AsyncClient) -> None:
+        """Login options for unknown username → 404."""
+        resp = await client.post(
+            _url("/auth/passkeys/login/options"),
+            json={"username": "nonexistent_user_xyz_e2e"},
+        )
+        assert resp.status_code == 404
 
 
 # ── Boundaries ─────────────────────────────────────────────────────────────
