@@ -12,7 +12,7 @@ def create_user(
     username: str = typer.Option(..., prompt=True, help="Username"),
     email: str = typer.Option(..., prompt=True, help="Email address"),
     password: str = typer.Option(..., prompt=True, hide_input=True, confirmation_prompt=True, help="Password"),
-    role: str = typer.Option("viewer", prompt=True, help="User role (admin/analyst/viewer)"),
+    role: str = typer.Option("viewer", prompt=True, help="User role (admin/analyst/viewer/contributor)"),
     if_not_exists: bool = typer.Option(
         False,
         "--if-not-exists",
