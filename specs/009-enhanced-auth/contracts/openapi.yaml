@@ -1,0 +1,866 @@
+openapi: "3.1.0"
+info:
+  title: "Voter API — Enhanced Authentication (009)"
+  description: |
+    New and modified endpoints for feature 009: user invites, password reset,
+    TOTP two-factor authentication, and passkey (WebAuthn) login.
+
+    This contract is a patch to the base OpenAPI spec. All paths are prefixed
+    with `/api/v1` by the FastAPI application factory.
+  version: "009"
+
+tags:
+  - name: auth
+    description: Authentication — login, token refresh, password reset, passkey login
+  - name: totp
+    description: TOTP two-factor authentication enrollment and management
+  - name: passkeys
+    description: Passkey (WebAuthn) registration and management
+  - name: invites
+    description: Admin-managed user invitations
+
+paths:
+
+  # ── MODIFIED: Login (now JSON, adds optional totp_code) ──────────────────
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Log in with username, password, and optional TOTP code
+      description: |
+        Authenticates a user. If the account has TOTP enabled, the `totp_code`
+        field is required. Omitting it on a TOTP-enabled account returns 403
+        with a specific `mfa_required` error code. A recovery code may be
+        submitted in place of `totp_code`.
+
+        **Breaking change from prior version**: endpoint now accepts JSON body
+        instead of `application/x-www-form-urlencoded`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            examples:
+              password_only:
+                summary: Standard login (no TOTP)
+                value: { username: "alice", password: "********" }  # NOSONAR — example value
+              with_totp:
+                summary: Login with TOTP code
+                value: { username: "alice", password: "********", totp_code: "123456" }  # NOSONAR — example value
+              with_recovery:
+                summary: Login with TOTP recovery code
+                value: { username: "alice", password: "********", totp_code: "ABCD1234EFGH5678" }  # NOSONAR — example value
+      responses:
+        "200":
+          description: Authenticated — returns token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: TOTP code required or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MFARequiredError"
+        "429":
+          description: TOTP account temporarily locked after repeated failures
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TOTPLockedError"
+
+  # ── Password Reset ────────────────────────────────────────────────────────
+
+  /auth/password-reset/request:
+    post:
+      tags: [auth]
+      summary: Request a password reset email
+      description: |
+        Submits an email address to trigger a password reset. Always returns
+        202 regardless of whether the email exists (enumeration prevention).
+        Requests for the same email within `RESET_RATE_LIMIT_MINUTES` are
+        silently accepted but do not send additional emails.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordResetRequest"
+      responses:
+        "202":
+          description: Request accepted (email sent if address exists and rate limit not exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "503":
+          description: Email delivery failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/password-reset/confirm:
+    post:
+      tags: [auth]
+      summary: Set a new password using a reset token
+      description: |
+        Completes password reset. The `token` is the raw value from the reset
+        email link. On success the token is permanently invalidated.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordResetConfirm"
+      responses:
+        "200":
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Invalid, expired, or already-used token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── User Invites ──────────────────────────────────────────────────────────
+
+  /users/invites:
+    post:
+      tags: [invites]
+      summary: Create and send a user invitation (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteCreate"
+      responses:
+        "201":
+          description: Invite created and email sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteResponse"
+        "409":
+          description: Email already associated with an existing account or pending invite
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden — admin role required
+        "503":
+          description: Email delivery failed — invite not persisted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    get:
+      tags: [invites]
+      summary: List pending user invitations (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: Paginated list of pending (unused, unexpired) invitations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedInvites"
+        "403":
+          description: Forbidden — admin role required
+
+  /users/invites/{id}:
+    delete:
+      tags: [invites]
+      summary: Cancel a pending invitation (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: Invite cancelled
+        "403":
+          description: Forbidden
+        "404":
+          description: Invite not found
+
+  /users/invites/{id}/resend:
+    post:
+      tags: [invites]
+      summary: Re-send a pending invitation with a fresh token (admin)
+      description: |
+        Invalidates the existing token and sends a new email with a fresh
+        7-day invite link. Fails fast if the new email delivery fails.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: New invite sent; returns updated InviteResponse
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteResponse"
+        "403":
+          description: Forbidden
+        "404":
+          description: Invite not found
+        "500":
+          description: Email delivery failed
+
+  /auth/invite/accept:
+    post:
+      tags: [invites]
+      summary: Accept an invitation and create account
+      description: |
+        Public endpoint. The invitee submits the raw token from the invite
+        email, plus their chosen username and password. On success an active
+        user account is created with the role assigned at invite creation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteAccept"
+      responses:
+        "201":
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteAcceptResponse"
+        "400":
+          description: Invalid, expired, or already-used invite token; or username taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── TOTP ──────────────────────────────────────────────────────────────────
+
+  /auth/totp/enroll:
+    post:
+      tags: [totp]
+      summary: Initiate TOTP enrollment — returns provisioning URI and QR code
+      description: |
+        Creates a pending (unverified) TOTP credential. The user must confirm
+        with a valid code via `POST /auth/totp/confirm` before TOTP is active.
+        Calling enroll again while an unverified credential exists replaces it.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Enrollment initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TOTPEnrollmentResponse"
+
+  /auth/totp/confirm:
+    post:
+      tags: [totp]
+      summary: Confirm TOTP enrollment with first valid code
+      description: |
+        Activates TOTP on the account and returns 10 single-use recovery codes.
+        Recovery codes are shown exactly once — the caller must store them safely.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TOTPConfirmRequest"
+      responses:
+        "200":
+          description: TOTP activated — recovery codes issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TOTPConfirmResponse"
+        "400":
+          description: Invalid code or no pending enrollment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/totp:
+    delete:
+      tags: [totp]
+      summary: Disable TOTP on own account
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: TOTP disabled
+        "404":
+          description: TOTP not enabled on this account
+
+  /auth/totp/recovery-codes/count:
+    get:
+      tags: [totp]
+      summary: Get count of remaining recovery codes
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Number of unused recovery codes remaining
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TOTPRecoveryCodesCountResponse"
+        "404":
+          description: TOTP not enabled on this account
+
+  /users/{id}/totp:
+    delete:
+      tags: [totp]
+      summary: Admin — disable TOTP for any user account
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: TOTP disabled
+        "403":
+          description: Forbidden — admin role required
+        "404":
+          description: User or TOTP credential not found
+
+  /users/{id}/totp/unlock:
+    post:
+      tags: [totp]
+      summary: Admin — clear TOTP lockout for a user account
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: Lockout cleared
+        "403":
+          description: Forbidden — admin role required
+        "404":
+          description: User not found or TOTP not enabled
+
+  # ── Passkeys ──────────────────────────────────────────────────────────────
+
+  /auth/passkeys/register/options:
+    post:
+      tags: [passkeys]
+      summary: Get WebAuthn registration options (challenge)
+      description: |
+        Returns registration options for the authenticated user. The response
+        includes a `challenge_token` (short-lived JWT) that must be included in
+        the subsequent `POST /auth/passkeys/register/verify` request.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Registration options ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyRegistrationOptionsResponse"
+
+  /auth/passkeys/register/verify:
+    post:
+      tags: [passkeys]
+      summary: Verify passkey registration assertion
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasskeyRegistrationVerifyRequest"
+      responses:
+        "201":
+          description: Passkey registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyResponse"
+        "400":
+          description: Verification failed or challenge expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/passkeys:
+    get:
+      tags: [passkeys]
+      summary: List registered passkeys for current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of registered passkeys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PasskeyResponse"
+
+  /auth/passkeys/{id}:
+    patch:
+      tags: [passkeys]
+      summary: Rename a passkey
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasskeyRenameRequest"
+      responses:
+        "200":
+          description: Passkey renamed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyResponse"
+        "404":
+          description: Passkey not found or does not belong to current user
+
+    delete:
+      tags: [passkeys]
+      summary: Remove a passkey
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: Passkey removed
+        "404":
+          description: Passkey not found or does not belong to current user
+
+  /auth/passkeys/login/options:
+    post:
+      tags: [passkeys]
+      summary: Get WebAuthn authentication options (username-first)
+      description: |
+        Public endpoint. Client submits the username; server returns a
+        challenge and the list of allowed credential IDs for that user.
+        The response includes a `challenge_token` (short-lived JWT) required
+        for the verify step.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasskeyLoginOptionsRequest"
+      responses:
+        "200":
+          description: Authentication options ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyLoginOptionsResponse"
+        "404":
+          description: Username not found
+
+  /auth/passkeys/login/verify:
+    post:
+      tags: [passkeys]
+      summary: Verify passkey authentication assertion and issue tokens
+      description: |
+        Public endpoint. Client submits the username, the signed credential
+        response from `navigator.credentials.get()`, and the `challenge_token`
+        from the options step.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasskeyLoginVerifyRequest"
+      responses:
+        "200":
+          description: Authenticated — returns token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    page_size:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  schemas:
+
+    # ── Existing (modified) ─────────────────────────────────────────────────
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 100
+        password:
+          type: string
+          minLength: 8
+        totp_code:
+          type: string
+          description: |
+            6-digit TOTP code or 16-character recovery code.
+            Required when the account has TOTP enabled.
+          nullable: true
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          default: bearer
+        expires_in:
+          type: integer
+          description: Access token lifetime in seconds
+
+    # ── Password Reset ───────────────────────────────────────────────────────
+
+    PasswordResetRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    PasswordResetConfirm:
+      type: object
+      required: [token, new_password]
+      properties:
+        token:
+          type: string
+          description: Raw token from reset email link
+        new_password:
+          type: string
+          minLength: 8
+
+    # ── Invites ──────────────────────────────────────────────────────────────
+
+    InviteCreate:
+      type: object
+      required: [email, role]
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, analyst, viewer]
+
+    InviteResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+        invited_by_id:
+          type: string
+          format: uuid
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+        accepted_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    PaginatedInvites:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InviteResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+
+    InviteAccept:
+      type: object
+      required: [token, username, password]
+      properties:
+        token:
+          type: string
+          description: Raw token from invite email link
+        username:
+          type: string
+          minLength: 3
+          maxLength: 100
+        password:
+          type: string
+          minLength: 8
+
+    InviteAcceptResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserResponse"
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ── TOTP ─────────────────────────────────────────────────────────────────
+
+    TOTPEnrollmentResponse:
+      type: object
+      properties:
+        provisioning_uri:
+          type: string
+          description: "otpauth:// URI for import into authenticator apps"
+        qr_code_svg:
+          type: string
+          description: Inline SVG QR code for display to the user
+
+    TOTPConfirmRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          description: Current 6-digit code from authenticator app
+
+    TOTPConfirmResponse:
+      type: object
+      properties:
+        recovery_codes:
+          type: array
+          items:
+            type: string
+          description: 10 single-use recovery codes; display once and store securely
+
+    TOTPRecoveryCodesCountResponse:
+      type: object
+      properties:
+        remaining_codes:
+          type: integer
+          description: Number of unused recovery codes remaining
+
+    # ── Passkeys ─────────────────────────────────────────────────────────────
+
+    PasskeyRegistrationOptionsResponse:
+      type: object
+      description: |
+        Pass the `options` object directly to `navigator.credentials.create()`.
+        Include `challenge_token` in the subsequent verify request.
+      properties:
+        options:
+          type: object
+          description: WebAuthn PublicKeyCredentialCreationOptions (JSON-serializable)
+        challenge_token:
+          type: string
+          description: Short-lived JWT containing the challenge; expires in 5 minutes
+
+    PasskeyRegistrationVerifyRequest:
+      type: object
+      required: [credential_response, challenge_token]
+      properties:
+        credential_response:
+          type: object
+          description: JSON-serialized PublicKeyCredential from navigator.credentials.create()
+        challenge_token:
+          type: string
+          description: challenge_token returned by the options endpoint
+        name:
+          type: string
+          maxLength: 100
+          nullable: true
+          description: Optional display name for this passkey (e.g., "iPhone", "Bitwarden")
+
+    PasskeyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        registered_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    PasskeyRenameRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+
+    PasskeyLoginOptionsRequest:
+      type: object
+      required: [username]
+      properties:
+        username:
+          type: string
+
+    PasskeyLoginOptionsResponse:
+      type: object
+      description: |
+        Pass the `options` object directly to `navigator.credentials.get()`.
+        Include `challenge_token` in the subsequent verify request.
+      properties:
+        options:
+          type: object
+          description: WebAuthn PublicKeyCredentialRequestOptions (JSON-serializable)
+        challenge_token:
+          type: string
+          description: Short-lived JWT containing challenge and username; expires in 5 minutes
+
+    PasskeyLoginVerifyRequest:
+      type: object
+      required: [username, credential_response, challenge_token]
+      properties:
+        username:
+          type: string
+        credential_response:
+          type: object
+          description: JSON-serialized PublicKeyCredential from navigator.credentials.get()
+        challenge_token:
+          type: string
+
+    # ── Error shapes ─────────────────────────────────────────────────────────
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    MFARequiredError:
+      type: object
+      properties:
+        detail:
+          type: string
+          example: "TOTP code required"
+        error_code:
+          type: string
+          enum: [mfa_required, mfa_invalid]
+
+    TOTPLockedError:
+      type: object
+      properties:
+        detail:
+          type: string
+          example: "Account temporarily locked. Try again in 12 minutes."
+        locked_until:
+          type: string
+          format: date-time

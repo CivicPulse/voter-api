@@ -13,13 +13,18 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.e2e.conftest import (
+    ADMIN_EMAIL,
     ADMIN_PASSWORD,
     ADMIN_USER_ID,
     ADMIN_USERNAME,
     BOUNDARY_ID,
     ELECTION_ID,
+    INVITE_ID,
     OFFICIAL_ID,
+    TOTP_USER_ID,
+    TOTP_USERNAME,
 )
+from voter_api.models.auth_tokens import UserInvite
 from voter_api.models.election import Election
 
 # All E2E tests and their fixtures share a single session-scoped event loop.
@@ -66,7 +71,7 @@ class TestAuth:
     async def test_login_returns_tokens(self, client: httpx.AsyncClient) -> None:
         resp = await client.post(
             _url("/auth/login"),
-            data={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
+            json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -77,7 +82,7 @@ class TestAuth:
     async def test_login_bad_password_returns_401(self, client: httpx.AsyncClient) -> None:
         resp = await client.post(
             _url("/auth/login"),
-            data={"username": ADMIN_USERNAME, "password": "wrong-password"},
+            json={"username": ADMIN_USERNAME, "password": "wrong-password"},
         )
         assert resp.status_code == 401
 
@@ -85,7 +90,7 @@ class TestAuth:
         # First login to get tokens.
         login_resp = await client.post(
             _url("/auth/login"),
-            data={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
+            json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
         )
         assert login_resp.status_code == 200
         refresh_token = login_resp.json()["refresh_token"]
@@ -330,6 +335,209 @@ class TestAuth:
                 if uid is not None:
                     cleanup = await admin_client.delete(_url(f"/users/{uid}"))
                     assert cleanup.status_code in (204, 404)
+
+    async def test_password_reset_request_returns_202(self, client: httpx.AsyncClient) -> None:
+        """POST /auth/password-reset/request always returns 202 (enumeration-safe)."""
+        resp = await client.post(
+            _url("/auth/password-reset/request"),
+            json={"email": ADMIN_EMAIL},
+        )
+        assert resp.status_code == 202
+        assert "message" in resp.json()
+
+    async def test_password_reset_unknown_email_still_202(self, client: httpx.AsyncClient) -> None:
+        resp = await client.post(
+            _url("/auth/password-reset/request"),
+            json={"email": "nobody@example.com"},
+        )
+        assert resp.status_code == 202
+
+    async def test_create_invite_admin_returns_201(
+        self, admin_client: httpx.AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Admin creates invite → 201."""
+        unique_email = f"smoke_invite_{uuid.uuid4().hex[:8]}@test.com"
+        resp = await admin_client.post(
+            _url("/users/invites"),
+            json={"email": unique_email, "role": "viewer"},
+        )
+        body = resp.json() if resp.status_code == 201 else {}
+        invite_id: str | None = body.get("id")
+        try:
+            assert resp.status_code == 201
+            assert body["role"] == "viewer"
+        finally:
+            if invite_id is not None:
+                await db_session.execute(delete(UserInvite).where(UserInvite.id == uuid.UUID(invite_id)))
+                await db_session.commit()
+
+    async def test_totp_login_without_code_returns_403(self, client: httpx.AsyncClient) -> None:
+        """TOTP-enabled user login without totp_code → 403 mfa_required."""
+        resp = await client.post(
+            _url("/auth/login"),
+            json={"username": TOTP_USERNAME, "password": ADMIN_PASSWORD},
+        )
+        assert resp.status_code == 403
+        body = resp.json()
+        assert body["error_code"] == "mfa_required"
+
+    async def test_passkey_registration_options_returns_200(self, admin_client: httpx.AsyncClient) -> None:
+        """Authenticated user can get passkey registration options."""
+        resp = await admin_client.post(_url("/auth/passkeys/register/options"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "options" in body
+        assert "challenge_token" in body
+
+    async def test_passkey_login_options_unknown_user_returns_404(self, client: httpx.AsyncClient) -> None:
+        """Login options for unknown username → 404."""
+        resp = await client.post(
+            _url("/auth/passkeys/login/options"),
+            json={"username": "nonexistent_user_xyz_e2e"},
+        )
+        assert resp.status_code == 404
+
+    # ── Password Reset Confirm ──────────────────────────────────────────
+
+    async def test_password_reset_confirm_invalid_token_returns_400(self, client: httpx.AsyncClient) -> None:
+        """POST /auth/password-reset/confirm with bad token → 400."""
+        resp = await client.post(
+            _url("/auth/password-reset/confirm"),
+            json={"token": "invalid-token-xyz", "new_password": "NewStr0ngP@ss!"},  # NOSONAR
+        )
+        assert resp.status_code == 400
+
+    # ── Invite List / Cancel / Resend ────────────────────────────────────
+
+    async def test_list_invites_admin_returns_200(self, admin_client: httpx.AsyncClient) -> None:
+        """GET /users/invites (admin) → 200 with items."""
+        resp = await admin_client.get(_url("/users/invites"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
+
+    async def test_list_invites_viewer_returns_403(self, viewer_client: httpx.AsyncClient) -> None:
+        """GET /users/invites (viewer) → 403."""
+        resp = await viewer_client.get(_url("/users/invites"))
+        assert resp.status_code == 403
+
+    async def test_cancel_invite_not_found_returns_404(self, admin_client: httpx.AsyncClient) -> None:
+        """DELETE /users/invites/{id} with non-existent ID → 404."""
+        resp = await admin_client.delete(_url(f"/users/invites/{uuid.uuid4()}"))
+        assert resp.status_code == 404
+
+    async def test_resend_invite_returns_200(self, admin_client: httpx.AsyncClient) -> None:
+        """POST /users/invites/{id}/resend → 200 with refreshed token."""
+        resp = await admin_client.post(_url(f"/users/invites/{INVITE_ID}/resend"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["id"] == str(INVITE_ID)
+
+    # ── Invite Accept ────────────────────────────────────────────────────
+
+    async def test_accept_invite_invalid_token_returns_400(self, client: httpx.AsyncClient) -> None:
+        """POST /auth/invite/accept with bad token → 400."""
+        resp = await client.post(
+            _url("/auth/invite/accept"),
+            json={"token": "bad-token-xyz", "username": "newuser", "password": "Str0ngP@ssw0rd!"},  # NOSONAR
+        )
+        assert resp.status_code == 400
+
+    # ── TOTP Enroll / Confirm / Disable / Recovery Count ─────────────────
+
+    async def test_totp_enroll_confirm_disable_lifecycle(self, admin_client: httpx.AsyncClient) -> None:
+        """TOTP lifecycle: enroll → confirm (bad code) → disable, with guaranteed cleanup."""
+        try:
+            # Enroll
+            resp = await admin_client.post(_url("/auth/totp/enroll"))
+            assert resp.status_code == 200
+            body = resp.json()
+            assert "provisioning_uri" in body
+            assert "qr_code_svg" in body
+
+            # Confirm with bad code
+            resp = await admin_client.post(
+                _url("/auth/totp/confirm"),
+                json={"code": "000000"},
+            )
+            assert resp.status_code == 400
+        finally:
+            # Always clean up pending TOTP enrollment
+            await admin_client.delete(_url("/auth/totp"))
+
+    async def test_totp_enroll_requires_auth(self, client: httpx.AsyncClient) -> None:
+        """POST /auth/totp/enroll (unauthenticated) → 401."""
+        resp = await client.post(_url("/auth/totp/enroll"))
+        assert resp.status_code == 401
+
+    async def test_totp_recovery_codes_count_returns_200(self, admin_client: httpx.AsyncClient) -> None:
+        """GET /auth/totp/recovery-codes/count → 200."""
+        resp = await admin_client.get(_url("/auth/totp/recovery-codes/count"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "remaining_codes" in body
+
+    # ── Admin TOTP Controls ──────────────────────────────────────────────
+
+    async def test_admin_disable_user_totp_returns_204(self, admin_client: httpx.AsyncClient) -> None:
+        """DELETE /users/{id}/totp (admin) → 204."""
+        resp = await admin_client.delete(_url(f"/users/{TOTP_USER_ID}/totp"))
+        assert resp.status_code == 204
+
+    async def test_admin_unlock_user_totp_returns_204(self, admin_client: httpx.AsyncClient) -> None:
+        """POST /users/{id}/totp/unlock (admin) → 204."""
+        resp = await admin_client.post(_url(f"/users/{TOTP_USER_ID}/totp/unlock"))
+        assert resp.status_code == 204
+
+    # ── Passkey List / Rename / Delete / Register Verify / Login Verify ──
+
+    async def test_list_passkeys_returns_200(self, admin_client: httpx.AsyncClient) -> None:
+        """GET /auth/passkeys (authenticated) → 200."""
+        resp = await admin_client.get(_url("/auth/passkeys"))
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    async def test_list_passkeys_requires_auth(self, client: httpx.AsyncClient) -> None:
+        """GET /auth/passkeys (unauthenticated) → 401."""
+        resp = await client.get(_url("/auth/passkeys"))
+        assert resp.status_code == 401
+
+    async def test_rename_passkey_not_found_returns_404(self, admin_client: httpx.AsyncClient) -> None:
+        """PATCH /auth/passkeys/{id} with non-existent ID → 404."""
+        resp = await admin_client.patch(
+            _url(f"/auth/passkeys/{uuid.uuid4()}"),
+            json={"name": "Renamed"},
+        )
+        assert resp.status_code == 404
+
+    async def test_delete_passkey_not_found_returns_404(self, admin_client: httpx.AsyncClient) -> None:
+        """DELETE /auth/passkeys/{id} with non-existent ID → 404."""
+        resp = await admin_client.delete(_url(f"/auth/passkeys/{uuid.uuid4()}"))
+        assert resp.status_code == 404
+
+    async def test_passkey_register_verify_invalid_returns_400(self, admin_client: httpx.AsyncClient) -> None:
+        """POST /auth/passkeys/register/verify with bad data → 400."""
+        resp = await admin_client.post(
+            _url("/auth/passkeys/register/verify"),
+            json={
+                "credential_response": {"id": "fake"},
+                "challenge_token": "invalid-jwt",
+                "name": "Test",
+            },
+        )
+        assert resp.status_code == 400
+
+    async def test_passkey_login_verify_invalid_returns_401(self, client: httpx.AsyncClient) -> None:
+        """POST /auth/passkeys/login/verify with bad data → 401."""
+        resp = await client.post(
+            _url("/auth/passkeys/login/verify"),
+            json={
+                "username": ADMIN_USERNAME,
+                "credential_response": {"id": "fake"},
+                "challenge_token": "invalid-jwt",
+            },
+        )
+        assert resp.status_code == 401
 
 
 # ── Boundaries ─────────────────────────────────────────────────────────────

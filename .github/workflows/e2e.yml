@@ -41,6 +41,9 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Generate TOTP encryption key
+        run: echo "TOTP_SECRET_ENCRYPTION_KEY=$(uv run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> "$GITHUB_ENV"
+
       - name: Set DATABASE_URL
         run: echo "DATABASE_URL=postgresql+asyncpg://${PGUSER}:${PGPASSWORD}@localhost:5432/${PGDATABASE}" >> "$GITHUB_ENV"
 

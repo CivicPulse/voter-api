@@ -5,6 +5,7 @@ from voter_api.models.agenda_item import AgendaItem
 from voter_api.models.analysis_result import AnalysisResult
 from voter_api.models.analysis_run import AnalysisRun
 from voter_api.models.audit_log import AuditLog
+from voter_api.models.auth_tokens import PasswordResetToken, UserInvite
 from voter_api.models.boundary import Boundary
 from voter_api.models.county_district import CountyDistrict
 from voter_api.models.county_metadata import CountyMetadata
@@ -19,7 +20,9 @@ from voter_api.models.import_job import ImportJob
 from voter_api.models.meeting import Meeting
 from voter_api.models.meeting_attachment import MeetingAttachment
 from voter_api.models.meeting_video_embed import MeetingVideoEmbed
+from voter_api.models.passkey import Passkey
 from voter_api.models.precinct_metadata import PrecinctMetadata
+from voter_api.models.totp import TOTPCredential, TOTPRecoveryCode
 from voter_api.models.user import User
 from voter_api.models.voter import Voter
 from voter_api.models.voter_history import VoterHistory
@@ -27,6 +30,11 @@ from voter_api.models.voter_history import VoterHistory
 __all__ = [
     "Address",
     "AgendaItem",
+    "Passkey",
+    "PasswordResetToken",
+    "TOTPCredential",
+    "TOTPRecoveryCode",
+    "UserInvite",
     "AnalysisResult",
     "AnalysisRun",
     "AuditLog",

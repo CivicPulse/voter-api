@@ -324,11 +324,29 @@ uv run voter-api deploy-check                                            # prod 
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes
+- 009-enhanced-auth: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x async, Pydantic v2, httpx (existing); pyotp, segno, cryptography, py-webauthn (new)
 - 008-auto-data-import: Added Python 3.13 + httpx (async HTTP downloads), typer (CLI), loguru (logging), tqdm (progress bars) — all already in pyproject.toml
+
+### 009-enhanced-auth
+
+**Enhanced Authentication** — Added four capabilities: (1) self-service password reset via emailed token, (2) admin-initiated user invitations, (3) TOTP two-factor authentication with recovery codes and lockout, (4) passkey (WebAuthn) registration and login as a standalone login alternative.
+
+New libraries: `lib/mailer/` (MailgunMailer + Jinja2 templates), `lib/totp/` (TOTPManager with Fernet encryption), `lib/passkey/` (PasskeyManager wrapping py-webauthn).
+
+New models: `PasswordResetToken`, `UserInvite` (auth_tokens.py), `TOTPCredential`, `TOTPRecoveryCode` (totp.py), `Passkey` (passkey.py). Four new Alembic migrations (025–028).
+
+21 new/modified endpoints. **Breaking change**: POST /auth/login migrated from OAuth2 form-data to JSON body with optional `totp_code` field. Passkey login bypasses TOTP enforcement per spec (Option A).
+
+Key files:
+- `src/voter_api/lib/mailer/` — Mailgun email delivery + Jinja2 templates
+- `src/voter_api/lib/totp/` — TOTP secret management and code verification
+- `src/voter_api/lib/passkey/` — WebAuthn registration and authentication
+- `src/voter_api/models/auth_tokens.py` — PasswordResetToken, UserInvite
+- `src/voter_api/models/totp.py` — TOTPCredential, TOTPRecoveryCode
+- `src/voter_api/models/passkey.py` — Passkey
+- `src/voter_api/services/auth_service.py` — all 14 new service functions
+- `src/voter_api/api/v1/auth.py` — all 21 new/modified endpoints
 - 008-auto-data-import: Voter import performance optimization — replaced row-by-row SELECT+INSERT/UPDATE with bulk PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` (via `sqlalchemy.dialects.postgresql.insert`), ~10-20x faster for large imports
-- 007-meeting-records: Added Python 3.13+ + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Alembic, Typer, Loguru, aiofiles (new — async file I/O)
-- 006-voter-history: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async) + GeoAlchemy2, Pydantic v2, Pandas, Typer, Loguru, Alembic
-- 005-elected-officials: Added `ElectedOfficial` and `ElectedOfficialSource` models (migration 015), 9 API endpoints under `/api/v1/elected-officials`, admin approval workflow (auto/approved/manual), multi-source data provider architecture
 
 ### 008-auto-data-import
 
@@ -336,7 +354,6 @@ uv run voter-api deploy-check                                            # prod 
 
 Key files:
 
-- `src/voter_api/services/import_service.py` — bulk upsert logic (`_upsert_voter_batch`, `_prepare_records_for_db`, `_process_chunk`)
 
 ### 005-elected-officials
 
@@ -352,7 +369,5 @@ Key files:
 
 
 ## Active Technologies
-- Python 3.13+ + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Alembic, Typer, Loguru, aiofiles (new — async file I/O) (007-meeting-records)
-- PostgreSQL 15+ / PostGIS 3.x (existing) + local filesystem for attachments (new) (007-meeting-records)
-- Python 3.13 + httpx (async HTTP downloads), typer (CLI), loguru (logging), tqdm (progress bars) — all already in pyproject.toml (008-auto-data-import)
-- PostgreSQL + PostGIS (via existing import commands); local filesystem for downloaded data files (008-auto-data-import)
+- Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x async, Pydantic v2, httpx (existing); pyotp, segno, cryptography, py-webauthn (new) (009-enhanced-auth)
+- PostgreSQL 15+ / PostGIS — 4 new tables across 4 Alembic migrations (025–028) (009-enhanced-auth)

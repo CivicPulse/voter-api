@@ -62,7 +62,13 @@ class TestAuthenticateUser:
     @pytest.mark.asyncio
     async def test_valid_credentials_returns_user(self) -> None:
         user = _mock_user()
-        session = _mock_session_with_result(user)
+        session = AsyncMock()
+        # First execute: user lookup; second execute: TOTP check (no TOTP enrolled)
+        user_result = MagicMock()
+        user_result.scalar_one_or_none.return_value = user
+        totp_result = MagicMock()
+        totp_result.scalar_one_or_none.return_value = None
+        session.execute.side_effect = [user_result, totp_result]
 
         with patch("voter_api.services.auth_service.verify_password", return_value=True):
             result = await authenticate_user(session, "testuser", "password123")

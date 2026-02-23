@@ -285,6 +285,79 @@ class Settings(BaseSettings):
             raise ValueError(msg)
         return v.rstrip("/") + "/"
 
+    # Mailgun email delivery
+    mailgun_api_key: str | None = Field(
+        default=None,
+        description="Mailgun API key for email delivery",
+    )
+    mailgun_domain: str | None = Field(
+        default=None,
+        description="Mailgun sending domain (e.g. mg.yourdomain.com)",
+    )
+    mailgun_from_email: str | None = Field(
+        default=None,
+        description="Sender email address for outgoing mail",
+    )
+    mailgun_from_name: str = Field(
+        default="Voter API",
+        description="Sender display name for outgoing mail",
+    )
+
+    # TOTP two-factor authentication
+    totp_secret_encryption_key: str | None = Field(
+        default=None,
+        description="Fernet key for TOTP secret encryption at rest (generate with Fernet.generate_key())",
+    )
+    totp_max_attempts: int = Field(
+        default=5,
+        description="Maximum failed TOTP attempts before lockout",
+        gt=0,
+    )
+    totp_lockout_minutes: int = Field(
+        default=15,
+        description="TOTP lockout duration in minutes",
+        gt=0,
+    )
+
+    # Password reset rate limiting
+    reset_rate_limit_minutes: int = Field(
+        default=5,
+        description="Minimum minutes between password reset requests for the same email",
+        gt=0,
+    )
+
+    # WebAuthn / Passkeys
+    webauthn_rp_id: str = Field(
+        default="localhost",
+        description="WebAuthn relying party ID (domain name, e.g. example.com)",
+    )
+    webauthn_rp_name: str = Field(
+        default="Voter API",
+        description="WebAuthn relying party display name",
+    )
+    webauthn_origin: str = Field(
+        default="http://localhost:3000",
+        description="Expected origin for passkey ceremonies (e.g. https://example.com)",
+    )
+
+    @field_validator("webauthn_origin")
+    @classmethod
+    def validate_webauthn_origin(cls, v: str) -> str:
+        """Require HTTPS for webauthn_origin except localhost development."""
+        if not (v.startswith("https://") or v.startswith("http://localhost")):
+            msg = "webauthn_origin must use HTTPS (or http://localhost for development)"
+            raise ValueError(msg)
+        return v
+
+    @model_validator(mode="after")
+    def validate_mailgun_config(self) -> Self:
+        """Require all Mailgun fields when any are set."""
+        fields = (self.mailgun_api_key, self.mailgun_domain, self.mailgun_from_email)
+        if any(fields) and not all(fields):
+            msg = "MAILGUN_API_KEY, MAILGUN_DOMAIN, and MAILGUN_FROM_EMAIL must all be set together"
+            raise ValueError(msg)
+        return self
+
     # R2 / S3-Compatible Object Storage
     r2_enabled: bool = Field(
         default=False,
