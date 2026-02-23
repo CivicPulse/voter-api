@@ -1,23 +1,27 @@
 """Authentication API endpoints.
 
 POST /auth/login, POST /auth/refresh, GET /auth/me,
-GET /users, POST /users, GET /health, GET /info.
+GET /users, POST /users, GET /users/{user_id},
+PATCH /users/{user_id}, DELETE /users/{user_id},
+GET /health, GET /info.
 """
 
 import math
 import subprocess
+import uuid
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api import __version__
 from voter_api.core.config import Settings, get_settings
 from voter_api.core.dependencies import get_async_session, get_current_user, require_role
 from voter_api.models.user import User
-from voter_api.schemas.auth import RefreshRequest, TokenResponse, UserCreateRequest, UserResponse
+from voter_api.schemas.auth import RefreshRequest, TokenResponse, UserCreateRequest, UserResponse, UserUpdateRequest
 from voter_api.schemas.common import PaginationMeta, PaginationParams
 from voter_api.services import auth_service
 
@@ -128,3 +132,116 @@ async def create_user(
         return await auth_service.create_user(session, request)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+
+
+@router.get("/users/{user_id}", response_model=UserResponse)
+async def get_user_by_id(
+    user_id: uuid.UUID,
+    _current_user: Annotated[User, Depends(require_role("admin"))],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> User:
+    """Get a user by ID (admin only).
+
+    Args:
+        user_id: The UUID of the user to retrieve.
+        _current_user: The authenticated admin user (enforces role; unused directly).
+        session: The async database session.
+
+    Returns:
+        The requested User record.
+
+    Raises:
+        HTTPException: 404 if no user with the given ID exists.
+    """
+    user = await auth_service.get_user(session, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
+
+
+@router.patch("/users/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: uuid.UUID,
+    request: UserUpdateRequest,
+    current_user: Annotated[User, Depends(require_role("admin"))],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> User:
+    """Update an existing user's details (admin only).
+
+    All request fields are optional; only provided fields are updated. Admins
+    cannot deactivate their own account or downgrade their own role.
+
+    Args:
+        user_id: The UUID of the user to update.
+        request: Partial update payload (email, role, and/or is_active).
+        current_user: The authenticated admin user performing the update.
+        session: The async database session.
+
+    Returns:
+        The updated User record.
+
+    Raises:
+        HTTPException: 404 if the user is not found, 400 if the admin attempts
+            to deactivate their own account or downgrade their own role,
+            409 if the requested email is already in use.
+    """
+    user = await auth_service.get_user(session, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    updates = request.model_dump(exclude_unset=True, exclude_none=True)
+
+    if current_user.id == user_id:
+        if updates.get("is_active") is False:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot deactivate your own account",
+            )
+        if "role" in updates and updates["role"] != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot downgrade your own admin role",
+            )
+
+    try:
+        updated = await auth_service.update_user(session, user, updates)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+
+    logger.info(f"Admin {current_user.username} updated user {user_id}")
+    return updated
+
+
+@router.delete("/users/{user_id}", status_code=204)
+async def delete_user(
+    user_id: uuid.UUID,
+    current_user: Annotated[User, Depends(require_role("admin"))],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> None:
+    """Delete a user account (admin only). Returns 204 No Content on success.
+
+    Related nullable foreign keys (meetings.submitted_by, meetings.approved_by,
+    elected_officials.approved_by_id) are automatically set to NULL via the
+    ON DELETE SET NULL constraint added in migration 025.
+
+    Args:
+        user_id: The UUID of the user to delete.
+        current_user: The authenticated admin user performing the deletion.
+        session: The async database session.
+
+    Raises:
+        HTTPException: 400 if the admin attempts to delete their own account,
+            404 if no user with the given ID exists.
+    """
+    if current_user.id == user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account",
+        )
+
+    user = await auth_service.get_user(session, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    await auth_service.delete_user(session, user)
+    logger.info(f"Admin {current_user.username} deleted user {user_id}")
