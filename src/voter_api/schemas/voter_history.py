@@ -90,6 +90,8 @@ class ParticipationStatsResponse(BaseModel):
 
     election_id: UUID
     total_participants: int
+    total_eligible_voters: int | None = None
+    turnout_percentage: float | None = None
     by_county: list[CountyBreakdown] = Field(default_factory=list)
     by_ballot_style: list[BallotStyleBreakdown] = Field(default_factory=list)
     by_precinct: list[PrecinctBreakdown] = Field(default_factory=list)
