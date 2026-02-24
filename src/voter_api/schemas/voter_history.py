@@ -40,6 +40,8 @@ class ElectionParticipationRecord(BaseModel):
 
     id: UUID
     voter_id: UUID | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     voter_registration_number: str
     county: str
     election_date: date

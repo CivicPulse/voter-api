@@ -114,14 +114,18 @@ async def list_election_participants(
             detail="Election not found",
         ) from exc
 
-    # Resolve voter IDs for participation records
+    # Resolve voter IDs and names for participation records
     reg_nums = [r.voter_registration_number for r in records]
-    voter_id_map = await voter_history_service.lookup_voter_ids(session, reg_nums) if reg_nums else {}
+    voter_detail_map = await voter_history_service.lookup_voter_details(session, reg_nums) if reg_nums else {}
 
     items = []
     for r in records:
         item = ElectionParticipationRecord.model_validate(r)
-        item.voter_id = voter_id_map.get(r.voter_registration_number)
+        detail = voter_detail_map.get(r.voter_registration_number)
+        if detail:
+            item.voter_id = detail.id
+            item.first_name = detail.first_name
+            item.last_name = detail.last_name
         items.append(item)
 
     return PaginatedElectionParticipationResponse(
