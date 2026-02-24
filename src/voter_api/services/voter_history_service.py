@@ -10,7 +10,6 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.voter_history import (
-    generate_election_name,
     parse_voter_history_chunks,
 )
 from voter_api.models.election import Election
@@ -26,6 +25,8 @@ from voter_api.schemas.voter_history import (
 
 # asyncpg has a hard limit of 32767 query parameters
 _IN_CLAUSE_BATCH = 5000
+# Sub-batch size for voter history upsert: 11 columns * 2000 rows = 22,000 params (under 32,767 limit)
+_UPSERT_SUB_BATCH = 2000
 
 
 async def process_voter_history_import(
@@ -48,6 +49,12 @@ async def process_voter_history_import(
     Returns:
         The updated ImportJob with final counts.
     """
+    # Cap batch_size to the upsert sub-batch limit so a single chunk never
+    # exceeds asyncpg's 32,767 parameter ceiling, regardless of config.
+    if batch_size > _UPSERT_SUB_BATCH:
+        logger.info(f"Clamping batch_size from {batch_size} to {_UPSERT_SUB_BATCH} (asyncpg parameter limit)")
+        batch_size = _UPSERT_SUB_BATCH
+
     job.status = "running"
     job.started_at = datetime.now(UTC)
     await session.commit()
@@ -57,7 +64,6 @@ async def process_voter_history_import(
     failed = 0
     skipped = 0
     unmatched = 0
-    elections_created = 0
     errors: list[dict] = []
     seen_keys: set[tuple[str, str, str]] = set()
 
@@ -91,10 +97,6 @@ async def process_voter_history_import(
 
                 valid_records.append(record)
 
-            # Auto-create elections for this batch
-            batch_created = await _auto_create_elections(session, valid_records)
-            elections_created += batch_created
-
             # Detect unmatched voters in this batch
             batch_unmatched = await _count_unmatched_voters(session, valid_records)
             unmatched += batch_unmatched
@@ -127,7 +129,7 @@ async def process_voter_history_import(
         logger.info(
             f"Voter history import completed: {total} total, "
             f"{succeeded} succeeded, {failed} failed, {skipped} skipped, "
-            f"{unmatched} unmatched, {elections_created} elections created"
+            f"{unmatched} unmatched"
         )
 
     except Exception:
@@ -154,105 +156,40 @@ async def _upsert_voter_history_batch(
         records: List of validated record dicts.
         import_job_id: The current import job ID.
     """
-    values = [
-        {
-            "voter_registration_number": r["voter_registration_number"],
-            "county": r["county"],
-            "election_date": r["election_date"],
-            "election_type": r["election_type"],
-            "normalized_election_type": r["normalized_election_type"],
-            "party": r.get("party"),
-            "ballot_style": r.get("ballot_style"),
-            "absentee": r["absentee"],
-            "provisional": r["provisional"],
-            "supplemental": r["supplemental"],
-            "import_job_id": import_job_id,
-        }
-        for r in records
-    ]
+    for i in range(0, len(records), _UPSERT_SUB_BATCH):
+        batch = records[i : i + _UPSERT_SUB_BATCH]
+        values = [
+            {
+                "voter_registration_number": r["voter_registration_number"],
+                "county": r["county"],
+                "election_date": r["election_date"],
+                "election_type": r["election_type"],
+                "normalized_election_type": r["normalized_election_type"],
+                "party": r.get("party"),
+                "ballot_style": r.get("ballot_style"),
+                "absentee": r["absentee"],
+                "provisional": r["provisional"],
+                "supplemental": r["supplemental"],
+                "import_job_id": import_job_id,
+            }
+            for r in batch
+        ]
 
-    stmt = pg_insert(VoterHistory).values(values)
-    stmt = stmt.on_conflict_do_update(
-        constraint="uq_voter_history_participation",
-        set_={
-            "county": stmt.excluded.county,
-            "normalized_election_type": stmt.excluded.normalized_election_type,
-            "party": stmt.excluded.party,
-            "ballot_style": stmt.excluded.ballot_style,
-            "absentee": stmt.excluded.absentee,
-            "provisional": stmt.excluded.provisional,
-            "supplemental": stmt.excluded.supplemental,
-            "import_job_id": stmt.excluded.import_job_id,
-        },
-    )
-    await session.execute(stmt)
-
-
-async def _auto_create_elections(
-    session: AsyncSession,
-    records: list[dict],
-) -> int:
-    """Auto-create election records for date+type combos not yet in the DB.
-
-    Args:
-        session: Database session.
-        records: List of valid record dicts.
-
-    Returns:
-        Number of elections created.
-    """
-    # Extract unique (date, raw_type) combos
-    combos: dict[tuple[date, str], str] = {}
-    for r in records:
-        ed = r["election_date"]
-        raw_type = r["election_type"]
-        if (ed, raw_type) not in combos:
-            combos[(ed, raw_type)] = r["normalized_election_type"]
-
-    if not combos:
-        return 0
-
-    created = 0
-    for (election_date, raw_type), normalized_type in combos.items():
-        # Step 1: exact (date, type) match
-        result = await session.execute(
-            select(Election.id).where(
-                Election.election_date == election_date,
-                Election.election_type == normalized_type,
-            )
+        stmt = pg_insert(VoterHistory).values(values)
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_voter_history_participation",
+            set_={
+                "county": stmt.excluded.county,
+                "normalized_election_type": stmt.excluded.normalized_election_type,
+                "party": stmt.excluded.party,
+                "ballot_style": stmt.excluded.ballot_style,
+                "absentee": stmt.excluded.absentee,
+                "provisional": stmt.excluded.provisional,
+                "supplemental": stmt.excluded.supplemental,
+                "import_job_id": stmt.excluded.import_job_id,
+            },
         )
-        if result.scalar_one_or_none() is not None:
-            continue
-
-        # Step 2: date-only fallback — if ANY election exists on this date,
-        # the existing election is authoritative; skip auto-creation.
-        date_result = await session.execute(select(Election.id).where(Election.election_date == election_date).limit(1))
-        if date_result.scalar_one_or_none() is not None:
-            logger.info(
-                f"Skipping auto-creation for {raw_type} on {election_date}: "
-                f"election already exists on this date with different type"
-            )
-            continue
-
-        # Auto-create
-        name = generate_election_name(raw_type, election_date)
-        election = Election(
-            name=name,
-            election_date=election_date,
-            election_type=normalized_type,
-            creation_method="voter_history",
-            status="finalized",
-            district="Statewide",
-            data_source_url="n/a",
-        )
-        session.add(election)
-        created += 1
-        logger.info(f"Auto-created election: {name} (type={normalized_type}, date={election_date})")
-
-    if created:
-        await session.flush()
-
-    return created
+        await session.execute(stmt)
 
 
 async def _count_unmatched_voters(

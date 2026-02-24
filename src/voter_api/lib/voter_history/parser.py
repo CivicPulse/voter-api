@@ -27,10 +27,12 @@ GA_SOS_VOTER_HISTORY_COLUMN_MAP: dict[str, str] = {
 }
 
 # Mapping from GA SoS verbose election types to normalized vocabulary.
-# Used for election auto-creation and joins to the elections table.
+# Used for joins to the elections table.
 ELECTION_TYPE_MAP: dict[str, str] = {
+    "GENERAL": "general",
     "GENERAL ELECTION": "general",
     "GENERAL PRIMARY": "primary",
+    "GENERAL PRIMARY RUNOFF": "runoff",
     "SPECIAL ELECTION": "special",
     "SPECIAL ELECTION RUNOFF": "runoff",
     "SPECIAL PRIMARY": "primary",
@@ -52,21 +54,6 @@ def map_election_type(raw_type: str) -> str:
         Normalized election type (e.g., "general", "primary", "special", "runoff").
     """
     return ELECTION_TYPE_MAP.get(raw_type.strip().upper(), DEFAULT_ELECTION_TYPE)
-
-
-def generate_election_name(raw_type: str, election_date: date) -> str:
-    """Generate a human-readable election name for auto-created elections.
-
-    Args:
-        raw_type: Raw election type from CSV (e.g., "GENERAL ELECTION").
-        election_date: The election date.
-
-    Returns:
-        Generated name (e.g., "General Election - 11/05/2024").
-    """
-    title = raw_type.strip().title()
-    date_str = election_date.strftime("%m/%d/%Y")
-    return f"{title} - {date_str}"
 
 
 def _parse_date(value: str) -> date | None:
