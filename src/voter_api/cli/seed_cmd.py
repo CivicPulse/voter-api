@@ -30,6 +30,8 @@ _CATEGORY_MAP: dict[str, FileCategory] = {
 
 _VALID_CATEGORIES = ", ".join(sorted(_CATEGORY_MAP.keys()))
 
+_DEFAULT_ELECTION_SOURCE = "https://voteapi.civpulse.org"
+
 
 def _validate_data_root(value: str | None) -> str | None:
     """Validate and normalize the --data-root CLI override.
@@ -87,7 +89,7 @@ def seed(
         help="Limit total voter records imported (e.g., 10000 for preview environments)",
     ),
     election_source: str | None = typer.Option(
-        "https://voteapi.civpulse.org",
+        _DEFAULT_ELECTION_SOURCE,
         "--election-source",
         help="Base URL of the source API to fetch elections from",
     ),
@@ -140,7 +142,7 @@ async def _run_seed(
     fail_fast: bool,
     skip_checksum: bool,
     max_voters: int | None = None,
-    election_source: str | None = "https://voteapi.civpulse.org",
+    election_source: str | None = _DEFAULT_ELECTION_SOURCE,
     skip_elections: bool = False,
 ) -> None:
     """Async implementation of the seed workflow.
@@ -264,7 +266,7 @@ async def _run_imports(
     skip_checksum: bool,
     seed_result: SeedResult,
     max_voters: int | None = None,
-    election_source: str | None = "https://voteapi.civpulse.org",
+    election_source: str | None = _DEFAULT_ELECTION_SOURCE,
     skip_elections: bool = False,
 ) -> None:
     """Run database imports in dependency order.
@@ -593,8 +595,13 @@ async def _import_voter_history(file_path: Path, batch_size: int, *, skip_optimi
             if not csv_names:
                 msg = f"No CSV found in {file_path.name}"
                 raise ValueError(msg)
-            zf.extract(csv_names[0], file_path.parent)
-            csv_path = file_path.parent / csv_names[0]
+            member = csv_names[0]
+            target = (file_path.parent / member).resolve()
+            if not target.is_relative_to(file_path.parent.resolve()):
+                msg = f"Path traversal detected in ZIP: {member}"
+                raise ValueError(msg)
+            zf.extract(member, file_path.parent)
+            csv_path = target
 
     factory = get_session_factory()
     async with factory() as session:
@@ -635,13 +642,16 @@ async def _import_voter_history_batch(
 
     factory = get_session_factory()
 
+    # Pair only downloads that have a local_path to preserve alignment
+    paired = [(Path(r.local_path), r) for r in vh_files if r.local_path is not None]
+
     async with factory() as lifecycle_session, bulk_vh_import_context(lifecycle_session):
-        for fp, r in zip(file_paths, vh_files, strict=False):
+        for fp, r in paired:
             try:
                 # Each file gets its own session but shares the bulk context
-                # (indexes already dropped, autovacuum off). Also set
-                # synchronous_commit off on this session since bulk context
-                # only sets it on the lifecycle session.
+                # (indexes already dropped, autovacuum off).
+                # Note: synchronous_commit is only off on the lifecycle session;
+                # per-file sessions use the default (on) since skip_optimizations=True.
                 await _import_voter_history(fp, batch_size, skip_optimizations=True)
                 seed_result.import_results[f"voter_history:{r.entry.filename}"] = "success"
             except Exception as exc:

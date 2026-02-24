@@ -187,8 +187,8 @@ async def _resolve_tier1_single_election(
     else:
         sql = "UPDATE voter_history SET election_id = :eid WHERE election_date = :edate AND election_id IS NULL"
 
-    result = await session.execute(text(sql), {"eid": election_id, "edate": election_date})
-    updated = result.rowcount
+    cursor = await session.execute(text(sql), {"eid": election_id, "edate": election_date})
+    updated: int = cursor.rowcount  # type: ignore[attr-defined]
     if updated > 0:
         logger.debug(
             "Tier 1: assigned {} records to election {} on {}",
@@ -326,17 +326,17 @@ async def _update_vh_by_district(
         msg = f"Invalid voter column: {voter_column}"
         raise ValueError(msg)
 
-    null_filter = "" if force else " AND vh.election_id IS NULL"
+    null_filter = "" if force else "AND vh.election_id IS NULL "
     # voter_column is validated against _ALLOWED_VOTER_COLUMNS above
     sql = (
         f"UPDATE voter_history vh SET election_id = :election_id "  # noqa: S608
         f"FROM voters v "
         f"WHERE vh.voter_registration_number = v.voter_registration_number "
-        f"AND vh.election_date = :election_date"
-        f"{null_filter} "
+        f"AND vh.election_date = :election_date "
+        f"{null_filter}"
         f"AND v.{voter_column} = :district_identifier"
     )
-    result = await session.execute(
+    cursor = await session.execute(
         text(sql),
         {
             "election_id": election_id,
@@ -344,4 +344,4 @@ async def _update_vh_by_district(
             "district_identifier": district_identifier,
         },
     )
-    return result.rowcount
+    return cursor.rowcount  # type: ignore[attr-defined]
