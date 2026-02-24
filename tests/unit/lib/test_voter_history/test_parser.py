@@ -9,7 +9,6 @@ from voter_api.lib.voter_history.parser import (
     DEFAULT_ELECTION_TYPE,
     ELECTION_TYPE_MAP,
     GA_SOS_VOTER_HISTORY_COLUMN_MAP,
-    generate_election_name,
     map_election_type,
     parse_voter_history_chunks,
 )
@@ -73,8 +72,10 @@ class TestMapElectionType:
     @pytest.mark.parametrize(
         ("raw", "expected"),
         [
+            ("GENERAL", "general"),
             ("GENERAL ELECTION", "general"),
             ("GENERAL PRIMARY", "primary"),
+            ("GENERAL PRIMARY RUNOFF", "runoff"),
             ("SPECIAL ELECTION", "special"),
             ("SPECIAL ELECTION RUNOFF", "runoff"),
             ("SPECIAL PRIMARY", "primary"),
@@ -103,30 +104,6 @@ class TestMapElectionType:
         """Every entry in ELECTION_TYPE_MAP produces a valid result."""
         for raw_type, expected in ELECTION_TYPE_MAP.items():
             assert map_election_type(raw_type) == expected
-
-
-# ---------------------------------------------------------------------------
-# Election name generation (T030)
-# ---------------------------------------------------------------------------
-
-
-class TestGenerateElectionName:
-    """Tests for auto-created election name generation."""
-
-    def test_general_election_name(self) -> None:
-        """Generate name for a general election."""
-        name = generate_election_name("GENERAL ELECTION", date(2024, 11, 5))
-        assert name == "General Election - 11/05/2024"
-
-    def test_primary_name(self) -> None:
-        """Generate name for a primary."""
-        name = generate_election_name("GENERAL PRIMARY", date(2024, 5, 21))
-        assert name == "General Primary - 05/21/2024"
-
-    def test_whitespace_stripped_and_titled(self) -> None:
-        """Input is stripped and title-cased."""
-        name = generate_election_name("  special election  ", date(2024, 1, 15))
-        assert name == "Special Election - 01/15/2024"
 
 
 # ---------------------------------------------------------------------------
@@ -384,3 +361,40 @@ class TestEdgeCases:
         chunks = list(parse_voter_history_chunks(f, batch_size=10))
         assert len(chunks) == 1
         assert chunks[0][0]["voter_registration_number"] == "12345678"
+
+
+# ---------------------------------------------------------------------------
+# Registration number normalization
+# ---------------------------------------------------------------------------
+
+
+class TestRegistrationNumberNormalization:
+    """Tests for leading-zero stripping in voter history parser."""
+
+    def test_leading_zeros_stripped(self, tmp_path: Path) -> None:
+        """Zero-padded registration numbers have leading zeros removed."""
+        row = "FULTON,00013148,11/05/2024,GENERAL ELECTION,NP,BALLOT 1,Y,N,N"
+        f = _write_csv(tmp_path, [row])
+        record = list(parse_voter_history_chunks(f, batch_size=10))[0][0]
+        assert record["voter_registration_number"] == "13148"
+
+    def test_no_leading_zeros_unchanged(self, tmp_path: Path) -> None:
+        """Registration numbers without leading zeros are unchanged."""
+        row = "FULTON,12345678,11/05/2024,GENERAL ELECTION,NP,BALLOT 1,Y,N,N"
+        f = _write_csv(tmp_path, [row])
+        record = list(parse_voter_history_chunks(f, batch_size=10))[0][0]
+        assert record["voter_registration_number"] == "12345678"
+
+    def test_all_zeros_becomes_zero(self, tmp_path: Path) -> None:
+        """All-zeros registration number normalizes to '0'."""
+        row = "FULTON,0000,11/05/2024,GENERAL ELECTION,NP,BALLOT 1,Y,N,N"
+        f = _write_csv(tmp_path, [row])
+        record = list(parse_voter_history_chunks(f, batch_size=10))[0][0]
+        assert record["voter_registration_number"] == "0"
+
+    def test_internal_zeros_preserved(self, tmp_path: Path) -> None:
+        """Zeros within the number are not stripped."""
+        row = "FULTON,00100200,11/05/2024,GENERAL ELECTION,NP,BALLOT 1,Y,N,N"
+        f = _write_csv(tmp_path, [row])
+        record = list(parse_voter_history_chunks(f, batch_size=10))[0][0]
+        assert record["voter_registration_number"] == "100200"

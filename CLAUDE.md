@@ -179,8 +179,16 @@ Follow these rules whenever you add, modify, or remove API endpoints:
 - [ ] `uv run pytest tests/e2e/ --collect-only` discovers all new tests
 - [ ] Lint passes: `uv run ruff check tests/e2e/ && uv run ruff format --check tests/e2e/`
 
+## Dangerous Commands
+
+> **AI agents must NEVER execute these commands.** They are destructive,
+> irreversible, and require human judgment to verify the target database.
+
+- **`voter-api db rebuild`** — Drops the entire database schema (`DROP SCHEMA ... CASCADE`), reruns all migrations, and optionally re-imports all seed data. This is intended for local dev/test resets by a human operator who can visually confirm the target database URL. Two interactive confirmations are required. There is no undo.
+
 ## Key Conventions
 
+- **Database inspection via MCP** — A PostgreSQL MCP server (`mcp__postgres__query`) is connected to the dev database. **Always use this MCP tool as the first choice** for inspecting the database (schema, data, table sizes, row counts, etc.) instead of running `psql` or other CLI tools. The tool executes read-only SQL queries and returns JSON results. Use it for ad-hoc queries, debugging data issues, verifying migrations, and exploring table contents.
 - **Never use system python** — never invoke `python`, `python3`, `pip`, or `pip3` directly. All Python commands **must** be prefixed with `uv run` (e.g., `uv run pytest`, `uv run python`, `uv run alembic`). Use `uv add <pkg>`, `uv add --dev <pkg>`, `uv remove <pkg>` for package management. Use `uv sync` to install dependencies. No exceptions.
 - **Conventional Commits** — all commit messages must follow the spec (see `docs/convential_commits.md`)
 - **12-factor config** — all configuration via environment variables, validated by Pydantic Settings; `.env.example` documents all required vars

@@ -73,6 +73,12 @@
       "sha512": "65d33f93f2904385f17f76723d416193b43b6ee35198dd2a10789c75181fd1be008e284034721875244bcc4b774132773ad98a595ffb08e22ca90266966fb2d7",
       "category": "reference",
       "size_bytes": 148839
+    },
+    {
+      "filename": "2024.zip",
+      "sha512": "5321414718b17a2ef49e90b01d2a26584fbb6de340c964a3d7e2f37b5bfb80a5b118094eb997d67837696ecf9c9762f98fc3af2c62c5002f2696101d518e0cad",
+      "category": "voter_history",
+      "size_bytes": 58471810
     }
   ]
 }

@@ -612,6 +612,11 @@ class TestElections:
         body = resp.json()
         assert body["id"] == str(ELECTION_ID)
         assert body["name"] == "E2E Test General Election"
+        # New district resolution fields are present (nullable)
+        assert "boundary_id" in body
+        assert "district_type" in body
+        assert "district_identifier" in body
+        assert "district_party" in body
 
     async def test_get_election_not_found(self, client: httpx.AsyncClient) -> None:
         resp = await client.get(_url(f"/elections/{uuid.uuid4()}"))
@@ -652,6 +657,33 @@ class TestElections:
         finally:
             # Cleanup: no DELETE /elections endpoint, so remove via DB directly.
             # Runs even if assertions fail to keep the DB idempotent.
+            if election_id is not None:
+                await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))
+                await db_session.commit()
+
+    async def test_create_election_auto_parses_district(
+        self, admin_client: httpx.AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Creating an election with a parseable district auto-populates district fields and boundary_id."""
+        payload = {
+            "name": f"E2E Auto-Parse {uuid.uuid4().hex[:8]}",
+            "election_date": "2025-06-15",
+            "election_type": "special",
+            "district": "US House of Representatives - District 1",
+            "data_source_url": "https://results.enr.clarityelections.com/GA/autoparse/json",
+            "refresh_interval_seconds": 120,
+        }
+        create_resp = await admin_client.post(_url("/elections"), json=payload)
+        election_id: str | None = create_resp.json().get("id") if create_resp.status_code == 201 else None
+        try:
+            assert create_resp.status_code == 201
+            body = create_resp.json()
+            assert body["district_type"] == "congressional"
+            assert body["district_identifier"] == "1"
+            assert body["district_party"] is None
+            # Boundary ID links to seeded congressional boundary "1"
+            assert body["boundary_id"] == str(BOUNDARY_ID)
+        finally:
             if election_id is not None:
                 await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))
                 await db_session.commit()
@@ -1079,9 +1111,17 @@ class TestVoterHistory:
         resp = await viewer_client.get(_url(f"/elections/{ELECTION_ID}/participation"))
         assert resp.status_code == 403
 
-    async def test_election_participation_stats_accessible_to_viewer(self, viewer_client: httpx.AsyncClient) -> None:
-        """Stats endpoint requires only authentication — viewer role is sufficient."""
-        resp = await viewer_client.get(_url(f"/elections/{ELECTION_ID}/participation/stats"))
+    async def test_election_participation_stats_requires_auth(self, client: httpx.AsyncClient) -> None:
+        """Stats endpoint requires analyst or admin role."""
+        resp = await client.get(_url(f"/elections/{ELECTION_ID}/participation/stats"))
+        assert resp.status_code == 401
+
+    async def test_election_participation_stats(self, analyst_client: httpx.AsyncClient) -> None:
+        """Analyst can access participation stats."""
+        resp = await analyst_client.get(_url(f"/elections/{ELECTION_ID}/participation/stats"))
         assert resp.status_code == 200
         body = resp.json()
         assert "election_id" in body
+        assert "by_precinct" in body
+        assert "total_eligible_voters" in body
+        assert "turnout_percentage" in body

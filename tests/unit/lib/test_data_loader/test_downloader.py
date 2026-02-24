@@ -58,6 +58,16 @@ class TestResolveDownloadPath:
         result = resolve_download_path(entry, Path("data"))
         assert result == Path("data/doc.pdf")
 
+    def test_voter_history_goes_to_root(self) -> None:
+        entry = DataFileEntry(
+            filename="2024.zip",
+            sha512="a" * 128,
+            category=FileCategory.VOTER_HISTORY,
+            size_bytes=100,
+        )
+        result = resolve_download_path(entry, Path("data"))
+        assert result == Path("data/2024.zip")
+
 
 class TestComputeSha512:
     """Tests for _compute_sha512()."""

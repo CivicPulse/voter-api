@@ -1,6 +1,7 @@
 """Voter history CLI commands for the import command group."""
 
 import asyncio
+import time
 from pathlib import Path
 
 import typer
@@ -31,10 +32,12 @@ async def _import_voter_history(file_path: Path, batch_size: int) -> None:
             typer.echo(f"Import job created: {job.id}")
             typer.echo(f"Importing voter history from {file_path.name}...")
 
+            start = time.monotonic()
             job = await process_voter_history_import(session, job, file_path, batch_size)
+            elapsed = time.monotonic() - start
 
             status_label = "completed" if job.status == "completed" else "failed"
-            typer.echo(f"\nImport {status_label}:")
+            typer.echo(f"\nImport {status_label} in {elapsed:.1f}s:")
             typer.echo(f"  Total records:     {job.total_records or 0}")
             typer.echo(f"  Succeeded:         {job.records_succeeded or 0}")
             typer.echo(f"  Failed:            {job.records_failed or 0}")

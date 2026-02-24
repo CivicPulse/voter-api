@@ -190,3 +190,42 @@ class TestParseCsvChunks:
             "Expected a WARNING log mentioning 'case-insensitive fallback' when a column header "
             "matches only via lowercase comparison"
         )
+
+
+class TestRegistrationNumberNormalization:
+    """Tests for leading-zero stripping in voter CSV parser."""
+
+    def test_leading_zeros_stripped(self, tmp_path: Path) -> None:
+        """Zero-padded registration numbers have leading zeros removed."""
+        f = tmp_path / "voters.csv"
+        f.write_text("County,Voter Registration #,Status,Last Name,First Name\nFulton,00012345,ACTIVE,SMITH,JOHN\n")
+        chunks = list(parse_csv_chunks(f, batch_size=10))
+        assert chunks[0].iloc[0]["voter_registration_number"] == "12345"
+
+    def test_no_leading_zeros_unchanged(self, tmp_path: Path) -> None:
+        """Registration numbers without leading zeros are unchanged."""
+        f = tmp_path / "voters.csv"
+        f.write_text("County,Voter Registration #,Status,Last Name,First Name\nFulton,12345,ACTIVE,SMITH,JOHN\n")
+        chunks = list(parse_csv_chunks(f, batch_size=10))
+        assert chunks[0].iloc[0]["voter_registration_number"] == "12345"
+
+    def test_all_zeros_becomes_zero(self, tmp_path: Path) -> None:
+        """All-zeros registration number normalizes to '0'."""
+        f = tmp_path / "voters.csv"
+        f.write_text("County,Voter Registration #,Status,Last Name,First Name\nFulton,0000,ACTIVE,SMITH,JOHN\n")
+        chunks = list(parse_csv_chunks(f, batch_size=10))
+        assert chunks[0].iloc[0]["voter_registration_number"] == "0"
+
+    def test_internal_zeros_preserved(self, tmp_path: Path) -> None:
+        """Zeros within the registration number are not stripped."""
+        f = tmp_path / "voters.csv"
+        f.write_text("County,Voter Registration #,Status,Last Name,First Name\nFulton,00100200,ACTIVE,SMITH,JOHN\n")
+        chunks = list(parse_csv_chunks(f, batch_size=10))
+        assert chunks[0].iloc[0]["voter_registration_number"] == "100200"
+
+    def test_empty_registration_number_becomes_none(self, tmp_path: Path) -> None:
+        """Empty registration number stays None/NaN instead of becoming '0'."""
+        f = tmp_path / "voters.csv"
+        f.write_text("County,Voter Registration #,Status,Last Name,First Name\nFulton,,ACTIVE,SMITH,JOHN\n")
+        chunks = list(parse_csv_chunks(f, batch_size=10))
+        assert pd.isna(chunks[0].iloc[0]["voter_registration_number"])

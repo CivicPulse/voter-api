@@ -5,7 +5,6 @@ Election Date, Election Type, Party, Ballot Style, Absentee, Provisional, Supple
 """
 
 from collections.abc import Iterator
-from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -25,10 +24,12 @@ GA_SOS_VOTER_HISTORY_COLUMN_MAP: dict[str, str] = {
 }
 
 # Mapping from GA SoS verbose election types to normalized vocabulary.
-# Used for election auto-creation and joins to the elections table.
+# Used for joins to the elections table.
 ELECTION_TYPE_MAP: dict[str, str] = {
+    "GENERAL": "general",
     "GENERAL ELECTION": "general",
     "GENERAL PRIMARY": "primary",
+    "GENERAL PRIMARY RUNOFF": "runoff",
     "SPECIAL ELECTION": "special",
     "SPECIAL ELECTION RUNOFF": "runoff",
     "SPECIAL PRIMARY": "primary",
@@ -50,51 +51,6 @@ def map_election_type(raw_type: str) -> str:
         Normalized election type (e.g., "general", "primary", "special", "runoff").
     """
     return ELECTION_TYPE_MAP.get(raw_type.strip().upper(), DEFAULT_ELECTION_TYPE)
-
-
-def generate_election_name(raw_type: str, election_date: date) -> str:
-    """Generate a human-readable election name for auto-created elections.
-
-    Args:
-        raw_type: Raw election type from CSV (e.g., "GENERAL ELECTION").
-        election_date: The election date.
-
-    Returns:
-        Generated name (e.g., "General Election - 11/05/2024").
-    """
-    title = raw_type.strip().title()
-    date_str = election_date.strftime("%m/%d/%Y")
-    return f"{title} - {date_str}"
-
-
-def _parse_date(value: str) -> date | None:
-    """Parse a date from MM/DD/YYYY format.
-
-    Args:
-        value: Date string in MM/DD/YYYY format.
-
-    Returns:
-        Parsed date or None if unparseable.
-    """
-    try:
-        # We only need the date portion, so timezone is irrelevant
-        return datetime.strptime(value.strip(), "%m/%d/%Y").date()  # noqa: DTZ007
-    except (ValueError, AttributeError):
-        return None
-
-
-def _parse_bool(value: str | None) -> bool:
-    """Parse a boolean flag: "Y" → True, anything else → False.
-
-    Args:
-        value: String value from CSV.
-
-    Returns:
-        True if value is "Y", False otherwise.
-    """
-    if value is None:
-        return False
-    return value.strip().upper() == "Y"
 
 
 def _detect_delimiter(file_path: Path) -> str:
@@ -191,6 +147,9 @@ def parse_voter_history_chunks(
         keep_default_na=False,
     )
 
+    # Pre-compute the uppercase election type map for vectorized lookup
+    upper_type_map = {k.upper(): v for k, v in ELECTION_TYPE_MAP.items()}
+
     for chunk in reader:
         chunk.columns = chunk.columns.str.strip()
 
@@ -205,74 +164,130 @@ def parse_voter_history_chunks(
         known = [c for c in chunk.columns if c in GA_SOS_VOTER_HISTORY_COLUMN_MAP.values()]
         chunk = chunk[known]
 
-        # Replace empty strings with None
+        # Replace empty strings with None (NaN in pandas)
         chunk = chunk.replace("", None)
 
-        records: list[dict] = []
-        for row in chunk.to_dict("records"):
-            # pandas represents None as float NaN in dicts; normalize to Python None
-            row = {k: (None if pd.isna(v) else v) for k, v in row.items()}
-            record = _process_row(row)
-            records.append(record)
-
-        yield records
+        yield _process_chunk_vectorized(chunk, upper_type_map)
 
 
-def _process_row(row: dict) -> dict:
-    """Process a single CSV row into a validated record dict.
+def _process_chunk_vectorized(
+    chunk: pd.DataFrame,
+    upper_type_map: dict[str, str],
+) -> list[dict]:
+    """Process a DataFrame chunk using vectorized pandas operations.
 
     Args:
-        row: Raw row dict with mapped column names.
+        chunk: DataFrame with mapped column names and empty strings replaced by NaN.
+        upper_type_map: Pre-computed uppercase election type mapping.
 
     Returns:
-        Processed record dict with parsed fields and ``_parse_error`` key.
+        List of parsed record dicts with ``_parse_error`` key.
     """
-    error: str | None = None
+    n = len(chunk)
+    errors = pd.Series([None] * n, index=chunk.index)
 
-    # Required fields check
-    reg_num = row.get("voter_registration_number")
-    county = row.get("county")
-    raw_date = row.get("election_date")
-    raw_type = row.get("election_type")
+    # --- Required field validation (vectorized) ---
+    required_fields = ["voter_registration_number", "county", "election_date", "election_type"]
+    for field in required_fields:
+        missing_mask = chunk[field].isna() if field in chunk.columns else pd.Series(True, index=chunk.index)
+        # Only set error for rows that don't already have one
+        new_errors = missing_mask & errors.isna()
+        errors = errors.where(~new_errors, f"Missing {field}")
 
-    if not reg_num:
-        error = "Missing voter_registration_number"
-    elif not county:
-        error = "Missing county"
-    elif not raw_date:
-        error = "Missing election_date"
-    elif not raw_type:
-        error = "Missing election_type"
+    # --- Date parsing (vectorized) ---
+    if "election_date" in chunk.columns:
+        has_date = chunk["election_date"].notna()
+    else:
+        has_date = pd.Series(False, index=chunk.index)
+    no_error_yet = errors.isna()
+    parseable_mask = has_date & no_error_yet
 
-    # Parse date
-    parsed_date: date | None = None
-    if raw_date and error is None:
-        parsed_date = _parse_date(raw_date)
-        if parsed_date is None:
-            error = f"Invalid date format: {raw_date}"
+    parsed_dates = pd.Series([None] * n, index=chunk.index, dtype=object)
+    if parseable_mask.any():
+        date_strings = chunk.loc[parseable_mask, "election_date"].str.strip()
+        converted = pd.to_datetime(date_strings, format="%m/%d/%Y", errors="coerce")
+        # Set successfully parsed dates
+        success_mask = converted.notna()
+        parsed_dates.loc[success_mask.index[success_mask]] = converted[success_mask].dt.date
+        # Mark bad dates as errors
+        bad_date_mask = parseable_mask.copy()
+        bad_date_mask.loc[success_mask.index[success_mask]] = False
+        bad_date_idx = bad_date_mask[bad_date_mask].index
+        if len(bad_date_idx) > 0:
+            errors.loc[bad_date_idx] = "Invalid date format: " + chunk.loc[bad_date_idx, "election_date"]
 
-    # Parse booleans
-    absentee = _parse_bool(row.get("absentee"))
-    provisional = _parse_bool(row.get("provisional"))
-    supplemental = _parse_bool(row.get("supplemental"))
+    # --- Boolean parsing (vectorized) ---
+    bool_fields = ["absentee", "provisional", "supplemental"]
+    bool_results: dict[str, pd.Series] = {}
+    for field in bool_fields:
+        if field in chunk.columns:
+            bool_results[field] = chunk[field].fillna("").str.strip().str.upper().eq("Y")
+        else:
+            bool_results[field] = pd.Series(False, index=chunk.index)
 
-    # Normalize election type
-    normalized = map_election_type(raw_type) if raw_type else DEFAULT_ELECTION_TYPE
+    # --- Election type normalization (vectorized) ---
+    if "election_type" in chunk.columns:
+        raw_type_upper = chunk["election_type"].fillna("").str.strip().str.upper()
+        normalized_type = raw_type_upper.map(upper_type_map).fillna(DEFAULT_ELECTION_TYPE)
+    else:
+        raw_type_upper = pd.Series("", index=chunk.index)
+        normalized_type = pd.Series(DEFAULT_ELECTION_TYPE, index=chunk.index)
 
-    # Handle optional string fields
-    party = row.get("party") if row.get("party") else None
-    ballot_style = row.get("ballot_style") if row.get("ballot_style") else None
+    # --- Registration number normalization (vectorized) ---
+    if "voter_registration_number" in chunk.columns:
+        raw_reg = chunk["voter_registration_number"]
+        # Only normalize non-null values; preserve NaN for missing entries
+        stripped = raw_reg.str.lstrip("0")
+        # All-zeros → "0"; missing/NaN stays NaN
+        normalized_reg = stripped.where(stripped != "", other="0").where(raw_reg.notna())
+    else:
+        normalized_reg = pd.Series("", index=chunk.index)
 
-    return {
-        "voter_registration_number": reg_num,
-        "county": county,
-        "election_date": parsed_date,
-        "election_type": raw_type,
-        "normalized_election_type": normalized,
-        "party": party,
-        "ballot_style": ballot_style,
-        "absentee": absentee,
-        "provisional": provisional,
-        "supplemental": supplemental,
-        "_parse_error": error,
-    }
+    # --- Build result dicts ---
+    records: list[dict] = []
+    # Convert columns to plain Python lists for fast iteration
+    reg_list = normalized_reg.tolist()
+    county_list = chunk["county"].tolist() if "county" in chunk.columns else [None] * n
+    date_list = parsed_dates.tolist()
+    raw_type_list = chunk["election_type"].tolist() if "election_type" in chunk.columns else [None] * n
+    norm_type_list = normalized_type.tolist()
+    party_list = chunk["party"].tolist() if "party" in chunk.columns else [None] * n
+    ballot_list = chunk["ballot_style"].tolist() if "ballot_style" in chunk.columns else [None] * n
+    abs_list = bool_results["absentee"].tolist()
+    prov_list = bool_results["provisional"].tolist()
+    supp_list = bool_results["supplemental"].tolist()
+    error_list = errors.tolist()
+
+    for i in range(n):
+        # Normalize NaN → None for optional string fields
+        county_val = county_list[i]
+        if pd.isna(county_val):
+            county_val = None
+        raw_type_val = raw_type_list[i]
+        if pd.isna(raw_type_val):
+            raw_type_val = None
+        party_val = party_list[i]
+        party_val = None if pd.isna(party_val) else (party_val or None)
+        ballot_val = ballot_list[i]
+        ballot_val = None if pd.isna(ballot_val) else (ballot_val or None)
+        reg_val = reg_list[i]
+        if pd.isna(reg_val):
+            reg_val = None
+
+        records.append(
+            {
+                "voter_registration_number": reg_val,
+                "county": county_val,
+                "election_date": date_list[i],
+                "election_type": raw_type_val,
+                "normalized_election_type": norm_type_list[i],
+                "party": party_val,
+                "ballot_style": ballot_val,
+                "absentee": abs_list[i],
+                "provisional": prov_list[i],
+                "supplemental": supp_list[i],
+                "_parse_error": error_list[i],
+            }
+        )
+
+    return records

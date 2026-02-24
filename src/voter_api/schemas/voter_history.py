@@ -12,6 +12,7 @@ class VoterHistoryRecord(BaseModel):
     """A single voter participation record."""
 
     id: UUID
+    election_id: UUID | None = None
     voter_registration_number: str
     county: str
     election_date: date
@@ -38,6 +39,9 @@ class ElectionParticipationRecord(BaseModel):
     """A voter participation record in the context of an election query."""
 
     id: UUID
+    voter_id: UUID | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     voter_registration_number: str
     county: str
     election_date: date
@@ -65,6 +69,8 @@ class CountyBreakdown(BaseModel):
     county: str
     count: int
 
+    model_config = {"from_attributes": True}
+
 
 class BallotStyleBreakdown(BaseModel):
     """Participation count for a single ballot style."""
@@ -72,14 +78,31 @@ class BallotStyleBreakdown(BaseModel):
     ballot_style: str
     count: int
 
+    model_config = {"from_attributes": True}
+
+
+class PrecinctBreakdown(BaseModel):
+    """Participation count for a single precinct."""
+
+    precinct: str
+    precinct_name: str | None = None
+    count: int
+
+    model_config = {"from_attributes": True}
+
 
 class ParticipationStatsResponse(BaseModel):
     """Aggregate participation statistics for an election."""
 
     election_id: UUID
     total_participants: int
+    total_eligible_voters: int | None = None
+    turnout_percentage: float | None = None
     by_county: list[CountyBreakdown] = Field(default_factory=list)
     by_ballot_style: list[BallotStyleBreakdown] = Field(default_factory=list)
+    by_precinct: list[PrecinctBreakdown] = Field(default_factory=list)
+
+    model_config = {"from_attributes": True}
 
 
 class ParticipationSummary(BaseModel):
@@ -87,3 +110,5 @@ class ParticipationSummary(BaseModel):
 
     total_elections: int = 0
     last_election_date: date | None = None
+
+    model_config = {"from_attributes": True}

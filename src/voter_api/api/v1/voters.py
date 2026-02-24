@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.dependencies import get_async_session, get_current_user, require_role
+from voter_api.lib.normalize import normalize_registration_number
 from voter_api.models.user import User
 from voter_api.schemas.common import PaginationMeta
 from voter_api.schemas.geocoding import GeocodedLocationResponse, ManualGeocodingRequest
@@ -48,6 +49,8 @@ async def search_voters_endpoint(
     state_senate_district: str | None = Query(None),
     state_house_district: str | None = Query(None),
     county_precinct: str | None = Query(None),
+    county_commission_district: str | None = Query(None),
+    school_board_district: str | None = Query(None),
     present_in_latest_import: bool | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -55,6 +58,8 @@ async def search_voters_endpoint(
     _current_user: User = Depends(get_current_user),
 ) -> PaginatedVoterResponse:
     """Search and list voters with multiple filter parameters."""
+    if voter_registration_number:
+        voter_registration_number = normalize_registration_number(voter_registration_number)
     voters, total = await search_voters(
         session,
         q=q,
@@ -69,6 +74,8 @@ async def search_voters_endpoint(
         state_senate_district=state_senate_district,
         state_house_district=state_house_district,
         county_precinct=county_precinct,
+        county_commission_district=county_commission_district,
+        school_board_district=school_board_district,
         present_in_latest_import=present_in_latest_import,
         page=page,
         page_size=page_size,
@@ -87,18 +94,51 @@ async def search_voters_endpoint(
 @voters_router.get(
     "/filters",
     response_model=VoterFilterOptions,
+    response_model_exclude_none=True,
 )
 async def get_filter_options(
+    county: str | None = Query(None, description="County name to scope county-level filter options"),
+    county_precinct: str | None = Query(None, description="Precinct to narrow other county-scoped options"),
+    county_commission_district: str | None = Query(
+        None, description="Commission district to narrow other county-scoped options"
+    ),
+    school_board_district: str | None = Query(
+        None, description="School board district to narrow other county-scoped options"
+    ),
     session: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_user),
 ) -> VoterFilterOptions:
-    """Return distinct values for each voter search filter field.
+    """Return distinct values for voter search filter dropdowns.
 
     Queries the database for all non-null distinct values currently present in
-    the voters table. Use this endpoint to populate dropdown/select components
+    the voters table.  Use this endpoint to populate dropdown/select components
     in search UIs.
+
+    Cascading filters: when county-scoped params are provided alongside
+    ``county``, each narrows the *other* county-scoped lists but not its own,
+    enabling dependent dropdown UIs.
+
+    Args:
+        county: County name used to scope county-level filter options.
+        county_precinct: Precinct value that narrows other county-scoped lists.
+        county_commission_district: Commission district that narrows other
+            county-scoped lists.
+        school_board_district: School board district that narrows other
+            county-scoped lists.
+        session: Async database session.
+        _current_user: Authenticated user dependency.
+
+    Returns:
+        VoterFilterOptions with base filters always present.  County-scoped
+        fields are included only when ``county`` is provided.
     """
-    options = await get_voter_filter_options(session)
+    options = await get_voter_filter_options(
+        session,
+        county=county,
+        county_precinct=county_precinct,
+        county_commission_district=county_commission_district,
+        school_board_district=school_board_district,
+    )
     return VoterFilterOptions(**options)
 
 

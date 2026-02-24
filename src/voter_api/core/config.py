@@ -6,7 +6,7 @@ All configuration is loaded from environment variables following 12-factor princ
 import re
 from typing import Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -276,6 +276,11 @@ class Settings(BaseSettings):
         default="https://data.hatchtech.dev/",
         description="Base URL for downloading seed data files (manifest.json + data files)",
     )
+
+    # Preview / Dev user seeding
+    preview_api_user: str | None = Field(default=None, description="Username for auto-seeded preview user")
+    preview_api_email: str | None = Field(default=None, description="Email for auto-seeded preview user")
+    preview_api_password: SecretStr | None = Field(default=None, description="Password for auto-seeded preview user")
 
     @field_validator("data_root_url")
     @classmethod

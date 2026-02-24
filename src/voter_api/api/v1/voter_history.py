@@ -12,7 +12,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from voter_api.core.dependencies import get_async_session, get_current_user, require_role
+from voter_api.core.dependencies import get_async_session, require_role
+from voter_api.lib.normalize import normalize_registration_number
 from voter_api.models.user import User
 from voter_api.schemas.common import PaginationMeta
 from voter_api.schemas.voter_history import (
@@ -44,6 +45,7 @@ async def get_voter_history(
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> PaginatedVoterHistoryResponse:
     """Get a voter's participation history with optional filtering."""
+    voter_registration_number = normalize_registration_number(voter_registration_number)
     records, total = await voter_history_service.get_voter_history(
         session,
         voter_registration_number,
@@ -55,8 +57,19 @@ async def get_voter_history(
         page=page,
         page_size=page_size,
     )
+    # Resolve election IDs for records that don't have a stored one
+    unresolved = [r for r in records if r.election_id is None]
+    election_id_map = await voter_history_service.resolve_election_ids(session, unresolved) if unresolved else {}
+
+    items = []
+    for r in records:
+        item = VoterHistoryRecord.model_validate(r)
+        if item.election_id is None:
+            item.election_id = election_id_map.get((r.election_date, r.normalized_election_type))
+        items.append(item)
+
     return PaginatedVoterHistoryResponse(
-        items=[VoterHistoryRecord.model_validate(r) for r in records],
+        items=items,
         pagination=PaginationMeta(
             total=total,
             page=page,
@@ -100,8 +113,23 @@ async def list_election_participants(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Election not found",
         ) from exc
+
+    # Resolve voter IDs and names for participation records
+    reg_nums = [r.voter_registration_number for r in records]
+    voter_detail_map = await voter_history_service.lookup_voter_details(session, reg_nums) if reg_nums else {}
+
+    items = []
+    for r in records:
+        item = ElectionParticipationRecord.model_validate(r)
+        detail = voter_detail_map.get(r.voter_registration_number)
+        if detail:
+            item.voter_id = detail.id
+            item.first_name = detail.first_name
+            item.last_name = detail.last_name
+        items.append(item)
+
     return PaginatedElectionParticipationResponse(
-        items=[ElectionParticipationRecord.model_validate(r) for r in records],
+        items=items,
         pagination=PaginationMeta(
             total=total,
             page=page,
@@ -117,7 +145,7 @@ async def list_election_participants(
 )
 async def get_election_participation_stats(
     election_id: uuid.UUID,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_role("analyst", "admin"))],
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> ParticipationStatsResponse:
     """Get aggregate participation statistics for an election."""

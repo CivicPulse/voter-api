@@ -28,6 +28,10 @@ def _make_election(**overrides) -> Election:
         "created_at": datetime(2026, 2, 14, 10, 0, 0, tzinfo=UTC),
         "updated_at": datetime(2026, 2, 14, 10, 0, 0, tzinfo=UTC),
         "ballot_item_id": None,
+        "boundary_id": None,
+        "district_type": None,
+        "district_identifier": None,
+        "district_party": None,
         "result": None,
         "county_results": [],
     }

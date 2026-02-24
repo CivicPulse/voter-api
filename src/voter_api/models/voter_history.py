@@ -30,6 +30,11 @@ class VoterHistory(Base, UUIDMixin):
     absentee: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     provisional: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     supplemental: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    election_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("elections.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     import_job_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("import_jobs.id", ondelete="CASCADE"),
@@ -54,4 +59,5 @@ class VoterHistory(Base, UUIDMixin):
         Index("idx_voter_history_county", "county"),
         Index("idx_voter_history_import_job_id", "import_job_id"),
         Index("idx_voter_history_date_type", "election_date", "normalized_election_type"),
+        Index("idx_voter_history_election_id", "election_id"),
     )

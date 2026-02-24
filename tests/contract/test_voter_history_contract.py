@@ -16,6 +16,7 @@ from voter_api.schemas.voter_history import (
     PaginatedVoterHistoryResponse,
     ParticipationStatsResponse,
     ParticipationSummary,
+    PrecinctBreakdown,
     VoterHistoryRecord,
 )
 
@@ -62,6 +63,26 @@ class TestVoterHistoryRecordContract:
         data = record.model_dump(mode="json")
         assert data["party"] is None
         assert data["ballot_style"] is None
+        assert data["election_id"] is None
+
+    def test_election_id_serializes_as_uuid_string(self) -> None:
+        """election_id serializes as a UUID string when set."""
+        eid = uuid.uuid4()
+        record = VoterHistoryRecord(
+            id=uuid.uuid4(),
+            election_id=eid,
+            voter_registration_number="12345678",
+            county="FULTON",
+            election_date=date(2024, 11, 5),
+            election_type="GENERAL ELECTION",
+            normalized_election_type="general",
+            absentee=False,
+            provisional=False,
+            supplemental=False,
+            created_at=datetime(2025, 1, 1, 0, 0, 0, tzinfo=UTC),
+        )
+        data = record.model_dump(mode="json")
+        assert data["election_id"] == str(eid)
 
 
 class TestPaginatedVoterHistoryResponseContract:
@@ -111,8 +132,12 @@ class TestElectionParticipationRecordContract:
 
     def test_all_fields_serializable(self) -> None:
         """All fields serialize to JSON-compatible types."""
+        vid = uuid.uuid4()
         record = ElectionParticipationRecord(
             id=uuid.uuid4(),
+            voter_id=vid,
+            first_name="Jane",
+            last_name="Doe",
             voter_registration_number="12345678",
             county="DEKALB",
             election_date=date(2024, 5, 21),
@@ -126,8 +151,29 @@ class TestElectionParticipationRecordContract:
         )
         data = record.model_dump(mode="json")
         assert isinstance(data["id"], str)
+        assert data["voter_id"] == str(vid)
+        assert data["first_name"] == "Jane"
+        assert data["last_name"] == "Doe"
         assert data["county"] == "DEKALB"
         assert data["normalized_election_type"] == "primary"
+
+    def test_voter_id_nullable(self) -> None:
+        """voter_id and name fields serialize as null when no matching voter exists."""
+        record = ElectionParticipationRecord(
+            id=uuid.uuid4(),
+            voter_registration_number="12345678",
+            county="FULTON",
+            election_date=date(2024, 11, 5),
+            election_type="GENERAL ELECTION",
+            normalized_election_type="general",
+            absentee=False,
+            provisional=False,
+            supplemental=False,
+        )
+        data = record.model_dump(mode="json")
+        assert data["voter_id"] is None
+        assert data["first_name"] is None
+        assert data["last_name"] is None
 
     def test_no_created_at(self) -> None:
         """ElectionParticipationRecord does not include created_at."""
@@ -190,6 +236,10 @@ class TestParticipationStatsResponseContract:
                 BallotStyleBreakdown(ballot_style="STD", count=400),
                 BallotStyleBreakdown(ballot_style="ABSENTEE", count=100),
             ],
+            by_precinct=[
+                PrecinctBreakdown(precinct="FU01", precinct_name="FULTON 1", count=300),
+                PrecinctBreakdown(precinct="DK01", precinct_name=None, count=200),
+            ],
         )
         data = resp.model_dump(mode="json")
         assert isinstance(data["election_id"], str)
@@ -198,6 +248,10 @@ class TestParticipationStatsResponseContract:
         assert data["by_county"][0]["county"] == "FULTON"
         assert data["by_county"][0]["count"] == 300
         assert len(data["by_ballot_style"]) == 2
+        assert len(data["by_precinct"]) == 2
+        assert data["by_precinct"][0]["precinct"] == "FU01"
+        assert data["by_precinct"][0]["precinct_name"] == "FULTON 1"
+        assert data["by_precinct"][1]["precinct_name"] is None
 
     def test_empty_breakdowns(self) -> None:
         """Empty breakdowns default to empty lists."""
@@ -208,6 +262,7 @@ class TestParticipationStatsResponseContract:
         data = resp.model_dump(mode="json")
         assert data["by_county"] == []
         assert data["by_ballot_style"] == []
+        assert data["by_precinct"] == []
 
 
 class TestParticipationSummaryContract:

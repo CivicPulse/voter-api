@@ -1,10 +1,9 @@
 """Voter service — multi-parameter search and detail retrieval."""
 
-import asyncio
 import re
 import uuid
 
-from sqlalchemy import distinct, func, or_, select
+from sqlalchemy import ColumnElement, distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
@@ -26,6 +25,8 @@ async def search_voters(
     state_senate_district: str | None = None,
     state_house_district: str | None = None,
     county_precinct: str | None = None,
+    county_commission_district: str | None = None,
+    school_board_district: str | None = None,
     present_in_latest_import: bool | None = None,
     page: int = 1,
     page_size: int = 20,
@@ -46,6 +47,8 @@ async def search_voters(
         state_senate_district: Exact match.
         state_house_district: Exact match.
         county_precinct: Exact match.
+        county_commission_district: Exact match.
+        school_board_district: Exact match.
         present_in_latest_import: Filter by import presence.
         page: Page number.
         page_size: Items per page.
@@ -124,6 +127,14 @@ async def search_voters(
         query = query.where(Voter.county_precinct == county_precinct)
         count_query = count_query.where(Voter.county_precinct == county_precinct)
 
+    if county_commission_district:
+        query = query.where(Voter.county_commission_district == county_commission_district)
+        count_query = count_query.where(Voter.county_commission_district == county_commission_district)
+
+    if school_board_district:
+        query = query.where(Voter.school_board_district == school_board_district)
+        count_query = count_query.where(Voter.school_board_district == school_board_district)
+
     if present_in_latest_import is not None:
         query = query.where(Voter.present_in_latest_import == present_in_latest_import)
         count_query = count_query.where(Voter.present_in_latest_import == present_in_latest_import)
@@ -160,50 +171,89 @@ async def get_voter_detail(
     return result.scalar_one_or_none()
 
 
-async def get_voter_filter_options(session: AsyncSession) -> dict[str, list[str]]:
+async def get_voter_filter_options(
+    session: AsyncSession,
+    *,
+    county: str | None = None,
+    county_precinct: str | None = None,
+    county_commission_district: str | None = None,
+    school_board_district: str | None = None,
+) -> dict[str, list[str] | None]:
     """Return distinct non-null values for voter search filter dropdowns.
 
     Args:
         session: Database session.
+        county: Optional county name to scope county-level filter options.
+        county_precinct: Optional precinct to narrow other county-scoped options.
+        county_commission_district: Optional commission district to narrow
+            other county-scoped options.
+        school_board_district: Optional school board district to narrow other
+            county-scoped options.
 
     Returns:
         Dict mapping filter field names to sorted lists of distinct values.
+        County-scoped fields are None when no county is specified.
+
+    Cascading behavior: Each county-scoped filter narrows the *other*
+    county-scoped lists but not its own, so the user can still change
+    their selection in that dropdown.
     """
 
     async def _distinct_sorted(
         column: InstrumentedAttribute[str | None],
         *,
         filter_nulls: bool,
+        filters: list[ColumnElement[bool]] | None = None,
     ) -> list[str]:
         stmt = select(distinct(column))
         if filter_nulls:
             stmt = stmt.where(column.isnot(None))
+        for f in filters or []:
+            stmt = stmt.where(f)
         stmt = stmt.order_by(column)
         result = await session.execute(stmt)
         return [row for (row,) in result.all()]
 
     # status and county are non-nullable in the Voter model; district fields are nullable.
-    (
-        statuses,
-        counties,
-        congressional_districts,
-        state_senate_districts,
-        state_house_districts,
-    ) = await asyncio.gather(
-        _distinct_sorted(Voter.status, filter_nulls=False),
-        _distinct_sorted(Voter.county, filter_nulls=False),
-        _distinct_sorted(Voter.congressional_district, filter_nulls=True),
-        _distinct_sorted(Voter.state_senate_district, filter_nulls=True),
-        _distinct_sorted(Voter.state_house_district, filter_nulls=True),
-    )
+    # Queries run sequentially — AsyncSession is not safe for concurrent use.
+    statuses = await _distinct_sorted(Voter.status, filter_nulls=False)
+    counties = await _distinct_sorted(Voter.county, filter_nulls=False)
+    congressional = await _distinct_sorted(Voter.congressional_district, filter_nulls=True)
+    state_senate = await _distinct_sorted(Voter.state_senate_district, filter_nulls=True)
+    state_house = await _distinct_sorted(Voter.state_house_district, filter_nulls=True)
 
-    return {
+    options: dict[str, list[str] | None] = {
         "statuses": statuses,
         "counties": counties,
-        "congressional_districts": congressional_districts,
-        "state_senate_districts": state_senate_districts,
-        "state_house_districts": state_house_districts,
+        "congressional_districts": congressional,
+        "state_senate_districts": state_senate,
+        "state_house_districts": state_house,
     }
+
+    if county:
+        county_cond = Voter.county == county
+        precinct_cond = Voter.county_precinct == county_precinct if county_precinct else None
+        commission_cond = (
+            Voter.county_commission_district == county_commission_district if county_commission_district else None
+        )
+        school_cond = Voter.school_board_district == school_board_district if school_board_district else None
+
+        # Each field excludes its own condition so the user can still change that dropdown
+        precinct_filters = [county_cond] + [c for c in [commission_cond, school_cond] if c is not None]
+        commission_filters = [county_cond] + [c for c in [precinct_cond, school_cond] if c is not None]
+        school_filters = [county_cond] + [c for c in [precinct_cond, commission_cond] if c is not None]
+
+        options["county_precincts"] = await _distinct_sorted(
+            Voter.county_precinct, filter_nulls=True, filters=precinct_filters
+        )
+        options["county_commission_districts"] = await _distinct_sorted(
+            Voter.county_commission_district, filter_nulls=True, filters=commission_filters
+        )
+        options["school_board_districts"] = await _distinct_sorted(
+            Voter.school_board_district, filter_nulls=True, filters=school_filters
+        )
+
+    return options
 
 
 def build_voter_detail_dict(voter: Voter) -> dict:
