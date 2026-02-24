@@ -9,6 +9,8 @@ that the list response omits.
 
 from __future__ import annotations
 
+from datetime import date, datetime
+
 import httpx
 from loguru import logger
 
@@ -94,16 +96,18 @@ def _extract_election_record(detail: dict) -> dict:
     Returns:
         A dict suitable for ``pg_insert(Election).values(...)``.
     """
+    raw_refreshed = detail.get("last_refreshed_at")
+
     return {
         "id": detail["id"],
         "name": detail["name"],
-        "election_date": detail["election_date"],
+        "election_date": date.fromisoformat(detail["election_date"]),
         "election_type": detail["election_type"],
         "district": detail["district"],
         "status": detail["status"],
         "data_source_url": detail["data_source_url"],
         "refresh_interval_seconds": detail["refresh_interval_seconds"],
         "ballot_item_id": detail.get("ballot_item_id"),
-        "last_refreshed_at": detail.get("last_refreshed_at"),
+        "last_refreshed_at": datetime.fromisoformat(raw_refreshed) if raw_refreshed else None,
         "creation_method": "manual",
     }
