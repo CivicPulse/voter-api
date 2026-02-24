@@ -85,12 +85,22 @@ def seed(
         "--max-voters",
         help="Limit total voter records imported (e.g., 10000 for preview environments)",
     ),
+    election_source: str | None = typer.Option(
+        "https://voteapi.civpulse.org",
+        "--election-source",
+        help="Base URL of the source API to fetch elections from",
+    ),
+    skip_elections: bool = typer.Option(
+        False,
+        "--skip-elections",
+        help="Skip the election seeding step",
+    ),
 ) -> None:
     """Download seed data and import into the database.
 
     Fetches the remote manifest, downloads all listed files (skipping
     cached files with matching checksums), then imports in dependency
-    order: county-districts → boundaries → voters.
+    order: county-districts → boundaries → elections (from API) → voters.
     """
     # Validate categories
     category_filters: set[FileCategory] | None = None
@@ -114,6 +124,8 @@ def seed(
             fail_fast=fail_fast,
             skip_checksum=skip_checksum,
             max_voters=max_voters,
+            election_source=election_source,
+            skip_elections=skip_elections,
         )
     )
 
@@ -127,6 +139,8 @@ async def _run_seed(
     fail_fast: bool,
     skip_checksum: bool,
     max_voters: int | None = None,
+    election_source: str | None = "https://voteapi.civpulse.org",
+    skip_elections: bool = False,
 ) -> None:
     """Async implementation of the seed workflow.
 
@@ -138,6 +152,8 @@ async def _run_seed(
         fail_fast: If True, stop on first error.
         skip_checksum: If True, skip SHA512 verification.
         max_voters: If set, limit total voter records imported.
+        election_source: Base URL of the source API for election seeding.
+        skip_elections: If True, skip the election seeding step.
     """
     from voter_api.core.config import get_settings
 
@@ -227,6 +243,8 @@ async def _run_seed(
         skip_checksum=skip_checksum,
         seed_result=seed_result,
         max_voters=max_voters,
+        election_source=election_source,
+        skip_elections=skip_elections,
     )
 
     if not seed_result.success:
@@ -245,10 +263,12 @@ async def _run_imports(
     skip_checksum: bool,
     seed_result: SeedResult,
     max_voters: int | None = None,
+    election_source: str | None = "https://voteapi.civpulse.org",
+    skip_elections: bool = False,
 ) -> None:
     """Run database imports in dependency order.
 
-    Import order (FR-012): county-districts → boundaries → voters.
+    Import order: county-districts → boundaries → elections (from API) → voters.
     Reference-category files are never imported.
 
     Args:
@@ -259,6 +279,8 @@ async def _run_imports(
         skip_checksum: Pass to boundary import.
         seed_result: Mutable result to track import outcomes.
         max_voters: If set, limit total voter records imported.
+        election_source: Base URL of the source API for election seeding.
+        skip_elections: If True, skip the election seeding step.
     """
     from voter_api.core.config import get_settings
     from voter_api.core.database import dispose_engine, init_engine
@@ -296,6 +318,22 @@ async def _run_imports(
                 seed_result.import_results["boundary"] = str(exc)
                 if fail_fast:
                     return
+
+        # Elections from API (between boundaries and voters)
+        if not skip_elections and election_source:
+            typer.echo("\n--- Seeding elections from API ---")
+            try:
+                count = await _seed_elections_from_api(election_source)
+                seed_result.import_results["elections_from_api"] = "success"
+                typer.echo(f"  Elections seeded: {count}")
+            except Exception as exc:
+                typer.echo(f"  ELECTION SEED FAILED: {exc}", err=True)
+                seed_result.success = False
+                seed_result.import_results["elections_from_api"] = str(exc)
+                if fail_fast:
+                    return
+        elif skip_elections:
+            typer.echo("\n--- Skipping election seeding (--skip-elections) ---")
 
         # Voters last — parallel processing with single index lifecycle
         voter_files = [r for r in successful_downloads if r.entry.category == FileCategory.VOTER]
@@ -358,6 +396,42 @@ async def _import_all_boundaries(
 
     settings = get_settings()
     init_engine(settings.database_url, schema=settings.database_schema)
+
+
+async def _seed_elections_from_api(source_url: str) -> int:
+    """Fetch elections from a remote API and upsert into the local database.
+
+    Args:
+        source_url: Base URL of the source API
+            (e.g. ``https://voteapi.civpulse.org``).
+
+    Returns:
+        Number of elections upserted.
+    """
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    from voter_api.core.database import get_session_factory
+    from voter_api.lib.data_loader.election_seeder import fetch_elections_from_api
+    from voter_api.models.election import Election
+
+    records = await fetch_elections_from_api(source_url)
+    if not records:
+        return 0
+
+    # Columns to update on conflict — everything except the PK
+    update_columns = sorted(set(records[0].keys()) - {"id"})
+
+    factory = get_session_factory()
+    async with factory() as session:
+        stmt = pg_insert(Election).values(records)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={col: stmt.excluded[col] for col in update_columns},
+        )
+        await session.execute(stmt)
+        await session.commit()
+
+    return len(records)
 
 
 async def _import_voters(file_path: Path, batch_size: int) -> None:
