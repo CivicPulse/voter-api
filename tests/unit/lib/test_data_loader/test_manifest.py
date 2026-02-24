@@ -51,6 +51,7 @@ class TestFetchManifest:
         files = [
             {"filename": "a.zip", "sha512": "a" * 128, "category": "boundary", "size_bytes": 100},
             {"filename": "b.csv", "sha512": "b" * 128, "category": "voter", "size_bytes": 200},
+            {"filename": "2024.zip", "sha512": "c" * 128, "category": "voter_history", "size_bytes": 300},
         ]
         httpx_mock.add_response(
             url="https://data.example.com/manifest.json",
@@ -58,8 +59,9 @@ class TestFetchManifest:
         )
 
         manifest = await fetch_manifest("https://data.example.com/")
-        assert len(manifest.files) == 2
+        assert len(manifest.files) == 3
         assert manifest.files[1].category == FileCategory.VOTER
+        assert manifest.files[2].category == FileCategory.VOTER_HISTORY
 
     async def test_trailing_slash_normalization(self, httpx_mock) -> None:  # type: ignore[no-untyped-def]
         httpx_mock.add_response(

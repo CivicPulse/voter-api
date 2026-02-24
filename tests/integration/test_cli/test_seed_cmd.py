@@ -50,6 +50,12 @@ def _make_manifest(files: list[dict] | None = None) -> str:
                 "category": "reference",
                 "size_bytes": 500,
             },
+            {
+                "filename": "2024.zip",
+                "sha512": "e" * 128,
+                "category": "voter_history",
+                "size_bytes": 3000,
+            },
         ]
     return json.dumps(
         {
@@ -262,7 +268,7 @@ class TestSeedFullBootstrap:
         assert result.exit_code != 0
 
     def test_seed_import_order_enforcement(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
-        """Verify imports run in order: county-districts → boundaries → voters."""
+        """Verify imports run in order: county-districts → boundaries → voters → voter-history."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
         (data_dir / "voter").mkdir()
@@ -276,6 +282,8 @@ class TestSeedFullBootstrap:
         boundary_sha = hashlib.sha512(boundary_content).hexdigest()
         voter_content = b"voter csv data"
         voter_sha = hashlib.sha512(voter_content).hexdigest()
+        vh_content = b"voter history zip data"
+        vh_sha = hashlib.sha512(vh_content).hexdigest()
 
         manifest = json.dumps(
             {
@@ -300,6 +308,12 @@ class TestSeedFullBootstrap:
                         "category": "county_district",
                         "size_bytes": len(county_content),
                     },
+                    {
+                        "filename": "2024.zip",
+                        "sha512": vh_sha,
+                        "category": "voter_history",
+                        "size_bytes": len(vh_content),
+                    },
                 ],
             }
         )
@@ -308,6 +322,7 @@ class TestSeedFullBootstrap:
         httpx_mock.add_response(url="https://test.example.com/Bibb.csv", content=voter_content)
         httpx_mock.add_response(url="https://test.example.com/congress.zip", content=boundary_content)
         httpx_mock.add_response(url="https://test.example.com/counties.csv", content=county_content)
+        httpx_mock.add_response(url="https://test.example.com/2024.zip", content=vh_content)
 
         async def mock_county_districts(file_path: Path) -> None:
             order_log.append("county_district")
@@ -333,6 +348,9 @@ class TestSeedFullBootstrap:
             order_log.append("election")
             return 0
 
+        async def mock_voter_history(file_path: Path, batch_size: int) -> None:
+            order_log.append("voter_history")
+
         with (
             patch(
                 "voter_api.cli.seed_cmd._import_county_districts",
@@ -350,6 +368,10 @@ class TestSeedFullBootstrap:
                 "voter_api.cli.seed_cmd._import_voters_batch",
                 side_effect=mock_voters_batch,
             ),
+            patch(
+                "voter_api.cli.seed_cmd._import_voter_history",
+                side_effect=mock_voter_history,
+            ),
         ):
             result = runner.invoke(
                 app,
@@ -363,8 +385,8 @@ class TestSeedFullBootstrap:
             )
 
         assert result.exit_code == 0, result.output
-        # Verify order: county_district first, then boundary, then election, then voter
-        assert order_log == ["county_district", "boundary", "election", "voter"]
+        # Verify order: county_district, boundary, election, voter, voter_history
+        assert order_log == ["county_district", "boundary", "election", "voter", "voter_history"]
 
 
 # ---------------------------------------------------------------------------
@@ -480,6 +502,56 @@ class TestSeedCategoryFilter:
 
         assert result.exit_code == 0, result.output
         assert (data_dir / "voter" / "Bibb.csv").exists()
+        assert not (data_dir / "congress.zip").exists()
+
+    def test_category_voter_history_only(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+        """Verify --category voter-history downloads only voter history files."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+
+        vh_content = b"voter history data"
+        vh_sha = hashlib.sha512(vh_content).hexdigest()
+
+        manifest = json.dumps(
+            {
+                "version": "1",
+                "updated_at": "2026-02-20T09:00:00Z",
+                "files": [
+                    {
+                        "filename": "congress.zip",
+                        "sha512": "b" * 128,
+                        "category": "boundary",
+                        "size_bytes": 100,
+                    },
+                    {
+                        "filename": "2024.zip",
+                        "sha512": vh_sha,
+                        "category": "voter_history",
+                        "size_bytes": len(vh_content),
+                    },
+                ],
+            }
+        )
+
+        httpx_mock.add_response(url="https://test.example.com/manifest.json", text=manifest)
+        httpx_mock.add_response(url="https://test.example.com/2024.zip", content=vh_content)
+
+        result = runner.invoke(
+            app,
+            [
+                "seed",
+                "--data-root",
+                "https://test.example.com/",
+                "--data-dir",
+                str(data_dir),
+                "--category",
+                "voter-history",
+                "--download-only",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert (data_dir / "2024.zip").exists()
         assert not (data_dir / "congress.zip").exists()
 
     def test_invalid_category_shows_error(self, tmp_path: Path) -> None:

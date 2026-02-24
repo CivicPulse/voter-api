@@ -34,28 +34,28 @@ def _mask_database_url(url: str) -> str:
     return url
 
 
-def _drop_and_recreate_schema(database_url: str, schema: str | None) -> None:
-    """Drop and recreate the target schema using a synchronous connection.
+async def _drop_and_recreate_schema(database_url: str, schema: str | None) -> None:
+    """Drop and recreate the target schema using an async connection.
 
     Args:
-        database_url: Async database URL (will be converted to sync).
+        database_url: Async database URL (e.g. ``postgresql+asyncpg://...``).
         schema: Schema name to drop/recreate, or ``None`` for ``public``.
     """
-    from sqlalchemy import create_engine, text
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
 
-    sync_url = database_url.replace("+asyncpg", "").replace("+aiopg", "")
     schema_name = schema or "public"
 
-    engine = create_engine(sync_url)
+    engine = create_async_engine(database_url)
     try:
-        with engine.begin() as conn:
+        async with engine.begin() as conn:
             logger.info(f"Dropping schema {schema_name} CASCADE")
-            conn.execute(text(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE"))
+            await conn.execute(text(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE"))
             logger.info(f"Creating schema {schema_name}")
-            conn.execute(text(f"CREATE SCHEMA {schema_name}"))
-            conn.execute(text(f"GRANT ALL ON SCHEMA {schema_name} TO CURRENT_USER"))
+            await conn.execute(text(f"CREATE SCHEMA {schema_name}"))
+            await conn.execute(text(f"GRANT ALL ON SCHEMA {schema_name} TO CURRENT_USER"))
     finally:
-        engine.dispose()
+        await engine.dispose()
 
 
 def rebuild(
@@ -72,7 +72,7 @@ def rebuild(
     category: list[str] | None = typer.Option(
         None,
         "--category",
-        help="Filter seed categories: boundaries, voters, county-districts (repeatable)",
+        help="Filter seed categories: boundaries, voters, county-districts, voter-history (repeatable)",
     ),
     skip_checksum: bool = typer.Option(
         False,
@@ -148,7 +148,7 @@ def rebuild(
 
     # --- Step 1: Drop and recreate schema ---
     typer.echo("Step 1/3: Dropping and recreating schema...")
-    _drop_and_recreate_schema(settings.database_url, settings.database_schema)
+    asyncio.run(_drop_and_recreate_schema(settings.database_url, settings.database_schema))
     typer.echo(f"  Schema '{schema_name}' recreated.")
 
     # --- Step 2: Run migrations ---

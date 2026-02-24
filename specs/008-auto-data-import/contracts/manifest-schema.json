@@ -40,7 +40,7 @@
         },
         "category": {
           "type": "string",
-          "enum": ["boundary", "voter", "county_district", "reference"],
+          "enum": ["boundary", "voter", "county_district", "reference", "voter_history"],
           "description": "File category determining how the file is imported"
         },
         "size_bytes": {
