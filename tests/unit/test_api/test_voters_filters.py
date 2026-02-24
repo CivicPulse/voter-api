@@ -21,12 +21,19 @@ def _mock_user() -> MagicMock:
     return user
 
 
-_FILTER_OPTIONS = {
+_FILTER_OPTIONS: dict[str, list[str] | None] = {
     "statuses": ["A", "I"],
     "counties": ["COBB", "FULTON"],
     "congressional_districts": ["05", "06"],
     "state_senate_districts": ["34"],
     "state_house_districts": ["55"],
+}
+
+_FILTER_OPTIONS_WITH_COUNTY: dict[str, list[str] | None] = {
+    **_FILTER_OPTIONS,
+    "county_precincts": ["CP01", "CP02"],
+    "county_commission_districts": ["01", "02"],
+    "school_board_districts": ["03", "04"],
 }
 
 
@@ -66,7 +73,7 @@ class TestGetVoterFilterOptions:
 
     @pytest.mark.asyncio
     async def test_returns_correct_response_structure(self, client: AsyncClient) -> None:
-        """Endpoint returns all five filter keys."""
+        """Endpoint returns all five base filter keys (county-scoped fields omitted)."""
         with patch(
             "voter_api.api.v1.voters.get_voter_filter_options",
             new_callable=AsyncMock,
@@ -104,7 +111,7 @@ class TestGetVoterFilterOptions:
     @pytest.mark.asyncio
     async def test_returns_empty_lists_when_no_data(self, client: AsyncClient) -> None:
         """Endpoint handles empty filter options gracefully."""
-        empty_options = {
+        empty_options: dict[str, list[str] | None] = {
             "statuses": [],
             "counties": [],
             "congressional_districts": [],
@@ -132,3 +139,50 @@ class TestGetVoterFilterOptions:
         resp = await unauthenticated_client.get("/api/v1/voters/filters")
 
         assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_county_param_forwarded_to_service(self, client: AsyncClient) -> None:
+        """County query param is forwarded to the service function."""
+        with patch(
+            "voter_api.api.v1.voters.get_voter_filter_options",
+            new_callable=AsyncMock,
+            return_value=_FILTER_OPTIONS_WITH_COUNTY,
+        ) as mock_svc:
+            resp = await client.get("/api/v1/voters/filters?county=FULTON")
+
+        assert resp.status_code == 200
+        mock_svc.assert_awaited_once()
+        _, kwargs = mock_svc.call_args
+        assert kwargs["county"] == "FULTON"
+
+    @pytest.mark.asyncio
+    async def test_county_param_returns_county_scoped_fields(self, client: AsyncClient) -> None:
+        """When county is provided, response includes county-scoped filter lists."""
+        with patch(
+            "voter_api.api.v1.voters.get_voter_filter_options",
+            new_callable=AsyncMock,
+            return_value=_FILTER_OPTIONS_WITH_COUNTY,
+        ):
+            resp = await client.get("/api/v1/voters/filters?county=FULTON")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["county_precincts"] == ["CP01", "CP02"]
+        assert data["county_commission_districts"] == ["01", "02"]
+        assert data["school_board_districts"] == ["03", "04"]
+
+    @pytest.mark.asyncio
+    async def test_no_county_omits_county_scoped_fields(self, client: AsyncClient) -> None:
+        """Without county param, county-scoped fields are absent from response."""
+        with patch(
+            "voter_api.api.v1.voters.get_voter_filter_options",
+            new_callable=AsyncMock,
+            return_value=_FILTER_OPTIONS,
+        ):
+            resp = await client.get("/api/v1/voters/filters")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "county_precincts" not in data
+        assert "county_commission_districts" not in data
+        assert "school_board_districts" not in data

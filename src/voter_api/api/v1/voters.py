@@ -49,6 +49,8 @@ async def search_voters_endpoint(
     state_senate_district: str | None = Query(None),
     state_house_district: str | None = Query(None),
     county_precinct: str | None = Query(None),
+    county_commission_district: str | None = Query(None),
+    school_board_district: str | None = Query(None),
     present_in_latest_import: bool | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -72,6 +74,8 @@ async def search_voters_endpoint(
         state_senate_district=state_senate_district,
         state_house_district=state_house_district,
         county_precinct=county_precinct,
+        county_commission_district=county_commission_district,
+        school_board_district=school_board_district,
         present_in_latest_import=present_in_latest_import,
         page=page,
         page_size=page_size,
@@ -90,8 +94,10 @@ async def search_voters_endpoint(
 @voters_router.get(
     "/filters",
     response_model=VoterFilterOptions,
+    response_model_exclude_none=True,
 )
 async def get_filter_options(
+    county: str | None = Query(None, description="County name to scope county-level filter options"),
     session: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_user),
 ) -> VoterFilterOptions:
@@ -99,9 +105,10 @@ async def get_filter_options(
 
     Queries the database for all non-null distinct values currently present in
     the voters table. Use this endpoint to populate dropdown/select components
-    in search UIs.
+    in search UIs. When a county is specified, also returns county-scoped
+    precincts, commission districts, and school board districts.
     """
-    options = await get_voter_filter_options(session)
+    options = await get_voter_filter_options(session, county=county)
     return VoterFilterOptions(**options)
 
 

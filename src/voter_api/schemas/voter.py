@@ -146,3 +146,6 @@ class VoterFilterOptions(BaseModel):
     congressional_districts: list[str]
     state_senate_districts: list[str]
     state_house_districts: list[str]
+    county_precincts: list[str] | None = None
+    county_commission_districts: list[str] | None = None
+    school_board_districts: list[str] | None = None
