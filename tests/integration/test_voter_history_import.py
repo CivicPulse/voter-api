@@ -56,11 +56,44 @@ def _write_csv(tmp_path: Path, rows: list[str]) -> Path:
     return f
 
 
+def _make_session_mock() -> AsyncMock:
+    """Create a session mock that handles execute() for synchronous_commit."""
+    session = AsyncMock()
+    session.execute = AsyncMock()
+    session.rollback = AsyncMock()
+    return session
+
+
+@pytest.fixture
+def _mock_vh_optimizations():
+    """Mock all DB optimization functions so they don't hit a real database."""
+    with (
+        patch(
+            "voter_api.services.voter_history_service._drop_vh_indexes",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "voter_api.services.voter_history_service._rebuild_vh_indexes",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "voter_api.services.voter_history_service._disable_vh_autovacuum",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "voter_api.services.voter_history_service._enable_vh_autovacuum_and_vacuum",
+            new_callable=AsyncMock,
+        ),
+    ):
+        yield
+
+
 # ---------------------------------------------------------------------------
 # T017: Import service tests
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("_mock_vh_optimizations")
 class TestProcessVoterHistoryImport:
     """Tests for the voter history import service function."""
 
@@ -73,7 +106,7 @@ class TestProcessVoterHistoryImport:
         ]
         csv_file = _write_csv(tmp_path, rows)
         job = _make_import_job()
-        session = AsyncMock()
+        session = _make_session_mock()
 
         with (
             patch(
@@ -81,7 +114,7 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ) as mock_upsert,
             patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters",
+                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
                 new_callable=AsyncMock,
                 return_value=0,
             ),
@@ -108,7 +141,7 @@ class TestProcessVoterHistoryImport:
         ]
         csv_file = _write_csv(tmp_path, rows)
         job = _make_import_job()
-        session = AsyncMock()
+        session = _make_session_mock()
 
         with (
             patch(
@@ -116,7 +149,7 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ),
             patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters",
+                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
                 new_callable=AsyncMock,
                 return_value=0,
             ),
@@ -143,7 +176,7 @@ class TestProcessVoterHistoryImport:
         ]
         csv_file = _write_csv(tmp_path, rows)
         job = _make_import_job()
-        session = AsyncMock()
+        session = _make_session_mock()
 
         with (
             patch(
@@ -151,7 +184,7 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ),
             patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters",
+                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
                 new_callable=AsyncMock,
                 return_value=0,
             ),
@@ -171,7 +204,7 @@ class TestProcessVoterHistoryImport:
         rows = ["FULTON,99999999,11/05/2024,GENERAL ELECTION,NP,STD,N,N,N"]
         csv_file = _write_csv(tmp_path, rows)
         job = _make_import_job()
-        session = AsyncMock()
+        session = _make_session_mock()
 
         with (
             patch(
@@ -179,7 +212,7 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ),
             patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters",
+                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
                 new_callable=AsyncMock,
                 return_value=1,
             ),
@@ -198,7 +231,7 @@ class TestProcessVoterHistoryImport:
         rows = ["FULTON,12345678,11/05/2024,GENERAL ELECTION,NP,STD,N,N,N"]
         csv_file = _write_csv(tmp_path, rows)
         job = _make_import_job()
-        session = AsyncMock()
+        session = _make_session_mock()
 
         with (
             patch(
@@ -206,7 +239,7 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ),
             patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters",
+                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
                 new_callable=AsyncMock,
                 return_value=0,
             ),
@@ -225,7 +258,7 @@ class TestProcessVoterHistoryImport:
         rows = [f"FULTON,{10000 + i},11/05/2024,GENERAL ELECTION,NP,STD,N,N,N" for i in range(25)]
         csv_file = _write_csv(tmp_path, rows)
         job = _make_import_job()
-        session = AsyncMock()
+        session = _make_session_mock()
 
         with (
             patch(
@@ -233,7 +266,7 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ) as mock_upsert,
             patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters",
+                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
                 new_callable=AsyncMock,
                 return_value=0,
             ),
@@ -255,7 +288,7 @@ class TestProcessVoterHistoryImport:
         rows = ["FULTON,12345678,11/05/2024,GENERAL ELECTION,NP,STD,N,N,N"]
         csv_file = _write_csv(tmp_path, rows)
         job = _make_import_job()
-        session = AsyncMock()
+        session = _make_session_mock()
 
         with (
             patch(
@@ -264,7 +297,7 @@ class TestProcessVoterHistoryImport:
                 side_effect=RuntimeError("DB error"),
             ),
             patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters",
+                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
                 new_callable=AsyncMock,
                 return_value=0,
             ),
@@ -287,7 +320,7 @@ class TestProcessVoterHistoryImport:
         ]
         csv_file = _write_csv(tmp_path, rows)
         job = _make_import_job()
-        session = AsyncMock()
+        session = _make_session_mock()
 
         with (
             patch(
@@ -295,7 +328,7 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ),
             patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters",
+                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
                 new_callable=AsyncMock,
                 return_value=0,
             ),
@@ -308,3 +341,99 @@ class TestProcessVoterHistoryImport:
 
         assert result.records_failed == 2
         assert result.records_succeeded == 0
+
+
+class TestOptimizationLifecycle:
+    """Tests for DB optimization lifecycle during voter history import."""
+
+    @pytest.mark.asyncio
+    async def test_optimizations_applied_by_default(self, tmp_path: Path) -> None:
+        """Default call applies DB optimizations (drop indexes, disable autovacuum)."""
+        rows = ["FULTON,12345678,11/05/2024,GENERAL ELECTION,NP,STD,N,N,N"]
+        csv_file = _write_csv(tmp_path, rows)
+        job = _make_import_job()
+        session = _make_session_mock()
+
+        with (
+            patch(
+                "voter_api.services.voter_history_service._drop_vh_indexes",
+                new_callable=AsyncMock,
+            ) as mock_drop,
+            patch(
+                "voter_api.services.voter_history_service._rebuild_vh_indexes",
+                new_callable=AsyncMock,
+            ) as mock_rebuild,
+            patch(
+                "voter_api.services.voter_history_service._disable_vh_autovacuum",
+                new_callable=AsyncMock,
+            ) as mock_disable_av,
+            patch(
+                "voter_api.services.voter_history_service._enable_vh_autovacuum_and_vacuum",
+                new_callable=AsyncMock,
+            ) as mock_enable_av,
+            patch(
+                "voter_api.services.voter_history_service._upsert_voter_history_batch",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+            patch(
+                "voter_api.services.voter_history_service._replace_previous_import",
+                new_callable=AsyncMock,
+            ),
+        ):
+            await process_voter_history_import(session, job, csv_file, batch_size=10)
+
+        mock_drop.assert_awaited_once()
+        mock_rebuild.assert_awaited_once()
+        mock_disable_av.assert_awaited_once()
+        mock_enable_av.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_skip_optimizations(self, tmp_path: Path) -> None:
+        """skip_optimizations=True skips DB optimizations."""
+        rows = ["FULTON,12345678,11/05/2024,GENERAL ELECTION,NP,STD,N,N,N"]
+        csv_file = _write_csv(tmp_path, rows)
+        job = _make_import_job()
+        session = _make_session_mock()
+
+        with (
+            patch(
+                "voter_api.services.voter_history_service._drop_vh_indexes",
+                new_callable=AsyncMock,
+            ) as mock_drop,
+            patch(
+                "voter_api.services.voter_history_service._rebuild_vh_indexes",
+                new_callable=AsyncMock,
+            ) as mock_rebuild,
+            patch(
+                "voter_api.services.voter_history_service._disable_vh_autovacuum",
+                new_callable=AsyncMock,
+            ) as mock_disable_av,
+            patch(
+                "voter_api.services.voter_history_service._enable_vh_autovacuum_and_vacuum",
+                new_callable=AsyncMock,
+            ) as mock_enable_av,
+            patch(
+                "voter_api.services.voter_history_service._upsert_voter_history_batch",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+            patch(
+                "voter_api.services.voter_history_service._replace_previous_import",
+                new_callable=AsyncMock,
+            ),
+        ):
+            await process_voter_history_import(session, job, csv_file, batch_size=10, skip_optimizations=True)
+
+        mock_drop.assert_not_awaited()
+        mock_rebuild.assert_not_awaited()
+        mock_disable_av.assert_not_awaited()
+        mock_enable_av.assert_not_awaited()

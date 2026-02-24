@@ -348,7 +348,13 @@ class TestSeedFullBootstrap:
             order_log.append("election")
             return 0
 
-        async def mock_voter_history(file_path: Path, batch_size: int) -> None:
+        async def mock_voter_history_batch(
+            file_paths: list[Path],
+            batch_size: int,
+            seed_result: object,
+            fail_fast: bool,
+            vh_files: list[object],
+        ) -> None:
             order_log.append("voter_history")
 
         with (
@@ -369,8 +375,8 @@ class TestSeedFullBootstrap:
                 side_effect=mock_voters_batch,
             ),
             patch(
-                "voter_api.cli.seed_cmd._import_voter_history",
-                side_effect=mock_voter_history,
+                "voter_api.cli.seed_cmd._import_voter_history_batch",
+                side_effect=mock_voter_history_batch,
             ),
         ):
             result = runner.invoke(
