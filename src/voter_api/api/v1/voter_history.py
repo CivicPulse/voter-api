@@ -57,8 +57,19 @@ async def get_voter_history(
         page=page,
         page_size=page_size,
     )
+    # Resolve election IDs for records that don't have a stored one
+    unresolved = [r for r in records if r.election_id is None]
+    election_id_map = await voter_history_service.resolve_election_ids(session, unresolved) if unresolved else {}
+
+    items = []
+    for r in records:
+        item = VoterHistoryRecord.model_validate(r)
+        if item.election_id is None:
+            item.election_id = election_id_map.get((r.election_date, r.normalized_election_type))
+        items.append(item)
+
     return PaginatedVoterHistoryResponse(
-        items=[VoterHistoryRecord.model_validate(r) for r in records],
+        items=items,
         pagination=PaginationMeta(
             total=total,
             page=page,

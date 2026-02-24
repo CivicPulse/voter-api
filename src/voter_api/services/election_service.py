@@ -122,6 +122,12 @@ async def create_election(
         refresh_interval_seconds=request.refresh_interval_seconds,
         ballot_item_id=request.ballot_item_id,
     )
+
+    # Auto-parse district text and link to boundary
+    from voter_api.services.election_resolution_service import link_election_to_boundary
+
+    await link_election_to_boundary(session, election)
+
     session.add(election)
     await session.commit()
 
@@ -203,6 +209,10 @@ def build_detail_response(election: Election) -> ElectionDetailResponse:
         precincts_reporting=precincts_reporting,
         precincts_participating=precincts_participating,
         ballot_item_id=election.ballot_item_id,
+        boundary_id=election.boundary_id,
+        district_type=election.district_type,
+        district_identifier=election.district_identifier,
+        district_party=election.district_party,
         data_source_url=election.data_source_url,
         refresh_interval_seconds=election.refresh_interval_seconds,
         created_at=election.created_at,
@@ -525,6 +535,10 @@ async def list_elections(
                 precincts_reporting=precincts_reporting,
                 precincts_participating=precincts_participating,
                 ballot_item_id=election.ballot_item_id,
+                boundary_id=election.boundary_id,
+                district_type=election.district_type,
+                district_identifier=election.district_identifier,
+                district_party=election.district_party,
             )
         )
 

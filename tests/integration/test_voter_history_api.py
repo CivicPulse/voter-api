@@ -56,6 +56,7 @@ def _make_voter_history(**overrides: object) -> MagicMock:
         "absentee": False,
         "provisional": False,
         "supplemental": False,
+        "election_id": None,
         "import_job_id": uuid.uuid4(),
         "created_at": datetime(2025, 1, 1, 0, 0, 0, tzinfo=UTC),
     }
@@ -252,12 +253,23 @@ class TestGetVoterHistory:
 
     @pytest.mark.asyncio
     async def test_returns_history_records(self, analyst_client: AsyncClient) -> None:
-        """Returns paginated voter history records."""
+        """Returns paginated voter history records with election_id."""
+        election_id = uuid.uuid4()
         records = [_make_voter_history(), _make_voter_history()]
-        with patch(
-            "voter_api.services.voter_history_service.get_voter_history",
-            new_callable=AsyncMock,
-            return_value=(records, 2),
+        election_id_map = {
+            (records[0].election_date, records[0].normalized_election_type): election_id,
+        }
+        with (
+            patch(
+                "voter_api.services.voter_history_service.get_voter_history",
+                new_callable=AsyncMock,
+                return_value=(records, 2),
+            ),
+            patch(
+                "voter_api.services.voter_history_service.resolve_election_ids",
+                new_callable=AsyncMock,
+                return_value=election_id_map,
+            ),
         ):
             resp = await analyst_client.get("/api/v1/voters/12345678/history")
 
@@ -265,14 +277,44 @@ class TestGetVoterHistory:
         data = resp.json()
         assert len(data["items"]) == 2
         assert data["pagination"]["total"] == 2
+        assert data["items"][0]["election_id"] == str(election_id)
+
+    @pytest.mark.asyncio
+    async def test_election_id_null_when_no_match(self, analyst_client: AsyncClient) -> None:
+        """election_id is null when no matching election exists."""
+        records = [_make_voter_history()]
+        with (
+            patch(
+                "voter_api.services.voter_history_service.get_voter_history",
+                new_callable=AsyncMock,
+                return_value=(records, 1),
+            ),
+            patch(
+                "voter_api.services.voter_history_service.resolve_election_ids",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
+        ):
+            resp = await analyst_client.get("/api/v1/voters/12345678/history")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["items"][0]["election_id"] is None
 
     @pytest.mark.asyncio
     async def test_empty_history_returns_empty_list(self, analyst_client: AsyncClient) -> None:
         """Voter with no history returns empty list, not 404."""
-        with patch(
-            "voter_api.services.voter_history_service.get_voter_history",
-            new_callable=AsyncMock,
-            return_value=([], 0),
+        with (
+            patch(
+                "voter_api.services.voter_history_service.get_voter_history",
+                new_callable=AsyncMock,
+                return_value=([], 0),
+            ),
+            patch(
+                "voter_api.services.voter_history_service.resolve_election_ids",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
         ):
             resp = await analyst_client.get("/api/v1/voters/00000000/history")
 
@@ -284,11 +326,18 @@ class TestGetVoterHistory:
     @pytest.mark.asyncio
     async def test_filter_by_election_type(self, analyst_client: AsyncClient) -> None:
         """election_type query param is passed to service."""
-        with patch(
-            "voter_api.services.voter_history_service.get_voter_history",
-            new_callable=AsyncMock,
-            return_value=([], 0),
-        ) as mock_svc:
+        with (
+            patch(
+                "voter_api.services.voter_history_service.get_voter_history",
+                new_callable=AsyncMock,
+                return_value=([], 0),
+            ) as mock_svc,
+            patch(
+                "voter_api.services.voter_history_service.resolve_election_ids",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
+        ):
             await analyst_client.get("/api/v1/voters/12345678/history?election_type=GENERAL ELECTION")
 
         mock_svc.assert_awaited_once()
@@ -298,11 +347,18 @@ class TestGetVoterHistory:
     @pytest.mark.asyncio
     async def test_date_range_filtering(self, analyst_client: AsyncClient) -> None:
         """date_from and date_to query params are passed to service."""
-        with patch(
-            "voter_api.services.voter_history_service.get_voter_history",
-            new_callable=AsyncMock,
-            return_value=([], 0),
-        ) as mock_svc:
+        with (
+            patch(
+                "voter_api.services.voter_history_service.get_voter_history",
+                new_callable=AsyncMock,
+                return_value=([], 0),
+            ) as mock_svc,
+            patch(
+                "voter_api.services.voter_history_service.resolve_election_ids",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
+        ):
             await analyst_client.get("/api/v1/voters/12345678/history?date_from=2024-01-01&date_to=2024-12-31")
 
         mock_svc.assert_awaited_once()
@@ -313,11 +369,18 @@ class TestGetVoterHistory:
     @pytest.mark.asyncio
     async def test_pagination(self, analyst_client: AsyncClient) -> None:
         """Page and page_size are forwarded to service."""
-        with patch(
-            "voter_api.services.voter_history_service.get_voter_history",
-            new_callable=AsyncMock,
-            return_value=([], 0),
-        ) as mock_svc:
+        with (
+            patch(
+                "voter_api.services.voter_history_service.get_voter_history",
+                new_callable=AsyncMock,
+                return_value=([], 0),
+            ) as mock_svc,
+            patch(
+                "voter_api.services.voter_history_service.resolve_election_ids",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
+        ):
             await analyst_client.get("/api/v1/voters/12345678/history?page=3&page_size=10")
 
         call_kwargs = mock_svc.call_args
@@ -327,10 +390,17 @@ class TestGetVoterHistory:
     @pytest.mark.asyncio
     async def test_admin_allowed(self, admin_client: AsyncClient) -> None:
         """Admin role can access voter history."""
-        with patch(
-            "voter_api.services.voter_history_service.get_voter_history",
-            new_callable=AsyncMock,
-            return_value=([], 0),
+        with (
+            patch(
+                "voter_api.services.voter_history_service.get_voter_history",
+                new_callable=AsyncMock,
+                return_value=([], 0),
+            ),
+            patch(
+                "voter_api.services.voter_history_service.resolve_election_ids",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
         ):
             resp = await admin_client.get("/api/v1/voters/12345678/history")
         assert resp.status_code == 200
