@@ -353,17 +353,13 @@ async def _run_imports(
         vh_files = [r for r in successful_downloads if r.entry.category == FileCategory.VOTER_HISTORY]
         if vh_files and (category_filters is None or FileCategory.VOTER_HISTORY in category_filters):
             typer.echo("\n--- Importing voter history files ---")
-            for r in vh_files:
-                assert r.local_path is not None
-                try:
-                    await _import_voter_history(r.local_path, settings.import_batch_size)
-                    seed_result.import_results[f"voter_history:{r.entry.filename}"] = "success"
-                except Exception as exc:
-                    typer.echo(f"  IMPORT FAILED: {r.entry.filename}: {exc}", err=True)
-                    seed_result.success = False
-                    seed_result.import_results[f"voter_history:{r.entry.filename}"] = str(exc)
-                    if fail_fast:
-                        return
+            await _import_voter_history_batch(
+                [r.local_path for r in vh_files if r.local_path is not None],
+                batch_size=settings.import_batch_size,
+                seed_result=seed_result,
+                fail_fast=fail_fast,
+                vh_files=vh_files,
+            )
 
     finally:
         await dispose_engine()
@@ -571,7 +567,7 @@ async def _import_voters_batch(
                     seed_result.import_results[f"voter:{fp.name}"] = "success"
 
 
-async def _import_voter_history(file_path: Path, batch_size: int) -> None:
+async def _import_voter_history(file_path: Path, batch_size: int, *, skip_optimizations: bool = False) -> None:
     """Import a voter history ZIP/CSV file.
 
     If the file is a ZIP archive, the first CSV inside is extracted to
@@ -581,6 +577,7 @@ async def _import_voter_history(file_path: Path, batch_size: int) -> None:
     Args:
         file_path: Path to the voter history ZIP or CSV file.
         batch_size: Records per batch.
+        skip_optimizations: If True, skip index drop/rebuild and autovacuum.
     """
     import zipfile
 
@@ -603,7 +600,53 @@ async def _import_voter_history(file_path: Path, batch_size: int) -> None:
     async with factory() as session:
         job = await create_import_job(session, file_name=csv_path.name, file_type="voter_history")
         typer.echo(f"  Import job: {job.id} for {csv_path.name}")
-        job = await process_voter_history_import(session, job, csv_path, batch_size)
+        job = await process_voter_history_import(
+            session, job, csv_path, batch_size, skip_optimizations=skip_optimizations
+        )
         typer.echo(
             f"  Result ({csv_path.name}): {job.records_succeeded or 0} succeeded, {job.records_failed or 0} failed"
         )
+
+
+async def _import_voter_history_batch(
+    file_paths: list[Path],
+    batch_size: int,
+    seed_result: SeedResult,
+    fail_fast: bool,
+    vh_files: list[DownloadResult],
+) -> None:
+    """Import multiple voter history files with a single index lifecycle.
+
+    Wraps all imports in ``bulk_vh_import_context`` so indexes are dropped
+    once / rebuilt once for the entire batch.
+
+    Args:
+        file_paths: Voter history ZIP/CSV file paths.
+        batch_size: Records per batch per file.
+        seed_result: Mutable result to track import outcomes.
+        fail_fast: If True, propagate the first error.
+        vh_files: Download results for filename tracking.
+    """
+    from voter_api.core.database import get_session_factory
+    from voter_api.services.voter_history_service import bulk_vh_import_context
+
+    if not file_paths:
+        return
+
+    factory = get_session_factory()
+
+    async with factory() as lifecycle_session, bulk_vh_import_context(lifecycle_session):
+        for fp, r in zip(file_paths, vh_files, strict=False):
+            try:
+                # Each file gets its own session but shares the bulk context
+                # (indexes already dropped, autovacuum off). Also set
+                # synchronous_commit off on this session since bulk context
+                # only sets it on the lifecycle session.
+                await _import_voter_history(fp, batch_size, skip_optimizations=True)
+                seed_result.import_results[f"voter_history:{r.entry.filename}"] = "success"
+            except Exception as exc:
+                typer.echo(f"  IMPORT FAILED: {r.entry.filename}: {exc}", err=True)
+                seed_result.success = False
+                seed_result.import_results[f"voter_history:{r.entry.filename}"] = str(exc)
+                if fail_fast:
+                    return

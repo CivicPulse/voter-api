@@ -1,14 +1,18 @@
 """Voter history service — import, query, and aggregate participation data."""
 
+import time
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 from pathlib import Path
 
 from loguru import logger
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from voter_api.core.database import get_engine
 from voter_api.lib.voter_history import (
     parse_voter_history_chunks,
 )
@@ -28,23 +32,171 @@ _IN_CLAUSE_BATCH = 5000
 # Sub-batch size for voter history upsert: 11 columns * 2000 rows = 22,000 params (under 32,767 limit)
 _UPSERT_SUB_BATCH = 2000
 
+# Non-unique indexes to drop before bulk import and rebuild afterward.
+# The unique constraint uq_voter_history_participation is kept for ON CONFLICT.
+_DROPPABLE_VH_INDEXES: list[dict[str, str]] = [
+    {
+        "name": "idx_voter_history_reg_num",
+        "create": "CREATE INDEX idx_voter_history_reg_num ON voter_history (voter_registration_number)",
+    },
+    {
+        "name": "idx_voter_history_election_date",
+        "create": "CREATE INDEX idx_voter_history_election_date ON voter_history (election_date)",
+    },
+    {
+        "name": "idx_voter_history_election_type",
+        "create": "CREATE INDEX idx_voter_history_election_type ON voter_history (election_type)",
+    },
+    {
+        "name": "idx_voter_history_county",
+        "create": "CREATE INDEX idx_voter_history_county ON voter_history (county)",
+    },
+    {
+        "name": "idx_voter_history_import_job_id",
+        "create": "CREATE INDEX idx_voter_history_import_job_id ON voter_history (import_job_id)",
+    },
+    {
+        "name": "idx_voter_history_date_type",
+        "create": "CREATE INDEX idx_voter_history_date_type ON voter_history (election_date, normalized_election_type)",
+    },
+]
+
+
+async def _drop_vh_indexes(session: AsyncSession) -> None:
+    """Drop non-essential indexes on voter_history before bulk import.
+
+    Args:
+        session: Database session.
+    """
+    for idx in _DROPPABLE_VH_INDEXES:
+        await session.execute(text(f"DROP INDEX IF EXISTS {idx['name']}"))
+        logger.debug(f"Dropped index: {idx['name']}")
+    await session.commit()
+    logger.info(f"Dropped {len(_DROPPABLE_VH_INDEXES)} voter_history indexes for bulk import")
+
+
+async def _rebuild_vh_indexes(session: AsyncSession) -> None:
+    """Rebuild voter_history indexes after bulk import.
+
+    Uses elevated maintenance_work_mem for faster index creation.
+
+    Args:
+        session: Database session.
+    """
+    await session.execute(text("SET maintenance_work_mem = '512MB'"))
+
+    for idx in _DROPPABLE_VH_INDEXES:
+        create_sql = idx["create"].replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS", 1)
+        logger.info(f"Rebuilding index: {idx['name']}")
+        start = time.monotonic()
+        await session.execute(text(create_sql))
+        elapsed = time.monotonic() - start
+        logger.info(f"Rebuilt index {idx['name']} in {elapsed:.1f}s")
+
+    await session.execute(text("RESET maintenance_work_mem"))
+    await session.commit()
+    logger.info(f"Rebuilt all {len(_DROPPABLE_VH_INDEXES)} voter_history indexes")
+
+
+async def _disable_vh_autovacuum(session: AsyncSession) -> None:
+    """Disable autovacuum on the voter_history table for bulk import.
+
+    Args:
+        session: Database session.
+    """
+    await session.execute(text("ALTER TABLE voter_history SET (autovacuum_enabled = false)"))
+    await session.commit()
+    logger.info("Disabled autovacuum on voter_history table")
+
+
+async def _enable_vh_autovacuum_and_vacuum(session: AsyncSession) -> None:
+    """Re-enable autovacuum and run VACUUM ANALYZE on voter_history.
+
+    VACUUM cannot run inside a transaction block, so we use the raw
+    asyncpg driver connection.
+
+    Args:
+        session: Database session.
+    """
+    await session.execute(text("ALTER TABLE voter_history SET (autovacuum_enabled = true)"))
+    await session.commit()
+    logger.info("Re-enabled autovacuum on voter_history table")
+
+    logger.info("Running VACUUM ANALYZE on voter_history table...")
+    start = time.monotonic()
+    engine = get_engine()
+    async with engine.connect() as vacuum_conn:
+        autocommit_conn = await vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
+        await autocommit_conn.execute(text("VACUUM ANALYZE voter_history"))
+    elapsed = time.monotonic() - start
+    logger.info(f"VACUUM ANALYZE completed in {elapsed:.1f}s")
+
+
+@asynccontextmanager
+async def bulk_vh_import_context(session: AsyncSession) -> AsyncIterator[None]:
+    """Context manager for batch voter history imports.
+
+    Drops indexes and disables autovacuum once on entry, then rebuilds
+    indexes and runs VACUUM ANALYZE once on exit (including on error).
+
+    Use this to wrap multiple calls to ``process_voter_history_import`` with
+    ``skip_optimizations=True`` so the expensive lifecycle operations
+    happen exactly once for the entire batch.
+
+    Args:
+        session: Database session for lifecycle DDL operations.
+
+    Yields:
+        None — caller processes files inside the context.
+    """
+    try:
+        await session.execute(text("SET synchronous_commit = 'off'"))
+        await _disable_vh_autovacuum(session)
+        await _drop_vh_indexes(session)
+        logger.info("Bulk voter history import context entered: optimizations applied")
+        yield
+    finally:
+        logger.info("Bulk voter history import context exiting: restoring database settings...")
+        try:
+            await session.rollback()
+            await session.execute(text("SET synchronous_commit = 'on'"))
+            await _rebuild_vh_indexes(session)
+            await _enable_vh_autovacuum_and_vacuum(session)
+            logger.info("Bulk voter history import context: database settings restored")
+        except Exception:
+            logger.exception("Error during bulk VH import teardown — indexes may need manual rebuild")
+            raise
+
 
 async def process_voter_history_import(
     session: AsyncSession,
     job: ImportJob,
     file_path: Path,
     batch_size: int = 1000,
+    *,
+    skip_optimizations: bool = False,
 ) -> ImportJob:
     """Process a voter history CSV file import.
 
     Reads the file in chunks, validates records, upserts voter history,
     tracks unmatched voters and duplicates, and handles re-import replacement.
 
+    Performance optimizations applied during import (unless skipped):
+    - Drops non-essential indexes, rebuilds after
+    - Sets synchronous_commit = off for the session
+    - Disables autovacuum, runs VACUUM ANALYZE after
+
+    When ``skip_optimizations=True``, the caller is responsible for
+    managing the DB optimization lifecycle (e.g., via ``bulk_vh_import_context``).
+
     Args:
         session: Database session.
         job: The ImportJob to track progress.
         file_path: Path to the CSV file.
         batch_size: Records per processing batch.
+        skip_optimizations: If True, skip index drop/rebuild, autovacuum,
+            and synchronous_commit changes. Use when calling within
+            ``bulk_vh_import_context``.
 
     Returns:
         The updated ImportJob with final counts.
@@ -55,6 +207,8 @@ async def process_voter_history_import(
         logger.info(f"Clamping batch_size from {batch_size} to {_UPSERT_SUB_BATCH} (asyncpg parameter limit)")
         batch_size = _UPSERT_SUB_BATCH
 
+    logger.info(f"Starting voter history import: {file_path.name}")
+
     job.status = "running"
     job.started_at = datetime.now(UTC)
     await session.commit()
@@ -63,19 +217,32 @@ async def process_voter_history_import(
     succeeded = 0
     failed = 0
     skipped = 0
-    unmatched = 0
     errors: list[dict] = []
     seen_keys: set[tuple[str, str, str]] = set()
+    all_reg_numbers: set[str] = set()
 
     try:
+        import_start = time.monotonic()
+        if not skip_optimizations:
+            logger.info("Applying voter history bulk import optimizations...")
+            await session.execute(text("SET synchronous_commit = 'off'"))
+            await _disable_vh_autovacuum(session)
+            await _drop_vh_indexes(session)
+            logger.info("Voter history bulk import optimizations applied")
+
         for chunk_idx, records in enumerate(parse_voter_history_chunks(file_path, batch_size)):
-            total += len(records)
+            chunk_start = time.monotonic()
+            chunk_total = len(records)
+            total += chunk_total
 
             valid_records: list[dict] = []
+            chunk_failed = 0
+            chunk_skipped = 0
             for record in records:
                 parse_error = record.pop("_parse_error", None)
                 if parse_error:
                     failed += 1
+                    chunk_failed += 1
                     errors.append(
                         {
                             "voter_registration_number": record.get("voter_registration_number", "unknown"),
@@ -92,24 +259,36 @@ async def process_voter_history_import(
                 )
                 if key in seen_keys:
                     skipped += 1
+                    chunk_skipped += 1
                     continue
                 seen_keys.add(key)
 
                 valid_records.append(record)
 
-            # Detect unmatched voters in this batch
-            batch_unmatched = await _count_unmatched_voters(session, valid_records)
-            unmatched += batch_unmatched
+            # Collect registration numbers for end-of-import unmatched count
+            for r in valid_records:
+                all_reg_numbers.add(r["voter_registration_number"])
 
             # Batch upsert voter history records
+            chunk_succeeded = len(valid_records)
             if valid_records:
                 await _upsert_voter_history_batch(session, valid_records, job.id)
-                succeeded += len(valid_records)
+                succeeded += chunk_succeeded
 
             # Flush and update checkpoint
             await session.flush()
             job.last_processed_offset = chunk_idx + 1
             await session.commit()
+
+            chunk_elapsed = time.monotonic() - chunk_start
+            logger.info(
+                f"Chunk {chunk_idx + 1}: {chunk_total} records "
+                f"({chunk_succeeded} valid, {chunk_failed} failed, {chunk_skipped} skipped) "
+                f"({chunk_elapsed:.1f}s) | running total: {total} records"
+            )
+
+        # Count unmatched voters once at the end (instead of per-chunk)
+        unmatched = await _count_unmatched_voters_bulk(session, all_reg_numbers)
 
         # Re-import replacement: clean up records from previous imports of same file
         await _replace_previous_import(session, job)
@@ -126,17 +305,31 @@ async def process_voter_history_import(
         job.completed_at = datetime.now(UTC)
         await session.commit()
 
+        import_elapsed = time.monotonic() - import_start
         logger.info(
-            f"Voter history import completed: {total} total, "
+            f"Voter history import completed in {import_elapsed:.1f}s: {total} total, "
             f"{succeeded} succeeded, {failed} failed, {skipped} skipped, "
             f"{unmatched} unmatched"
         )
 
     except Exception:
+        await session.rollback()
         job.status = "failed"
         job.error_log = errors if errors else None
         await session.commit()
         raise
+
+    finally:
+        if not skip_optimizations:
+            logger.info("Restoring voter history database settings...")
+            try:
+                await session.rollback()
+                await session.execute(text("SET synchronous_commit = 'on'"))
+                await _rebuild_vh_indexes(session)
+                await _enable_vh_autovacuum_and_vacuum(session)
+                logger.info("Voter history database settings restored")
+            except Exception:
+                logger.exception("Error during VH optimization teardown — indexes may need manual rebuild")
 
     return job
 
@@ -192,32 +385,35 @@ async def _upsert_voter_history_batch(
         await session.execute(stmt)
 
 
-async def _count_unmatched_voters(
+async def _count_unmatched_voters_bulk(
     session: AsyncSession,
-    records: list[dict],
+    reg_numbers: set[str],
 ) -> int:
-    """Count records whose voter registration numbers are not in the voters table.
+    """Count unique registration numbers not present in the voters table.
+
+    Called once at the end of import with all collected registration numbers,
+    instead of per-chunk, for better performance.
 
     Args:
         session: Database session.
-        records: List of valid record dicts.
+        reg_numbers: Set of all unique voter registration numbers from the import.
 
     Returns:
-        Count of unmatched records.
+        Count of unmatched registration numbers.
     """
-    reg_numbers = list({r["voter_registration_number"] for r in records})
     if not reg_numbers:
         return 0
 
+    reg_list = list(reg_numbers)
     matched: set[str] = set()
-    for i in range(0, len(reg_numbers), _IN_CLAUSE_BATCH):
-        batch = reg_numbers[i : i + _IN_CLAUSE_BATCH]
+    for i in range(0, len(reg_list), _IN_CLAUSE_BATCH):
+        batch = reg_list[i : i + _IN_CLAUSE_BATCH]
         result = await session.execute(
             select(Voter.voter_registration_number).where(Voter.voter_registration_number.in_(batch))
         )
         matched.update(result.scalars().all())
 
-    return sum(1 for r in records if r["voter_registration_number"] not in matched)
+    return len(reg_numbers - matched)
 
 
 async def _replace_previous_import(
