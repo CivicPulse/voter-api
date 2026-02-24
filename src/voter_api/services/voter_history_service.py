@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import NamedTuple
 
 from loguru import logger
 from sqlalchemy import delete, func, select, text
@@ -674,27 +675,40 @@ async def resolve_election_ids(
     return lookup
 
 
-async def lookup_voter_ids(
+class VoterLookupResult(NamedTuple):
+    """Lightweight container for voter identity fields resolved from registration numbers."""
+
+    id: uuid.UUID
+    first_name: str
+    last_name: str
+
+
+async def lookup_voter_details(
     session: AsyncSession,
     registration_numbers: list[str],
-) -> dict[str, uuid.UUID]:
-    """Batch-resolve voter registration numbers to voter UUIDs.
+) -> dict[str, VoterLookupResult]:
+    """Batch-resolve voter registration numbers to voter identity details.
 
     Args:
         session: Database session.
         registration_numbers: Voter registration numbers to look up.
 
     Returns:
-        Mapping from voter_registration_number to Voter.id.
+        Mapping from voter_registration_number to VoterLookupResult.
     """
     if not registration_numbers:
         return {}
 
     unique_nums = list(set(registration_numbers))
     result = await session.execute(
-        select(Voter.voter_registration_number, Voter.id).where(Voter.voter_registration_number.in_(unique_nums))
+        select(
+            Voter.voter_registration_number,
+            Voter.id,
+            Voter.first_name,
+            Voter.last_name,
+        ).where(Voter.voter_registration_number.in_(unique_nums))
     )
-    return dict(result.all())
+    return {row[0]: VoterLookupResult(id=row[1], first_name=row[2], last_name=row[3]) for row in result.all()}
 
 
 async def _build_election_match_conditions(

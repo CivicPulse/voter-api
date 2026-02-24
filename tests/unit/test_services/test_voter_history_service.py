@@ -14,13 +14,14 @@ import pytest
 from voter_api.models.election import Election
 from voter_api.models.voter_history import VoterHistory
 from voter_api.services.voter_history_service import (
+    VoterLookupResult,
     _build_election_match_conditions,
     _get_election_or_raise,
     get_participation_stats,
     get_participation_summary,
     get_voter_history,
     list_election_participants,
-    lookup_voter_ids,
+    lookup_voter_details,
     resolve_election_ids,
 )
 
@@ -519,29 +520,29 @@ class TestBuildElectionMatchConditions:
 # ---------------------------------------------------------------------------
 
 
-class TestLookupVoterIds:
-    """Tests for the lookup_voter_ids batch helper."""
+class TestLookupVoterDetails:
+    """Tests for the lookup_voter_details batch helper."""
 
     @pytest.mark.asyncio
     async def test_empty_list_returns_empty_dict(self) -> None:
         """Empty input returns empty dict without querying."""
         session = AsyncMock()
-        result = await lookup_voter_ids(session, [])
+        result = await lookup_voter_details(session, [])
         assert result == {}
         session.execute.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_returns_mapping(self) -> None:
-        """Returns reg_num → UUID mapping for found voters."""
+        """Returns reg_num → VoterLookupResult mapping for found voters."""
         voter_id = uuid.uuid4()
         session = AsyncMock()
         query_result = MagicMock()
-        query_result.all.return_value = [("12345678", voter_id)]
+        query_result.all.return_value = [("12345678", voter_id, "Jane", "Doe")]
         session.execute.return_value = query_result
 
-        result = await lookup_voter_ids(session, ["12345678"])
+        result = await lookup_voter_details(session, ["12345678"])
 
-        assert result == {"12345678": voter_id}
+        assert result == {"12345678": VoterLookupResult(id=voter_id, first_name="Jane", last_name="Doe")}
 
     @pytest.mark.asyncio
     async def test_missing_voter_omitted(self) -> None:
@@ -551,7 +552,7 @@ class TestLookupVoterIds:
         query_result.all.return_value = []
         session.execute.return_value = query_result
 
-        result = await lookup_voter_ids(session, ["99999999"])
+        result = await lookup_voter_details(session, ["99999999"])
 
         assert "99999999" not in result
         assert result == {}
@@ -562,12 +563,12 @@ class TestLookupVoterIds:
         voter_id = uuid.uuid4()
         session = AsyncMock()
         query_result = MagicMock()
-        query_result.all.return_value = [("12345678", voter_id)]
+        query_result.all.return_value = [("12345678", voter_id, "Jane", "Doe")]
         session.execute.return_value = query_result
 
-        result = await lookup_voter_ids(session, ["12345678", "12345678", "12345678"])
+        result = await lookup_voter_details(session, ["12345678", "12345678", "12345678"])
 
-        assert result == {"12345678": voter_id}
+        assert result == {"12345678": VoterLookupResult(id=voter_id, first_name="Jane", last_name="Doe")}
         session.execute.assert_awaited_once()
 
 

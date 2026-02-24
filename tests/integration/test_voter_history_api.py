@@ -27,6 +27,7 @@ from voter_api.schemas.voter_history import (
     ParticipationSummary,
     PrecinctBreakdown,
 )
+from voter_api.services.voter_history_service import VoterLookupResult
 
 # ---------------------------------------------------------------------------
 # Mock helpers
@@ -464,10 +465,12 @@ class TestListElectionParticipants:
 
     @pytest.mark.asyncio
     async def test_returns_participants(self, analyst_client: AsyncClient) -> None:
-        """Returns paginated list of participants with voter_id."""
+        """Returns paginated list of participants with voter_id and name."""
         voter_id = uuid.uuid4()
         records = [_make_voter_history(), _make_voter_history()]
-        voter_id_map = {records[0].voter_registration_number: voter_id}
+        voter_detail_map = {
+            records[0].voter_registration_number: VoterLookupResult(id=voter_id, first_name="Jane", last_name="Doe"),
+        }
         with (
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
@@ -475,9 +478,9 @@ class TestListElectionParticipants:
                 return_value=(records, 2),
             ),
             patch(
-                "voter_api.services.voter_history_service.lookup_voter_ids",
+                "voter_api.services.voter_history_service.lookup_voter_details",
                 new_callable=AsyncMock,
-                return_value=voter_id_map,
+                return_value=voter_detail_map,
             ),
         ):
             eid = uuid.uuid4()
@@ -488,6 +491,8 @@ class TestListElectionParticipants:
         assert len(data["items"]) == 2
         assert data["pagination"]["total"] == 2
         assert data["items"][0]["voter_id"] == str(voter_id)
+        assert data["items"][0]["first_name"] == "Jane"
+        assert data["items"][0]["last_name"] == "Doe"
 
     @pytest.mark.asyncio
     async def test_404_for_unknown_election(self, analyst_client: AsyncClient) -> None:
@@ -505,7 +510,7 @@ class TestListElectionParticipants:
 
     @pytest.mark.asyncio
     async def test_voter_id_null_when_no_voter(self, analyst_client: AsyncClient) -> None:
-        """voter_id is null when no matching voter record exists."""
+        """voter_id and name fields are null when no matching voter record exists."""
         records = [_make_voter_history()]
         with (
             patch(
@@ -514,7 +519,7 @@ class TestListElectionParticipants:
                 return_value=(records, 1),
             ),
             patch(
-                "voter_api.services.voter_history_service.lookup_voter_ids",
+                "voter_api.services.voter_history_service.lookup_voter_details",
                 new_callable=AsyncMock,
                 return_value={},
             ),
@@ -525,6 +530,8 @@ class TestListElectionParticipants:
         assert resp.status_code == 200
         data = resp.json()
         assert data["items"][0]["voter_id"] is None
+        assert data["items"][0]["first_name"] is None
+        assert data["items"][0]["last_name"] is None
 
     @pytest.mark.asyncio
     async def test_filter_by_county(self, analyst_client: AsyncClient) -> None:
@@ -536,7 +543,7 @@ class TestListElectionParticipants:
                 return_value=([], 0),
             ) as mock_svc,
             patch(
-                "voter_api.services.voter_history_service.lookup_voter_ids",
+                "voter_api.services.voter_history_service.lookup_voter_details",
                 new_callable=AsyncMock,
                 return_value={},
             ),
@@ -557,7 +564,7 @@ class TestListElectionParticipants:
                 return_value=([], 0),
             ) as mock_svc,
             patch(
-                "voter_api.services.voter_history_service.lookup_voter_ids",
+                "voter_api.services.voter_history_service.lookup_voter_details",
                 new_callable=AsyncMock,
                 return_value={},
             ),
@@ -578,7 +585,7 @@ class TestListElectionParticipants:
                 return_value=([], 0),
             ) as mock_svc,
             patch(
-                "voter_api.services.voter_history_service.lookup_voter_ids",
+                "voter_api.services.voter_history_service.lookup_voter_details",
                 new_callable=AsyncMock,
                 return_value={},
             ),

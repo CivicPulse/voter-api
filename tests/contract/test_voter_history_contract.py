@@ -136,6 +136,8 @@ class TestElectionParticipationRecordContract:
         record = ElectionParticipationRecord(
             id=uuid.uuid4(),
             voter_id=vid,
+            first_name="Jane",
+            last_name="Doe",
             voter_registration_number="12345678",
             county="DEKALB",
             election_date=date(2024, 5, 21),
@@ -150,11 +152,13 @@ class TestElectionParticipationRecordContract:
         data = record.model_dump(mode="json")
         assert isinstance(data["id"], str)
         assert data["voter_id"] == str(vid)
+        assert data["first_name"] == "Jane"
+        assert data["last_name"] == "Doe"
         assert data["county"] == "DEKALB"
         assert data["normalized_election_type"] == "primary"
 
     def test_voter_id_nullable(self) -> None:
-        """voter_id serializes as null when no matching voter exists."""
+        """voter_id and name fields serialize as null when no matching voter exists."""
         record = ElectionParticipationRecord(
             id=uuid.uuid4(),
             voter_registration_number="12345678",
@@ -168,6 +172,8 @@ class TestElectionParticipationRecordContract:
         )
         data = record.model_dump(mode="json")
         assert data["voter_id"] is None
+        assert data["first_name"] is None
+        assert data["last_name"] is None
 
     def test_no_created_at(self) -> None:
         """ElectionParticipationRecord does not include created_at."""
