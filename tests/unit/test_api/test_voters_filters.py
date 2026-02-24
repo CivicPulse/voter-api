@@ -186,3 +186,59 @@ class TestGetVoterFilterOptions:
         assert "county_precincts" not in data
         assert "county_commission_districts" not in data
         assert "school_board_districts" not in data
+
+    @pytest.mark.asyncio
+    async def test_cascading_precinct_forwarded_to_service(self, client: AsyncClient) -> None:
+        """County_precinct cascading param is forwarded to the service."""
+        with patch(
+            "voter_api.api.v1.voters.get_voter_filter_options",
+            new_callable=AsyncMock,
+            return_value=_FILTER_OPTIONS_WITH_COUNTY,
+        ) as mock_svc:
+            resp = await client.get("/api/v1/voters/filters?county=BIBB&county_precinct=01")
+
+        assert resp.status_code == 200
+        mock_svc.assert_awaited_once()
+        _, kwargs = mock_svc.call_args
+        assert kwargs["county"] == "BIBB"
+        assert kwargs["county_precinct"] == "01"
+        assert kwargs["county_commission_district"] is None
+        assert kwargs["school_board_district"] is None
+
+    @pytest.mark.asyncio
+    async def test_multiple_cascading_params_forwarded(self, client: AsyncClient) -> None:
+        """Multiple cascading params are all forwarded to the service."""
+        with patch(
+            "voter_api.api.v1.voters.get_voter_filter_options",
+            new_callable=AsyncMock,
+            return_value=_FILTER_OPTIONS_WITH_COUNTY,
+        ) as mock_svc:
+            resp = await client.get("/api/v1/voters/filters?county=BIBB&county_precinct=01&school_board_district=3")
+
+        assert resp.status_code == 200
+        mock_svc.assert_awaited_once()
+        _, kwargs = mock_svc.call_args
+        assert kwargs["county"] == "BIBB"
+        assert kwargs["county_precinct"] == "01"
+        assert kwargs["county_commission_district"] is None
+        assert kwargs["school_board_district"] == "3"
+
+    @pytest.mark.asyncio
+    async def test_cascading_params_without_county_ignored(self, client: AsyncClient) -> None:
+        """Cascading params without county are passed but don't trigger county-scoped queries."""
+        with patch(
+            "voter_api.api.v1.voters.get_voter_filter_options",
+            new_callable=AsyncMock,
+            return_value=_FILTER_OPTIONS,
+        ) as mock_svc:
+            resp = await client.get("/api/v1/voters/filters?county_precinct=01")
+
+        assert resp.status_code == 200
+        _, kwargs = mock_svc.call_args
+        assert kwargs["county"] is None
+        assert kwargs["county_precinct"] == "01"
+        # County-scoped fields should not be in response
+        data = resp.json()
+        assert "county_precincts" not in data
+        assert "county_commission_districts" not in data
+        assert "school_board_districts" not in data

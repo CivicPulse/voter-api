@@ -98,6 +98,13 @@ async def search_voters_endpoint(
 )
 async def get_filter_options(
     county: str | None = Query(None, description="County name to scope county-level filter options"),
+    county_precinct: str | None = Query(None, description="Precinct to narrow other county-scoped options"),
+    county_commission_district: str | None = Query(
+        None, description="Commission district to narrow other county-scoped options"
+    ),
+    school_board_district: str | None = Query(
+        None, description="School board district to narrow other county-scoped options"
+    ),
     session: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_user),
 ) -> VoterFilterOptions:
@@ -107,8 +114,19 @@ async def get_filter_options(
     the voters table. Use this endpoint to populate dropdown/select components
     in search UIs. When a county is specified, also returns county-scoped
     precincts, commission districts, and school board districts.
+
+    Cascading filters: When county-scoped params (county_precinct,
+    county_commission_district, school_board_district) are provided alongside
+    county, each narrows the *other* county-scoped lists but not its own,
+    enabling dependent dropdown UIs.
     """
-    options = await get_voter_filter_options(session, county=county)
+    options = await get_voter_filter_options(
+        session,
+        county=county,
+        county_precinct=county_precinct,
+        county_commission_district=county_commission_district,
+        school_board_district=school_board_district,
+    )
     return VoterFilterOptions(**options)
 
 
