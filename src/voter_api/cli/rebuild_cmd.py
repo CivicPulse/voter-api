@@ -34,6 +34,46 @@ def _mask_database_url(url: str) -> str:
     return url
 
 
+async def _seed_preview_user(database_url: str, schema: str | None) -> None:
+    """Create an admin user from PREVIEW_API_* env vars if all three are set.
+
+    Idempotent — logs a skip message if the user already exists.
+
+    Args:
+        database_url: Async database URL.
+        schema: PostgreSQL schema name, or ``None`` for ``public``.
+    """
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.schemas.auth import UserCreateRequest
+    from voter_api.services.auth_service import create_user
+
+    settings = get_settings()
+
+    if not (settings.preview_api_user and settings.preview_api_email and settings.preview_api_password):
+        return
+
+    init_engine(database_url, schema=schema)
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            request = UserCreateRequest(
+                username=settings.preview_api_user,
+                email=settings.preview_api_email,
+                password=settings.preview_api_password,
+                role="admin",
+            )
+            user = await create_user(session, request)
+            logger.info(f"Preview user '{user.username}' created with role 'admin'")
+    except ValueError as e:
+        if "already exists" in str(e):
+            logger.info(f"Preview user '{settings.preview_api_user}' already exists, skipping")
+        else:
+            raise
+    finally:
+        await dispose_engine()
+
+
 async def _drop_and_recreate_schema(database_url: str, schema: str | None) -> None:
     """Drop and recreate the target schema using an async connection.
 
@@ -110,7 +150,8 @@ def rebuild(
     This command:
       1. Drops the target schema (CASCADE) and recreates it
       2. Runs all Alembic migrations (upgrade head)
-      3. Optionally runs the full seed/import pipeline
+      3. Seeds a preview admin user (if PREVIEW_API_* env vars are set)
+      4. Optionally runs the full seed/import pipeline
 
     Two interactive confirmations are required before any destructive
     action is taken.
@@ -147,23 +188,27 @@ def rebuild(
     typer.echo("")
 
     # --- Step 1: Drop and recreate schema ---
-    typer.echo("Step 1/3: Dropping and recreating schema...")
+    typer.echo("Step 1/4: Dropping and recreating schema...")
     asyncio.run(_drop_and_recreate_schema(settings.database_url, settings.database_schema))
     typer.echo(f"  Schema '{schema_name}' recreated.")
 
     # --- Step 2: Run migrations ---
-    typer.echo("Step 2/3: Running Alembic migrations...")
+    typer.echo("Step 2/4: Running Alembic migrations...")
     alembic_config = AlembicConfig("alembic.ini")
     alembic_command.upgrade(alembic_config, "head")
     typer.echo("  Migrations complete.")
 
-    # --- Step 3: Seed (optional) ---
+    # --- Step 3: Seed preview user (if env vars set) ---
+    typer.echo("Step 3/4: Seeding preview user...")
+    asyncio.run(_seed_preview_user(settings.database_url, settings.database_schema))
+
+    # --- Step 4: Seed (optional) ---
     if skip_seed:
-        typer.echo("Step 3/3: Skipped (--skip-seed).")
+        typer.echo("Step 4/4: Skipped (--skip-seed).")
         typer.echo("\nRebuild complete (schema reset + migrations only).")
         return
 
-    typer.echo("Step 3/3: Running seed/import pipeline...")
+    typer.echo("Step 4/4: Running seed/import pipeline...")
 
     from voter_api.cli.seed_cmd import _CATEGORY_MAP, _VALID_CATEGORIES, _run_seed, _validate_data_root
 

@@ -277,6 +277,11 @@ class Settings(BaseSettings):
         description="Base URL for downloading seed data files (manifest.json + data files)",
     )
 
+    # Preview / Dev user seeding
+    preview_api_user: str | None = Field(default=None, description="Username for auto-seeded preview user")
+    preview_api_email: str | None = Field(default=None, description="Email for auto-seeded preview user")
+    preview_api_password: str | None = Field(default=None, description="Password for auto-seeded preview user")
+
     @field_validator("data_root_url")
     @classmethod
     def validate_data_root_url(cls, v: str) -> str:
