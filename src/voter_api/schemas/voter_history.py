@@ -74,6 +74,14 @@ class BallotStyleBreakdown(BaseModel):
     count: int
 
 
+class PrecinctBreakdown(BaseModel):
+    """Participation count for a single precinct."""
+
+    precinct: str
+    precinct_name: str | None = None
+    count: int
+
+
 class ParticipationStatsResponse(BaseModel):
     """Aggregate participation statistics for an election."""
 
@@ -81,6 +89,7 @@ class ParticipationStatsResponse(BaseModel):
     total_participants: int
     by_county: list[CountyBreakdown] = Field(default_factory=list)
     by_ballot_style: list[BallotStyleBreakdown] = Field(default_factory=list)
+    by_precinct: list[PrecinctBreakdown] = Field(default_factory=list)
 
 
 class ParticipationSummary(BaseModel):

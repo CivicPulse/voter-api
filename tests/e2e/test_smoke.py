@@ -909,3 +909,4 @@ class TestVoterHistory:
         assert resp.status_code == 200
         body = resp.json()
         assert "election_id" in body
+        assert "by_precinct" in body
