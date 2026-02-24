@@ -332,7 +332,7 @@ async def _run_imports(
                 or FileCategory.VOTER_HISTORY in category_filters
             )
         )
-        if should_seed_elections:
+        if should_seed_elections and election_source:
             typer.echo("\n--- Seeding elections from API ---")
             try:
                 count = await _seed_elections_from_api(election_source)
