@@ -214,7 +214,7 @@ async def _auto_create_elections(
 
     created = 0
     for (election_date, raw_type), normalized_type in combos.items():
-        # Check if election already exists
+        # Step 1: exact (date, type) match
         result = await session.execute(
             select(Election.id).where(
                 Election.election_date == election_date,
@@ -222,6 +222,16 @@ async def _auto_create_elections(
             )
         )
         if result.scalar_one_or_none() is not None:
+            continue
+
+        # Step 2: date-only fallback — if ANY election exists on this date,
+        # the existing election is authoritative; skip auto-creation.
+        date_result = await session.execute(select(Election.id).where(Election.election_date == election_date).limit(1))
+        if date_result.scalar_one_or_none() is not None:
+            logger.info(
+                f"Skipping auto-creation for {raw_type} on {election_date}: "
+                f"election already exists on this date with different type"
+            )
             continue
 
         # Auto-create
@@ -403,15 +413,10 @@ async def list_election_participants(
         ValueError: If election not found.
     """
     election = await _get_election_or_raise(session, election_id)
+    match_conditions = await _build_election_match_conditions(session, election)
 
-    query = select(VoterHistory).where(
-        VoterHistory.election_date == election.election_date,
-        VoterHistory.normalized_election_type == election.election_type,
-    )
-    count_query = select(func.count(VoterHistory.id)).where(
-        VoterHistory.election_date == election.election_date,
-        VoterHistory.normalized_election_type == election.election_type,
-    )
+    query = select(VoterHistory).where(*match_conditions)
+    count_query = select(func.count(VoterHistory.id)).where(*match_conditions)
 
     if county:
         query = query.where(VoterHistory.county == county)
@@ -455,11 +460,7 @@ async def get_participation_stats(
         ValueError: If election not found.
     """
     election = await _get_election_or_raise(session, election_id)
-
-    base_where = [
-        VoterHistory.election_date == election.election_date,
-        VoterHistory.normalized_election_type == election.election_type,
-    ]
+    base_where = await _build_election_match_conditions(session, election)
 
     # Total count
     total_result = await session.execute(select(func.count(VoterHistory.id)).where(*base_where))
@@ -515,6 +516,40 @@ async def get_participation_summary(
         total_elections=row[0],
         last_election_date=row[1],
     )
+
+
+async def _build_election_match_conditions(
+    session: AsyncSession,
+    election: Election,
+) -> list:
+    """Build WHERE conditions to match voter_history records to an election.
+
+    When only one election exists on a given date, matches by date alone
+    (handles type mismatches like "special" vs "runoff"). When multiple
+    elections share the same date, matches by (date, normalized_election_type)
+    for disambiguation.
+
+    Args:
+        session: Database session.
+        election: The Election model instance.
+
+    Returns:
+        List of SQLAlchemy WHERE clause conditions.
+    """
+    count_result = await session.execute(
+        select(func.count(Election.id)).where(
+            Election.election_date == election.election_date,
+        )
+    )
+    election_count = count_result.scalar_one()
+
+    if election_count == 1:
+        return [VoterHistory.election_date == election.election_date]
+
+    return [
+        VoterHistory.election_date == election.election_date,
+        VoterHistory.normalized_election_type == election.election_type,
+    ]
 
 
 async def _get_election_or_raise(

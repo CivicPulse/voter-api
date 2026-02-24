@@ -14,6 +14,7 @@ import pytest
 from voter_api.models.election import Election
 from voter_api.models.voter_history import VoterHistory
 from voter_api.services.voter_history_service import (
+    _build_election_match_conditions,
     _get_election_or_raise,
     get_participation_stats,
     get_participation_summary,
@@ -161,16 +162,19 @@ class TestListElectionParticipants:
         # First call: get election
         election_result = MagicMock()
         election_result.scalar_one_or_none.return_value = election
-        # Second call: count
+        # Second call: _build_election_match_conditions COUNT
+        match_count_result = MagicMock()
+        match_count_result.scalar_one.return_value = 1
+        # Third call: count
         count_result = MagicMock()
         count_result.scalar_one.return_value = 1
-        # Third call: records
+        # Fourth call: records
         records_result = MagicMock()
         records_mock = MagicMock()
         records_mock.all.return_value = records
         records_result.scalars.return_value = records_mock
 
-        session.execute.side_effect = [election_result, count_result, records_result]
+        session.execute.side_effect = [election_result, match_count_result, count_result, records_result]
 
         result_records, total = await list_election_participants(session, election.id)
 
@@ -195,6 +199,8 @@ class TestListElectionParticipants:
         session = AsyncMock()
         election_result = MagicMock()
         election_result.scalar_one_or_none.return_value = election
+        match_count_result = MagicMock()
+        match_count_result.scalar_one.return_value = 1
         count_result = MagicMock()
         count_result.scalar_one.return_value = 0
         records_result = MagicMock()
@@ -202,7 +208,7 @@ class TestListElectionParticipants:
         records_mock.all.return_value = []
         records_result.scalars.return_value = records_mock
 
-        session.execute.side_effect = [election_result, count_result, records_result]
+        session.execute.side_effect = [election_result, match_count_result, count_result, records_result]
 
         records, total = await list_election_participants(
             session,
@@ -216,8 +222,8 @@ class TestListElectionParticipants:
 
         assert total == 0
         assert records == []
-        # 3 execute calls: election lookup + count + records
-        assert session.execute.await_count == 3
+        # 4 execute calls: election lookup + match count + count + records
+        assert session.execute.await_count == 4
 
 
 # ---------------------------------------------------------------------------
@@ -238,18 +244,22 @@ class TestGetParticipationStats:
         # 1: election lookup
         election_result = MagicMock()
         election_result.scalar_one_or_none.return_value = election
-        # 2: total count
+        # 2: _build_election_match_conditions COUNT
+        match_count_result = MagicMock()
+        match_count_result.scalar_one.return_value = 1
+        # 3: total count
         total_result = MagicMock()
         total_result.scalar_one.return_value = 100
-        # 3: by county
+        # 4: by county
         county_result = MagicMock()
         county_result.all.return_value = [("FULTON", 60), ("DEKALB", 40)]
-        # 4: by ballot style
+        # 5: by ballot style
         style_result = MagicMock()
         style_result.all.return_value = [("STD", 80), ("ABSENTEE", 20)]
 
         session.execute.side_effect = [
             election_result,
+            match_count_result,
             total_result,
             county_result,
             style_result,
@@ -283,6 +293,8 @@ class TestGetParticipationStats:
         session = AsyncMock()
         election_result = MagicMock()
         election_result.scalar_one_or_none.return_value = election
+        match_count_result = MagicMock()
+        match_count_result.scalar_one.return_value = 1
         total_result = MagicMock()
         total_result.scalar_one.return_value = 0
         county_result = MagicMock()
@@ -292,6 +304,7 @@ class TestGetParticipationStats:
 
         session.execute.side_effect = [
             election_result,
+            match_count_result,
             total_result,
             county_result,
             style_result,
@@ -370,3 +383,88 @@ class TestGetElectionOrRaise:
 
         with pytest.raises(ValueError, match="Election not found"):
             await _get_election_or_raise(session, uuid.uuid4())
+
+
+# ---------------------------------------------------------------------------
+# _build_election_match_conditions
+# ---------------------------------------------------------------------------
+
+
+class TestBuildElectionMatchConditions:
+    """Tests for the _build_election_match_conditions helper."""
+
+    @pytest.mark.asyncio
+    async def test_single_election_on_date_matches_by_date_only(self) -> None:
+        """When only one election on the date, matches by date only."""
+        election = _mock_election(
+            election_date=date(2026, 2, 17),
+            election_type="special",
+        )
+        session = AsyncMock()
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 1
+        session.execute.return_value = count_result
+
+        conditions = await _build_election_match_conditions(session, election)
+
+        # Only date condition — no type condition
+        assert len(conditions) == 1
+
+    @pytest.mark.asyncio
+    async def test_multiple_elections_on_date_matches_by_date_and_type(self) -> None:
+        """When multiple elections on the date, matches by date + type."""
+        election = _mock_election(
+            election_date=date(2024, 5, 21),
+            election_type="primary",
+        )
+        session = AsyncMock()
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 2
+        session.execute.return_value = count_result
+
+        conditions = await _build_election_match_conditions(session, election)
+
+        # Both date and type conditions
+        assert len(conditions) == 2
+
+    @pytest.mark.asyncio
+    async def test_participants_with_type_mismatch_single_election(self) -> None:
+        """Type="special" election finds voter_history with normalized_type="runoff" via date-only match."""
+        election = _mock_election(
+            election_date=date(2026, 2, 17),
+            election_type="special",
+        )
+        records = [
+            _mock_voter_history(
+                election_date=date(2026, 2, 17),
+                normalized_election_type="runoff",
+            )
+        ]
+
+        session = AsyncMock()
+        # 1: election lookup
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        # 2: _build_election_match_conditions COUNT — single election
+        match_count_result = MagicMock()
+        match_count_result.scalar_one.return_value = 1
+        # 3: count query — finds records via date-only match
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 1
+        # 4: records query
+        records_result = MagicMock()
+        records_mock = MagicMock()
+        records_mock.all.return_value = records
+        records_result.scalars.return_value = records_mock
+
+        session.execute.side_effect = [
+            election_result,
+            match_count_result,
+            count_result,
+            records_result,
+        ]
+
+        result_records, total = await list_election_participants(session, election.id)
+
+        assert total == 1
+        assert len(result_records) == 1

@@ -13,7 +13,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from voter_api.models.import_job import ImportJob
-from voter_api.services.voter_history_service import process_voter_history_import
+from voter_api.services.voter_history_service import (
+    _auto_create_elections,
+    process_voter_history_import,
+)
 
 
 def _make_import_job(**overrides: object) -> MagicMock:
@@ -429,3 +432,42 @@ class TestElectionAutoCreation:
         mock_create.assert_awaited_once()
         records = mock_create.call_args[0][1]
         assert len(records) == 2
+
+    @pytest.mark.asyncio
+    async def test_auto_create_skipped_when_election_exists_with_different_type(self) -> None:
+        """Auto-creation is skipped when an election exists on the same date with a different type.
+
+        Simulates the core bug: a manually-created "special" election exists on 2026-02-17,
+        but the CSV contains "SPECIAL ELECTION RUNOFF" which normalizes to "runoff".
+        The date-only fallback should prevent creating a duplicate.
+        """
+        session = AsyncMock()
+
+        # First call: exact (date, type) match for "runoff" — not found
+        exact_match_result = MagicMock()
+        exact_match_result.scalar_one_or_none.return_value = None
+        # Second call: date-only fallback — found (the "special" election)
+        date_match_result = MagicMock()
+        date_match_result.scalar_one_or_none.return_value = uuid.uuid4()
+
+        session.execute.side_effect = [exact_match_result, date_match_result]
+
+        records = [
+            {
+                "voter_registration_number": "12345678",
+                "county": "FULTON",
+                "election_date": date(2026, 2, 17),
+                "election_type": "SPECIAL ELECTION RUNOFF",
+                "normalized_election_type": "runoff",
+                "party": "NP",
+                "ballot_style": "STD",
+                "absentee": False,
+                "provisional": False,
+                "supplemental": False,
+            }
+        ]
+
+        created = await _auto_create_elections(session, records)
+
+        assert created == 0
+        session.add.assert_not_called()
