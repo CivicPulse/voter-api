@@ -12,7 +12,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from voter_api.core.dependencies import get_async_session, get_current_user, require_role
+from voter_api.core.dependencies import get_async_session, require_role
 from voter_api.lib.normalize import normalize_registration_number
 from voter_api.models.user import User
 from voter_api.schemas.common import PaginationMeta
@@ -141,7 +141,6 @@ async def list_election_participants(
 )
 async def get_election_participation_stats(
     election_id: uuid.UUID,
-    current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> ParticipationStatsResponse:
     """Get aggregate participation statistics for an election."""
