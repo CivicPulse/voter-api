@@ -224,3 +224,9 @@ docs/voter_data_sample_from_state.csv
 
 # SOS feed research samples
 data/sos-feeds-research/
+
+# hatchkit
+.hatchkit/cache/
+
+# Claude Code MCP config (contains DB credentials)
+.mcp.json
