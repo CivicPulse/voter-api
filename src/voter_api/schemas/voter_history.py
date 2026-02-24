@@ -39,6 +39,7 @@ class ElectionParticipationRecord(BaseModel):
     """A voter participation record in the context of an election query."""
 
     id: UUID
+    voter_id: UUID | None = None
     voter_registration_number: str
     county: str
     election_date: date

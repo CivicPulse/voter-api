@@ -132,8 +132,10 @@ class TestElectionParticipationRecordContract:
 
     def test_all_fields_serializable(self) -> None:
         """All fields serialize to JSON-compatible types."""
+        vid = uuid.uuid4()
         record = ElectionParticipationRecord(
             id=uuid.uuid4(),
+            voter_id=vid,
             voter_registration_number="12345678",
             county="DEKALB",
             election_date=date(2024, 5, 21),
@@ -147,8 +149,25 @@ class TestElectionParticipationRecordContract:
         )
         data = record.model_dump(mode="json")
         assert isinstance(data["id"], str)
+        assert data["voter_id"] == str(vid)
         assert data["county"] == "DEKALB"
         assert data["normalized_election_type"] == "primary"
+
+    def test_voter_id_nullable(self) -> None:
+        """voter_id serializes as null when no matching voter exists."""
+        record = ElectionParticipationRecord(
+            id=uuid.uuid4(),
+            voter_registration_number="12345678",
+            county="FULTON",
+            election_date=date(2024, 11, 5),
+            election_type="GENERAL ELECTION",
+            normalized_election_type="general",
+            absentee=False,
+            provisional=False,
+            supplemental=False,
+        )
+        data = record.model_dump(mode="json")
+        assert data["voter_id"] is None
 
     def test_no_created_at(self) -> None:
         """ElectionParticipationRecord does not include created_at."""

@@ -674,6 +674,29 @@ async def resolve_election_ids(
     return lookup
 
 
+async def lookup_voter_ids(
+    session: AsyncSession,
+    registration_numbers: list[str],
+) -> dict[str, uuid.UUID]:
+    """Batch-resolve voter registration numbers to voter UUIDs.
+
+    Args:
+        session: Database session.
+        registration_numbers: Voter registration numbers to look up.
+
+    Returns:
+        Mapping from voter_registration_number to Voter.id.
+    """
+    if not registration_numbers:
+        return {}
+
+    unique_nums = list(set(registration_numbers))
+    result = await session.execute(
+        select(Voter.voter_registration_number, Voter.id).where(Voter.voter_registration_number.in_(unique_nums))
+    )
+    return dict(result.all())
+
+
 async def _build_election_match_conditions(
     session: AsyncSession,
     election: Election,

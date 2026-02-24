@@ -129,6 +129,17 @@ class TestElectionParticipationRecord:
         """Schema has from_attributes enabled."""
         assert ElectionParticipationRecord.model_config.get("from_attributes") is True
 
+    def test_voter_id_defaults_to_none(self) -> None:
+        """voter_id defaults to None when not provided."""
+        record = self._make_record()
+        assert record.voter_id is None
+
+    def test_voter_id_accepts_uuid(self) -> None:
+        """voter_id accepts a UUID value."""
+        vid = uuid4()
+        record = self._make_record(voter_id=vid)
+        assert record.voter_id == vid
+
     def test_optional_fields_default_none(self) -> None:
         """Optional fields default to None."""
         record = self._make_record()

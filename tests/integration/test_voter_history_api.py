@@ -464,12 +464,21 @@ class TestListElectionParticipants:
 
     @pytest.mark.asyncio
     async def test_returns_participants(self, analyst_client: AsyncClient) -> None:
-        """Returns paginated list of participants."""
+        """Returns paginated list of participants with voter_id."""
+        voter_id = uuid.uuid4()
         records = [_make_voter_history(), _make_voter_history()]
-        with patch(
-            "voter_api.services.voter_history_service.list_election_participants",
-            new_callable=AsyncMock,
-            return_value=(records, 2),
+        voter_id_map = {records[0].voter_registration_number: voter_id}
+        with (
+            patch(
+                "voter_api.services.voter_history_service.list_election_participants",
+                new_callable=AsyncMock,
+                return_value=(records, 2),
+            ),
+            patch(
+                "voter_api.services.voter_history_service.lookup_voter_ids",
+                new_callable=AsyncMock,
+                return_value=voter_id_map,
+            ),
         ):
             eid = uuid.uuid4()
             resp = await analyst_client.get(f"/api/v1/elections/{eid}/participation")
@@ -478,6 +487,7 @@ class TestListElectionParticipants:
         data = resp.json()
         assert len(data["items"]) == 2
         assert data["pagination"]["total"] == 2
+        assert data["items"][0]["voter_id"] == str(voter_id)
 
     @pytest.mark.asyncio
     async def test_404_for_unknown_election(self, analyst_client: AsyncClient) -> None:
@@ -494,13 +504,43 @@ class TestListElectionParticipants:
         assert "Election not found" in resp.json()["detail"]
 
     @pytest.mark.asyncio
+    async def test_voter_id_null_when_no_voter(self, analyst_client: AsyncClient) -> None:
+        """voter_id is null when no matching voter record exists."""
+        records = [_make_voter_history()]
+        with (
+            patch(
+                "voter_api.services.voter_history_service.list_election_participants",
+                new_callable=AsyncMock,
+                return_value=(records, 1),
+            ),
+            patch(
+                "voter_api.services.voter_history_service.lookup_voter_ids",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
+        ):
+            eid = uuid.uuid4()
+            resp = await analyst_client.get(f"/api/v1/elections/{eid}/participation")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["items"][0]["voter_id"] is None
+
+    @pytest.mark.asyncio
     async def test_filter_by_county(self, analyst_client: AsyncClient) -> None:
         """County filter is forwarded to service."""
-        with patch(
-            "voter_api.services.voter_history_service.list_election_participants",
-            new_callable=AsyncMock,
-            return_value=([], 0),
-        ) as mock_svc:
+        with (
+            patch(
+                "voter_api.services.voter_history_service.list_election_participants",
+                new_callable=AsyncMock,
+                return_value=([], 0),
+            ) as mock_svc,
+            patch(
+                "voter_api.services.voter_history_service.lookup_voter_ids",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
+        ):
             eid = uuid.uuid4()
             await analyst_client.get(f"/api/v1/elections/{eid}/participation?county=FULTON")
 
@@ -510,11 +550,18 @@ class TestListElectionParticipants:
     @pytest.mark.asyncio
     async def test_filter_by_absentee(self, analyst_client: AsyncClient) -> None:
         """Boolean absentee filter is forwarded."""
-        with patch(
-            "voter_api.services.voter_history_service.list_election_participants",
-            new_callable=AsyncMock,
-            return_value=([], 0),
-        ) as mock_svc:
+        with (
+            patch(
+                "voter_api.services.voter_history_service.list_election_participants",
+                new_callable=AsyncMock,
+                return_value=([], 0),
+            ) as mock_svc,
+            patch(
+                "voter_api.services.voter_history_service.lookup_voter_ids",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
+        ):
             eid = uuid.uuid4()
             await analyst_client.get(f"/api/v1/elections/{eid}/participation?absentee=true")
 
@@ -524,11 +571,18 @@ class TestListElectionParticipants:
     @pytest.mark.asyncio
     async def test_pagination(self, analyst_client: AsyncClient) -> None:
         """Pagination params are forwarded."""
-        with patch(
-            "voter_api.services.voter_history_service.list_election_participants",
-            new_callable=AsyncMock,
-            return_value=([], 0),
-        ) as mock_svc:
+        with (
+            patch(
+                "voter_api.services.voter_history_service.list_election_participants",
+                new_callable=AsyncMock,
+                return_value=([], 0),
+            ) as mock_svc,
+            patch(
+                "voter_api.services.voter_history_service.lookup_voter_ids",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
+        ):
             eid = uuid.uuid4()
             await analyst_client.get(f"/api/v1/elections/{eid}/participation?page=2&page_size=50")
 
