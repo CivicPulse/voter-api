@@ -108,17 +108,29 @@ async def get_filter_options(
     session: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_user),
 ) -> VoterFilterOptions:
-    """Return distinct values for each voter search filter field.
+    """Return distinct values for voter search filter dropdowns.
 
     Queries the database for all non-null distinct values currently present in
-    the voters table. Use this endpoint to populate dropdown/select components
-    in search UIs. When a county is specified, also returns county-scoped
-    precincts, commission districts, and school board districts.
+    the voters table.  Use this endpoint to populate dropdown/select components
+    in search UIs.
 
-    Cascading filters: When county-scoped params (county_precinct,
-    county_commission_district, school_board_district) are provided alongside
-    county, each narrows the *other* county-scoped lists but not its own,
+    Cascading filters: when county-scoped params are provided alongside
+    ``county``, each narrows the *other* county-scoped lists but not its own,
     enabling dependent dropdown UIs.
+
+    Args:
+        county: County name used to scope county-level filter options.
+        county_precinct: Precinct value that narrows other county-scoped lists.
+        county_commission_district: Commission district that narrows other
+            county-scoped lists.
+        school_board_district: School board district that narrows other
+            county-scoped lists.
+        session: Async database session.
+        _current_user: Authenticated user dependency.
+
+    Returns:
+        VoterFilterOptions with base filters always present.  County-scoped
+        fields are included only when ``county`` is provided.
     """
     options = await get_voter_filter_options(
         session,
