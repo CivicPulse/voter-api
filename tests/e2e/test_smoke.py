@@ -903,9 +903,9 @@ class TestVoterHistory:
         resp = await viewer_client.get(_url(f"/elections/{ELECTION_ID}/participation"))
         assert resp.status_code == 403
 
-    async def test_election_participation_stats_accessible_to_viewer(self, viewer_client: httpx.AsyncClient) -> None:
-        """Stats endpoint requires only authentication — viewer role is sufficient."""
-        resp = await viewer_client.get(_url(f"/elections/{ELECTION_ID}/participation/stats"))
+    async def test_election_participation_stats_is_public(self, client: httpx.AsyncClient) -> None:
+        """Stats endpoint is public — no authentication required."""
+        resp = await client.get(_url(f"/elections/{ELECTION_ID}/participation/stats"))
         assert resp.status_code == 200
         body = resp.json()
         assert "election_id" in body
