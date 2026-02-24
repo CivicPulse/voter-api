@@ -435,7 +435,7 @@ class TestGetParticipationStats:
             county_name_override="Fulton",
         )
         assert stats.total_eligible_voters == 1000
-        assert stats.turnout_percentage == 50.0
+        assert stats.turnout_percentage == pytest.approx(50.0)
 
     @pytest.mark.asyncio
     async def test_eligible_voters_none_for_unmapped_boundary_type(self) -> None:

@@ -1,7 +1,7 @@
 """Delete all elections auto-created by voter history import.
 
-Revision ID: 027
-Revises: 026
+Revision ID: 031
+Revises: 030
 Create Date: 2026-02-24
 
 The voter history import previously auto-created election records for each
@@ -18,8 +18,8 @@ voter_history-created elections should not have result data.
 
 from alembic import op
 
-revision = "027"
-down_revision = "026"
+revision = "031"
+down_revision = "030"
 branch_labels = None
 depends_on = None
 

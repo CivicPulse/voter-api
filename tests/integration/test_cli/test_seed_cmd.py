@@ -344,11 +344,11 @@ class TestSeedFullBootstrap:
         ) -> None:
             order_log.append("voter")
 
-        async def mock_seed_elections(source_url: str) -> int:
+        def mock_seed_elections(source_url: str) -> int:
             order_log.append("election")
             return 0
 
-        async def mock_voter_history_batch(
+        def mock_voter_history_batch(
             file_paths: list[Path],
             batch_size: int,
             seed_result: object,

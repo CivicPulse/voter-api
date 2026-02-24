@@ -1,7 +1,7 @@
 """Add district resolution columns to elections and election_id FK to voter_history.
 
-Revision ID: 028
-Revises: 027
+Revision ID: 032
+Revises: 031
 Create Date: 2026-02-24
 
 Adds structured district fields to elections (parsed from free-text `district`
@@ -17,8 +17,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
-revision = "028"
-down_revision = "027"
+revision = "032"
+down_revision = "031"
 branch_labels = None
 depends_on = None
 

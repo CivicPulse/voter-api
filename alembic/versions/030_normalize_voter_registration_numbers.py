@@ -1,7 +1,7 @@
 """Normalize voter_registration_number: strip leading zeros.
 
-Revision ID: 026
-Revises: 025
+Revision ID: 030
+Revises: 029
 Create Date: 2026-02-24
 
 The voter_history table stores registration numbers with leading zeros
@@ -17,8 +17,8 @@ election_type)``, duplicate rows are deleted before the UPDATE.
 
 from alembic import op
 
-revision: str = "026"
-down_revision: str | None = "025"
+revision: str = "030"
+down_revision: str | None = "029"
 branch_labels: str | None = None
 depends_on: str | None = None
 

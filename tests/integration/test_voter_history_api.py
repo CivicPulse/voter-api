@@ -652,7 +652,7 @@ class TestGetParticipationStats:
         data = resp.json()
         assert data["total_participants"] == 200
         assert data["total_eligible_voters"] == 1000
-        assert data["turnout_percentage"] == 20.0
+        assert data["turnout_percentage"] == pytest.approx(20.0)
         assert len(data["by_county"]) == 2
         assert data["by_county"][0]["county"] == "FULTON"
         assert data["by_county"][0]["count"] == 120
