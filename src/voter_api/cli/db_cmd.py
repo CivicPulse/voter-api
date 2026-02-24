@@ -3,7 +3,10 @@
 import typer
 from loguru import logger
 
+from voter_api.cli.rebuild_cmd import rebuild
+
 db_app = typer.Typer()
+db_app.command()(rebuild)
 
 
 @db_app.command()
