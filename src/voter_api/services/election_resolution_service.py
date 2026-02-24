@@ -344,4 +344,4 @@ async def _update_vh_by_district(
             "district_identifier": district_identifier,
         },
     )
-    return cursor.rowcount  # type: ignore[attr-defined]
+    return cursor.rowcount  # type: ignore[attr-defined, no-any-return]
