@@ -16,6 +16,7 @@ from voter_api.schemas.voter_history import (
     PaginatedVoterHistoryResponse,
     ParticipationStatsResponse,
     ParticipationSummary,
+    PrecinctBreakdown,
     VoterHistoryRecord,
 )
 
@@ -210,6 +211,10 @@ class TestParticipationStatsResponseContract:
                 BallotStyleBreakdown(ballot_style="STD", count=400),
                 BallotStyleBreakdown(ballot_style="ABSENTEE", count=100),
             ],
+            by_precinct=[
+                PrecinctBreakdown(precinct="FU01", precinct_name="FULTON 1", count=300),
+                PrecinctBreakdown(precinct="DK01", precinct_name=None, count=200),
+            ],
         )
         data = resp.model_dump(mode="json")
         assert isinstance(data["election_id"], str)
@@ -218,6 +223,10 @@ class TestParticipationStatsResponseContract:
         assert data["by_county"][0]["county"] == "FULTON"
         assert data["by_county"][0]["count"] == 300
         assert len(data["by_ballot_style"]) == 2
+        assert len(data["by_precinct"]) == 2
+        assert data["by_precinct"][0]["precinct"] == "FU01"
+        assert data["by_precinct"][0]["precinct_name"] == "FULTON 1"
+        assert data["by_precinct"][1]["precinct_name"] is None
 
     def test_empty_breakdowns(self) -> None:
         """Empty breakdowns default to empty lists."""
@@ -228,6 +237,7 @@ class TestParticipationStatsResponseContract:
         data = resp.model_dump(mode="json")
         assert data["by_county"] == []
         assert data["by_ballot_style"] == []
+        assert data["by_precinct"] == []
 
 
 class TestParticipationSummaryContract:

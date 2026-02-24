@@ -257,6 +257,9 @@ class TestGetParticipationStats:
         # 5: by ballot style
         style_result = MagicMock()
         style_result.all.return_value = [("STD", 80), ("ABSENTEE", 20)]
+        # 6: by precinct
+        precinct_result = MagicMock()
+        precinct_result.all.return_value = [("HA2", "HAZZARD 2", 35), ("HA1", "HAZZARD 1", 25)]
 
         session.execute.side_effect = [
             election_result,
@@ -264,6 +267,7 @@ class TestGetParticipationStats:
             total_result,
             county_result,
             style_result,
+            precinct_result,
         ]
 
         stats = await get_participation_stats(session, eid)
@@ -274,6 +278,10 @@ class TestGetParticipationStats:
         assert stats.by_county[0].county == "FULTON"
         assert stats.by_county[0].count == 60
         assert len(stats.by_ballot_style) == 2
+        assert len(stats.by_precinct) == 2
+        assert stats.by_precinct[0].precinct == "HA2"
+        assert stats.by_precinct[0].precinct_name == "HAZZARD 2"
+        assert stats.by_precinct[0].count == 35
 
     @pytest.mark.asyncio
     async def test_election_not_found_raises(self) -> None:
@@ -302,6 +310,8 @@ class TestGetParticipationStats:
         county_result.all.return_value = []
         style_result = MagicMock()
         style_result.all.return_value = []
+        precinct_result = MagicMock()
+        precinct_result.all.return_value = []
 
         session.execute.side_effect = [
             election_result,
@@ -309,6 +319,7 @@ class TestGetParticipationStats:
             total_result,
             county_result,
             style_result,
+            precinct_result,
         ]
 
         stats = await get_participation_stats(session, election.id)
@@ -316,6 +327,7 @@ class TestGetParticipationStats:
         assert stats.total_participants == 0
         assert stats.by_county == []
         assert stats.by_ballot_style == []
+        assert stats.by_precinct == []
 
 
 # ---------------------------------------------------------------------------

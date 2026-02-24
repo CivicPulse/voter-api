@@ -25,6 +25,7 @@ from voter_api.schemas.voter_history import (
     CountyBreakdown,
     ParticipationStatsResponse,
     ParticipationSummary,
+    PrecinctBreakdown,
 )
 
 # ---------------------------------------------------------------------------
@@ -572,6 +573,10 @@ class TestGetParticipationStats:
             by_ballot_style=[
                 BallotStyleBreakdown(ballot_style="STD", count=200),
             ],
+            by_precinct=[
+                PrecinctBreakdown(precinct="FU01", precinct_name="FULTON 1", count=120),
+                PrecinctBreakdown(precinct="DK01", precinct_name="DEKALB 1", count=80),
+            ],
         )
         with patch(
             "voter_api.services.voter_history_service.get_participation_stats",
@@ -587,6 +592,10 @@ class TestGetParticipationStats:
         assert data["by_county"][0]["county"] == "FULTON"
         assert data["by_county"][0]["count"] == 120
         assert len(data["by_ballot_style"]) == 1
+        assert len(data["by_precinct"]) == 2
+        assert data["by_precinct"][0]["precinct"] == "FU01"
+        assert data["by_precinct"][0]["precinct_name"] == "FULTON 1"
+        assert data["by_precinct"][0]["count"] == 120
 
     @pytest.mark.asyncio
     async def test_404_for_unknown_election(self, analyst_client: AsyncClient) -> None:
@@ -634,6 +643,7 @@ class TestGetParticipationStats:
             total_participants=0,
             by_county=[],
             by_ballot_style=[],
+            by_precinct=[],
         )
         with patch(
             "voter_api.services.voter_history_service.get_participation_stats",
@@ -646,3 +656,4 @@ class TestGetParticipationStats:
         assert data["total_participants"] == 0
         assert data["by_county"] == []
         assert data["by_ballot_style"] == []
+        assert data["by_precinct"] == []

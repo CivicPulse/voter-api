@@ -18,12 +18,14 @@ from voter_api.lib.voter_history import (
 )
 from voter_api.models.election import Election
 from voter_api.models.import_job import ImportJob
+from voter_api.models.voter import Voter
 from voter_api.models.voter_history import VoterHistory
 from voter_api.schemas.voter_history import (
     BallotStyleBreakdown,
     CountyBreakdown,
     ParticipationStatsResponse,
     ParticipationSummary,
+    PrecinctBreakdown,
 )
 
 # Sub-batch size for voter history upsert: 11 columns * 2000 rows = 22,000 params (under 32,767 limit)
@@ -578,11 +580,28 @@ async def get_participation_stats(
     )
     by_ballot_style = [BallotStyleBreakdown(ballot_style=row[0], count=row[1]) for row in style_result.all()]
 
+    # By precinct (join to voters table for county_precinct)
+    precinct_result = await session.execute(
+        select(
+            Voter.county_precinct,
+            Voter.county_precinct_description,
+            func.count(VoterHistory.id),
+        )
+        .join(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+        .where(*base_where, Voter.county_precinct.is_not(None))
+        .group_by(Voter.county_precinct, Voter.county_precinct_description)
+        .order_by(func.count(VoterHistory.id).desc())
+    )
+    by_precinct = [
+        PrecinctBreakdown(precinct=row[0], precinct_name=row[1], count=row[2]) for row in precinct_result.all()
+    ]
+
     return ParticipationStatsResponse(
         election_id=election_id,
         total_participants=total_participants,
         by_county=by_county,
         by_ballot_style=by_ballot_style,
+        by_precinct=by_precinct,
     )
 
 
