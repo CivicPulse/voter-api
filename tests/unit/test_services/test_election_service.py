@@ -61,6 +61,10 @@ def _mock_election(**overrides: object) -> MagicMock:
     election.created_at = datetime(2026, 2, 1, tzinfo=UTC)
     election.updated_at = datetime(2026, 2, 1, tzinfo=UTC)
     election.result = None
+    election.boundary_id = None
+    election.district_type = None
+    election.district_identifier = None
+    election.district_party = None
     for key, value in overrides.items():
         setattr(election, key, value)
     return election
@@ -209,7 +213,12 @@ class TestCreateElection:
     """Tests for create_election()."""
 
     @pytest.mark.asyncio
-    async def test_creates_new_election(self):
+    @patch(
+        "voter_api.services.election_resolution_service.link_election_to_boundary",
+        new_callable=AsyncMock,
+        return_value=True,
+    )
+    async def test_creates_new_election(self, mock_link):
         # First execute: duplicate check — no existing election
         duplicate_check_mock = MagicMock()
         duplicate_check_mock.scalar_one_or_none.return_value = None
@@ -254,7 +263,12 @@ class TestCreateElection:
             await create_election(session, request)
 
     @pytest.mark.asyncio
-    async def test_creates_election_with_ballot_item_id(self):
+    @patch(
+        "voter_api.services.election_resolution_service.link_election_to_boundary",
+        new_callable=AsyncMock,
+        return_value=True,
+    )
+    async def test_creates_election_with_ballot_item_id(self, mock_link):
         """create_election sets ballot_item_id when provided."""
         session = _mock_session_with_scalar(None)
 
@@ -291,7 +305,12 @@ class TestCreateElection:
             await create_election(session, request)
 
     @pytest.mark.asyncio
-    async def test_creates_election_with_explicit_status(self):
+    @patch(
+        "voter_api.services.election_resolution_service.link_election_to_boundary",
+        new_callable=AsyncMock,
+        return_value=True,
+    )
+    async def test_creates_election_with_explicit_status(self, mock_link):
         """create_election passes status to the Election constructor."""
         session = _mock_session_with_scalar(None)
 

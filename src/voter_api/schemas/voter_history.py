@@ -12,6 +12,7 @@ class VoterHistoryRecord(BaseModel):
     """A single voter participation record."""
 
     id: UUID
+    election_id: UUID | None = None
     voter_registration_number: str
     county: str
     election_date: date

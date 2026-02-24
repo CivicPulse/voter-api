@@ -20,6 +20,7 @@ from voter_api.services.voter_history_service import (
     get_participation_summary,
     get_voter_history,
     list_election_participants,
+    resolve_election_ids,
 )
 
 # ---------------------------------------------------------------------------
@@ -401,9 +402,13 @@ class TestBuildElectionMatchConditions:
             election_type="special",
         )
         session = AsyncMock()
-        count_result = MagicMock()
-        count_result.scalar_one.return_value = 1
-        session.execute.return_value = count_result
+        # First call: check resolved count (0 = no resolved records)
+        resolved_count_result = MagicMock()
+        resolved_count_result.scalar_one.return_value = 0
+        # Second call: election count on date (1 = single election)
+        date_count_result = MagicMock()
+        date_count_result.scalar_one.return_value = 1
+        session.execute = AsyncMock(side_effect=[resolved_count_result, date_count_result])
 
         conditions = await _build_election_match_conditions(session, election)
 
@@ -418,14 +423,36 @@ class TestBuildElectionMatchConditions:
             election_type="primary",
         )
         session = AsyncMock()
-        count_result = MagicMock()
-        count_result.scalar_one.return_value = 2
-        session.execute.return_value = count_result
+        # First call: check resolved count (0 = no resolved records)
+        resolved_count_result = MagicMock()
+        resolved_count_result.scalar_one.return_value = 0
+        # Second call: election count on date (2 = multiple elections)
+        date_count_result = MagicMock()
+        date_count_result.scalar_one.return_value = 2
+        session.execute = AsyncMock(side_effect=[resolved_count_result, date_count_result])
 
         conditions = await _build_election_match_conditions(session, election)
 
         # Both date and type conditions
         assert len(conditions) == 2
+
+    @pytest.mark.asyncio
+    async def test_resolved_election_uses_election_id(self) -> None:
+        """When resolved records exist, uses election_id match instead of date-based."""
+        election = _mock_election(
+            election_date=date(2026, 2, 17),
+            election_type="special",
+        )
+        session = AsyncMock()
+        # First call: check resolved count (>0 = records already resolved)
+        resolved_count_result = MagicMock()
+        resolved_count_result.scalar_one.return_value = 5
+        session.execute = AsyncMock(return_value=resolved_count_result)
+
+        conditions = await _build_election_match_conditions(session, election)
+
+        # Single condition using election_id
+        assert len(conditions) == 1
 
     @pytest.mark.asyncio
     async def test_participants_with_type_mismatch_single_election(self) -> None:
@@ -445,13 +472,16 @@ class TestBuildElectionMatchConditions:
         # 1: election lookup
         election_result = MagicMock()
         election_result.scalar_one_or_none.return_value = election
-        # 2: _build_election_match_conditions COUNT — single election
+        # 2: _build_election_match_conditions resolved count (0 = not resolved)
+        resolved_count_result = MagicMock()
+        resolved_count_result.scalar_one.return_value = 0
+        # 3: _build_election_match_conditions election COUNT — single election
         match_count_result = MagicMock()
         match_count_result.scalar_one.return_value = 1
-        # 3: count query — finds records via date-only match
+        # 4: count query — finds records via date-only match
         count_result = MagicMock()
         count_result.scalar_one.return_value = 1
-        # 4: records query
+        # 5: records query
         records_result = MagicMock()
         records_mock = MagicMock()
         records_mock.all.return_value = records
@@ -459,6 +489,7 @@ class TestBuildElectionMatchConditions:
 
         session.execute.side_effect = [
             election_result,
+            resolved_count_result,
             match_count_result,
             count_result,
             records_result,
@@ -468,3 +499,131 @@ class TestBuildElectionMatchConditions:
 
         assert total == 1
         assert len(result_records) == 1
+
+
+# ---------------------------------------------------------------------------
+# resolve_election_ids
+# ---------------------------------------------------------------------------
+
+
+class TestResolveElectionIds:
+    """Tests for the resolve_election_ids lookup function."""
+
+    @pytest.mark.asyncio
+    async def test_empty_records_returns_empty_map(self) -> None:
+        """Empty input returns empty dict without querying."""
+        session = AsyncMock()
+        result = await resolve_election_ids(session, [])
+        assert result == {}
+        session.execute.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_single_election_on_date(self) -> None:
+        """When one election exists on a date, all records on that date map to it."""
+        election_id = uuid.uuid4()
+        records = [
+            _mock_voter_history(
+                election_date=date(2024, 11, 5),
+                normalized_election_type="general",
+            ),
+            _mock_voter_history(
+                election_date=date(2024, 11, 5),
+                normalized_election_type="runoff",
+            ),
+        ]
+
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.all.return_value = [(election_id, date(2024, 11, 5), "general")]
+        session.execute.return_value = query_result
+
+        lookup = await resolve_election_ids(session, records)
+
+        assert lookup[(date(2024, 11, 5), "general")] == election_id
+        assert lookup[(date(2024, 11, 5), "runoff")] == election_id
+
+    @pytest.mark.asyncio
+    async def test_multiple_elections_on_date(self) -> None:
+        """When multiple elections share a date, matches by (date, election_type)."""
+        eid_special = uuid.uuid4()
+        eid_runoff = uuid.uuid4()
+        records = [
+            _mock_voter_history(
+                election_date=date(2026, 2, 17),
+                normalized_election_type="special",
+            ),
+            _mock_voter_history(
+                election_date=date(2026, 2, 17),
+                normalized_election_type="runoff",
+            ),
+        ]
+
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.all.return_value = [
+            (eid_special, date(2026, 2, 17), "special"),
+            (eid_runoff, date(2026, 2, 17), "runoff"),
+        ]
+        session.execute.return_value = query_result
+
+        lookup = await resolve_election_ids(session, records)
+
+        assert lookup[(date(2026, 2, 17), "special")] == eid_special
+        assert lookup[(date(2026, 2, 17), "runoff")] == eid_runoff
+
+    @pytest.mark.asyncio
+    async def test_no_matching_election(self) -> None:
+        """When no election exists for a date, lookup is empty for that date."""
+        records = [
+            _mock_voter_history(
+                election_date=date(2020, 1, 1),
+                normalized_election_type="general",
+            ),
+        ]
+
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.all.return_value = []
+        session.execute.return_value = query_result
+
+        lookup = await resolve_election_ids(session, records)
+
+        assert (date(2020, 1, 1), "general") not in lookup
+
+    @pytest.mark.asyncio
+    async def test_mixed_dates(self) -> None:
+        """Mix of single-election and multi-election dates resolves correctly."""
+        eid_general = uuid.uuid4()
+        eid_special = uuid.uuid4()
+        eid_runoff = uuid.uuid4()
+        records = [
+            _mock_voter_history(
+                election_date=date(2024, 11, 5),
+                normalized_election_type="general",
+            ),
+            _mock_voter_history(
+                election_date=date(2026, 2, 17),
+                normalized_election_type="special",
+            ),
+            _mock_voter_history(
+                election_date=date(2026, 2, 17),
+                normalized_election_type="runoff",
+            ),
+        ]
+
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.all.return_value = [
+            (eid_general, date(2024, 11, 5), "general"),
+            (eid_special, date(2026, 2, 17), "special"),
+            (eid_runoff, date(2026, 2, 17), "runoff"),
+        ]
+        session.execute.return_value = query_result
+
+        lookup = await resolve_election_ids(session, records)
+
+        # Single election on 2024-11-05 → date-only match
+        assert lookup[(date(2024, 11, 5), "general")] == eid_general
+        # Multiple elections on 2026-02-17 → type-specific match
+        assert lookup[(date(2026, 2, 17), "special")] == eid_special
+        assert lookup[(date(2026, 2, 17), "runoff")] == eid_runoff

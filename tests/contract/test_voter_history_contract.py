@@ -62,6 +62,26 @@ class TestVoterHistoryRecordContract:
         data = record.model_dump(mode="json")
         assert data["party"] is None
         assert data["ballot_style"] is None
+        assert data["election_id"] is None
+
+    def test_election_id_serializes_as_uuid_string(self) -> None:
+        """election_id serializes as a UUID string when set."""
+        eid = uuid.uuid4()
+        record = VoterHistoryRecord(
+            id=uuid.uuid4(),
+            election_id=eid,
+            voter_registration_number="12345678",
+            county="FULTON",
+            election_date=date(2024, 11, 5),
+            election_type="GENERAL ELECTION",
+            normalized_election_type="general",
+            absentee=False,
+            provisional=False,
+            supplemental=False,
+            created_at=datetime(2025, 1, 1, 0, 0, 0, tzinfo=UTC),
+        )
+        data = record.model_dump(mode="json")
+        assert data["election_id"] == str(eid)
 
 
 class TestPaginatedVoterHistoryResponseContract:

@@ -60,6 +60,10 @@ _DROPPABLE_VH_INDEXES: list[dict[str, str]] = [
         "name": "idx_voter_history_date_type",
         "create": "CREATE INDEX idx_voter_history_date_type ON voter_history (election_date, normalized_election_type)",
     },
+    {
+        "name": "idx_voter_history_election_id",
+        "create": "CREATE INDEX idx_voter_history_election_id ON voter_history (election_id)",
+    },
 ]
 
 
@@ -657,10 +661,13 @@ async def _build_election_match_conditions(
 ) -> list:
     """Build WHERE conditions to match voter_history records to an election.
 
-    When only one election exists on a given date, matches by date alone
-    (handles type mismatches like "special" vs "runoff"). When multiple
-    elections share the same date, matches by (date, normalized_election_type)
-    for disambiguation.
+    Primary match: uses persisted election_id FK when records have been
+    resolved via the election resolution service.
+
+    Fallback: when no resolved records exist for this election, falls back
+    to date-based matching. When only one election exists on a given date,
+    matches by date alone. When multiple elections share the same date,
+    matches by (date, normalized_election_type) for disambiguation.
 
     Args:
         session: Database session.
@@ -669,6 +676,16 @@ async def _build_election_match_conditions(
     Returns:
         List of SQLAlchemy WHERE clause conditions.
     """
+    # Check if any voter_history records have been resolved for this election
+    resolved_count = await session.execute(
+        select(func.count(VoterHistory.id)).where(
+            VoterHistory.election_id == election.id,
+        )
+    )
+    if resolved_count.scalar_one() > 0:
+        return [VoterHistory.election_id == election.id]
+
+    # Fallback to date-based heuristic for unresolved records
     count_result = await session.execute(
         select(func.count(Election.id)).where(
             Election.election_date == election.election_date,

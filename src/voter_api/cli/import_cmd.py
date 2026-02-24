@@ -2,6 +2,7 @@
 
 import asyncio
 import tempfile
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -538,3 +539,56 @@ def _print_summary(results: list) -> None:
     typer.echo("-" * 70)
     typer.echo(f"  Total: {ok_count} succeeded, {fail_count} failed, {total_boundaries} boundaries imported")
     typer.echo("=" * 70)
+
+
+@import_app.command("resolve-elections")
+def resolve_elections_cmd(
+    date_str: str | None = typer.Option(None, "--date", help="Resolve only this date (YYYY-MM-DD)"),  # noqa: B008
+    force: bool = typer.Option(False, "--force", help="Re-resolve records that already have election_id"),  # noqa: B008
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be resolved without making changes"),  # noqa: B008
+) -> None:
+    """Resolve voter_history.election_id by linking records to elections.
+
+    Two operations:
+    1. Backfill election structured fields + boundary_id (for any elections missing them).
+    2. Resolve voter_history.election_id using three-tier matching.
+    """
+    election_date: date | None = None
+    if date_str:
+        try:
+            election_date = date.fromisoformat(date_str)
+        except ValueError:
+            typer.echo(f"Invalid date format: {date_str}. Use YYYY-MM-DD.", err=True)
+            raise typer.Exit(code=1) from None
+
+    asyncio.run(_resolve_elections(election_date, force, dry_run))
+
+
+async def _resolve_elections(election_date: date | None, force: bool, dry_run: bool) -> None:
+    """Async implementation of resolve-elections command."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.election_resolution_service import resolve_voter_history_elections
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            if dry_run:
+                typer.echo("DRY RUN — no changes will be made")
+                # Still run resolution to see counts, then rollback
+                result = await resolve_voter_history_elections(session, election_date=election_date, force=force)
+                await session.rollback()
+            else:
+                result = await resolve_voter_history_elections(session, election_date=election_date, force=force)
+
+            typer.echo("\nElection Resolution Results:")
+            typer.echo(f"  Elections backfilled:    {result.elections_backfilled}")
+            typer.echo(f"  Tier 1 (single-date):   {result.tier1_updated}")
+            typer.echo(f"  Tier 2 (district match): {result.tier2_updated}")
+            typer.echo(f"  Total VH updated:       {result.total_updated}")
+            typer.echo(f"  Unresolvable elections: {result.unresolvable}")
+    finally:
+        await dispose_engine()

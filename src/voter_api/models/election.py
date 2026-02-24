@@ -24,6 +24,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from voter_api.models.base import Base, TimestampMixin, UUIDMixin
+from voter_api.models.boundary import Boundary  # noqa: TC001
 
 
 class Election(Base, UUIDMixin, TimestampMixin):
@@ -42,6 +43,16 @@ class Election(Base, UUIDMixin, TimestampMixin):
     last_refreshed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     refresh_interval_seconds: Mapped[int] = mapped_column(Integer, nullable=False, server_default="120")
 
+    # District resolution fields (parsed from free-text `district` column)
+    boundary_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("boundaries.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    district_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    district_identifier: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    district_party: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
     # Relationships
     result: Mapped["ElectionResult | None"] = relationship(
         back_populates="election", uselist=False, cascade="all, delete-orphan"
@@ -49,6 +60,7 @@ class Election(Base, UUIDMixin, TimestampMixin):
     county_results: Mapped[list["ElectionCountyResult"]] = relationship(
         back_populates="election", cascade="all, delete-orphan"
     )
+    boundary: Mapped["Boundary | None"] = relationship(foreign_keys=[boundary_id])
 
     __table_args__ = (
         UniqueConstraint("name", "election_date", name="uq_election_name_date"),
@@ -58,6 +70,8 @@ class Election(Base, UUIDMixin, TimestampMixin):
         Index("idx_elections_election_date", "election_date"),
         Index("idx_elections_ballot_item_id", "ballot_item_id"),
         Index("idx_elections_creation_method", "creation_method"),
+        Index("idx_elections_boundary_id", "boundary_id"),
+        Index("idx_elections_district_type", "district_type"),
         Index(
             "uq_election_feed_ballot_item",
             "data_source_url",

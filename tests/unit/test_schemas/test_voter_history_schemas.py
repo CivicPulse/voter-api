@@ -51,6 +51,17 @@ class TestVoterHistoryRecord:
         assert record.provisional is False
         assert record.supplemental is False
 
+    def test_election_id_defaults_to_none(self) -> None:
+        """election_id defaults to None when not provided."""
+        record = self._make_record()
+        assert record.election_id is None
+
+    def test_election_id_accepts_uuid(self) -> None:
+        """election_id accepts a UUID value."""
+        eid = uuid4()
+        record = self._make_record(election_id=eid)
+        assert record.election_id == eid
+
     def test_optional_fields_default_none(self) -> None:
         """Optional fields default to None."""
         record = self._make_record()
