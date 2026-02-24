@@ -323,7 +323,16 @@ async def _run_imports(
                     return
 
         # Elections from API (between boundaries and voters)
-        if not skip_elections and election_source:
+        should_seed_elections = (
+            not skip_elections
+            and bool(election_source)
+            and (
+                category_filters is None
+                or FileCategory.VOTER in category_filters
+                or FileCategory.VOTER_HISTORY in category_filters
+            )
+        )
+        if should_seed_elections:
             typer.echo("\n--- Seeding elections from API ---")
             try:
                 count = await _seed_elections_from_api(election_source)

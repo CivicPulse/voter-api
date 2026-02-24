@@ -61,7 +61,7 @@ async def _seed_preview_user(database_url: str, schema: str | None) -> None:
             request = UserCreateRequest(
                 username=settings.preview_api_user,
                 email=settings.preview_api_email,
-                password=settings.preview_api_password,
+                password=settings.preview_api_password.get_secret_value(),
                 role="admin",
             )
             user = await create_user(session, request)

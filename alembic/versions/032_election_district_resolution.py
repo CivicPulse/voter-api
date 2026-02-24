@@ -42,7 +42,7 @@ _BOUNDARY_TYPE_MAP = {
 }
 
 
-def _parse_district(district_text):
+def _parse_district(district_text: str) -> tuple[str | None, str | None, str | None]:
     """Parse district text -> (district_type, identifier, party)."""
     text = district_text
     if "/" in text:
@@ -108,6 +108,8 @@ def upgrade() -> None:
     elections = conn.execute(sa.text("SELECT id, district FROM elections")).fetchall()
 
     for election_id, district_text in elections:
+        if not district_text:
+            continue
         dtype, identifier, party = _parse_district(district_text)
         if dtype is None:
             continue

@@ -552,6 +552,12 @@ def resolve_elections_cmd(
     Two operations:
     1. Backfill election structured fields + boundary_id (for any elections missing them).
     2. Resolve voter_history.election_id using three-tier matching.
+
+    Args:
+        date_str: Optional date filter (YYYY-MM-DD). If provided, only resolves
+            records on that date.
+        force: If True, re-resolves records that already have election_id.
+        dry_run: If True, shows what would be resolved without committing changes.
     """
     election_date: date | None = None
     if date_str:

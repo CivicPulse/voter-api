@@ -222,3 +222,10 @@ class TestRegistrationNumberNormalization:
         f.write_text("County,Voter Registration #,Status,Last Name,First Name\nFulton,00100200,ACTIVE,SMITH,JOHN\n")
         chunks = list(parse_csv_chunks(f, batch_size=10))
         assert chunks[0].iloc[0]["voter_registration_number"] == "100200"
+
+    def test_empty_registration_number_becomes_none(self, tmp_path: Path) -> None:
+        """Empty registration number stays None/NaN instead of becoming '0'."""
+        f = tmp_path / "voters.csv"
+        f.write_text("County,Voter Registration #,Status,Last Name,First Name\nFulton,,ACTIVE,SMITH,JOHN\n")
+        chunks = list(parse_csv_chunks(f, batch_size=10))
+        assert pd.isna(chunks[0].iloc[0]["voter_registration_number"])

@@ -145,6 +145,7 @@ async def list_election_participants(
 )
 async def get_election_participation_stats(
     election_id: uuid.UUID,
+    current_user: Annotated[User, Depends(require_role("analyst", "admin"))],
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> ParticipationStatsResponse:
     """Get aggregate participation statistics for an election."""

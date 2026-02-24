@@ -163,3 +163,7 @@ class TestPadDistrictIdentifier:
 
     def test_already_padded(self) -> None:
         assert pad_district_identifier("018") == "018"
+
+    def test_overflow_not_truncated(self) -> None:
+        """Identifiers longer than width are returned as-is (no truncation)."""
+        assert pad_district_identifier("1234", width=3) == "1234"

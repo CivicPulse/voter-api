@@ -29,6 +29,7 @@ from voter_api.models.election import Election
 from voter_api.models.voter_history import VoterHistory
 
 if TYPE_CHECKING:
+    import uuid
     from datetime import date
 
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -72,7 +73,7 @@ async def backfill_election_district_fields(session: AsyncSession) -> int:
         if await link_election_to_boundary(session, election):
             updated += 1
 
-    await session.commit()
+    await session.flush()
     logger.info("Backfilled district fields on {} elections", updated)
     return updated
 
@@ -306,7 +307,7 @@ _ALLOWED_VOTER_COLUMNS = frozenset(DISTRICT_TYPE_TO_VOTER_COLUMN.values())
 async def _update_vh_by_district(
     session: AsyncSession,
     *,
-    election_id: object,
+    election_id: uuid.UUID,
     election_date: date,
     voter_column: str,
     district_identifier: str,

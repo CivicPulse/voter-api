@@ -10,6 +10,8 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
+from voter_api.lib.normalize import normalize_registration_number
+
 # GA SoS 53-column voter file mapping: expected header → model field name
 GA_SOS_COLUMN_MAP: dict[str, str] = {
     "County": "county",
@@ -271,16 +273,17 @@ def parse_csv_chunks(
         known_columns = [c for c in chunk.columns if c in GA_SOS_COLUMN_MAP.values()]
         chunk = chunk[known_columns]
 
+        # Replace empty strings with None before normalization so absent
+        # registration numbers stay as None rather than becoming "0".
+        chunk = chunk.replace("", None)
+
         # Normalize voter_registration_number via the canonical function
         # (voter_api.lib.normalize) so the format matches voter history
         # records after their own normalization.
-        from voter_api.lib.normalize import normalize_registration_number
-
         if "voter_registration_number" in chunk.columns:
             col = chunk["voter_registration_number"]
-            chunk["voter_registration_number"] = col.where(col.isna(), col.map(normalize_registration_number))
-
-        # Replace empty strings with NaN (pandas internal representation)
-        chunk = chunk.replace("", None)
+            chunk["voter_registration_number"] = col.map(
+                lambda v: normalize_registration_number(v) if pd.notna(v) else v
+            )
 
         yield chunk

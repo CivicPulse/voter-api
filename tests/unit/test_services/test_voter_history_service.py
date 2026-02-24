@@ -99,7 +99,6 @@ def _mock_election(**overrides) -> MagicMock:
 class TestGetVoterHistory:
     """Tests for get_voter_history query function."""
 
-    @pytest.mark.asyncio
     async def test_returns_records_and_count(self) -> None:
         """Returns matching records and total count."""
         records = [_mock_voter_history(), _mock_voter_history()]
@@ -111,7 +110,6 @@ class TestGetVoterHistory:
         assert len(result_records) == 2
         assert session.execute.await_count == 2
 
-    @pytest.mark.asyncio
     async def test_empty_result(self) -> None:
         """Empty result set returns zero count and empty list."""
         session = _mock_session_with_scalars([], scalar_one_value=0)
@@ -121,7 +119,6 @@ class TestGetVoterHistory:
         assert total == 0
         assert records == []
 
-    @pytest.mark.asyncio
     async def test_with_filters(self) -> None:
         """Filters are applied (session.execute is called with the right queries)."""
         session = _mock_session_with_scalars([], scalar_one_value=0)
@@ -139,7 +136,6 @@ class TestGetVoterHistory:
         # Two execute calls (count + records)
         assert session.execute.await_count == 2
 
-    @pytest.mark.asyncio
     async def test_pagination(self) -> None:
         """Pagination params are applied."""
         records = [_mock_voter_history()]
@@ -158,7 +154,6 @@ class TestGetVoterHistory:
 class TestListElectionParticipants:
     """Tests for list_election_participants query function."""
 
-    @pytest.mark.asyncio
     async def test_returns_participants(self) -> None:
         """Returns participants for a valid election."""
         election = _mock_election()
@@ -196,7 +191,6 @@ class TestListElectionParticipants:
         assert total == 1
         assert len(result_records) == 1
 
-    @pytest.mark.asyncio
     async def test_election_not_found_raises(self) -> None:
         """Raises ValueError when election does not exist."""
         session = AsyncMock()
@@ -207,7 +201,6 @@ class TestListElectionParticipants:
         with pytest.raises(ValueError, match="Election not found"):
             await list_election_participants(session, uuid.uuid4())
 
-    @pytest.mark.asyncio
     async def test_with_filters(self) -> None:
         """Filters are applied correctly."""
         election = _mock_election()
@@ -257,7 +250,6 @@ class TestListElectionParticipants:
 class TestGetParticipationStats:
     """Tests for get_participation_stats aggregate function."""
 
-    @pytest.mark.asyncio
     async def test_returns_stats(self) -> None:
         """Returns stats with breakdowns; no district info means eligible voters is None."""
         election = _mock_election()
@@ -311,7 +303,6 @@ class TestGetParticipationStats:
         assert stats.by_precinct[0].precinct_name == "HAZZARD 2"
         assert stats.by_precinct[0].count == 35
 
-    @pytest.mark.asyncio
     async def test_election_not_found_raises(self) -> None:
         """Raises ValueError when election does not exist."""
         session = AsyncMock()
@@ -322,7 +313,6 @@ class TestGetParticipationStats:
         with pytest.raises(ValueError, match="Election not found"):
             await get_participation_stats(session, uuid.uuid4())
 
-    @pytest.mark.asyncio
     async def test_empty_stats(self) -> None:
         """Election with no participants returns zero counts and None eligible voters."""
         election = _mock_election()
@@ -362,7 +352,6 @@ class TestGetParticipationStats:
         assert stats.by_ballot_style == []
         assert stats.by_precinct == []
 
-    @pytest.mark.asyncio
     async def test_eligible_voters_none_when_no_district(self) -> None:
         """Election without district info returns None for eligible voters."""
         election = _mock_election(district_type=None, district_identifier=None)
@@ -403,7 +392,6 @@ class TestGetParticipationStats:
         assert stats.total_eligible_voters is None
         assert stats.turnout_percentage is None
 
-    @pytest.mark.asyncio
     async def test_eligible_voters_for_county_election(self) -> None:
         """County-type election resolves county name from boundary and computes turnout."""
         from voter_api.schemas.voter_stats import VoterRegistrationStatsResponse, VoterStatusCount
@@ -467,7 +455,6 @@ class TestGetParticipationStats:
         assert stats.total_eligible_voters == 1000
         assert stats.turnout_percentage == pytest.approx(50.0)
 
-    @pytest.mark.asyncio
     async def test_eligible_voters_none_for_unmapped_boundary_type(self) -> None:
         """Boundary types with no voter field mapping (e.g. us_senate) return None."""
         election = _mock_election(
@@ -521,7 +508,6 @@ class TestGetParticipationStats:
 class TestGetParticipationSummary:
     """Tests for get_participation_summary function."""
 
-    @pytest.mark.asyncio
     async def test_returns_summary(self) -> None:
         """Returns summary with count and last date."""
         session = AsyncMock()
@@ -534,7 +520,6 @@ class TestGetParticipationSummary:
         assert summary.total_elections == 5
         assert summary.last_election_date == date(2024, 11, 5)
 
-    @pytest.mark.asyncio
     async def test_no_history_returns_defaults(self) -> None:
         """Voter with no history returns zero elections and null date."""
         session = AsyncMock()
@@ -556,7 +541,6 @@ class TestGetParticipationSummary:
 class TestGetElectionOrRaise:
     """Tests for the _get_election_or_raise helper."""
 
-    @pytest.mark.asyncio
     async def test_returns_election(self) -> None:
         """Returns election when found."""
         election = _mock_election()
@@ -569,7 +553,6 @@ class TestGetElectionOrRaise:
 
         assert found is election
 
-    @pytest.mark.asyncio
     async def test_raises_value_error_when_not_found(self) -> None:
         """Raises ValueError when election not found."""
         session = AsyncMock()
@@ -589,7 +572,6 @@ class TestGetElectionOrRaise:
 class TestBuildElectionMatchConditions:
     """Tests for the _build_election_match_conditions helper."""
 
-    @pytest.mark.asyncio
     async def test_single_election_on_date_matches_by_date_only(self) -> None:
         """When only one election on the date, matches by date only."""
         election = _mock_election(
@@ -610,7 +592,6 @@ class TestBuildElectionMatchConditions:
         # Only date condition — no type condition
         assert len(conditions) == 1
 
-    @pytest.mark.asyncio
     async def test_multiple_elections_on_date_matches_by_date_and_type(self) -> None:
         """When multiple elections on the date, matches by date + type."""
         election = _mock_election(
@@ -631,7 +612,6 @@ class TestBuildElectionMatchConditions:
         # Both date and type conditions
         assert len(conditions) == 2
 
-    @pytest.mark.asyncio
     async def test_resolved_election_uses_election_id(self) -> None:
         """When resolved records exist, returns OR condition (resolved + unresolved fallback)."""
         election = _mock_election(
@@ -652,7 +632,6 @@ class TestBuildElectionMatchConditions:
         # Single OR condition: resolved rows + unresolved fallback
         assert len(conditions) == 1
 
-    @pytest.mark.asyncio
     async def test_participants_with_type_mismatch_single_election(self) -> None:
         """Type="special" election finds voter_history with normalized_type="runoff" via date-only match."""
         election = _mock_election(
@@ -707,7 +686,6 @@ class TestBuildElectionMatchConditions:
 class TestLookupVoterDetails:
     """Tests for the lookup_voter_details batch helper."""
 
-    @pytest.mark.asyncio
     async def test_empty_list_returns_empty_dict(self) -> None:
         """Empty input returns empty dict without querying."""
         session = AsyncMock()
@@ -715,7 +693,6 @@ class TestLookupVoterDetails:
         assert result == {}
         session.execute.assert_not_awaited()
 
-    @pytest.mark.asyncio
     async def test_returns_mapping(self) -> None:
         """Returns reg_num → VoterLookupResult mapping for found voters."""
         voter_id = uuid.uuid4()
@@ -728,7 +705,6 @@ class TestLookupVoterDetails:
 
         assert result == {"12345678": VoterLookupResult(id=voter_id, first_name="Jane", last_name="Doe")}
 
-    @pytest.mark.asyncio
     async def test_missing_voter_omitted(self) -> None:
         """Unmatched registration numbers are excluded from result."""
         session = AsyncMock()
@@ -741,7 +717,6 @@ class TestLookupVoterDetails:
         assert "99999999" not in result
         assert result == {}
 
-    @pytest.mark.asyncio
     async def test_deduplicates_input(self) -> None:
         """Duplicate registration numbers result in a single query."""
         voter_id = uuid.uuid4()
@@ -759,7 +734,6 @@ class TestLookupVoterDetails:
 class TestResolveElectionIds:
     """Tests for the resolve_election_ids lookup function."""
 
-    @pytest.mark.asyncio
     async def test_empty_records_returns_empty_map(self) -> None:
         """Empty input returns empty dict without querying."""
         session = AsyncMock()
@@ -767,7 +741,6 @@ class TestResolveElectionIds:
         assert result == {}
         session.execute.assert_not_awaited()
 
-    @pytest.mark.asyncio
     async def test_single_election_on_date(self) -> None:
         """When one election exists on a date, all records on that date map to it."""
         election_id = uuid.uuid4()
@@ -792,7 +765,6 @@ class TestResolveElectionIds:
         assert lookup[(date(2024, 11, 5), "general")] == election_id
         assert lookup[(date(2024, 11, 5), "runoff")] == election_id
 
-    @pytest.mark.asyncio
     async def test_multiple_elections_on_date(self) -> None:
         """When multiple elections share a date, matches by (date, election_type)."""
         eid_special = uuid.uuid4()
@@ -821,7 +793,6 @@ class TestResolveElectionIds:
         assert lookup[(date(2026, 2, 17), "special")] == eid_special
         assert lookup[(date(2026, 2, 17), "runoff")] == eid_runoff
 
-    @pytest.mark.asyncio
     async def test_no_matching_election(self) -> None:
         """When no election exists for a date, lookup is empty for that date."""
         records = [
@@ -840,7 +811,6 @@ class TestResolveElectionIds:
 
         assert (date(2020, 1, 1), "general") not in lookup
 
-    @pytest.mark.asyncio
     async def test_mixed_dates(self) -> None:
         """Mix of single-election and multi-election dates resolves correctly."""
         eid_general = uuid.uuid4()

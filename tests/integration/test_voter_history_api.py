@@ -676,21 +676,12 @@ class TestGetParticipationStats:
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_public_access(self, unauth_client: AsyncClient) -> None:
-        """Stats endpoint is public — no authentication required."""
+    async def test_unauthenticated_returns_401(self, unauth_client: AsyncClient) -> None:
+        """Stats endpoint requires authentication."""
         eid = uuid.uuid4()
-        stats = ParticipationStatsResponse(
-            election_id=eid,
-            total_participants=0,
-        )
-        with patch(
-            "voter_api.services.voter_history_service.get_participation_stats",
-            new_callable=AsyncMock,
-            return_value=stats,
-        ):
-            resp = await unauth_client.get(f"/api/v1/elections/{eid}/participation/stats")
+        resp = await unauth_client.get(f"/api/v1/elections/{eid}/participation/stats")
 
-        assert resp.status_code == 200
+        assert resp.status_code == 401
 
     @pytest.mark.asyncio
     async def test_empty_stats(self, analyst_client: AsyncClient) -> None:

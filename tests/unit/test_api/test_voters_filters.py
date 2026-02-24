@@ -71,7 +71,6 @@ def unauthenticated_client(unauthenticated_app: FastAPI) -> AsyncClient:
 class TestGetVoterFilterOptions:
     """Tests for GET /api/v1/voters/filters."""
 
-    @pytest.mark.asyncio
     async def test_returns_correct_response_structure(self, client: AsyncClient) -> None:
         """Endpoint returns all five base filter keys (county-scoped fields omitted)."""
         with patch(
@@ -91,7 +90,6 @@ class TestGetVoterFilterOptions:
             "state_house_districts",
         }
 
-    @pytest.mark.asyncio
     async def test_returns_correct_values(self, client: AsyncClient) -> None:
         """Endpoint serializes service return values correctly."""
         with patch(
@@ -108,7 +106,6 @@ class TestGetVoterFilterOptions:
         assert data["state_senate_districts"] == ["34"]
         assert data["state_house_districts"] == ["55"]
 
-    @pytest.mark.asyncio
     async def test_returns_empty_lists_when_no_data(self, client: AsyncClient) -> None:
         """Endpoint handles empty filter options gracefully."""
         empty_options: dict[str, list[str] | None] = {
@@ -133,14 +130,12 @@ class TestGetVoterFilterOptions:
         assert data["state_senate_districts"] == []
         assert data["state_house_districts"] == []
 
-    @pytest.mark.asyncio
     async def test_requires_authentication(self, unauthenticated_client: AsyncClient) -> None:
         """Endpoint returns 401 when no Bearer token is provided."""
         resp = await unauthenticated_client.get("/api/v1/voters/filters")
 
         assert resp.status_code == 401
 
-    @pytest.mark.asyncio
     async def test_county_param_forwarded_to_service(self, client: AsyncClient) -> None:
         """County query param is forwarded to the service function."""
         with patch(
@@ -155,7 +150,6 @@ class TestGetVoterFilterOptions:
         _, kwargs = mock_svc.call_args
         assert kwargs["county"] == "FULTON"
 
-    @pytest.mark.asyncio
     async def test_county_param_returns_county_scoped_fields(self, client: AsyncClient) -> None:
         """When county is provided, response includes county-scoped filter lists."""
         with patch(
@@ -171,7 +165,6 @@ class TestGetVoterFilterOptions:
         assert data["county_commission_districts"] == ["01", "02"]
         assert data["school_board_districts"] == ["03", "04"]
 
-    @pytest.mark.asyncio
     async def test_no_county_omits_county_scoped_fields(self, client: AsyncClient) -> None:
         """Without county param, county-scoped fields are absent from response."""
         with patch(
@@ -187,7 +180,6 @@ class TestGetVoterFilterOptions:
         assert "county_commission_districts" not in data
         assert "school_board_districts" not in data
 
-    @pytest.mark.asyncio
     async def test_cascading_precinct_forwarded_to_service(self, client: AsyncClient) -> None:
         """County_precinct cascading param is forwarded to the service."""
         with patch(
@@ -205,7 +197,6 @@ class TestGetVoterFilterOptions:
         assert kwargs["county_commission_district"] is None
         assert kwargs["school_board_district"] is None
 
-    @pytest.mark.asyncio
     async def test_multiple_cascading_params_forwarded(self, client: AsyncClient) -> None:
         """Multiple cascading params are all forwarded to the service."""
         with patch(
@@ -223,7 +214,6 @@ class TestGetVoterFilterOptions:
         assert kwargs["county_commission_district"] is None
         assert kwargs["school_board_district"] == "3"
 
-    @pytest.mark.asyncio
     async def test_cascading_params_without_county_ignored(self, client: AsyncClient) -> None:
         """Cascading params without county are passed but don't trigger county-scoped queries."""
         with patch(

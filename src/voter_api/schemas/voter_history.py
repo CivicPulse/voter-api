@@ -69,12 +69,16 @@ class CountyBreakdown(BaseModel):
     county: str
     count: int
 
+    model_config = {"from_attributes": True}
+
 
 class BallotStyleBreakdown(BaseModel):
     """Participation count for a single ballot style."""
 
     ballot_style: str
     count: int
+
+    model_config = {"from_attributes": True}
 
 
 class PrecinctBreakdown(BaseModel):
@@ -83,6 +87,8 @@ class PrecinctBreakdown(BaseModel):
     precinct: str
     precinct_name: str | None = None
     count: int
+
+    model_config = {"from_attributes": True}
 
 
 class ParticipationStatsResponse(BaseModel):
@@ -96,9 +102,13 @@ class ParticipationStatsResponse(BaseModel):
     by_ballot_style: list[BallotStyleBreakdown] = Field(default_factory=list)
     by_precinct: list[PrecinctBreakdown] = Field(default_factory=list)
 
+    model_config = {"from_attributes": True}
+
 
 class ParticipationSummary(BaseModel):
     """Lightweight participation summary for voter detail enrichment."""
 
     total_elections: int = 0
     last_election_date: date | None = None
+
+    model_config = {"from_attributes": True}

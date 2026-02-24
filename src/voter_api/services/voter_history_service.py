@@ -708,7 +708,13 @@ async def resolve_election_ids(
 
 
 class VoterLookupResult(NamedTuple):
-    """Lightweight container for voter identity fields resolved from registration numbers."""
+    """Lightweight container for voter identity fields resolved from registration numbers.
+
+    Attributes:
+        id: Voter UUID primary key.
+        first_name: Voter's first name.
+        last_name: Voter's last name.
+    """
 
     id: uuid.UUID
     first_name: str

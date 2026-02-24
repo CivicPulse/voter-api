@@ -13,6 +13,10 @@ tables so they use a consistent unpadded format.
 Because stripping zeros can cause collisions on the unique constraint
 ``uq_voter_history_participation (voter_registration_number, election_date,
 election_type)``, duplicate rows are deleted before the UPDATE.
+
+**Irreversible**: The downgrade raises ``NotImplementedError`` because original
+leading-zero formats are not stored and cannot be reconstructed. Restore from
+a database backup if you need to revert this migration.
 """
 
 from alembic import op
@@ -65,14 +69,15 @@ def upgrade() -> None:
         DECLARE
             collision_count integer;
         BEGIN
-            -- Divide by 2 because the self-join produces each pair twice: (A,B) and (B,A)
-            SELECT COUNT(*) / 2 INTO collision_count
-            FROM voters v1
-            JOIN voters v2 ON v1.id <> v2.id
-                AND v1.voter_registration_number <> v2.voter_registration_number
-                AND LTRIM(v1.voter_registration_number, '0') = LTRIM(v2.voter_registration_number, '0');
+            SELECT COUNT(*) INTO collision_count
+            FROM (
+                SELECT LTRIM(voter_registration_number, '0') AS normalized
+                FROM voters
+                GROUP BY normalized
+                HAVING COUNT(*) > 1
+            ) dupes;
             IF collision_count > 0 THEN
-                RAISE EXCEPTION 'Found % voter rows that collide after normalization.', collision_count;
+                RAISE EXCEPTION 'Found % voter registration numbers that collide after normalization.', collision_count;
             END IF;
         END $$
         """

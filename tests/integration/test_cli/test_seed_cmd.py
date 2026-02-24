@@ -268,7 +268,7 @@ class TestSeedFullBootstrap:
         assert result.exit_code != 0
 
     def test_seed_import_order_enforcement(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
-        """Verify imports run in order: county-districts → boundaries → voters → voter-history."""
+        """Verify imports run in order: county-districts → boundaries → elections → voters → voter-history."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
         (data_dir / "voter").mkdir()
