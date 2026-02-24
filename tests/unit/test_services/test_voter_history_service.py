@@ -7,7 +7,7 @@ get_participation_summary, and _get_election_or_raise.
 
 import uuid
 from datetime import date
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -80,6 +80,9 @@ def _mock_election(**overrides) -> MagicMock:
         "election_date": date(2024, 11, 5),
         "election_type": "general",
         "name": "General Election - 11/05/2024",
+        "district_type": None,
+        "district_identifier": None,
+        "boundary": None,
     }
     defaults.update(overrides)
     election = MagicMock(spec=Election)
@@ -239,7 +242,7 @@ class TestGetParticipationStats:
 
     @pytest.mark.asyncio
     async def test_returns_stats(self) -> None:
-        """Returns stats with breakdowns."""
+        """Returns stats with breakdowns; no district info means eligible voters is None."""
         election = _mock_election()
         eid = election.id
 
@@ -276,6 +279,8 @@ class TestGetParticipationStats:
 
         assert stats.election_id == eid
         assert stats.total_participants == 100
+        assert stats.total_eligible_voters is None
+        assert stats.turnout_percentage is None
         assert len(stats.by_county) == 2
         assert stats.by_county[0].county == "FULTON"
         assert stats.by_county[0].count == 60
@@ -298,7 +303,7 @@ class TestGetParticipationStats:
 
     @pytest.mark.asyncio
     async def test_empty_stats(self) -> None:
-        """Election with no participants returns zero counts."""
+        """Election with no participants returns zero counts and None eligible voters."""
         election = _mock_election()
 
         session = AsyncMock()
@@ -327,9 +332,152 @@ class TestGetParticipationStats:
         stats = await get_participation_stats(session, election.id)
 
         assert stats.total_participants == 0
+        assert stats.total_eligible_voters is None
+        assert stats.turnout_percentage is None
         assert stats.by_county == []
         assert stats.by_ballot_style == []
         assert stats.by_precinct == []
+
+    @pytest.mark.asyncio
+    async def test_eligible_voters_none_when_no_district(self) -> None:
+        """Election without district info returns None for eligible voters."""
+        election = _mock_election(district_type=None, district_identifier=None)
+        eid = election.id
+
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        match_count_result = MagicMock()
+        match_count_result.scalar_one.return_value = 1
+        total_result = MagicMock()
+        total_result.scalar_one.return_value = 50
+        county_result = MagicMock()
+        county_result.all.return_value = []
+        style_result = MagicMock()
+        style_result.all.return_value = []
+        precinct_result = MagicMock()
+        precinct_result.all.return_value = []
+
+        session.execute.side_effect = [
+            election_result,
+            match_count_result,
+            total_result,
+            county_result,
+            style_result,
+            precinct_result,
+        ]
+
+        with patch(
+            "voter_api.services.voter_stats_service.get_voter_stats_for_boundary",
+        ) as mock_voter_stats:
+            stats = await get_participation_stats(session, eid)
+
+        mock_voter_stats.assert_not_called()
+        assert stats.total_eligible_voters is None
+        assert stats.turnout_percentage is None
+
+    @pytest.mark.asyncio
+    async def test_eligible_voters_for_county_election(self) -> None:
+        """County-type election resolves county name from boundary and computes turnout."""
+        from voter_api.schemas.voter_stats import VoterRegistrationStatsResponse, VoterStatusCount
+
+        boundary = MagicMock()
+        boundary.name = "Fulton County"
+
+        election = _mock_election(
+            district_type="county",
+            district_identifier="13121",
+            boundary=boundary,
+        )
+        eid = election.id
+
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        match_count_result = MagicMock()
+        match_count_result.scalar_one.return_value = 1
+        total_result = MagicMock()
+        total_result.scalar_one.return_value = 500
+        county_result = MagicMock()
+        county_result.all.return_value = [("FULTON", 500)]
+        style_result = MagicMock()
+        style_result.all.return_value = []
+        precinct_result = MagicMock()
+        precinct_result.all.return_value = []
+
+        session.execute.side_effect = [
+            election_result,
+            match_count_result,
+            total_result,
+            county_result,
+            style_result,
+            precinct_result,
+        ]
+
+        mock_stats = VoterRegistrationStatsResponse(
+            total=1200,
+            by_status=[
+                VoterStatusCount(status="Active", count=1000),
+                VoterStatusCount(status="Inactive", count=200),
+            ],
+        )
+        with patch(
+            "voter_api.services.voter_stats_service.get_voter_stats_for_boundary",
+            new_callable=AsyncMock,
+            return_value=mock_stats,
+        ) as mock_fn:
+            stats = await get_participation_stats(session, eid)
+
+        mock_fn.assert_awaited_once_with(
+            session,
+            "county",
+            "13121",
+            county_name_override="Fulton",
+        )
+        assert stats.total_eligible_voters == 1000
+        assert stats.turnout_percentage == 50.0
+
+    @pytest.mark.asyncio
+    async def test_eligible_voters_none_for_unmapped_boundary_type(self) -> None:
+        """Boundary types with no voter field mapping (e.g. us_senate) return None."""
+        election = _mock_election(
+            district_type="us_senate",
+            district_identifier="1",
+        )
+        eid = election.id
+
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        match_count_result = MagicMock()
+        match_count_result.scalar_one.return_value = 1
+        total_result = MagicMock()
+        total_result.scalar_one.return_value = 50
+        county_result = MagicMock()
+        county_result.all.return_value = []
+        style_result = MagicMock()
+        style_result.all.return_value = []
+        precinct_result = MagicMock()
+        precinct_result.all.return_value = []
+
+        session.execute.side_effect = [
+            election_result,
+            match_count_result,
+            total_result,
+            county_result,
+            style_result,
+            precinct_result,
+        ]
+
+        with patch(
+            "voter_api.services.voter_stats_service.get_voter_stats_for_boundary",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            stats = await get_participation_stats(session, eid)
+
+        assert stats.total_eligible_voters is None
+        assert stats.turnout_percentage is None
 
 
 # ---------------------------------------------------------------------------

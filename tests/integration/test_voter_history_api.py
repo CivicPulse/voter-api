@@ -622,11 +622,13 @@ class TestGetParticipationStats:
 
     @pytest.mark.asyncio
     async def test_returns_stats(self, analyst_client: AsyncClient) -> None:
-        """Returns participation stats with breakdowns."""
+        """Returns participation stats with breakdowns and eligible voters."""
         eid = uuid.uuid4()
         stats = ParticipationStatsResponse(
             election_id=eid,
             total_participants=200,
+            total_eligible_voters=1000,
+            turnout_percentage=20.0,
             by_county=[
                 CountyBreakdown(county="FULTON", count=120),
                 CountyBreakdown(county="DEKALB", count=80),
@@ -649,6 +651,8 @@ class TestGetParticipationStats:
         assert resp.status_code == 200
         data = resp.json()
         assert data["total_participants"] == 200
+        assert data["total_eligible_voters"] == 1000
+        assert data["turnout_percentage"] == 20.0
         assert len(data["by_county"]) == 2
         assert data["by_county"][0]["county"] == "FULTON"
         assert data["by_county"][0]["count"] == 120
@@ -690,7 +694,7 @@ class TestGetParticipationStats:
 
     @pytest.mark.asyncio
     async def test_empty_stats(self, analyst_client: AsyncClient) -> None:
-        """Election with no participants returns zero counts."""
+        """Election with no participants returns zero counts and None eligible voters."""
         eid = uuid.uuid4()
         stats = ParticipationStatsResponse(
             election_id=eid,
@@ -708,6 +712,8 @@ class TestGetParticipationStats:
 
         data = resp.json()
         assert data["total_participants"] == 0
+        assert data["total_eligible_voters"] is None
+        assert data["turnout_percentage"] is None
         assert data["by_county"] == []
         assert data["by_ballot_style"] == []
         assert data["by_precinct"] == []

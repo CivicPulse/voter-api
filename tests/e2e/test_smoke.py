@@ -910,3 +910,5 @@ class TestVoterHistory:
         body = resp.json()
         assert "election_id" in body
         assert "by_precinct" in body
+        assert "total_eligible_voters" in body
+        assert "turnout_percentage" in body

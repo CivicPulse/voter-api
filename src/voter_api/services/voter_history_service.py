@@ -12,6 +12,7 @@ from loguru import logger
 from sqlalchemy import ColumnElement, delete, exists, func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from voter_api.core.database import get_engine
 from voter_api.lib.voter_history import (
@@ -134,7 +135,7 @@ async def _enable_vh_autovacuum_and_vacuum(session: AsyncSession) -> None:
     start = time.monotonic()
     engine = get_engine()
     async with engine.connect() as vacuum_conn:
-        autocommit_conn = vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
+        autocommit_conn = await vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
         await autocommit_conn.execute(text("VACUUM ANALYZE voter_history"))
     elapsed = time.monotonic() - start
     logger.info(f"VACUUM ANALYZE completed in {elapsed:.1f}s")
@@ -601,9 +602,36 @@ async def get_participation_stats(
         PrecinctBreakdown(precinct=row[0], precinct_name=row[1], count=row[2]) for row in precinct_result.all()
     ]
 
+    # Compute eligible voters and turnout percentage from voter registration data
+    total_eligible_voters: int | None = None
+    turnout_percentage: float | None = None
+
+    if election.district_type and election.district_identifier:
+        county_name_override: str | None = None
+        if election.district_type == "county" and election.boundary:
+            # Strip " County" suffix from boundary name (e.g. "Fulton County" → "Fulton")
+            bname = election.boundary.name
+            county_name_override = bname.removesuffix(" County") if bname else None
+
+        from voter_api.services.voter_stats_service import get_voter_stats_for_boundary
+
+        voter_stats = await get_voter_stats_for_boundary(
+            session,
+            election.district_type,
+            election.district_identifier,
+            county_name_override=county_name_override,
+        )
+        if voter_stats:
+            active_count = sum(sc.count for sc in voter_stats.by_status if sc.status == "Active")
+            if active_count > 0:
+                total_eligible_voters = active_count
+                turnout_percentage = round((total_participants / active_count) * 100, 1)
+
     return ParticipationStatsResponse(
         election_id=election_id,
         total_participants=total_participants,
+        total_eligible_voters=total_eligible_voters,
+        turnout_percentage=turnout_percentage,
         by_county=by_county,
         by_ballot_style=by_ballot_style,
         by_precinct=by_precinct,
@@ -774,7 +802,9 @@ async def _get_election_or_raise(
     Raises:
         ValueError: If election not found.
     """
-    result = await session.execute(select(Election).where(Election.id == election_id))
+    result = await session.execute(
+        select(Election).options(selectinload(Election.boundary)).where(Election.id == election_id)
+    )
     election = result.scalar_one_or_none()
     if election is None:
         msg = f"Election not found: {election_id}"
