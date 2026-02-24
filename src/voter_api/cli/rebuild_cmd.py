@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from pathlib import Path  # noqa: TC003 - Typer needs Path at runtime
 from urllib.parse import urlparse, urlunparse
 
@@ -86,6 +87,12 @@ async def _drop_and_recreate_schema(database_url: str, schema: str | None) -> No
 
     schema_name = schema or "public"
 
+    # Validate schema name to prevent SQL injection — only allow
+    # alphanumeric characters and underscores (valid PostgreSQL identifiers).
+    if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", schema_name):
+        msg = f"Invalid schema name: {schema_name!r}"
+        raise ValueError(msg)
+
     engine = create_async_engine(database_url)
     try:
         async with engine.begin() as conn:
@@ -142,16 +149,15 @@ def rebuild(
 ) -> None:
     """Completely destroy and rebuild the database (schema drop + migrate + seed).
 
-    .. danger::
-
+    Warning:
         AI agents must NEVER run this command. It is destructive and
         irreversible. Human operators only.
 
-    This command:
-      1. Drops the target schema (CASCADE) and recreates it
-      2. Runs all Alembic migrations (upgrade head)
-      3. Seeds a preview admin user (if PREVIEW_API_* env vars are set)
-      4. Optionally runs the full seed/import pipeline
+    Steps:
+        1. Drops the target schema (CASCADE) and recreates it.
+        2. Runs all Alembic migrations (upgrade head).
+        3. Seeds a preview admin user (if PREVIEW_API_* env vars are set).
+        4. Optionally runs the full seed/import pipeline.
 
     Two interactive confirmations are required before any destructive
     action is taken.

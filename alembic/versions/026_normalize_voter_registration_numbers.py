@@ -17,10 +17,10 @@ election_type)``, duplicate rows are deleted before the UPDATE.
 
 from alembic import op
 
-revision = "026"
-down_revision = "025"
-branch_labels = None
-depends_on = None
+revision: str = "026"
+down_revision: str | None = "025"
+branch_labels: str | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:
@@ -49,12 +49,33 @@ def upgrade() -> None:
             WHEN LTRIM(voter_registration_number, '0') = '' THEN '0'
             ELSE LTRIM(voter_registration_number, '0')
         END
-        WHERE voter_registration_number ~ '^0+[0-9]'
+        WHERE voter_registration_number ~ '^0'
         """
     )
 
     # 3. Safety pass: normalize voters table (should already be clean, but
     #    guard against future CSV format changes).
+    #    First check for collisions: if two rows differ only by leading zeros
+    #    (e.g., "000123" and "123"), the unique constraint would be violated.
+    #    This should not happen in practice since the voter file doesn't
+    #    zero-pad, but abort with a clear error if it does.
+    op.execute(
+        """
+        DO $$
+        DECLARE
+            collision_count integer;
+        BEGIN
+            SELECT COUNT(*) INTO collision_count
+            FROM voters v1
+            JOIN voters v2 ON v1.id <> v2.id
+                AND v1.voter_registration_number <> v2.voter_registration_number
+                AND LTRIM(v1.voter_registration_number, '0') = LTRIM(v2.voter_registration_number, '0');
+            IF collision_count > 0 THEN
+                RAISE EXCEPTION 'Found % voter rows that collide after normalization.', collision_count;
+            END IF;
+        END $$
+        """
+    )
     op.execute(
         """
         UPDATE voters
@@ -62,7 +83,7 @@ def upgrade() -> None:
             WHEN LTRIM(voter_registration_number, '0') = '' THEN '0'
             ELSE LTRIM(voter_registration_number, '0')
         END
-        WHERE voter_registration_number ~ '^0+[0-9]'
+        WHERE voter_registration_number ~ '^0'
         """
     )
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from loguru import logger
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import ColumnElement, delete, exists, func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -134,7 +134,7 @@ async def _enable_vh_autovacuum_and_vacuum(session: AsyncSession) -> None:
     start = time.monotonic()
     engine = get_engine()
     async with engine.connect() as vacuum_conn:
-        autocommit_conn = await vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
+        autocommit_conn = vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
         await autocommit_conn.execute(text("VACUUM ANALYZE voter_history"))
     elapsed = time.monotonic() - start
     logger.info(f"VACUUM ANALYZE completed in {elapsed:.1f}s")
@@ -279,6 +279,10 @@ async def process_voter_history_import(
                 f"({chunk_succeeded} valid, {chunk_failed} failed) "
                 f"({chunk_elapsed:.1f}s) | running total: {total} records"
             )
+
+        # Update offset to reflect final chunk before the commit
+        if total > 0:
+            job.last_processed_offset = chunk_idx + 1
 
         # Final commit for any remaining unflushed work
         await session.commit()
@@ -714,7 +718,7 @@ async def lookup_voter_details(
 async def _build_election_match_conditions(
     session: AsyncSession,
     election: Election,
-) -> list:
+) -> list[ColumnElement[bool]]:
     """Build WHERE conditions to match voter_history records to an election.
 
     Primary match: uses persisted election_id FK when records have been
@@ -733,12 +737,8 @@ async def _build_election_match_conditions(
         List of SQLAlchemy WHERE clause conditions.
     """
     # Check if any voter_history records have been resolved for this election
-    resolved_count = await session.execute(
-        select(func.count(VoterHistory.id)).where(
-            VoterHistory.election_id == election.id,
-        )
-    )
-    if resolved_count.scalar_one() > 0:
+    has_resolved = await session.execute(select(exists().where(VoterHistory.election_id == election.id)))
+    if has_resolved.scalar_one():
         return [VoterHistory.election_id == election.id]
 
     # Fallback to date-based heuristic for unresolved records

@@ -235,9 +235,11 @@ def _process_chunk_vectorized(
 
     # --- Registration number normalization (vectorized) ---
     if "voter_registration_number" in chunk.columns:
-        reg_nums = chunk["voter_registration_number"].fillna("")
-        # lstrip("0") then replace empty with "0"
-        normalized_reg = reg_nums.str.lstrip("0").replace("", "0")
+        raw_reg = chunk["voter_registration_number"]
+        # Only normalize non-null values; preserve NaN for missing entries
+        stripped = raw_reg.str.lstrip("0")
+        # All-zeros → "0"; missing/NaN stays NaN
+        normalized_reg = stripped.where(stripped != "", other="0").where(raw_reg.notna())
     else:
         normalized_reg = pd.Series("", index=chunk.index)
 
