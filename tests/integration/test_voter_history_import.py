@@ -1,7 +1,7 @@
 """Integration tests for voter history import service.
 
 Covers:
-- T017: Import service — parsing, upsert, re-import, unmatched, duplicates, errors
+- T017: Import service — parsing, upsert, re-import, duplicates, errors
 """
 
 import uuid
@@ -114,11 +114,6 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ) as mock_upsert,
             patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
-                new_callable=AsyncMock,
-                return_value=0,
-            ),
-            patch(
                 "voter_api.services.voter_history_service._replace_previous_import",
                 new_callable=AsyncMock,
             ),
@@ -147,11 +142,6 @@ class TestProcessVoterHistoryImport:
             patch(
                 "voter_api.services.voter_history_service._upsert_voter_history_batch",
                 new_callable=AsyncMock,
-            ),
-            patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
-                new_callable=AsyncMock,
-                return_value=0,
             ),
             patch(
                 "voter_api.services.voter_history_service._replace_previous_import",
@@ -184,11 +174,6 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ),
             patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
-                new_callable=AsyncMock,
-                return_value=0,
-            ),
-            patch(
                 "voter_api.services.voter_history_service._replace_previous_import",
                 new_callable=AsyncMock,
             ),
@@ -199,8 +184,8 @@ class TestProcessVoterHistoryImport:
         assert result.records_skipped == 1
 
     @pytest.mark.asyncio
-    async def test_unmatched_voters_counted(self, tmp_path: Path) -> None:
-        """Unmatched voter registration numbers are tracked."""
+    async def test_unmatched_voters_always_zero(self, tmp_path: Path) -> None:
+        """Unmatched voter count is always 0 (counting removed for performance)."""
         rows = ["FULTON,99999999,11/05/2024,GENERAL ELECTION,NP,STD,N,N,N"]
         csv_file = _write_csv(tmp_path, rows)
         job = _make_import_job()
@@ -212,18 +197,13 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ),
             patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
-                new_callable=AsyncMock,
-                return_value=1,
-            ),
-            patch(
                 "voter_api.services.voter_history_service._replace_previous_import",
                 new_callable=AsyncMock,
             ),
         ):
             result = await process_voter_history_import(session, job, csv_file, batch_size=10)
 
-        assert result.records_unmatched == 1
+        assert result.records_unmatched == 0
 
     @pytest.mark.asyncio
     async def test_replace_previous_import_called(self, tmp_path: Path) -> None:
@@ -237,11 +217,6 @@ class TestProcessVoterHistoryImport:
             patch(
                 "voter_api.services.voter_history_service._upsert_voter_history_batch",
                 new_callable=AsyncMock,
-            ),
-            patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
-                new_callable=AsyncMock,
-                return_value=0,
             ),
             patch(
                 "voter_api.services.voter_history_service._replace_previous_import",
@@ -265,11 +240,6 @@ class TestProcessVoterHistoryImport:
                 "voter_api.services.voter_history_service._upsert_voter_history_batch",
                 new_callable=AsyncMock,
             ) as mock_upsert,
-            patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
-                new_callable=AsyncMock,
-                return_value=0,
-            ),
             patch(
                 "voter_api.services.voter_history_service._replace_previous_import",
                 new_callable=AsyncMock,
@@ -297,11 +267,6 @@ class TestProcessVoterHistoryImport:
                 side_effect=RuntimeError("DB error"),
             ),
             patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
-                new_callable=AsyncMock,
-                return_value=0,
-            ),
-            patch(
                 "voter_api.services.voter_history_service._replace_previous_import",
                 new_callable=AsyncMock,
             ),
@@ -326,11 +291,6 @@ class TestProcessVoterHistoryImport:
             patch(
                 "voter_api.services.voter_history_service._upsert_voter_history_batch",
                 new_callable=AsyncMock,
-            ),
-            patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
-                new_callable=AsyncMock,
-                return_value=0,
             ),
             patch(
                 "voter_api.services.voter_history_service._replace_previous_import",
@@ -376,11 +336,6 @@ class TestOptimizationLifecycle:
                 new_callable=AsyncMock,
             ),
             patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
-                new_callable=AsyncMock,
-                return_value=0,
-            ),
-            patch(
                 "voter_api.services.voter_history_service._replace_previous_import",
                 new_callable=AsyncMock,
             ),
@@ -420,11 +375,6 @@ class TestOptimizationLifecycle:
             patch(
                 "voter_api.services.voter_history_service._upsert_voter_history_batch",
                 new_callable=AsyncMock,
-            ),
-            patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters_bulk",
-                new_callable=AsyncMock,
-                return_value=0,
             ),
             patch(
                 "voter_api.services.voter_history_service._replace_previous_import",
