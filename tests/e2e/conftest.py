@@ -350,7 +350,7 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
             "id": BOUNDARY_ID,
             "name": "E2E Test Congressional 1",
             "boundary_type": "congressional",
-            "boundary_identifier": "1",
+            "boundary_identifier": "001",
             "geometry": func.ST_GeomFromText(
                 "MULTIPOLYGON(((-84.4 33.7, -84.3 33.7, -84.3 33.8, -84.4 33.8, -84.4 33.7)))",
                 4326,
