@@ -158,8 +158,8 @@ class TestProcessVoterHistoryImport:
         assert len(result.error_log) == 1
 
     @pytest.mark.asyncio
-    async def test_duplicate_records_skipped(self, tmp_path: Path) -> None:
-        """Duplicate records within same file are skipped."""
+    async def test_duplicate_records_handled_by_db(self, tmp_path: Path) -> None:
+        """Duplicate records are sent to DB upsert (ON CONFLICT handles dedup)."""
         rows = [
             "FULTON,12345678,11/05/2024,GENERAL ELECTION,NP,STD,Y,N,N",
             "FULTON,12345678,11/05/2024,GENERAL ELECTION,NP,STD,Y,N,N",
@@ -172,7 +172,7 @@ class TestProcessVoterHistoryImport:
             patch(
                 "voter_api.services.voter_history_service._upsert_voter_history_batch",
                 new_callable=AsyncMock,
-            ),
+            ) as mock_upsert,
             patch(
                 "voter_api.services.voter_history_service._replace_previous_import",
                 new_callable=AsyncMock,
@@ -180,8 +180,13 @@ class TestProcessVoterHistoryImport:
         ):
             result = await process_voter_history_import(session, job, csv_file, batch_size=10)
 
-        assert result.records_succeeded == 1
-        assert result.records_skipped == 1
+        # Both records are sent to DB; dedup happens via ON CONFLICT DO UPDATE
+        assert result.records_succeeded == 2
+        assert result.records_skipped == 0
+        # Upsert is called with both records in a single batch
+        mock_upsert.assert_awaited_once()
+        upsert_records = mock_upsert.call_args[0][1]
+        assert len(upsert_records) == 2
 
     @pytest.mark.asyncio
     async def test_unmatched_voters_always_zero(self, tmp_path: Path) -> None:

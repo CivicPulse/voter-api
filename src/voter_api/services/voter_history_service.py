@@ -29,6 +29,10 @@ from voter_api.schemas.voter_history import (
 # Sub-batch size for voter history upsert: 11 columns * 2000 rows = 22,000 params (under 32,767 limit)
 _UPSERT_SUB_BATCH = 2000
 
+# Commit every N chunks to reduce transaction overhead.
+# E.g. with batch_size=2000, this commits every 100K records.
+_COMMIT_INTERVAL_CHUNKS = 50
+
 # Non-unique indexes to drop before bulk import and rebuild afterward.
 # The unique constraint uq_voter_history_participation is kept for ON CONFLICT.
 _DROPPABLE_VH_INDEXES: list[dict[str, str]] = [
@@ -213,9 +217,7 @@ async def process_voter_history_import(
     total = 0
     succeeded = 0
     failed = 0
-    skipped = 0
     errors: list[dict] = []
-    seen_keys: set[tuple[str, str, str]] = set()
 
     try:
         import_start = time.monotonic()
@@ -233,7 +235,6 @@ async def process_voter_history_import(
 
             valid_records: list[dict] = []
             chunk_failed = 0
-            chunk_skipped = 0
             for record in records:
                 parse_error = record.pop("_parse_error", None)
                 if parse_error:
@@ -247,18 +248,6 @@ async def process_voter_history_import(
                     )
                     continue
 
-                # Duplicate detection within file
-                key = (
-                    record["voter_registration_number"],
-                    str(record["election_date"]),
-                    record["election_type"],
-                )
-                if key in seen_keys:
-                    skipped += 1
-                    chunk_skipped += 1
-                    continue
-                seen_keys.add(key)
-
                 valid_records.append(record)
 
             # Batch upsert voter history records
@@ -267,17 +256,25 @@ async def process_voter_history_import(
                 await _upsert_voter_history_batch(session, valid_records, job.id)
                 succeeded += chunk_succeeded
 
-            # Flush and update checkpoint
+            # Flush every chunk to keep data visible in session
             await session.flush()
-            job.last_processed_offset = chunk_idx + 1
-            await session.commit()
+
+            # Commit every N chunks to reduce transaction overhead.
+            # Duplicates are handled by the DB unique constraint + ON CONFLICT,
+            # so re-processing after a crash is safe (idempotent upsert).
+            if (chunk_idx + 1) % _COMMIT_INTERVAL_CHUNKS == 0:
+                job.last_processed_offset = chunk_idx + 1
+                await session.commit()
 
             chunk_elapsed = time.monotonic() - chunk_start
             logger.info(
                 f"Chunk {chunk_idx + 1}: {chunk_total} records "
-                f"({chunk_succeeded} valid, {chunk_failed} failed, {chunk_skipped} skipped) "
+                f"({chunk_succeeded} valid, {chunk_failed} failed) "
                 f"({chunk_elapsed:.1f}s) | running total: {total} records"
             )
+
+        # Final commit for any remaining unflushed work
+        await session.commit()
 
         # Re-import replacement: clean up records from previous imports of same file
         replace_start = time.monotonic()
@@ -291,7 +288,7 @@ async def process_voter_history_import(
         job.records_succeeded = succeeded
         job.records_failed = failed
         job.records_inserted = succeeded
-        job.records_skipped = skipped
+        job.records_skipped = 0
         job.records_unmatched = 0
         job.error_log = errors if errors else None
         job.completed_at = datetime.now(UTC)
@@ -300,7 +297,7 @@ async def process_voter_history_import(
         import_elapsed = time.monotonic() - import_start
         logger.info(
             f"Voter history import completed in {import_elapsed:.1f}s: {total} total, "
-            f"{succeeded} succeeded, {failed} failed, {skipped} skipped"
+            f"{succeeded} succeeded, {failed} failed"
         )
 
     except Exception:
