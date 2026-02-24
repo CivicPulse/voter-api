@@ -18,7 +18,6 @@ from voter_api.lib.voter_history import (
 )
 from voter_api.models.election import Election
 from voter_api.models.import_job import ImportJob
-from voter_api.models.voter import Voter
 from voter_api.models.voter_history import VoterHistory
 from voter_api.schemas.voter_history import (
     BallotStyleBreakdown,
@@ -27,8 +26,6 @@ from voter_api.schemas.voter_history import (
     ParticipationSummary,
 )
 
-# asyncpg has a hard limit of 32767 query parameters
-_IN_CLAUSE_BATCH = 5000
 # Sub-batch size for voter history upsert: 11 columns * 2000 rows = 22,000 params (under 32,767 limit)
 _UPSERT_SUB_BATCH = 2000
 
@@ -219,7 +216,6 @@ async def process_voter_history_import(
     skipped = 0
     errors: list[dict] = []
     seen_keys: set[tuple[str, str, str]] = set()
-    all_reg_numbers: set[str] = set()
 
     try:
         import_start = time.monotonic()
@@ -265,10 +261,6 @@ async def process_voter_history_import(
 
                 valid_records.append(record)
 
-            # Collect registration numbers for end-of-import unmatched count
-            for r in valid_records:
-                all_reg_numbers.add(r["voter_registration_number"])
-
             # Batch upsert voter history records
             chunk_succeeded = len(valid_records)
             if valid_records:
@@ -287,11 +279,11 @@ async def process_voter_history_import(
                 f"({chunk_elapsed:.1f}s) | running total: {total} records"
             )
 
-        # Count unmatched voters once at the end (instead of per-chunk)
-        unmatched = await _count_unmatched_voters_bulk(session, all_reg_numbers)
-
         # Re-import replacement: clean up records from previous imports of same file
+        replace_start = time.monotonic()
         await _replace_previous_import(session, job)
+        replace_elapsed = time.monotonic() - replace_start
+        logger.info(f"Re-import replacement completed in {replace_elapsed:.1f}s")
 
         # Finalize job
         job.status = "completed"
@@ -300,7 +292,7 @@ async def process_voter_history_import(
         job.records_failed = failed
         job.records_inserted = succeeded
         job.records_skipped = skipped
-        job.records_unmatched = unmatched
+        job.records_unmatched = 0
         job.error_log = errors if errors else None
         job.completed_at = datetime.now(UTC)
         await session.commit()
@@ -308,8 +300,7 @@ async def process_voter_history_import(
         import_elapsed = time.monotonic() - import_start
         logger.info(
             f"Voter history import completed in {import_elapsed:.1f}s: {total} total, "
-            f"{succeeded} succeeded, {failed} failed, {skipped} skipped, "
-            f"{unmatched} unmatched"
+            f"{succeeded} succeeded, {failed} failed, {skipped} skipped"
         )
 
     except Exception:
@@ -383,37 +374,6 @@ async def _upsert_voter_history_batch(
             },
         )
         await session.execute(stmt)
-
-
-async def _count_unmatched_voters_bulk(
-    session: AsyncSession,
-    reg_numbers: set[str],
-) -> int:
-    """Count unique registration numbers not present in the voters table.
-
-    Called once at the end of import with all collected registration numbers,
-    instead of per-chunk, for better performance.
-
-    Args:
-        session: Database session.
-        reg_numbers: Set of all unique voter registration numbers from the import.
-
-    Returns:
-        Count of unmatched registration numbers.
-    """
-    if not reg_numbers:
-        return 0
-
-    reg_list = list(reg_numbers)
-    matched: set[str] = set()
-    for i in range(0, len(reg_list), _IN_CLAUSE_BATCH):
-        batch = reg_list[i : i + _IN_CLAUSE_BATCH]
-        result = await session.execute(
-            select(Voter.voter_registration_number).where(Voter.voter_registration_number.in_(batch))
-        )
-        matched.update(result.scalars().all())
-
-    return len(reg_numbers - matched)
 
 
 async def _replace_previous_import(
@@ -649,6 +609,49 @@ async def get_participation_summary(
         total_elections=row[0],
         last_election_date=row[1],
     )
+
+
+async def resolve_election_ids(
+    session: AsyncSession,
+    records: list[VoterHistory],
+) -> dict[tuple[date, str], uuid.UUID]:
+    """Resolve election IDs for a list of voter history records.
+
+    Uses the same matching logic as _build_election_match_conditions:
+    - When only one election exists on a date, matches by date alone.
+    - When multiple elections share a date, matches by (date, election_type).
+
+    Args:
+        session: Database session.
+        records: Voter history records to resolve.
+
+    Returns:
+        Mapping from (election_date, normalized_election_type) to Election.id.
+    """
+    if not records:
+        return {}
+
+    record_keys = {(r.election_date, r.normalized_election_type) for r in records}
+    unique_dates = {d for d, _ in record_keys}
+
+    result = await session.execute(
+        select(Election.id, Election.election_date, Election.election_type).where(
+            Election.election_date.in_(unique_dates)
+        )
+    )
+    elections_by_date: dict[date, list[tuple[uuid.UUID, str]]] = {}
+    for eid, edate, etype in result.all():
+        elections_by_date.setdefault(edate, []).append((eid, etype))
+
+    lookup: dict[tuple[date, str], uuid.UUID] = {}
+    for edate, elections in elections_by_date.items():
+        if len(elections) == 1:
+            election_id = elections[0][0]
+            lookup.update({k: election_id for k in record_keys if k[0] == edate})
+        else:
+            lookup.update({(edate, etype): eid for eid, etype in elections})
+
+    return lookup
 
 
 async def _build_election_match_conditions(
