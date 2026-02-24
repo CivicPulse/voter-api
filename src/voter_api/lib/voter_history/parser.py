@@ -11,6 +11,8 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
+from voter_api.lib.normalize import normalize_registration_number
+
 # GA SoS voter history 9-column mapping: CSV header → model field name
 GA_SOS_VOTER_HISTORY_COLUMN_MAP: dict[str, str] = {
     "County Name": "county",
@@ -264,7 +266,7 @@ def _process_row(row: dict) -> dict:
     ballot_style = row.get("ballot_style") if row.get("ballot_style") else None
 
     return {
-        "voter_registration_number": reg_num,
+        "voter_registration_number": normalize_registration_number(reg_num) if reg_num else reg_num,
         "county": county,
         "election_date": parsed_date,
         "election_type": raw_type,

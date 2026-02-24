@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.dependencies import get_async_session, get_current_user, require_role
+from voter_api.lib.normalize import normalize_registration_number
 from voter_api.models.user import User
 from voter_api.schemas.common import PaginationMeta
 from voter_api.schemas.voter_history import (
@@ -44,6 +45,7 @@ async def get_voter_history(
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> PaginatedVoterHistoryResponse:
     """Get a voter's participation history with optional filtering."""
+    voter_registration_number = normalize_registration_number(voter_registration_number)
     records, total = await voter_history_service.get_voter_history(
         session,
         voter_registration_number,

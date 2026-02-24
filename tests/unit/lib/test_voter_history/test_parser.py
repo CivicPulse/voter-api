@@ -384,3 +384,40 @@ class TestEdgeCases:
         chunks = list(parse_voter_history_chunks(f, batch_size=10))
         assert len(chunks) == 1
         assert chunks[0][0]["voter_registration_number"] == "12345678"
+
+
+# ---------------------------------------------------------------------------
+# Registration number normalization
+# ---------------------------------------------------------------------------
+
+
+class TestRegistrationNumberNormalization:
+    """Tests for leading-zero stripping in voter history parser."""
+
+    def test_leading_zeros_stripped(self, tmp_path: Path) -> None:
+        """Zero-padded registration numbers have leading zeros removed."""
+        row = "FULTON,00013148,11/05/2024,GENERAL ELECTION,NP,BALLOT 1,Y,N,N"
+        f = _write_csv(tmp_path, [row])
+        record = list(parse_voter_history_chunks(f, batch_size=10))[0][0]
+        assert record["voter_registration_number"] == "13148"
+
+    def test_no_leading_zeros_unchanged(self, tmp_path: Path) -> None:
+        """Registration numbers without leading zeros are unchanged."""
+        row = "FULTON,12345678,11/05/2024,GENERAL ELECTION,NP,BALLOT 1,Y,N,N"
+        f = _write_csv(tmp_path, [row])
+        record = list(parse_voter_history_chunks(f, batch_size=10))[0][0]
+        assert record["voter_registration_number"] == "12345678"
+
+    def test_all_zeros_becomes_zero(self, tmp_path: Path) -> None:
+        """All-zeros registration number normalizes to '0'."""
+        row = "FULTON,0000,11/05/2024,GENERAL ELECTION,NP,BALLOT 1,Y,N,N"
+        f = _write_csv(tmp_path, [row])
+        record = list(parse_voter_history_chunks(f, batch_size=10))[0][0]
+        assert record["voter_registration_number"] == "0"
+
+    def test_internal_zeros_preserved(self, tmp_path: Path) -> None:
+        """Zeros within the number are not stripped."""
+        row = "FULTON,00100200,11/05/2024,GENERAL ELECTION,NP,BALLOT 1,Y,N,N"
+        f = _write_csv(tmp_path, [row])
+        record = list(parse_voter_history_chunks(f, batch_size=10))[0][0]
+        assert record["voter_registration_number"] == "100200"

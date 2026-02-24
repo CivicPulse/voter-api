@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.dependencies import get_async_session, get_current_user, require_role
+from voter_api.lib.normalize import normalize_registration_number
 from voter_api.models.user import User
 from voter_api.schemas.common import PaginationMeta
 from voter_api.schemas.geocoding import GeocodedLocationResponse, ManualGeocodingRequest
@@ -55,6 +56,8 @@ async def search_voters_endpoint(
     _current_user: User = Depends(get_current_user),
 ) -> PaginatedVoterResponse:
     """Search and list voters with multiple filter parameters."""
+    if voter_registration_number:
+        voter_registration_number = normalize_registration_number(voter_registration_number)
     voters, total = await search_voters(
         session,
         q=q,
