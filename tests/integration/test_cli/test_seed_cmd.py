@@ -329,6 +329,10 @@ class TestSeedFullBootstrap:
         ) -> None:
             order_log.append("voter")
 
+        async def mock_seed_elections(source_url: str) -> int:
+            order_log.append("election")
+            return 0
+
         with (
             patch(
                 "voter_api.cli.seed_cmd._import_county_districts",
@@ -337,6 +341,10 @@ class TestSeedFullBootstrap:
             patch(
                 "voter_api.cli.seed_cmd._import_all_boundaries",
                 side_effect=mock_all_boundaries,
+            ),
+            patch(
+                "voter_api.cli.seed_cmd._seed_elections_from_api",
+                side_effect=mock_seed_elections,
             ),
             patch(
                 "voter_api.cli.seed_cmd._import_voters_batch",
@@ -355,8 +363,8 @@ class TestSeedFullBootstrap:
             )
 
         assert result.exit_code == 0, result.output
-        # Verify order: county_district first, then boundary, then voter
-        assert order_log == ["county_district", "boundary", "voter"]
+        # Verify order: county_district first, then boundary, then election, then voter
+        assert order_log == ["county_district", "boundary", "election", "voter"]
 
 
 # ---------------------------------------------------------------------------
@@ -668,6 +676,11 @@ class TestSeedMaxVoters:
                 new_callable=AsyncMock,
             ),
             patch(
+                "voter_api.cli.seed_cmd._seed_elections_from_api",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+            patch(
                 "voter_api.cli.seed_cmd._import_voters_batch",
                 side_effect=mock_voters_batch,
             ),
@@ -733,6 +746,11 @@ class TestSeedMaxVoters:
             patch(
                 "voter_api.cli.seed_cmd._import_all_boundaries",
                 new_callable=AsyncMock,
+            ),
+            patch(
+                "voter_api.cli.seed_cmd._seed_elections_from_api",
+                new_callable=AsyncMock,
+                return_value=0,
             ),
             patch(
                 "voter_api.cli.seed_cmd._import_voters_batch",

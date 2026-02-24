@@ -84,6 +84,16 @@ def rebuild(
         "--max-voters",
         help="Limit total voter records imported (e.g., 10000 for preview environments)",
     ),
+    election_source: str | None = typer.Option(
+        "https://voteapi.civpulse.org",
+        "--election-source",
+        help="Base URL of the source API to fetch elections from",
+    ),
+    skip_elections: bool = typer.Option(
+        False,
+        "--skip-elections",
+        help="Skip the election seeding step",
+    ),
     skip_seed: bool = typer.Option(
         False,
         "--skip-seed",
@@ -182,6 +192,8 @@ def rebuild(
             fail_fast=False,
             skip_checksum=skip_checksum,
             max_voters=max_voters,
+            election_source=election_source,
+            skip_elections=skip_elections,
         )
     )
 
