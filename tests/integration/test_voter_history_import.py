@@ -5,6 +5,7 @@ Covers:
 """
 
 import uuid
+from collections.abc import Generator
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -65,7 +66,7 @@ def _make_session_mock() -> AsyncMock:
 
 
 @pytest.fixture
-def _mock_vh_optimizations():
+def _mock_vh_optimizations() -> Generator[None]:
     """Mock all DB optimization functions so they don't hit a real database."""
     with (
         patch(

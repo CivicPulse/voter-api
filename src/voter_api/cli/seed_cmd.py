@@ -356,7 +356,6 @@ async def _run_imports(
         if vh_files and (category_filters is None or FileCategory.VOTER_HISTORY in category_filters):
             typer.echo("\n--- Importing voter history files ---")
             await _import_voter_history_batch(
-                [r.local_path for r in vh_files if r.local_path is not None],
                 batch_size=settings.import_batch_size,
                 seed_result=seed_result,
                 fail_fast=fail_fast,
@@ -616,7 +615,6 @@ async def _import_voter_history(file_path: Path, batch_size: int, *, skip_optimi
 
 
 async def _import_voter_history_batch(
-    file_paths: list[Path],
     batch_size: int,
     seed_result: SeedResult,
     fail_fast: bool,
@@ -628,22 +626,21 @@ async def _import_voter_history_batch(
     once / rebuilt once for the entire batch.
 
     Args:
-        file_paths: Voter history ZIP/CSV file paths.
         batch_size: Records per batch per file.
         seed_result: Mutable result to track import outcomes.
         fail_fast: If True, propagate the first error.
-        vh_files: Download results for filename tracking.
+        vh_files: Download results for filename tracking and file paths.
     """
     from voter_api.core.database import get_session_factory
     from voter_api.services.voter_history_service import bulk_vh_import_context
 
-    if not file_paths:
+    # Pair only downloads that have a local_path to preserve alignment
+    paired = [(Path(r.local_path), r) for r in vh_files if r.local_path is not None]
+
+    if not paired:
         return
 
     factory = get_session_factory()
-
-    # Pair only downloads that have a local_path to preserve alignment
-    paired = [(Path(r.local_path), r) for r in vh_files if r.local_path is not None]
 
     async with factory() as lifecycle_session, bulk_vh_import_context(lifecycle_session):
         for fp, r in paired:

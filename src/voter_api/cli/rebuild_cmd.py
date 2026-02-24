@@ -84,6 +84,7 @@ async def _drop_and_recreate_schema(database_url: str, schema: str | None) -> No
     """
     from sqlalchemy import text
     from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.schema import CreateSchema, DropSchema
 
     schema_name = schema or "public"
 
@@ -97,9 +98,10 @@ async def _drop_and_recreate_schema(database_url: str, schema: str | None) -> No
     try:
         async with engine.begin() as conn:
             logger.info(f"Dropping schema {schema_name} CASCADE")
-            await conn.execute(text(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE"))
+            await conn.execute(DropSchema(schema_name, cascade=True, if_exists=True))
             logger.info(f"Creating schema {schema_name}")
-            await conn.execute(text(f"CREATE SCHEMA {schema_name}"))
+            await conn.execute(CreateSchema(schema_name))
+            # No SQLAlchemy construct for GRANT — raw SQL is acceptable here.
             await conn.execute(text(f"GRANT ALL ON SCHEMA {schema_name} TO CURRENT_USER"))
     finally:
         await engine.dispose()
@@ -152,6 +154,16 @@ def rebuild(
     Warning:
         AI agents must NEVER run this command. It is destructive and
         irreversible. Human operators only.
+
+    Args:
+        data_root: Override the data root URL.
+        data_dir: Local directory for downloaded files.
+        category: Optional category filter list.
+        skip_checksum: Skip SHA512 checksum verification.
+        max_voters: Limit total voter records imported.
+        election_source: Base URL for election seed source.
+        skip_elections: Skip the election seeding step.
+        skip_seed: Skip the seed/import phase.
 
     Steps:
         1. Drops the target schema (CASCADE) and recreates it.

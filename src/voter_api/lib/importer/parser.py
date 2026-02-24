@@ -271,13 +271,14 @@ def parse_csv_chunks(
         known_columns = [c for c in chunk.columns if c in GA_SOS_COLUMN_MAP.values()]
         chunk = chunk[known_columns]
 
-        # Normalize voter_registration_number: strip leading zeros so the
-        # format matches voter history records after their own normalization.
+        # Normalize voter_registration_number via the canonical function
+        # (voter_api.lib.normalize) so the format matches voter history
+        # records after their own normalization.
+        from voter_api.lib.normalize import normalize_registration_number
+
         if "voter_registration_number" in chunk.columns:
             col = chunk["voter_registration_number"]
-            stripped = col.str.lstrip("0")
-            # All-zeros → "0"; NaN/None stays NaN
-            chunk["voter_registration_number"] = stripped.where(stripped != "", other="0").where(col.notna())
+            chunk["voter_registration_number"] = col.where(col.isna(), col.map(normalize_registration_number))
 
         # Replace empty strings with NaN (pandas internal representation)
         chunk = chunk.replace("", None)

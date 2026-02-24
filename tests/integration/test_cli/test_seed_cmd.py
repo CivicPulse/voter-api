@@ -349,7 +349,6 @@ class TestSeedFullBootstrap:
             return 0
 
         def mock_voter_history_batch(
-            file_paths: list[Path],
             batch_size: int,
             seed_result: object,
             fail_fast: bool,

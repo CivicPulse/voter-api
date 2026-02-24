@@ -65,7 +65,8 @@ def upgrade() -> None:
         DECLARE
             collision_count integer;
         BEGIN
-            SELECT COUNT(*) INTO collision_count
+            -- Divide by 2 because the self-join produces each pair twice: (A,B) and (B,A)
+            SELECT COUNT(*) / 2 INTO collision_count
             FROM voters v1
             JOIN voters v2 ON v1.id <> v2.id
                 AND v1.voter_registration_number <> v2.voter_registration_number

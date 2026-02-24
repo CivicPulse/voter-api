@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from loguru import logger
-from sqlalchemy import ColumnElement, delete, exists, func, select, text
+from sqlalchemy import ColumnElement, and_, delete, exists, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -622,7 +622,7 @@ async def get_participation_stats(
             county_name_override=county_name_override,
         )
         if voter_stats:
-            active_count = sum(sc.count for sc in voter_stats.by_status if sc.status == "Active")
+            active_count = sum(sc.count for sc in voter_stats.by_status if sc.status.upper() == "ACTIVE")
             if active_count > 0:
                 total_eligible_voters = active_count
                 turnout_percentage = round((total_participants / active_count) * 100, 1)
@@ -767,9 +767,34 @@ async def _build_election_match_conditions(
     # Check if any voter_history records have been resolved for this election
     has_resolved = await session.execute(select(exists().where(VoterHistory.election_id == election.id)))
     if has_resolved.scalar_one():
-        return [VoterHistory.election_id == election.id]
+        # Include both resolved rows AND still-unresolved rows on the same date.
+        # Tier-2 district matching may leave some records with election_id IS NULL
+        # (e.g. voters not in the voters table). Scope the fallback to NULL rows
+        # only, so we never double-count records already resolved to a different
+        # election on the same date.
+        count_result = await session.execute(
+            select(func.count(Election.id)).where(
+                Election.election_date == election.election_date,
+            )
+        )
+        election_count = count_result.scalar_one()
 
-    # Fallback to date-based heuristic for unresolved records
+        if election_count == 1:
+            # Single-election date: unresolved rows must belong to this election
+            fallback = and_(
+                VoterHistory.election_id.is_(None),
+                VoterHistory.election_date == election.election_date,
+            )
+        else:
+            # Multi-election date: use type heuristic for unresolved rows
+            fallback = and_(
+                VoterHistory.election_id.is_(None),
+                VoterHistory.election_date == election.election_date,
+                VoterHistory.normalized_election_type == election.election_type,
+            )
+        return [or_(VoterHistory.election_id == election.id, fallback)]
+
+    # Fallback to date-based heuristic for fully-unresolved records
     count_result = await session.execute(
         select(func.count(Election.id)).where(
             Election.election_date == election.election_date,

@@ -168,19 +168,28 @@ class TestListElectionParticipants:
         # First call: get election
         election_result = MagicMock()
         election_result.scalar_one_or_none.return_value = election
-        # Second call: _build_election_match_conditions COUNT
+        # Second call: _build_election_match_conditions has_resolved check
+        has_resolved_result = MagicMock()
+        has_resolved_result.scalar_one.return_value = False
+        # Third call: _build_election_match_conditions election COUNT
         match_count_result = MagicMock()
         match_count_result.scalar_one.return_value = 1
-        # Third call: count
+        # Fourth call: count
         count_result = MagicMock()
         count_result.scalar_one.return_value = 1
-        # Fourth call: records
+        # Fifth call: records
         records_result = MagicMock()
         records_mock = MagicMock()
         records_mock.all.return_value = records
         records_result.scalars.return_value = records_mock
 
-        session.execute.side_effect = [election_result, match_count_result, count_result, records_result]
+        session.execute.side_effect = [
+            election_result,
+            has_resolved_result,
+            match_count_result,
+            count_result,
+            records_result,
+        ]
 
         result_records, total = await list_election_participants(session, election.id)
 
@@ -205,6 +214,8 @@ class TestListElectionParticipants:
         session = AsyncMock()
         election_result = MagicMock()
         election_result.scalar_one_or_none.return_value = election
+        has_resolved_result = MagicMock()
+        has_resolved_result.scalar_one.return_value = False
         match_count_result = MagicMock()
         match_count_result.scalar_one.return_value = 1
         count_result = MagicMock()
@@ -214,7 +225,13 @@ class TestListElectionParticipants:
         records_mock.all.return_value = []
         records_result.scalars.return_value = records_mock
 
-        session.execute.side_effect = [election_result, match_count_result, count_result, records_result]
+        session.execute.side_effect = [
+            election_result,
+            has_resolved_result,
+            match_count_result,
+            count_result,
+            records_result,
+        ]
 
         records, total = await list_election_participants(
             session,
@@ -228,8 +245,8 @@ class TestListElectionParticipants:
 
         assert total == 0
         assert records == []
-        # 4 execute calls: election lookup + match count + count + records
-        assert session.execute.await_count == 4
+        # 5 execute calls: election lookup + has_resolved + match count + count + records
+        assert session.execute.await_count == 5
 
 
 # ---------------------------------------------------------------------------
@@ -250,24 +267,28 @@ class TestGetParticipationStats:
         # 1: election lookup
         election_result = MagicMock()
         election_result.scalar_one_or_none.return_value = election
-        # 2: _build_election_match_conditions COUNT
+        # 2: _build_election_match_conditions has_resolved
+        has_resolved_result = MagicMock()
+        has_resolved_result.scalar_one.return_value = False
+        # 3: _build_election_match_conditions election COUNT
         match_count_result = MagicMock()
         match_count_result.scalar_one.return_value = 1
-        # 3: total count
+        # 4: total count
         total_result = MagicMock()
         total_result.scalar_one.return_value = 100
-        # 4: by county
+        # 5: by county
         county_result = MagicMock()
         county_result.all.return_value = [("FULTON", 60), ("DEKALB", 40)]
-        # 5: by ballot style
+        # 6: by ballot style
         style_result = MagicMock()
         style_result.all.return_value = [("STD", 80), ("ABSENTEE", 20)]
-        # 6: by precinct
+        # 7: by precinct
         precinct_result = MagicMock()
         precinct_result.all.return_value = [("HA2", "HAZZARD 2", 35), ("HA1", "HAZZARD 1", 25)]
 
         session.execute.side_effect = [
             election_result,
+            has_resolved_result,
             match_count_result,
             total_result,
             county_result,
@@ -309,6 +330,8 @@ class TestGetParticipationStats:
         session = AsyncMock()
         election_result = MagicMock()
         election_result.scalar_one_or_none.return_value = election
+        has_resolved_result = MagicMock()
+        has_resolved_result.scalar_one.return_value = False
         match_count_result = MagicMock()
         match_count_result.scalar_one.return_value = 1
         total_result = MagicMock()
@@ -322,6 +345,7 @@ class TestGetParticipationStats:
 
         session.execute.side_effect = [
             election_result,
+            has_resolved_result,
             match_count_result,
             total_result,
             county_result,
@@ -347,6 +371,8 @@ class TestGetParticipationStats:
         session = AsyncMock()
         election_result = MagicMock()
         election_result.scalar_one_or_none.return_value = election
+        has_resolved_result = MagicMock()
+        has_resolved_result.scalar_one.return_value = False
         match_count_result = MagicMock()
         match_count_result.scalar_one.return_value = 1
         total_result = MagicMock()
@@ -360,6 +386,7 @@ class TestGetParticipationStats:
 
         session.execute.side_effect = [
             election_result,
+            has_resolved_result,
             match_count_result,
             total_result,
             county_result,
@@ -394,6 +421,8 @@ class TestGetParticipationStats:
         session = AsyncMock()
         election_result = MagicMock()
         election_result.scalar_one_or_none.return_value = election
+        has_resolved_result = MagicMock()
+        has_resolved_result.scalar_one.return_value = False
         match_count_result = MagicMock()
         match_count_result.scalar_one.return_value = 1
         total_result = MagicMock()
@@ -407,6 +436,7 @@ class TestGetParticipationStats:
 
         session.execute.side_effect = [
             election_result,
+            has_resolved_result,
             match_count_result,
             total_result,
             county_result,
@@ -449,6 +479,8 @@ class TestGetParticipationStats:
         session = AsyncMock()
         election_result = MagicMock()
         election_result.scalar_one_or_none.return_value = election
+        has_resolved_result = MagicMock()
+        has_resolved_result.scalar_one.return_value = False
         match_count_result = MagicMock()
         match_count_result.scalar_one.return_value = 1
         total_result = MagicMock()
@@ -462,6 +494,7 @@ class TestGetParticipationStats:
 
         session.execute.side_effect = [
             election_result,
+            has_resolved_result,
             match_count_result,
             total_result,
             county_result,
@@ -600,7 +633,7 @@ class TestBuildElectionMatchConditions:
 
     @pytest.mark.asyncio
     async def test_resolved_election_uses_election_id(self) -> None:
-        """When resolved records exist, uses election_id match instead of date-based."""
+        """When resolved records exist, returns OR condition (resolved + unresolved fallback)."""
         election = _mock_election(
             election_date=date(2026, 2, 17),
             election_type="special",
@@ -609,11 +642,14 @@ class TestBuildElectionMatchConditions:
         # First call: check resolved count (>0 = records already resolved)
         resolved_count_result = MagicMock()
         resolved_count_result.scalar_one.return_value = 5
-        session.execute = AsyncMock(return_value=resolved_count_result)
+        # Second call: election count on date (needed for fallback clause)
+        date_count_result = MagicMock()
+        date_count_result.scalar_one.return_value = 1
+        session.execute = AsyncMock(side_effect=[resolved_count_result, date_count_result])
 
         conditions = await _build_election_match_conditions(session, election)
 
-        # Single condition using election_id
+        # Single OR condition: resolved rows + unresolved fallback
         assert len(conditions) == 1
 
     @pytest.mark.asyncio

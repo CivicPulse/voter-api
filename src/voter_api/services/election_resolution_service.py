@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from loguru import logger
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, update
 
 from voter_api.lib.district_parser import (
     DISTRICT_TYPE_TO_BOUNDARY_TYPE,
@@ -26,6 +26,7 @@ from voter_api.lib.district_parser import (
 )
 from voter_api.models.boundary import Boundary
 from voter_api.models.election import Election
+from voter_api.models.voter_history import VoterHistory
 
 if TYPE_CHECKING:
     from datetime import date
@@ -117,6 +118,7 @@ async def resolve_voter_history_elections(
     *,
     election_date: date | None = None,
     force: bool = False,
+    dry_run: bool = False,
 ) -> ResolutionResult:
     """Resolve voter_history.election_id using three-tier matching.
 
@@ -124,6 +126,8 @@ async def resolve_voter_history_elections(
         session: Database session.
         election_date: Optional date filter. If None, resolves all dates.
         force: If True, re-resolves records that already have election_id.
+        dry_run: If True, flush changes to get accurate counts but roll
+            back instead of committing.
 
     Returns:
         ResolutionResult with counts from each tier.
@@ -153,7 +157,10 @@ async def resolve_voter_history_elections(
             result.tier2_updated += t2
             result.unresolvable += unresolvable
 
-    await session.commit()
+    if dry_run:
+        await session.rollback()
+    else:
+        await session.commit()
     logger.info(
         "Election resolution complete: tier1={}, tier2={}, unresolvable={}",
         result.tier1_updated,
@@ -182,12 +189,11 @@ async def _resolve_tier1_single_election(
     election_result = await session.execute(select(Election.id).where(Election.election_date == election_date))
     election_id = election_result.scalar_one()
 
-    if force:
-        sql = "UPDATE voter_history SET election_id = :eid WHERE election_date = :edate"
-    else:
-        sql = "UPDATE voter_history SET election_id = :eid WHERE election_date = :edate AND election_id IS NULL"
+    stmt = update(VoterHistory).where(VoterHistory.election_date == election_date).values(election_id=election_id)
+    if not force:
+        stmt = stmt.where(VoterHistory.election_id.is_(None))
 
-    cursor = await session.execute(text(sql), {"eid": election_id, "edate": election_date})
+    cursor = await session.execute(stmt)
     updated: int = cursor.rowcount  # type: ignore[attr-defined]
     if updated > 0:
         logger.debug(
@@ -326,6 +332,23 @@ async def _update_vh_by_district(
         msg = f"Invalid voter column: {voter_column}"
         raise ValueError(msg)
 
+    # Generate padded variants of numeric identifiers to handle zero-padding
+    # mismatches between election district text and voter CSV fields.
+    # Same strategy as voter_stats_service.get_voter_stats_for_boundary.
+    if district_identifier.isdigit():
+        num_val = int(district_identifier)
+        district_ids = list(
+            {
+                district_identifier,
+                str(num_val),
+                str(num_val).zfill(2),
+                str(num_val).zfill(3),
+                str(num_val).zfill(4),
+            }
+        )
+    else:
+        district_ids = [district_identifier]
+
     null_filter = "" if force else "AND vh.election_id IS NULL "
     # voter_column is validated against _ALLOWED_VOTER_COLUMNS above
     sql = (
@@ -334,14 +357,14 @@ async def _update_vh_by_district(
         f"WHERE vh.voter_registration_number = v.voter_registration_number "
         f"AND vh.election_date = :election_date "
         f"{null_filter}"
-        f"AND v.{voter_column} = :district_identifier"
+        f"AND v.{voter_column} = ANY(:district_ids)"
     )
     cursor = await session.execute(
         text(sql),
         {
             "election_id": election_id,
             "election_date": election_date,
-            "district_identifier": district_identifier,
+            "district_ids": district_ids,
         },
     )
     return cursor.rowcount  # type: ignore[attr-defined, no-any-return]

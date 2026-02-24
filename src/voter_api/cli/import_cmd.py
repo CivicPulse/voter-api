@@ -578,11 +578,9 @@ async def _resolve_elections(election_date: date | None, force: bool, dry_run: b
         async with factory() as session:
             if dry_run:
                 typer.echo("DRY RUN — no changes will be made")
-                # Still run resolution to see counts, then rollback
-                result = await resolve_voter_history_elections(session, election_date=election_date, force=force)
-                await session.rollback()
-            else:
-                result = await resolve_voter_history_elections(session, election_date=election_date, force=force)
+            result = await resolve_voter_history_elections(
+                session, election_date=election_date, force=force, dry_run=dry_run
+            )
 
             typer.echo("\nElection Resolution Results:")
             typer.echo(f"  Elections backfilled:    {result.elections_backfilled}")
