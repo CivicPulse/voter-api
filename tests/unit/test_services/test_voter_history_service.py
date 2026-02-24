@@ -20,6 +20,7 @@ from voter_api.services.voter_history_service import (
     get_participation_summary,
     get_voter_history,
     list_election_participants,
+    lookup_voter_ids,
     resolve_election_ids,
 )
 
@@ -516,6 +517,58 @@ class TestBuildElectionMatchConditions:
 # ---------------------------------------------------------------------------
 # resolve_election_ids
 # ---------------------------------------------------------------------------
+
+
+class TestLookupVoterIds:
+    """Tests for the lookup_voter_ids batch helper."""
+
+    @pytest.mark.asyncio
+    async def test_empty_list_returns_empty_dict(self) -> None:
+        """Empty input returns empty dict without querying."""
+        session = AsyncMock()
+        result = await lookup_voter_ids(session, [])
+        assert result == {}
+        session.execute.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_returns_mapping(self) -> None:
+        """Returns reg_num → UUID mapping for found voters."""
+        voter_id = uuid.uuid4()
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.all.return_value = [("12345678", voter_id)]
+        session.execute.return_value = query_result
+
+        result = await lookup_voter_ids(session, ["12345678"])
+
+        assert result == {"12345678": voter_id}
+
+    @pytest.mark.asyncio
+    async def test_missing_voter_omitted(self) -> None:
+        """Unmatched registration numbers are excluded from result."""
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.all.return_value = []
+        session.execute.return_value = query_result
+
+        result = await lookup_voter_ids(session, ["99999999"])
+
+        assert "99999999" not in result
+        assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_deduplicates_input(self) -> None:
+        """Duplicate registration numbers result in a single query."""
+        voter_id = uuid.uuid4()
+        session = AsyncMock()
+        query_result = MagicMock()
+        query_result.all.return_value = [("12345678", voter_id)]
+        session.execute.return_value = query_result
+
+        result = await lookup_voter_ids(session, ["12345678", "12345678", "12345678"])
+
+        assert result == {"12345678": voter_id}
+        session.execute.assert_awaited_once()
 
 
 class TestResolveElectionIds:

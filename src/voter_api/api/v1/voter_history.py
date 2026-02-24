@@ -113,8 +113,19 @@ async def list_election_participants(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Election not found",
         ) from exc
+
+    # Resolve voter IDs for participation records
+    reg_nums = [r.voter_registration_number for r in records]
+    voter_id_map = await voter_history_service.lookup_voter_ids(session, reg_nums) if reg_nums else {}
+
+    items = []
+    for r in records:
+        item = ElectionParticipationRecord.model_validate(r)
+        item.voter_id = voter_id_map.get(r.voter_registration_number)
+        items.append(item)
+
     return PaginatedElectionParticipationResponse(
-        items=[ElectionParticipationRecord.model_validate(r) for r in records],
+        items=items,
         pagination=PaginationMeta(
             total=total,
             page=page,
