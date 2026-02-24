@@ -2,7 +2,7 @@
 
 The ``voter-api seed`` command fetches a remote manifest, downloads data
 files with checksum verification, and imports them using the existing
-import pipelines in dependency order: county-districts → boundaries → voters.
+import pipelines in dependency order: county-districts → boundaries → voters → voter-history.
 """
 
 from __future__ import annotations
@@ -25,6 +25,7 @@ _CATEGORY_MAP: dict[str, FileCategory] = {
     "boundaries": FileCategory.BOUNDARY,
     "voters": FileCategory.VOTER,
     "county-districts": FileCategory.COUNTY_DISTRICT,
+    "voter-history": FileCategory.VOTER_HISTORY,
 }
 
 _VALID_CATEGORIES = ", ".join(sorted(_CATEGORY_MAP.keys()))
@@ -100,7 +101,7 @@ def seed(
 
     Fetches the remote manifest, downloads all listed files (skipping
     cached files with matching checksums), then imports in dependency
-    order: county-districts → boundaries → elections (from API) → voters.
+    order: county-districts → boundaries → elections (from API) → voters → voter-history.
     """
     # Validate categories
     category_filters: set[FileCategory] | None = None
@@ -268,7 +269,7 @@ async def _run_imports(
 ) -> None:
     """Run database imports in dependency order.
 
-    Import order: county-districts → boundaries → elections (from API) → voters.
+    Import order: county-districts → boundaries → elections (from API) → voters → voter-history.
     Reference-category files are never imported.
 
     Args:
@@ -335,7 +336,7 @@ async def _run_imports(
         elif skip_elections:
             typer.echo("\n--- Skipping election seeding (--skip-elections) ---")
 
-        # Voters last — parallel processing with single index lifecycle
+        # Voters — parallel processing with single index lifecycle
         voter_files = [r for r in successful_downloads if r.entry.category == FileCategory.VOTER]
         if voter_files and (category_filters is None or FileCategory.VOTER in category_filters):
             typer.echo("\n--- Importing voter files ---")
@@ -347,6 +348,22 @@ async def _run_imports(
                 fail_fast=fail_fast,
                 max_voters=max_voters,
             )
+
+        # Voter history last — depends on voters being imported first
+        vh_files = [r for r in successful_downloads if r.entry.category == FileCategory.VOTER_HISTORY]
+        if vh_files and (category_filters is None or FileCategory.VOTER_HISTORY in category_filters):
+            typer.echo("\n--- Importing voter history files ---")
+            for r in vh_files:
+                assert r.local_path is not None
+                try:
+                    await _import_voter_history(r.local_path, settings.import_batch_size)
+                    seed_result.import_results[f"voter_history:{r.entry.filename}"] = "success"
+                except Exception as exc:
+                    typer.echo(f"  IMPORT FAILED: {r.entry.filename}: {exc}", err=True)
+                    seed_result.success = False
+                    seed_result.import_results[f"voter_history:{r.entry.filename}"] = str(exc)
+                    if fail_fast:
+                        return
 
     finally:
         await dispose_engine()
@@ -552,3 +569,41 @@ async def _import_voters_batch(
                         return
                 else:
                     seed_result.import_results[f"voter:{fp.name}"] = "success"
+
+
+async def _import_voter_history(file_path: Path, batch_size: int) -> None:
+    """Import a voter history ZIP/CSV file.
+
+    If the file is a ZIP archive, the first CSV inside is extracted to
+    the same directory before importing. Delegates to
+    :func:`~voter_api.services.voter_history_service.process_voter_history_import`.
+
+    Args:
+        file_path: Path to the voter history ZIP or CSV file.
+        batch_size: Records per batch.
+    """
+    import zipfile
+
+    from voter_api.core.database import get_session_factory
+    from voter_api.services.import_service import create_import_job
+    from voter_api.services.voter_history_service import process_voter_history_import
+
+    # If it's a ZIP, extract the CSV first
+    csv_path = file_path
+    if file_path.suffix.lower() == ".zip":
+        with zipfile.ZipFile(file_path) as zf:
+            csv_names = [n for n in zf.namelist() if n.endswith(".csv")]
+            if not csv_names:
+                msg = f"No CSV found in {file_path.name}"
+                raise ValueError(msg)
+            zf.extract(csv_names[0], file_path.parent)
+            csv_path = file_path.parent / csv_names[0]
+
+    factory = get_session_factory()
+    async with factory() as session:
+        job = await create_import_job(session, file_name=csv_path.name, file_type="voter_history")
+        typer.echo(f"  Import job: {job.id} for {csv_path.name}")
+        job = await process_voter_history_import(session, job, csv_path, batch_size)
+        typer.echo(
+            f"  Result ({csv_path.name}): {job.records_succeeded or 0} succeeded, {job.records_failed or 0} failed"
+        )

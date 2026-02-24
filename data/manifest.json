@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "updated_at": "2026-02-20T09:38:05Z",
+  "updated_at": "2026-02-24T12:00:00Z",
   "files": [
     {
       "filename": "counties-by-districts-2023.csv",
@@ -75,10 +75,82 @@
       "size_bytes": 148839
     },
     {
+      "filename": "2014.zip",
+      "sha512": "86c82e571ee1ee026b23fb4eb4c0d1e236cf87bf01ba8c1240d0479c5d8dc867709bfd506ea341217f58e9942dec019570187e7a929fcffe16eb005e59e3093c",
+      "category": "voter_history",
+      "size_bytes": 45040247
+    },
+    {
+      "filename": "2015.zip",
+      "sha512": "1e05d9084fe8c7ace398fe1e88a78966e6a21bcb423b061b39ac9d73a162f7db382c3fb159c3010da41e50c7db723b0ad1612e2d34108380fc46e61957b48f50",
+      "category": "voter_history",
+      "size_bytes": 2796314
+    },
+    {
+      "filename": "2016.zip",
+      "sha512": "894da97b5ef4f9a3ce1e94d3e7d14ad962a722fc30c50d81104327c67719f01a3dd7d3239c53595f6c2c08e61feaf1590da12b5006ea9ce920c156be3bfa540f",
+      "category": "voter_history",
+      "size_bytes": 44555155
+    },
+    {
+      "filename": "2017.zip",
+      "sha512": "70cd42bfb1e6a6f9c4dfb1e7be50e7b071dd73b927e4598875f4389186bd527a43f7f1400a6246dbd1e69b5084cde3d98095508b5a3f59390913d5826999f018",
+      "category": "voter_history",
+      "size_bytes": 6242032
+    },
+    {
+      "filename": "2018.zip",
+      "sha512": "729b3fe63dc34e126e7a5572148bbb0ae236b87fb635504b0f6f9cbca72be055d038ddb672099be1c2e15c2ceaff08cefe9a4af8bbc28476dd39da946eebbe25",
+      "category": "voter_history",
+      "size_bytes": 43075035
+    },
+    {
+      "filename": "2019.zip",
+      "sha512": "9e164834461d7f6e5b9902766903c8003f5537963329bb0707e2b2408c011b2a0361a41cf33c4273207325d2c136cf21001bad2b8f312c5593e17861b29d7cec",
+      "category": "voter_history",
+      "size_bytes": 3843686
+    },
+    {
+      "filename": "2020.zip",
+      "sha512": "ae9e3398df3e86ab0ae7a8ab822f57565def75cbd44bd7f32262cba9e43f1109fdeb4026240f004ade76496f10bdcf9a3591ea60787f25961cecd849587510b2",
+      "category": "voter_history",
+      "size_bytes": 59119308
+    },
+    {
+      "filename": "2021.zip",
+      "sha512": "2ac041e042fb5b4684c9c282ea76b9243d69e17759303414795cd587a467eccfc437768c5c87990b87a709bca0dfc5ac4b469e464f612ae39ff53ae290faf45a",
+      "category": "voter_history",
+      "size_bytes": 35946125
+    },
+    {
+      "filename": "2022.zip",
+      "sha512": "3e22c7e24fbb89493ac9fd64fb59262c1609891ac6f755ee97536abbf976c3bc1940a7daf152f533870b4c8225e9e75ca01691ee058f3c233ce4b9babd0bdde0",
+      "category": "voter_history",
+      "size_bytes": 122246831
+    },
+    {
+      "filename": "2023.zip",
+      "sha512": "78ab1b1f053ae09caecb2da481844a0a14d0a8e9cdf1dae8a5610d7efebe8b3ef8b1f95624162977c318a18aa237d9835076d73322ca658ef5fef1d3b2dd9c9c",
+      "category": "voter_history",
+      "size_bytes": 7858211
+    },
+    {
       "filename": "2024.zip",
       "sha512": "5321414718b17a2ef49e90b01d2a26584fbb6de340c964a3d7e2f37b5bfb80a5b118094eb997d67837696ecf9c9762f98fc3af2c62c5002f2696101d518e0cad",
       "category": "voter_history",
       "size_bytes": 58471810
+    },
+    {
+      "filename": "2025.zip",
+      "sha512": "27bfa2df52ca8ba3c1875327e788248eca64be131af552cff2363f753829fc2dbf154f1e73ae1965b7aba1b438d2622589938a7219b5a50fa1eb83e3003ace80",
+      "category": "voter_history",
+      "size_bytes": 15715962
+    },
+    {
+      "filename": "2026.zip",
+      "sha512": "b07e07734edbac85eb5bbf3fbecbcfea8a6f655f2f1759ce5e589c79c1a17eb8b33ea863c68a2a2b16027b5a1b61ee6adc8591825535265f0514e4cb0c6f34e6",
+      "category": "voter_history",
+      "size_bytes": 484498
     }
   ]
 }

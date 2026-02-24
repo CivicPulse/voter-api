@@ -23,6 +23,7 @@ class FileCategory(StrEnum):
     VOTER = "voter"
     COUNTY_DISTRICT = "county_district"
     REFERENCE = "reference"
+    VOTER_HISTORY = "voter_history"
 
 
 @dataclass(frozen=True)

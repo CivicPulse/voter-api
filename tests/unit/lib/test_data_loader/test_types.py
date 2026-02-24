@@ -22,12 +22,14 @@ class TestFileCategory:
         assert FileCategory.VOTER == "voter"
         assert FileCategory.COUNTY_DISTRICT == "county_district"
         assert FileCategory.REFERENCE == "reference"
+        assert FileCategory.VOTER_HISTORY == "voter_history"
 
     def test_category_from_string(self) -> None:
         assert FileCategory("boundary") == FileCategory.BOUNDARY
         assert FileCategory("voter") == FileCategory.VOTER
         assert FileCategory("county_district") == FileCategory.COUNTY_DISTRICT
         assert FileCategory("reference") == FileCategory.REFERENCE
+        assert FileCategory("voter_history") == FileCategory.VOTER_HISTORY
 
     def test_invalid_category_raises(self) -> None:
         with pytest.raises(ValueError, match="'invalid'"):

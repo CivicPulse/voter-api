@@ -23,7 +23,8 @@ def resolve_download_path(entry: DataFileEntry, data_dir: Path) -> Path:
     """Determine the local download path for a manifest entry.
 
     Voter-category files go to ``data_dir/voter/{filename}``;
-    all other categories go to ``data_dir/{filename}``.
+    all other categories (boundary, county_district, reference,
+    voter_history) go to ``data_dir/{filename}``.
 
     Args:
         entry: The manifest file entry.
