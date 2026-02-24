@@ -2,11 +2,10 @@
 
 Covers:
 - T017: Import service — parsing, upsert, re-import, unmatched, duplicates, errors
-- T031: Election auto-creation during import
 """
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -14,7 +13,6 @@ import pytest
 
 from voter_api.models.import_job import ImportJob
 from voter_api.services.voter_history_service import (
-    _auto_create_elections,
     process_voter_history_import,
 )
 
@@ -83,11 +81,6 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ) as mock_upsert,
             patch(
-                "voter_api.services.voter_history_service._auto_create_elections",
-                new_callable=AsyncMock,
-                return_value=1,
-            ),
-            patch(
                 "voter_api.services.voter_history_service._count_unmatched_voters",
                 new_callable=AsyncMock,
                 return_value=0,
@@ -121,11 +114,6 @@ class TestProcessVoterHistoryImport:
             patch(
                 "voter_api.services.voter_history_service._upsert_voter_history_batch",
                 new_callable=AsyncMock,
-            ),
-            patch(
-                "voter_api.services.voter_history_service._auto_create_elections",
-                new_callable=AsyncMock,
-                return_value=0,
             ),
             patch(
                 "voter_api.services.voter_history_service._count_unmatched_voters",
@@ -163,11 +151,6 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ),
             patch(
-                "voter_api.services.voter_history_service._auto_create_elections",
-                new_callable=AsyncMock,
-                return_value=0,
-            ),
-            patch(
                 "voter_api.services.voter_history_service._count_unmatched_voters",
                 new_callable=AsyncMock,
                 return_value=0,
@@ -194,11 +177,6 @@ class TestProcessVoterHistoryImport:
             patch(
                 "voter_api.services.voter_history_service._upsert_voter_history_batch",
                 new_callable=AsyncMock,
-            ),
-            patch(
-                "voter_api.services.voter_history_service._auto_create_elections",
-                new_callable=AsyncMock,
-                return_value=0,
             ),
             patch(
                 "voter_api.services.voter_history_service._count_unmatched_voters",
@@ -228,11 +206,6 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ),
             patch(
-                "voter_api.services.voter_history_service._auto_create_elections",
-                new_callable=AsyncMock,
-                return_value=0,
-            ),
-            patch(
                 "voter_api.services.voter_history_service._count_unmatched_voters",
                 new_callable=AsyncMock,
                 return_value=0,
@@ -259,11 +232,6 @@ class TestProcessVoterHistoryImport:
                 "voter_api.services.voter_history_service._upsert_voter_history_batch",
                 new_callable=AsyncMock,
             ) as mock_upsert,
-            patch(
-                "voter_api.services.voter_history_service._auto_create_elections",
-                new_callable=AsyncMock,
-                return_value=0,
-            ),
             patch(
                 "voter_api.services.voter_history_service._count_unmatched_voters",
                 new_callable=AsyncMock,
@@ -294,11 +262,6 @@ class TestProcessVoterHistoryImport:
                 "voter_api.services.voter_history_service._upsert_voter_history_batch",
                 new_callable=AsyncMock,
                 side_effect=RuntimeError("DB error"),
-            ),
-            patch(
-                "voter_api.services.voter_history_service._auto_create_elections",
-                new_callable=AsyncMock,
-                return_value=0,
             ),
             patch(
                 "voter_api.services.voter_history_service._count_unmatched_voters",
@@ -332,11 +295,6 @@ class TestProcessVoterHistoryImport:
                 new_callable=AsyncMock,
             ),
             patch(
-                "voter_api.services.voter_history_service._auto_create_elections",
-                new_callable=AsyncMock,
-                return_value=0,
-            ),
-            patch(
                 "voter_api.services.voter_history_service._count_unmatched_voters",
                 new_callable=AsyncMock,
                 return_value=0,
@@ -350,124 +308,3 @@ class TestProcessVoterHistoryImport:
 
         assert result.records_failed == 2
         assert result.records_succeeded == 0
-
-
-# ---------------------------------------------------------------------------
-# T031: Election auto-creation
-# ---------------------------------------------------------------------------
-
-
-class TestElectionAutoCreation:
-    """Tests for election auto-creation during import."""
-
-    @pytest.mark.asyncio
-    async def test_auto_create_called(self, tmp_path: Path) -> None:
-        """Auto-create elections is invoked during import."""
-        rows = ["FULTON,12345678,11/05/2024,GENERAL ELECTION,NP,STD,N,N,N"]
-        csv_file = _write_csv(tmp_path, rows)
-        job = _make_import_job()
-        session = AsyncMock()
-
-        with (
-            patch(
-                "voter_api.services.voter_history_service._upsert_voter_history_batch",
-                new_callable=AsyncMock,
-            ),
-            patch(
-                "voter_api.services.voter_history_service._auto_create_elections",
-                new_callable=AsyncMock,
-                return_value=1,
-            ) as mock_create,
-            patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters",
-                new_callable=AsyncMock,
-                return_value=0,
-            ),
-            patch(
-                "voter_api.services.voter_history_service._replace_previous_import",
-                new_callable=AsyncMock,
-            ),
-        ):
-            await process_voter_history_import(session, job, csv_file, batch_size=10)
-
-        mock_create.assert_awaited_once()
-        # First arg is session, second is the valid records list
-        records = mock_create.call_args[0][1]
-        assert len(records) == 1
-        assert records[0]["election_date"] == date(2024, 11, 5)
-
-    @pytest.mark.asyncio
-    async def test_multiple_election_types_in_batch(self, tmp_path: Path) -> None:
-        """Batch with multiple election types triggers auto-creation for each."""
-        rows = [
-            "FULTON,12345678,11/05/2024,GENERAL ELECTION,NP,STD,N,N,N",
-            "FULTON,12345678,05/21/2024,GENERAL PRIMARY,DEM,STD,N,N,N",
-        ]
-        csv_file = _write_csv(tmp_path, rows)
-        job = _make_import_job()
-        session = AsyncMock()
-
-        with (
-            patch(
-                "voter_api.services.voter_history_service._upsert_voter_history_batch",
-                new_callable=AsyncMock,
-            ),
-            patch(
-                "voter_api.services.voter_history_service._auto_create_elections",
-                new_callable=AsyncMock,
-                return_value=2,
-            ) as mock_create,
-            patch(
-                "voter_api.services.voter_history_service._count_unmatched_voters",
-                new_callable=AsyncMock,
-                return_value=0,
-            ),
-            patch(
-                "voter_api.services.voter_history_service._replace_previous_import",
-                new_callable=AsyncMock,
-            ),
-        ):
-            await process_voter_history_import(session, job, csv_file, batch_size=10)
-
-        mock_create.assert_awaited_once()
-        records = mock_create.call_args[0][1]
-        assert len(records) == 2
-
-    @pytest.mark.asyncio
-    async def test_auto_create_skipped_when_election_exists_with_different_type(self) -> None:
-        """Auto-creation is skipped when an election exists on the same date with a different type.
-
-        Simulates the core bug: a manually-created "special" election exists on 2026-02-17,
-        but the CSV contains "SPECIAL ELECTION RUNOFF" which normalizes to "runoff".
-        The date-only fallback should prevent creating a duplicate.
-        """
-        session = AsyncMock()
-
-        # First call: exact (date, type) match for "runoff" — not found
-        exact_match_result = MagicMock()
-        exact_match_result.scalar_one_or_none.return_value = None
-        # Second call: date-only fallback — found (the "special" election)
-        date_match_result = MagicMock()
-        date_match_result.scalar_one_or_none.return_value = uuid.uuid4()
-
-        session.execute.side_effect = [exact_match_result, date_match_result]
-
-        records = [
-            {
-                "voter_registration_number": "12345678",
-                "county": "FULTON",
-                "election_date": date(2026, 2, 17),
-                "election_type": "SPECIAL ELECTION RUNOFF",
-                "normalized_election_type": "runoff",
-                "party": "NP",
-                "ballot_style": "STD",
-                "absentee": False,
-                "provisional": False,
-                "supplemental": False,
-            }
-        ]
-
-        created = await _auto_create_elections(session, records)
-
-        assert created == 0
-        session.add.assert_not_called()

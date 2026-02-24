@@ -9,7 +9,6 @@ from voter_api.lib.voter_history.parser import (
     DEFAULT_ELECTION_TYPE,
     ELECTION_TYPE_MAP,
     GA_SOS_VOTER_HISTORY_COLUMN_MAP,
-    generate_election_name,
     map_election_type,
     parse_voter_history_chunks,
 )
@@ -73,8 +72,10 @@ class TestMapElectionType:
     @pytest.mark.parametrize(
         ("raw", "expected"),
         [
+            ("GENERAL", "general"),
             ("GENERAL ELECTION", "general"),
             ("GENERAL PRIMARY", "primary"),
+            ("GENERAL PRIMARY RUNOFF", "runoff"),
             ("SPECIAL ELECTION", "special"),
             ("SPECIAL ELECTION RUNOFF", "runoff"),
             ("SPECIAL PRIMARY", "primary"),
@@ -103,30 +104,6 @@ class TestMapElectionType:
         """Every entry in ELECTION_TYPE_MAP produces a valid result."""
         for raw_type, expected in ELECTION_TYPE_MAP.items():
             assert map_election_type(raw_type) == expected
-
-
-# ---------------------------------------------------------------------------
-# Election name generation (T030)
-# ---------------------------------------------------------------------------
-
-
-class TestGenerateElectionName:
-    """Tests for auto-created election name generation."""
-
-    def test_general_election_name(self) -> None:
-        """Generate name for a general election."""
-        name = generate_election_name("GENERAL ELECTION", date(2024, 11, 5))
-        assert name == "General Election - 11/05/2024"
-
-    def test_primary_name(self) -> None:
-        """Generate name for a primary."""
-        name = generate_election_name("GENERAL PRIMARY", date(2024, 5, 21))
-        assert name == "General Primary - 05/21/2024"
-
-    def test_whitespace_stripped_and_titled(self) -> None:
-        """Input is stripped and title-cased."""
-        name = generate_election_name("  special election  ", date(2024, 1, 15))
-        assert name == "Special Election - 01/15/2024"
 
 
 # ---------------------------------------------------------------------------
