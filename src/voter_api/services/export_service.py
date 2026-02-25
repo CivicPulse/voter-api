@@ -171,8 +171,8 @@ def _voter_to_dict(voter: Voter) -> dict[str, str | float | None]:
         "county_precinct": voter.county_precinct,
     }
 
-    # Add official location for GeoJSON
-    if voter.official_latitude is not None:
+    # Add official location for GeoJSON — only when both coordinates are present
+    if voter.official_latitude is not None and voter.official_longitude is not None:
         record["latitude"] = voter.official_latitude
         record["longitude"] = voter.official_longitude
 

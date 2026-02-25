@@ -154,7 +154,7 @@ async def process_analysis_run(
                 FROM analysis_results ar
                 WHERE ar.voter_id = voters.id AND ar.analysis_run_id = :run_id
             """),
-            {"run_id": str(run.id)},
+            {"run_id": run.id},
         )
 
         await session.commit()

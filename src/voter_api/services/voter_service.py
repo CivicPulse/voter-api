@@ -429,14 +429,20 @@ async def check_voter_districts(
     # with match_status (both come from compare_boundaries).
     mismatch_count = len(comparison_result.mismatch_details)
 
-    return {
-        "voter_id": voter.id,
-        "match_status": comparison_result.match_status,
-        "geocoded_point": {
+    # Only include geocoded_point when both coordinates are present
+    if voter.official_latitude is not None and voter.official_longitude is not None:
+        geocoded_point = {
             "latitude": voter.official_latitude,
             "longitude": voter.official_longitude,
             "source_type": voter.official_source,
-        },
+        }
+    else:
+        geocoded_point = None
+
+    return {
+        "voter_id": voter.id,
+        "match_status": comparison_result.match_status,
+        "geocoded_point": geocoded_point,
         "registered_boundaries": registered,
         "determined_boundaries": determined,
         "comparisons": comparisons,
