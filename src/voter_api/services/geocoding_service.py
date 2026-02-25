@@ -439,6 +439,13 @@ async def process_geocoding_job(
     job.status = "running"
     job.started_at = datetime.now(UTC)
     await session.commit()
+    logger.info(
+        "Geocoding job {} started (provider={}, county={}, force={})",
+        job.id,
+        job.provider,
+        job.county or "all",
+        job.force_regeocode,
+    )
 
     succeeded = 0
     failed_count = 0
@@ -476,10 +483,12 @@ async def process_geocoding_job(
         total = count_result.scalar_one()
         job.total_records = total
         await session.commit()
+        logger.info("Found {} voters to geocode", total)
 
         # Process in batches with keyset pagination
         offset = job.last_processed_voter_offset or 0
         last_voter_id: uuid.UUID | None = None
+        next_log_pct = 10  # Log progress every 10%
 
         while offset < total:
             batch_query = query.limit(batch_size)
@@ -586,6 +595,19 @@ async def process_geocoding_job(
             job.failed = failed_count
             job.cache_hits = cache_hits
             await session.commit()
+            if total > 0:
+                pct = offset * 100 // total
+                if pct >= next_log_pct:
+                    logger.info(
+                        "Progress: {} of {} complete ({}%) — {} ok, {} failed, {} cached",
+                        offset,
+                        total,
+                        pct,
+                        succeeded,
+                        failed_count,
+                        cache_hits,
+                    )
+                    next_log_pct = (pct // 10 + 1) * 10
 
         # Final update
         job.status = "completed"
@@ -601,6 +623,27 @@ async def process_geocoding_job(
             f"Geocoding completed: {processed} processed, {succeeded} succeeded, "
             f"{failed_count} failed, {cache_hits} cache hits"
         )
+
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        # Ctrl+C: commit work done so far and mark job as cancelled
+        logger.warning(
+            "Geocoding job {} interrupted — saving progress ({} processed, {} succeeded)",
+            job.id,
+            processed,
+            succeeded,
+        )
+        job.status = "cancelled"
+        job.processed = processed
+        job.succeeded = succeeded
+        job.failed = failed_count
+        job.cache_hits = cache_hits
+        job.error_log = errors if errors else None
+        job.completed_at = datetime.now(UTC)
+        try:
+            await session.commit()
+            logger.info("Progress saved successfully")
+        except Exception:
+            logger.exception("Failed to persist cancelled job status")
 
     except Exception as e:
         errors.append({"error": f"Job failed: {e}"})
@@ -717,6 +760,7 @@ async def _store_geocoded_location(
         session.add(location)
 
     await session.flush()
+    await sync_official_location(session, voter)
     return location
 
 
@@ -761,6 +805,12 @@ async def add_manual_location(
     if set_as_primary and not is_first:
         await _set_primary(session, voter_id, location)
 
+    # Sync official location from best geocode
+    voter_result = await session.execute(select(Voter).where(Voter.id == voter_id))
+    voter = voter_result.scalar_one_or_none()
+    if voter:
+        await sync_official_location(session, voter)
+
     await session.commit()
     await session.refresh(location)
     return location
@@ -792,6 +842,13 @@ async def set_primary_location(
         return None
 
     await _set_primary(session, voter_id, location)
+
+    # Sync official location from best geocode
+    voter_result = await session.execute(select(Voter).where(Voter.id == voter_id))
+    voter = voter_result.scalar_one_or_none()
+    if voter:
+        await sync_official_location(session, voter)
+
     await session.commit()
     await session.refresh(location)
     return location
@@ -824,6 +881,114 @@ async def get_voter_locations(session: AsyncSession, voter_id: uuid.UUID) -> lis
         .order_by(GeocodedLocation.is_primary.desc(), GeocodedLocation.geocoded_at.desc())
     )
     return list(result.scalars().all())
+
+
+async def sync_official_location(
+    session: AsyncSession,
+    voter: Voter,
+) -> None:
+    """Sync official location from the best geocoded location.
+
+    Selects the geocoded location with the highest confidence score
+    (tie-break: most recent geocoded_at) and writes to the voter's
+    official_* columns.  Skips if official_is_override is True.
+
+    Args:
+        session: Database session.
+        voter: The voter record to update.
+    """
+    if voter.official_is_override:
+        return
+
+    result = await session.execute(
+        select(GeocodedLocation)
+        .where(GeocodedLocation.voter_id == voter.id)
+        .order_by(
+            GeocodedLocation.confidence_score.desc().nullslast(),
+            GeocodedLocation.geocoded_at.desc(),
+        )
+        .limit(1)
+    )
+    best = result.scalar_one_or_none()
+
+    if best:
+        voter.official_latitude = best.latitude
+        voter.official_longitude = best.longitude
+        voter.official_point = best.point
+        voter.official_source = best.source_type
+    else:
+        voter.official_latitude = None
+        voter.official_longitude = None
+        voter.official_point = None
+        voter.official_source = None
+
+    await session.flush()
+
+
+async def set_official_location_override(
+    session: AsyncSession,
+    voter_id: uuid.UUID,
+    latitude: float,
+    longitude: float,
+) -> Voter:
+    """Set an admin override for a voter's official location.
+
+    Args:
+        session: Database session.
+        voter_id: The voter's UUID.
+        latitude: Override latitude.
+        longitude: Override longitude.
+
+    Returns:
+        The updated Voter.
+
+    Raises:
+        ValueError: If the voter is not found.
+    """
+    result = await session.execute(select(Voter).where(Voter.id == voter_id))
+    voter = result.scalar_one_or_none()
+    if voter is None:
+        msg = f"Voter {voter_id} not found"
+        raise ValueError(msg)
+
+    point = from_shape(Point(longitude, latitude), srid=4326)
+    voter.official_latitude = latitude
+    voter.official_longitude = longitude
+    voter.official_point = point
+    voter.official_source = "admin"
+    voter.official_is_override = True
+    await session.commit()
+    await session.refresh(voter)
+    return voter
+
+
+async def clear_official_location_override(
+    session: AsyncSession,
+    voter_id: uuid.UUID,
+) -> Voter:
+    """Clear an admin override and revert to the best geocoded location.
+
+    Args:
+        session: Database session.
+        voter_id: The voter's UUID.
+
+    Returns:
+        The updated Voter.
+
+    Raises:
+        ValueError: If the voter is not found.
+    """
+    result = await session.execute(select(Voter).where(Voter.id == voter_id))
+    voter = result.scalar_one_or_none()
+    if voter is None:
+        msg = f"Voter {voter_id} not found"
+        raise ValueError(msg)
+
+    voter.official_is_override = False
+    await sync_official_location(session, voter)
+    await session.commit()
+    await session.refresh(voter)
+    return voter
 
 
 async def get_cache_stats(session: AsyncSession) -> list[CacheProviderStats]:

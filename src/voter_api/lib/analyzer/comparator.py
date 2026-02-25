@@ -5,6 +5,7 @@ spatially-determined values per boundary type, and classifies
 the overall match status.
 """
 
+import contextlib
 from dataclasses import dataclass, field
 
 from voter_api.models.voter import Voter
@@ -49,6 +50,61 @@ PRECINCT_TYPES = {
     "county_precinct",
     "municipal_precinct",
 }
+
+# District types whose identifiers are purely numeric (allow zero-padding normalization)
+NUMERIC_DISTRICT_TYPES = {
+    "congressional",
+    "state_senate",
+    "state_house",
+    "judicial",
+    "county_commission",
+    "school_board",
+    "city_council",
+    "municipal_school_board",
+    "water_board",
+    "super_council",
+    "super_commissioner",
+    "super_school_board",
+    "fire_district",
+}
+
+
+def normalize_for_comparison(boundary_type: str, determined: str, registered: str) -> tuple[str, str]:
+    """Normalize identifier formats so boundary and voter values are comparable.
+
+    Handles two known format mismatches between boundary GEOIDs and GA SoS voter data:
+    1. Zero-padding: boundaries store "008", voters store "8" — strip leading zeros.
+    2. County FIPS prefix on precincts: boundary GEOIDs include a 3-digit county code
+       prefix ("021HO3"), voters store just the precinct ("HO3") — strip prefix only
+       when the suffix matches the registered value.
+
+    Args:
+        boundary_type: The boundary type being compared.
+        determined: The spatially-determined identifier value.
+        registered: The voter's registered identifier value.
+
+    Returns:
+        Tuple of (normalized_determined, normalized_registered).
+    """
+    det = determined.strip()
+    reg = registered.strip()
+
+    # For numeric district types, normalize by stripping leading zeros
+    if boundary_type in NUMERIC_DISTRICT_TYPES:
+        with contextlib.suppress(ValueError):
+            det = str(int(det))
+        with contextlib.suppress(ValueError):
+            reg = str(int(reg))
+        return det, reg
+
+    # For precinct types, strip 3-digit county FIPS prefix from determined value
+    # if the suffix matches the registered value
+    if boundary_type in PRECINCT_TYPES and len(det) > 3:
+        suffix = det[3:]
+        if suffix == reg:
+            return suffix, reg
+
+    return det, reg
 
 
 @dataclass
@@ -109,7 +165,8 @@ def compare_boundaries(
         det_value = determined[boundary_type]
         reg_value = registered[boundary_type]
 
-        if det_value != reg_value:
+        norm_det, norm_reg = normalize_for_comparison(boundary_type, det_value, reg_value)
+        if norm_det != norm_reg:
             mismatches.append(
                 {
                     "boundary_type": boundary_type,

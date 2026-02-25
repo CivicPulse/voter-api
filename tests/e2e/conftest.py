@@ -31,6 +31,7 @@ from voter_api.models.elected_official import ElectedOfficial
 from voter_api.models.election import Election
 from voter_api.models.totp import TOTPCredential
 from voter_api.models.user import User
+from voter_api.models.voter import Voter
 
 # ---------------------------------------------------------------------------
 # App & client
@@ -171,6 +172,7 @@ TOTP_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000004")
 ELECTION_ID = uuid.UUID("00000000-0000-0000-0000-000000000010")
 OFFICIAL_ID = uuid.UUID("00000000-0000-0000-0000-000000000020")
 BOUNDARY_ID = uuid.UUID("00000000-0000-0000-0000-000000000030")
+VOTER_ID = uuid.UUID("00000000-0000-0000-0000-000000000050")
 INVITE_ID = uuid.UUID("00000000-0000-0000-0000-000000000040")
 TOTP_CREDENTIAL_ID = uuid.UUID("00000000-0000-0000-0000-000000000041")
 
@@ -348,14 +350,14 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         # --- Boundary (simple polygon in Georgia) -------------------------
         boundary_data = {
             "id": BOUNDARY_ID,
-            "name": "E2E Test Congressional 1",
+            "name": "E2E Test Congressional 99",
             "boundary_type": "congressional",
-            "boundary_identifier": "001",
+            "boundary_identifier": "099",
             "geometry": func.ST_GeomFromText(
                 "MULTIPOLYGON(((-84.4 33.7, -84.3 33.7, -84.3 33.8, -84.4 33.8, -84.4 33.7)))",
                 4326,
             ),
-            "properties": {"district_number": "1"},
+            "properties": {"district_number": "99"},
             "source": "e2e-test",
         }
         stmt = pg_insert(Boundary).values(**boundary_data)
@@ -372,11 +374,48 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         )
         await session.execute(stmt)
 
+        # --- Voter (inside the seeded boundary polygon) --------------------
+        voter_data = {
+            "id": VOTER_ID,
+            "county": "FULTON",
+            "voter_registration_number": "E2E000001",
+            "status": "A",
+            "last_name": "E2ETEST",
+            "first_name": "JANE",
+            "congressional_district": "099",
+            "residence_street_number": "100",
+            "residence_street_name": "PEACHTREE",
+            "residence_street_type": "ST",
+            "residence_city": "ATLANTA",
+            "residence_zipcode": "30303",
+            "official_latitude": 33.75,
+            "official_longitude": -84.35,
+            "official_point": func.ST_SetSRID(func.ST_MakePoint(-84.35, 33.75), 4326),
+            "official_source": "e2e-seed",
+        }
+        stmt = pg_insert(Voter).values(**voter_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "county": stmt.excluded.county,
+                "voter_registration_number": stmt.excluded.voter_registration_number,
+                "status": stmt.excluded.status,
+                "last_name": stmt.excluded.last_name,
+                "first_name": stmt.excluded.first_name,
+                "congressional_district": stmt.excluded.congressional_district,
+                "official_latitude": stmt.excluded.official_latitude,
+                "official_longitude": stmt.excluded.official_longitude,
+                "official_point": voter_data["official_point"],
+                "official_source": stmt.excluded.official_source,
+            },
+        )
+        await session.execute(stmt)
+
         # --- Elected Official ---------------------------------------------
         official_data = {
             "id": OFFICIAL_ID,
             "boundary_type": "congressional",
-            "district_identifier": "1",
+            "district_identifier": "099",
             "full_name": "Jane E2E Doe",
             "first_name": "Jane",
             "last_name": "Doe",
@@ -409,6 +448,7 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         await session.execute(delete(UserInvite).where(UserInvite.id == INVITE_ID))
         await session.execute(delete(TOTPCredential).where(TOTPCredential.user_id == TOTP_USER_ID))
         await session.execute(delete(ElectedOfficial).where(ElectedOfficial.id == OFFICIAL_ID))
+        await session.execute(delete(Voter).where(Voter.id == VOTER_ID))
         await session.execute(delete(Boundary).where(Boundary.id == BOUNDARY_ID))
         await session.execute(delete(Election).where(Election.id == ELECTION_ID))
         await session.execute(

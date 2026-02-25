@@ -151,9 +151,9 @@ def _build_export_query(filters: dict) -> Select[Any]:
     return query.order_by(Voter.last_name, Voter.first_name)
 
 
-def _voter_to_dict(voter: Voter) -> dict:
+def _voter_to_dict(voter: Voter) -> dict[str, str | float | None]:
     """Convert a Voter ORM object to an export dict."""
-    record = {
+    record: dict[str, str | float | None] = {
         "voter_registration_number": voter.voter_registration_number,
         "county": voter.county,
         "status": voter.status,
@@ -171,14 +171,10 @@ def _voter_to_dict(voter: Voter) -> dict:
         "county_precinct": voter.county_precinct,
     }
 
-    # Add geocoded location for GeoJSON
-    primary_loc = next(
-        (loc for loc in (voter.geocoded_locations or []) if loc.is_primary),
-        None,
-    )
-    if primary_loc:
-        record["latitude"] = primary_loc.latitude
-        record["longitude"] = primary_loc.longitude
+    # Add official location for GeoJSON — only when both coordinates are present
+    if voter.official_latitude is not None and voter.official_longitude is not None:
+        record["latitude"] = voter.official_latitude
+        record["longitude"] = voter.official_longitude
 
     return record
 

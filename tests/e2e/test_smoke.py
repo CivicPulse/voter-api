@@ -669,7 +669,7 @@ class TestElections:
             "name": f"E2E Auto-Parse {uuid.uuid4().hex[:8]}",
             "election_date": "2025-06-15",
             "election_type": "special",
-            "district": "US House of Representatives - District 1",
+            "district": "US House of Representatives - District 99",
             "data_source_url": "https://results.enr.clarityelections.com/GA/autoparse/json",
             "refresh_interval_seconds": 120,
         }
@@ -679,9 +679,9 @@ class TestElections:
             assert create_resp.status_code == 201
             body = create_resp.json()
             assert body["district_type"] == "congressional"
-            assert body["district_identifier"] == "1"
+            assert body["district_identifier"] == "99"
             assert body["district_party"] is None
-            # Boundary ID links to seeded congressional boundary "1"
+            # Boundary ID links to seeded congressional boundary "99"
             assert body["boundary_id"] == str(BOUNDARY_ID)
         finally:
             if election_id is not None:
@@ -723,7 +723,7 @@ class TestElectedOfficials:
     async def test_list_by_district(self, client: httpx.AsyncClient) -> None:
         resp = await client.get(
             _url("/elected-officials/by-district"),
-            params={"boundary_type": "congressional", "district_identifier": "1"},
+            params={"boundary_type": "congressional", "district_identifier": "099"},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -733,7 +733,7 @@ class TestElectedOfficials:
     async def test_create_official_requires_admin(self, viewer_client: httpx.AsyncClient) -> None:
         payload = {
             "boundary_type": "congressional",
-            "district_identifier": "99",
+            "district_identifier": "099",
             "full_name": "Forbidden Official",
         }
         resp = await viewer_client.post(_url("/elected-officials"), json=payload)
@@ -819,10 +819,99 @@ class TestVoters:
         body = resp.json()
         assert "items" in body
         assert "pagination" in body
+        # Verify has_district_mismatch field is present in schema
+        for item in body["items"]:
+            assert "has_district_mismatch" in item
+
+    async def test_search_voters_filter_by_mismatch(self, admin_client: httpx.AsyncClient) -> None:
+        """Search with has_district_mismatch filter returns 200."""
+        resp = await admin_client.get(_url("/voters"), params={"has_district_mismatch": "true"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
+        assert "pagination" in body
+        for item in body["items"]:
+            assert item.get("has_district_mismatch") is True
 
     async def test_voter_not_found(self, admin_client: httpx.AsyncClient) -> None:
         resp = await admin_client.get(_url(f"/voters/{uuid.uuid4()}"))
         assert resp.status_code == 404
+
+    async def test_district_check_requires_auth(self, client: httpx.AsyncClient) -> None:
+        resp = await client.get(_url(f"/voters/{uuid.uuid4()}/district-check"))
+        assert resp.status_code == 401
+
+    async def test_district_check_voter_not_found(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.get(_url(f"/voters/{uuid.uuid4()}/district-check"))
+        assert resp.status_code == 404
+
+    async def test_district_check_happy_path(self, admin_client: httpx.AsyncClient) -> None:
+        """GET /voters/{id}/district-check returns 200 with expected fields for a real voter."""
+        voters_resp = await admin_client.get(_url("/voters"), params={"page": 1, "page_size": 1})
+        assert voters_resp.status_code == 200
+        items = voters_resp.json()["items"]
+        assert items, "E2E database has no voters — seed fixture may have failed"
+
+        voter_id = items[0]["id"]
+        resp = await admin_client.get(_url(f"/voters/{voter_id}/district-check"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["voter_id"] == voter_id
+        assert "match_status" in body
+        assert "mismatch_count" in body
+        assert "checked_at" in body
+
+    async def test_set_official_location_not_found(self, admin_client: httpx.AsyncClient) -> None:
+        """PUT /voters/{id}/official-location returns 404 for unknown voter."""
+        resp = await admin_client.put(
+            _url(f"/voters/{uuid.uuid4()}/official-location"),
+            json={"latitude": 33.749, "longitude": -84.388},
+        )
+        assert resp.status_code == 404
+
+    async def test_clear_official_location_not_found(self, admin_client: httpx.AsyncClient) -> None:
+        """DELETE /voters/{id}/official-location/override returns 404 for unknown voter."""
+        resp = await admin_client.delete(_url(f"/voters/{uuid.uuid4()}/official-location/override"))
+        assert resp.status_code == 404
+
+    async def test_set_official_location_viewer_forbidden(self, viewer_client: httpx.AsyncClient) -> None:
+        """Viewer role gets 403 on PUT /voters/{id}/official-location."""
+        resp = await viewer_client.put(
+            _url(f"/voters/{uuid.uuid4()}/official-location"),
+            json={"latitude": 33.749, "longitude": -84.388},
+        )
+        assert resp.status_code == 403
+
+    async def test_clear_official_location_viewer_forbidden(self, viewer_client: httpx.AsyncClient) -> None:
+        """Viewer role gets 403 on DELETE /voters/{id}/official-location/override."""
+        resp = await viewer_client.delete(_url(f"/voters/{uuid.uuid4()}/official-location/override"))
+        assert resp.status_code == 403
+
+    async def test_set_and_clear_official_location_happy_path(self, admin_client: httpx.AsyncClient) -> None:
+        """PUT then DELETE official-location succeeds for a real voter."""
+        voters_resp = await admin_client.get(_url("/voters"), params={"page": 1, "page_size": 1})
+        assert voters_resp.status_code == 200
+        items = voters_resp.json()["items"]
+        assert items, "E2E database has no voters — seed fixture may have failed"
+
+        voter_id = items[0]["id"]
+
+        # Set an override
+        set_resp = await admin_client.put(
+            _url(f"/voters/{voter_id}/official-location"),
+            json={"latitude": 33.749, "longitude": -84.388},
+        )
+        assert set_resp.status_code == 200
+        set_body = set_resp.json()
+        assert set_body["latitude"] == pytest.approx(33.749)
+        assert set_body["longitude"] == pytest.approx(-84.388)
+        assert set_body["is_override"] is True
+
+        # Clear the override
+        clear_resp = await admin_client.delete(_url(f"/voters/{voter_id}/official-location/override"))
+        assert clear_resp.status_code == 200
+        clear_body = clear_resp.json()
+        assert clear_body["is_override"] is False
 
 
 # ── Geocoding ──────────────────────────────────────────────────────────────

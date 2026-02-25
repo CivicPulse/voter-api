@@ -4,14 +4,13 @@ import uuid
 from datetime import UTC, datetime
 
 from loguru import logger
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.analyzer.comparator import compare_boundaries, extract_registered_boundaries
-from voter_api.lib.analyzer.spatial import find_voter_boundaries
+from voter_api.lib.analyzer.spatial import find_boundaries_for_point
 from voter_api.models.analysis_result import AnalysisResult
 from voter_api.models.analysis_run import AnalysisRun
-from voter_api.models.geocoded_location import GeocodedLocation
 from voter_api.models.voter import Voter
 
 ANALYSIS_BATCH_SIZE = 100
@@ -79,14 +78,10 @@ async def process_analysis_run(
         offset = run.last_processed_voter_offset or 0
 
         while True:
-            # Find eligible voters: those with a primary geocoded location
-            voter_query = (
-                select(Voter)
-                .join(
-                    GeocodedLocation,
-                    (GeocodedLocation.voter_id == Voter.id) & (GeocodedLocation.is_primary.is_(True)),
-                )
-                .where(Voter.present_in_latest_import.is_(True))
+            # Find eligible voters: those with an official location
+            voter_query = select(Voter).where(
+                Voter.present_in_latest_import.is_(True),
+                Voter.official_point.isnot(None),
             )
 
             if county:
@@ -101,28 +96,8 @@ async def process_analysis_run(
                 break
 
             for voter in voters:
-                # Get the voter's primary geocoded location
-                primary_loc = next(
-                    (loc for loc in voter.geocoded_locations if loc.is_primary),
-                    None,
-                )
-
-                if not primary_loc:
-                    unable_count += 1
-                    total_analyzed += 1
-                    await _store_result(
-                        session,
-                        run_id=run.id,
-                        voter_id=voter.id,
-                        determined={},
-                        registered=extract_registered_boundaries(voter),
-                        match_status="unable-to-analyze",
-                        mismatch_details=None,
-                    )
-                    continue
-
                 # Spatial analysis: find containing boundaries
-                determined = await find_voter_boundaries(session, primary_loc)
+                determined = await find_boundaries_for_point(session, voter.official_point)
 
                 # Extract registered boundaries from voter record
                 registered = extract_registered_boundaries(voter)
@@ -163,6 +138,25 @@ async def process_analysis_run(
         run.match_count = match_count
         run.mismatch_count = mismatch_count
         run.unable_to_analyze_count = unable_count
+
+        # Bulk-update voters.has_district_mismatch from this run's results.
+        # Only set TRUE/FALSE for definitive statuses; leave NULL for
+        # unable-to-analyze / not-geocoded (indeterminate).
+        await session.execute(
+            text("""
+                UPDATE voters SET has_district_mismatch = CASE
+                    WHEN ar.match_status = 'match' THEN false
+                    WHEN ar.match_status IN (
+                        'mismatch-district', 'mismatch-precinct', 'mismatch-both'
+                    ) THEN true
+                    ELSE NULL
+                END
+                FROM analysis_results ar
+                WHERE ar.voter_id = voters.id AND ar.analysis_run_id = :run_id
+            """),
+            {"run_id": run.id},
+        )
+
         await session.commit()
         await session.refresh(run)
 
@@ -173,6 +167,7 @@ async def process_analysis_run(
         )
 
     except Exception:
+        await session.rollback()
         run.status = "failed"
         run.total_voters_analyzed = total_analyzed
         run.match_count = match_count

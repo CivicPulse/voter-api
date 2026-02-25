@@ -3,7 +3,8 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String
+from geoalchemy2 import Geometry
+from sqlalchemy import Boolean, Date, DateTime, Double, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -82,6 +83,17 @@ class Voter(Base, UUIDMixin, TimestampMixin):
     voter_created_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     last_party_voted: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
+    # District mismatch flag (set by analysis runs)
+    has_district_mismatch: Mapped[bool | None] = mapped_column(Boolean, nullable=True, index=True)
+
+    # Official location — authoritative coordinates used by analysis, district checks, and exports.
+    # Auto-populated from the best geocode; can be overridden by an admin without touching geocoded results.
+    official_latitude: Mapped[float | None] = mapped_column(Double, nullable=True)
+    official_longitude: Mapped[float | None] = mapped_column(Double, nullable=True)
+    official_point: Mapped[object | None] = mapped_column(Geometry(geometry_type="POINT", srid=4326), nullable=True)
+    official_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    official_is_override: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+
     # Soft-delete tracking
     present_in_latest_import: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true", index=True
@@ -101,4 +113,7 @@ class Voter(Base, UUIDMixin, TimestampMixin):
     geocoded_locations = relationship("GeocodedLocation", back_populates="voter", lazy="selectin")
     residence_address = relationship("Address", back_populates="voters")
 
-    __table_args__ = (Index("ix_voters_name_search", "last_name", "first_name"),)
+    __table_args__ = (
+        Index("ix_voters_name_search", "last_name", "first_name"),
+        Index("ix_voters_official_point", "official_point", postgresql_using="gist"),
+    )

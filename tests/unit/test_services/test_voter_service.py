@@ -4,6 +4,8 @@ from datetime import UTC, date, datetime
 from unittest.mock import MagicMock
 from uuid import uuid4
 
+import pytest
+
 from voter_api.services.voter_service import build_voter_detail_dict
 
 
@@ -78,6 +80,12 @@ def _make_voter(**overrides: object) -> MagicMock:
     voter.created_at = datetime(2024, 1, 1, tzinfo=UTC)
     voter.updated_at = datetime(2024, 6, 1, tzinfo=UTC)
 
+    # Official location
+    voter.official_latitude = None
+    voter.official_longitude = None
+    voter.official_source = None
+    voter.official_is_override = False
+
     # Relationships
     voter.geocoded_locations = []
 
@@ -135,35 +143,43 @@ class TestBuildVoterDetailDict:
         assert districts["congressional_district"] == "05"
         assert districts["state_senate_district"] == "34"
 
-    def test_no_geocoded_location(self) -> None:
+    def test_no_official_location(self) -> None:
         voter = _make_voter()
         result = build_voter_detail_dict(voter)
-        assert result["primary_geocoded_location"] is None
+        assert result["official_location"] is None
 
-    def test_with_primary_geocoded_location(self) -> None:
-        loc = _make_location(is_primary=True)
-        voter = _make_voter(geocoded_locations=[loc])
+    def test_with_official_location(self) -> None:
+        voter = _make_voter(
+            official_latitude=33.749,
+            official_longitude=-84.388,
+            official_source="census",
+            official_is_override=False,
+        )
         result = build_voter_detail_dict(voter)
-        geo = result["primary_geocoded_location"]
-        assert geo is not None
-        assert geo["latitude"] == 33.749
-        assert geo["longitude"] == -84.388
-        assert geo["source_type"] == "census"
-        assert geo["confidence_score"] == 0.95
+        loc = result["official_location"]
+        assert loc is not None
+        assert loc["latitude"] == pytest.approx(33.749)
+        assert loc["longitude"] == pytest.approx(-84.388)
+        assert loc["source"] == "census"
+        assert loc["is_override"] is False
 
-    def test_with_non_primary_location_excluded(self) -> None:
-        loc = _make_location(is_primary=False)
-        voter = _make_voter(geocoded_locations=[loc])
+    def test_with_official_location_override(self) -> None:
+        voter = _make_voter(
+            official_latitude=34.0,
+            official_longitude=-85.0,
+            official_source="admin",
+            official_is_override=True,
+        )
         result = build_voter_detail_dict(voter)
-        assert result["primary_geocoded_location"] is None
+        loc = result["official_location"]
+        assert loc is not None
+        assert loc["source"] == "admin"
+        assert loc["is_override"] is True
 
-    def test_multiple_locations_picks_primary(self) -> None:
-        loc1 = _make_location(is_primary=False)
-        loc2 = _make_location(is_primary=True)
-        loc2.latitude = 34.0
-        voter = _make_voter(geocoded_locations=[loc1, loc2])
+    def test_official_location_none_when_coords_missing(self) -> None:
+        voter = _make_voter(official_latitude=None, official_longitude=None)
         result = build_voter_detail_dict(voter)
-        assert result["primary_geocoded_location"]["latitude"] == 34.0
+        assert result["official_location"] is None
 
     def test_dates_included(self) -> None:
         voter = _make_voter()

@@ -6,6 +6,7 @@ from voter_api.lib.analyzer.comparator import (
     BOUNDARY_TYPE_TO_VOTER_FIELD,
     compare_boundaries,
     extract_registered_boundaries,
+    normalize_for_comparison,
 )
 
 
@@ -153,3 +154,120 @@ class TestCompareBoundaries:
         result = compare_boundaries(determined, registered)
         assert result.determined_boundaries == determined
         assert result.registered_boundaries == registered
+
+
+class TestNormalizeForComparison:
+    """Tests for normalize_for_comparison."""
+
+    def test_strips_leading_zeros_from_numeric_district(self) -> None:
+        det, reg = normalize_for_comparison("congressional", "008", "8")
+        assert det == "8"
+        assert reg == "8"
+
+    def test_strips_leading_zeros_both_sides(self) -> None:
+        det, reg = normalize_for_comparison("state_senate", "034", "034")
+        assert det == "34"
+        assert reg == "34"
+
+    def test_genuine_numeric_mismatch_preserved(self) -> None:
+        det, reg = normalize_for_comparison("congressional", "005", "6")
+        assert det == "5"
+        assert reg == "6"
+
+    def test_non_numeric_district_value_unchanged(self) -> None:
+        det, reg = normalize_for_comparison("congressional", "ABC", "ABC")
+        assert det == "ABC"
+        assert reg == "ABC"
+
+    def test_precinct_fips_prefix_stripped(self) -> None:
+        det, reg = normalize_for_comparison("county_precinct", "021HO3", "HO3")
+        assert det == "HO3"
+        assert reg == "HO3"
+
+    def test_precinct_no_strip_when_suffix_differs(self) -> None:
+        det, reg = normalize_for_comparison("county_precinct", "021HO3", "HO4")
+        assert det == "021HO3"
+        assert reg == "HO4"
+
+    def test_precinct_short_value_unchanged(self) -> None:
+        det, reg = normalize_for_comparison("county_precinct", "HO3", "HO3")
+        assert det == "HO3"
+        assert reg == "HO3"
+
+    def test_municipal_precinct_fips_prefix_stripped(self) -> None:
+        det, reg = normalize_for_comparison("municipal_precinct", "060MP1", "MP1")
+        assert det == "MP1"
+        assert reg == "MP1"
+
+    def test_whitespace_stripped(self) -> None:
+        det, reg = normalize_for_comparison("congressional", " 008 ", " 8 ")
+        assert det == "8"
+        assert reg == "8"
+
+    def test_noop_for_matching_non_numeric_non_precinct(self) -> None:
+        """Types that are neither numeric nor precinct pass through unchanged."""
+        det, reg = normalize_for_comparison("unknown_type", "ABC", "ABC")
+        assert det == "ABC"
+        assert reg == "ABC"
+
+    def test_state_house_zero_padding(self) -> None:
+        det, reg = normalize_for_comparison("state_house", "042", "42")
+        assert det == "42"
+        assert reg == "42"
+
+
+class TestCompareBoundariesNormalization:
+    """Integration tests verifying compare_boundaries uses normalization."""
+
+    def test_padded_determined_matches_unpadded_registered(self) -> None:
+        """The exact bug: boundary "008" should match voter "8"."""
+        determined = {
+            "congressional": "008",
+            "state_senate": "034",
+            "state_house": "042",
+        }
+        registered = {
+            "congressional": "8",
+            "state_senate": "34",
+            "state_house": "42",
+        }
+        result = compare_boundaries(determined, registered)
+        assert result.match_status == "match"
+        assert result.mismatch_details == []
+
+    def test_precinct_fips_prefix_matches(self) -> None:
+        """Boundary "021HO3" should match voter "HO3"."""
+        determined = {"county_precinct": "021HO3"}
+        registered = {"county_precinct": "HO3"}
+        result = compare_boundaries(determined, registered)
+        assert result.match_status == "match"
+        assert result.mismatch_details == []
+
+    def test_genuine_mismatch_still_detected(self) -> None:
+        """Real mismatches should still be reported with raw values."""
+        determined = {"congressional": "005", "county_precinct": "021HO3"}
+        registered = {"congressional": "6", "county_precinct": "HO4"}
+        result = compare_boundaries(determined, registered)
+        assert result.match_status == "mismatch-both"
+        assert len(result.mismatch_details) == 2
+        # Raw values preserved in mismatch_details for debugging
+        cong = next(d for d in result.mismatch_details if d["boundary_type"] == "congressional")
+        assert cong["determined"] == "005"
+        assert cong["registered"] == "6"
+
+    def test_mixed_match_and_mismatch_with_normalization(self) -> None:
+        """Some types match after normalization, others genuinely mismatch."""
+        determined = {
+            "congressional": "008",
+            "state_senate": "010",
+            "county_precinct": "021HO3",
+        }
+        registered = {
+            "congressional": "8",
+            "state_senate": "11",
+            "county_precinct": "HO3",
+        }
+        result = compare_boundaries(determined, registered)
+        assert result.match_status == "mismatch-district"
+        assert len(result.mismatch_details) == 1
+        assert result.mismatch_details[0]["boundary_type"] == "state_senate"
