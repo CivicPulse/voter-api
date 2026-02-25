@@ -172,7 +172,7 @@ async def get_voter(
     return VoterDetailResponse(**detail_dict)
 
 
-@voters_router.get("/{voter_id}/district-check")
+@voters_router.get("/{voter_id}/district-check", response_model=DistrictCheckResponse)
 async def check_voter_district_assignments(
     voter_id: uuid.UUID,
     session: Annotated[AsyncSession, Depends(get_async_session)],
@@ -249,6 +249,7 @@ async def set_primary_geocoded_location(
 
 @voters_router.put(
     "/{voter_id}/official-location",
+    response_model=OfficialLocationResponse,
     dependencies=[Depends(require_role("admin"))],
 )
 async def set_voter_official_location(
@@ -272,6 +273,7 @@ async def set_voter_official_location(
 
 @voters_router.delete(
     "/{voter_id}/official-location/override",
+    response_model=OfficialLocationResponse,
     dependencies=[Depends(require_role("admin"))],
 )
 async def clear_voter_official_location_override(

@@ -59,7 +59,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_voters_official_point", table_name="voters", postgresql_using="gist")
+    op.drop_index("ix_voters_official_point", table_name="voters")
     op.drop_column("voters", "official_is_override")
     op.drop_column("voters", "official_source")
     op.drop_column("voters", "official_point")
