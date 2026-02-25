@@ -80,13 +80,12 @@ async def process_analysis_run(
 
         while True:
             # Find eligible voters: those with a primary geocoded location
-            voter_query = (
-                select(Voter)
-                .join(
-                    GeocodedLocation,
-                    (GeocodedLocation.voter_id == Voter.id) & (GeocodedLocation.is_primary.is_(True)),
-                )
-                .where(Voter.present_in_latest_import.is_(True))
+            voter_query = select(Voter).where(
+                Voter.present_in_latest_import.is_(True),
+                select(GeocodedLocation.id)
+                .where(GeocodedLocation.voter_id == Voter.id)
+                .where(GeocodedLocation.is_primary.is_(True))
+                .exists(),
             )
 
             if county:
@@ -184,6 +183,7 @@ async def process_analysis_run(
         )
 
     except Exception:
+        await session.rollback()
         run.status = "failed"
         run.total_voters_analyzed = total_analyzed
         run.match_count = match_count
