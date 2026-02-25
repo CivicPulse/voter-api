@@ -632,14 +632,16 @@ async def process_geocoding_job(
             processed,
             succeeded,
         )
-        job.status = "cancelled"
-        job.processed = processed
-        job.succeeded = succeeded
-        job.failed = failed_count
-        job.cache_hits = cache_hits
-        job.error_log = errors if errors else None
-        job.completed_at = datetime.now(UTC)
         try:
+            await session.rollback()
+            session.add(job)
+            job.status = "cancelled"
+            job.processed = processed
+            job.succeeded = succeeded
+            job.failed = failed_count
+            job.cache_hits = cache_hits
+            job.error_log = errors if errors else None
+            job.completed_at = datetime.now(UTC)
             await session.commit()
             logger.info("Progress saved successfully")
         except Exception:
@@ -647,9 +649,16 @@ async def process_geocoding_job(
 
     except Exception as e:
         errors.append({"error": f"Job failed: {e}"})
-        job.status = "failed"
-        job.error_log = errors if errors else None
         try:
+            await session.rollback()
+            session.add(job)
+            job.status = "failed"
+            job.processed = processed
+            job.succeeded = succeeded
+            job.failed = failed_count
+            job.cache_hits = cache_hits
+            job.error_log = errors if errors else None
+            job.completed_at = datetime.now(UTC)
             await session.commit()
         except Exception:
             logger.exception("Failed to persist job failure status")
@@ -865,6 +874,50 @@ async def _set_primary(
     )
     location.is_primary = True
     await session.flush()
+
+
+async def list_geocoding_jobs(
+    session: AsyncSession,
+    *,
+    status: str | None = None,
+    provider: str | None = None,
+    county: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[GeocodingJob], int]:
+    """List geocoding jobs with optional filters.
+
+    Args:
+        session: Database session.
+        status: Filter by job status.
+        provider: Filter by geocoding provider.
+        county: Filter by county.
+        page: Page number.
+        page_size: Items per page.
+
+    Returns:
+        Tuple of (jobs, total count).
+    """
+    query = select(GeocodingJob)
+    count_query = select(func.count(GeocodingJob.id))
+
+    if status:
+        query = query.where(GeocodingJob.status == status)
+        count_query = count_query.where(GeocodingJob.status == status)
+    if provider:
+        query = query.where(GeocodingJob.provider == provider)
+        count_query = count_query.where(GeocodingJob.provider == provider)
+    if county:
+        query = query.where(GeocodingJob.county == county)
+        count_query = count_query.where(GeocodingJob.county == county)
+
+    total = (await session.execute(count_query)).scalar_one()
+    offset = (page - 1) * page_size
+    query = query.order_by(GeocodingJob.created_at.desc()).offset(offset).limit(page_size)
+    result = await session.execute(query)
+    jobs = list(result.scalars().all())
+
+    return jobs, total
 
 
 async def get_geocoding_job(session: AsyncSession, job_id: uuid.UUID) -> GeocodingJob | None:

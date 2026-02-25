@@ -954,6 +954,32 @@ class TestGeocoding:
         assert "districts" in body
         assert isinstance(body["districts"], list)
 
+    async def test_jobs_list_requires_auth(self, client: httpx.AsyncClient) -> None:
+        """Jobs list endpoint requires authentication."""
+        resp = await client.get(_url("/geocoding/jobs"))
+        assert resp.status_code == 401
+
+    async def test_jobs_list_as_admin(self, admin_client: httpx.AsyncClient) -> None:
+        """Admin can list geocoding jobs."""
+        resp = await admin_client.get(_url("/geocoding/jobs"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
+        assert "pagination" in body
+
+    async def test_jobs_list_as_analyst(self, analyst_client: httpx.AsyncClient) -> None:
+        """Analyst can list geocoding jobs."""
+        resp = await analyst_client.get(_url("/geocoding/jobs"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
+        assert "pagination" in body
+
+    async def test_jobs_list_viewer_forbidden(self, viewer_client: httpx.AsyncClient) -> None:
+        """Viewer cannot list geocoding jobs."""
+        resp = await viewer_client.get(_url("/geocoding/jobs"))
+        assert resp.status_code == 403
+
     async def test_cache_stats_requires_auth(self, client: httpx.AsyncClient) -> None:
         """Cache stats endpoint requires authentication (any role)."""
         resp = await client.get(_url("/geocoding/cache/stats"))
@@ -1199,6 +1225,23 @@ class TestVoterHistory:
     async def test_election_participation_viewer_forbidden(self, viewer_client: httpx.AsyncClient) -> None:
         resp = await viewer_client.get(_url(f"/elections/{ELECTION_ID}/participation"))
         assert resp.status_code == 403
+
+    async def test_election_participation_has_district_mismatch_field(self, analyst_client: httpx.AsyncClient) -> None:
+        """Participation response items include has_district_mismatch field."""
+        resp = await analyst_client.get(_url(f"/elections/{ELECTION_ID}/participation"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["items"], "Expected at least one participation item for field validation"
+        for item in body["items"]:
+            assert "has_district_mismatch" in item
+
+    async def test_election_participation_q_param(self, analyst_client: httpx.AsyncClient) -> None:
+        """q parameter filters participation by name/reg number."""
+        resp = await analyst_client.get(_url(f"/elections/{ELECTION_ID}/participation?q=NONEXISTENT_NAME_XYZ"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["pagination"]["total"] == 0
+        assert body["items"] == []
 
     async def test_election_participation_stats_requires_auth(self, client: httpx.AsyncClient) -> None:
         """Stats endpoint requires analyst or admin role."""

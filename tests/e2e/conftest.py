@@ -29,9 +29,11 @@ from voter_api.models.auth_tokens import UserInvite
 from voter_api.models.boundary import Boundary
 from voter_api.models.elected_official import ElectedOfficial
 from voter_api.models.election import Election
+from voter_api.models.import_job import ImportJob
 from voter_api.models.totp import TOTPCredential
 from voter_api.models.user import User
 from voter_api.models.voter import Voter
+from voter_api.models.voter_history import VoterHistory
 
 # ---------------------------------------------------------------------------
 # App & client
@@ -175,6 +177,8 @@ BOUNDARY_ID = uuid.UUID("00000000-0000-0000-0000-000000000030")
 VOTER_ID = uuid.UUID("00000000-0000-0000-0000-000000000050")
 INVITE_ID = uuid.UUID("00000000-0000-0000-0000-000000000040")
 TOTP_CREDENTIAL_ID = uuid.UUID("00000000-0000-0000-0000-000000000041")
+IMPORT_JOB_ID = uuid.UUID("00000000-0000-0000-0000-000000000060")
+VOTER_HISTORY_ID = uuid.UUID("00000000-0000-0000-0000-000000000061")
 
 TOTP_USERNAME = "e2e_totp_user"
 INVITE_EMAIL = "e2e_invite@test.com"
@@ -411,6 +415,68 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         )
         await session.execute(stmt)
 
+        # --- Import Job (needed for voter_history FK) ----------------------
+        import_job_data = {
+            "id": IMPORT_JOB_ID,
+            "file_name": "e2e_seed_history.csv",
+            "file_type": "voter_history",
+            "status": "completed",
+            "total_records": 1,
+            "records_succeeded": 1,
+            "records_failed": 0,
+            "records_inserted": 1,
+            "records_updated": 0,
+            "records_skipped": 0,
+            "records_unmatched": 0,
+            "triggered_by": ADMIN_USER_ID,
+        }
+        stmt = pg_insert(ImportJob).values(**import_job_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "file_name": stmt.excluded.file_name,
+                "status": stmt.excluded.status,
+            },
+        )
+        await session.execute(stmt)
+
+        # --- Voter History (participation record for the seeded election) --
+        # Pre-delete any stale VoterHistory row matching the participation key
+        # to avoid a unique violation on uq_voter_history_participation when a
+        # leftover row with a different id already exists.
+        await session.execute(
+            delete(VoterHistory).where(
+                VoterHistory.voter_registration_number == "E2E000001",
+                VoterHistory.election_date == date(2024, 11, 5),
+                VoterHistory.election_type == "General Election",
+            )
+        )
+        voter_history_data = {
+            "id": VOTER_HISTORY_ID,
+            "voter_registration_number": "E2E000001",
+            "county": "FULTON",
+            "election_date": date(2024, 11, 5),
+            "election_type": "General Election",
+            "normalized_election_type": "general",
+            "party": None,
+            "ballot_style": "FULTON-01",
+            "absentee": False,
+            "provisional": False,
+            "supplemental": False,
+            "election_id": ELECTION_ID,
+            "import_job_id": IMPORT_JOB_ID,
+        }
+        stmt = pg_insert(VoterHistory).values(**voter_history_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "county": stmt.excluded.county,
+                "election_id": stmt.excluded.election_id,
+                "import_job_id": stmt.excluded.import_job_id,
+            },
+        )
+        await session.execute(stmt)
+
         # --- Elected Official ---------------------------------------------
         official_data = {
             "id": OFFICIAL_ID,
@@ -445,11 +511,13 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
 
     # Cleanup: remove seeded rows so the DB is left clean.
     async with factory() as session:
+        await session.execute(delete(VoterHistory).where(VoterHistory.id == VOTER_HISTORY_ID))
         await session.execute(delete(UserInvite).where(UserInvite.id == INVITE_ID))
         await session.execute(delete(TOTPCredential).where(TOTPCredential.user_id == TOTP_USER_ID))
         await session.execute(delete(ElectedOfficial).where(ElectedOfficial.id == OFFICIAL_ID))
         await session.execute(delete(Voter).where(Voter.id == VOTER_ID))
         await session.execute(delete(Boundary).where(Boundary.id == BOUNDARY_ID))
+        await session.execute(delete(ImportJob).where(ImportJob.id == IMPORT_JOB_ID))
         await session.execute(delete(Election).where(Election.id == ELECTION_ID))
         await session.execute(
             delete(User).where(User.id.in_([ADMIN_USER_ID, ANALYST_USER_ID, VIEWER_USER_ID, TOTP_USER_ID]))

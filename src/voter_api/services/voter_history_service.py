@@ -1,15 +1,16 @@
 """Voter history service — import, query, and aggregate participation data."""
 
+import re
 import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from loguru import logger
-from sqlalchemy import ColumnElement, and_, delete, exists, func, or_, select, text
+from sqlalchemy import ColumnElement, Row, and_, delete, exists, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -25,6 +26,7 @@ from voter_api.models.voter_history import VoterHistory
 from voter_api.schemas.voter_history import (
     BallotStyleBreakdown,
     CountyBreakdown,
+    ParticipationFilters,
     ParticipationStatsResponse,
     ParticipationSummary,
     PrecinctBreakdown,
@@ -484,65 +486,188 @@ async def list_election_participants(
     session: AsyncSession,
     election_id: uuid.UUID,
     *,
-    county: str | None = None,
-    ballot_style: str | None = None,
-    absentee: bool | None = None,
-    provisional: bool | None = None,
-    supplemental: bool | None = None,
+    filters: ParticipationFilters | None = None,
     page: int = 1,
     page_size: int = 20,
-) -> tuple[list[VoterHistory], int]:
+) -> tuple[list[VoterHistory] | list[Row[Any]], int, bool]:
     """List voters who participated in an election.
 
     Looks up the election by ID to get (date, type), then queries
     voter_history by (election_date, normalized_election_type).
 
+    When voter-table filters are active (q, county_precinct, districts,
+    voter_status, has_district_mismatch), JOINs to the voters table and
+    returns rows with voter details included (3rd element is True).
+
     Args:
         session: Database session.
         election_id: Election UUID.
-        county: Filter by county.
-        ballot_style: Filter by ballot style.
-        absentee: Filter by absentee flag.
-        provisional: Filter by provisional flag.
-        supplemental: Filter by supplemental flag.
+        filters: Optional participation filters bundle.
         page: Page number.
         page_size: Items per page.
 
     Returns:
-        Tuple of (records, total count).
+        Tuple of (records, total count, voter_details_included).
+        When voter_details_included is True, each record is a tuple of
+        (VoterHistory, voter_id, first_name, last_name, has_district_mismatch).
 
     Raises:
         ValueError: If election not found.
     """
+    if filters is None:
+        filters = ParticipationFilters()
+
     election = await _get_election_or_raise(session, election_id)
     match_conditions = await _build_election_match_conditions(session, election)
 
-    query = select(VoterHistory).where(*match_conditions)
-    count_query = select(func.count(VoterHistory.id)).where(*match_conditions)
+    # Normalize q and pre-tokenize; treat non-token queries as empty
+    q_terms: list[str] = []
+    if filters.q is not None:
+        stripped = filters.q.strip()
+        q_terms = [w for w in re.split(r"[\s,;.]+", stripped) if w]
 
-    if county:
-        query = query.where(VoterHistory.county == county)
-        count_query = count_query.where(VoterHistory.county == county)
-    if ballot_style:
-        query = query.where(VoterHistory.ballot_style == ballot_style)
-        count_query = count_query.where(VoterHistory.ballot_style == ballot_style)
-    if absentee is not None:
-        query = query.where(VoterHistory.absentee == absentee)
-        count_query = count_query.where(VoterHistory.absentee == absentee)
-    if provisional is not None:
-        query = query.where(VoterHistory.provisional == provisional)
-        count_query = count_query.where(VoterHistory.provisional == provisional)
-    if supplemental is not None:
-        query = query.where(VoterHistory.supplemental == supplemental)
-        count_query = count_query.where(VoterHistory.supplemental == supplemental)
+    # Determine if we need to JOIN to voters table
+    voter_filters_active = any(
+        [
+            q_terms,
+            filters.county_precinct,
+            filters.congressional_district,
+            filters.state_senate_district,
+            filters.state_house_district,
+            filters.county_commission_district,
+            filters.school_board_district,
+            filters.voter_status,
+            filters.has_district_mismatch is not None,
+        ]
+    )
+
+    query: Any
+    count_query: Any
+
+    if voter_filters_active:
+        # JOIN path: query voter_history + voters in one query
+        query = (
+            select(
+                VoterHistory,
+                Voter.id.label("voter_id"),
+                Voter.first_name,
+                Voter.last_name,
+                Voter.has_district_mismatch,
+            )
+            .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+            .where(*match_conditions)
+        )
+        count_query = (
+            select(func.count(VoterHistory.id))
+            .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+            .where(*match_conditions)
+        )
+
+        query, count_query = _apply_voter_filters(query, count_query, filters, q_terms)
+    else:
+        # Default path: query voter_history only
+        query = select(VoterHistory).where(*match_conditions)
+        count_query = select(func.count(VoterHistory.id)).where(*match_conditions)
+
+    # Apply voter_history filters (common to both paths)
+    query, count_query = _apply_history_filters(query, count_query, filters)
 
     total = (await session.execute(count_query)).scalar_one()
     offset = (page - 1) * page_size
     query = query.order_by(VoterHistory.voter_registration_number).offset(offset).limit(page_size)
     result = await session.execute(query)
-    records = list(result.scalars().all())
 
-    return records, total
+    if voter_filters_active:
+        rows = list(result.all())
+        return rows, total, True
+
+    records = list(result.scalars().all())
+    return records, total, False
+
+
+def _apply_voter_filters(
+    query: Any,
+    count_query: Any,
+    filters: ParticipationFilters,
+    q_terms: list[str],
+) -> tuple[Any, Any]:
+    """Apply voter-table filters and q search to query and count_query.
+
+    Args:
+        query: The main SELECT query.
+        count_query: The COUNT query.
+        filters: Participation filters bundle.
+        q_terms: Pre-tokenized search terms (empty list if no search).
+
+    Returns:
+        Tuple of (query, count_query) with filters applied.
+    """
+    if q_terms:
+        for word in q_terms:
+            word_escaped = word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            pattern = f"%{word_escaped}%"
+            word_condition = or_(
+                Voter.first_name.ilike(pattern, escape="\\"),
+                Voter.last_name.ilike(pattern, escape="\\"),
+                Voter.middle_name.ilike(pattern, escape="\\"),
+                VoterHistory.voter_registration_number.ilike(pattern, escape="\\"),
+            )
+            query = query.where(word_condition)
+            count_query = count_query.where(word_condition)
+
+    # Map filter fields to Voter model columns
+    field_column_pairs: list[tuple[str | None, Any]] = [
+        (filters.county_precinct, Voter.county_precinct),
+        (filters.congressional_district, Voter.congressional_district),
+        (filters.state_senate_district, Voter.state_senate_district),
+        (filters.state_house_district, Voter.state_house_district),
+        (filters.county_commission_district, Voter.county_commission_district),
+        (filters.school_board_district, Voter.school_board_district),
+        (filters.voter_status, Voter.status),
+    ]
+    for value, column in field_column_pairs:
+        if value:
+            query = query.where(column == value)
+            count_query = count_query.where(column == value)
+
+    if filters.has_district_mismatch is not None:
+        query = query.where(Voter.has_district_mismatch == filters.has_district_mismatch)
+        count_query = count_query.where(Voter.has_district_mismatch == filters.has_district_mismatch)
+
+    return query, count_query
+
+
+def _apply_history_filters(
+    query: Any,
+    count_query: Any,
+    filters: ParticipationFilters,
+) -> tuple[Any, Any]:
+    """Apply voter_history-table filters to query and count_query.
+
+    Args:
+        query: The main SELECT query.
+        count_query: The COUNT query.
+        filters: Participation filters bundle.
+
+    Returns:
+        Tuple of (query, count_query) with filters applied.
+    """
+    if filters.county:
+        query = query.where(VoterHistory.county == filters.county)
+        count_query = count_query.where(VoterHistory.county == filters.county)
+    if filters.ballot_style:
+        query = query.where(VoterHistory.ballot_style == filters.ballot_style)
+        count_query = count_query.where(VoterHistory.ballot_style == filters.ballot_style)
+    if filters.absentee is not None:
+        query = query.where(VoterHistory.absentee == filters.absentee)
+        count_query = count_query.where(VoterHistory.absentee == filters.absentee)
+    if filters.provisional is not None:
+        query = query.where(VoterHistory.provisional == filters.provisional)
+        count_query = count_query.where(VoterHistory.provisional == filters.provisional)
+    if filters.supplemental is not None:
+        query = query.where(VoterHistory.supplemental == filters.supplemental)
+        count_query = count_query.where(VoterHistory.supplemental == filters.supplemental)
+    return query, count_query
 
 
 async def get_participation_stats(
@@ -714,11 +839,13 @@ class VoterLookupResult(NamedTuple):
         id: Voter UUID primary key.
         first_name: Voter's first name.
         last_name: Voter's last name.
+        has_district_mismatch: Whether voter has a district mismatch.
     """
 
     id: uuid.UUID
     first_name: str
     last_name: str
+    has_district_mismatch: bool | None
 
 
 async def lookup_voter_details(
@@ -744,9 +871,13 @@ async def lookup_voter_details(
             Voter.id,
             Voter.first_name,
             Voter.last_name,
+            Voter.has_district_mismatch,
         ).where(Voter.voter_registration_number.in_(unique_nums))
     )
-    return {row[0]: VoterLookupResult(id=row[1], first_name=row[2], last_name=row[3]) for row in result.all()}
+    return {
+        row[0]: VoterLookupResult(id=row[1], first_name=row[2], last_name=row[3], has_district_mismatch=row[4])
+        for row in result.all()
+    }
 
 
 async def _build_election_match_conditions(

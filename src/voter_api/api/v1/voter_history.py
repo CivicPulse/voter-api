@@ -7,10 +7,13 @@ GET /elections/{id}/participation/stats.
 import math
 import uuid
 from datetime import date
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
+if TYPE_CHECKING:
+    from sqlalchemy import Row
 
 from voter_api.core.dependencies import get_async_session, require_role
 from voter_api.lib.normalize import normalize_registration_number
@@ -20,6 +23,7 @@ from voter_api.schemas.voter_history import (
     ElectionParticipationRecord,
     PaginatedElectionParticipationResponse,
     PaginatedVoterHistoryResponse,
+    ParticipationFilters,
     ParticipationStatsResponse,
     VoterHistoryRecord,
 )
@@ -87,24 +91,45 @@ async def list_election_participants(
     election_id: uuid.UUID,
     current_user: Annotated[User, Depends(require_role("analyst", "admin"))],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    q: Annotated[str | None, Query(max_length=500)] = None,
     county: str | None = None,
     ballot_style: str | None = None,
     absentee: bool | None = None,
     provisional: bool | None = None,
     supplemental: bool | None = None,
+    county_precinct: str | None = None,
+    congressional_district: str | None = None,
+    state_senate_district: str | None = None,
+    state_house_district: str | None = None,
+    county_commission_district: str | None = None,
+    school_board_district: str | None = None,
+    voter_status: str | None = None,
+    has_district_mismatch: bool | None = None,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> PaginatedElectionParticipationResponse:
     """List voters who participated in an election."""
+    filters = ParticipationFilters(
+        county=county,
+        ballot_style=ballot_style,
+        absentee=absentee,
+        provisional=provisional,
+        supplemental=supplemental,
+        q=q,
+        county_precinct=county_precinct,
+        congressional_district=congressional_district,
+        state_senate_district=state_senate_district,
+        state_house_district=state_house_district,
+        county_commission_district=county_commission_district,
+        school_board_district=school_board_district,
+        voter_status=voter_status,
+        has_district_mismatch=has_district_mismatch,
+    )
     try:
-        records, total = await voter_history_service.list_election_participants(
+        results, total, voter_details_included = await voter_history_service.list_election_participants(
             session,
             election_id,
-            county=county,
-            ballot_style=ballot_style,
-            absentee=absentee,
-            provisional=provisional,
-            supplemental=supplemental,
+            filters=filters,
             page=page,
             page_size=page_size,
         )
@@ -114,19 +139,33 @@ async def list_election_participants(
             detail="Election not found",
         ) from exc
 
-    # Resolve voter IDs and names for participation records
-    reg_nums = [r.voter_registration_number for r in records]
-    voter_detail_map = await voter_history_service.lookup_voter_details(session, reg_nums) if reg_nums else {}
-
     items = []
-    for r in records:
-        item = ElectionParticipationRecord.model_validate(r)
-        detail = voter_detail_map.get(r.voter_registration_number)
-        if detail:
-            item.voter_id = detail.id
-            item.first_name = detail.first_name
-            item.last_name = detail.last_name
-        items.append(item)
+    if voter_details_included:
+        # JOIN path: rows are (VoterHistory, voter_id, first_name, last_name, has_district_mismatch)
+        for row in results:
+            typed_row = cast("Row[Any]", row)
+            vh = typed_row[0]
+            item = ElectionParticipationRecord.model_validate(vh)
+            mapping = typed_row._mapping
+            item.voter_id = mapping["voter_id"]
+            item.first_name = mapping["first_name"]
+            item.last_name = mapping["last_name"]
+            item.has_district_mismatch = mapping["has_district_mismatch"]
+            items.append(item)
+    else:
+        # Default path: enrich from separate lookup
+        reg_nums = [r.voter_registration_number for r in results]
+        voter_detail_map = await voter_history_service.lookup_voter_details(session, reg_nums) if reg_nums else {}
+
+        for r in results:
+            item = ElectionParticipationRecord.model_validate(r)
+            detail = voter_detail_map.get(r.voter_registration_number)
+            if detail:
+                item.voter_id = detail.id
+                item.first_name = detail.first_name
+                item.last_name = detail.last_name
+                item.has_district_mismatch = detail.has_district_mismatch
+            items.append(item)
 
     return PaginatedElectionParticipationResponse(
         items=items,

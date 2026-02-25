@@ -138,6 +138,7 @@ class TestElectionParticipationRecordContract:
             voter_id=vid,
             first_name="Jane",
             last_name="Doe",
+            has_district_mismatch=True,
             voter_registration_number="12345678",
             county="DEKALB",
             election_date=date(2024, 5, 21),
@@ -154,11 +155,12 @@ class TestElectionParticipationRecordContract:
         assert data["voter_id"] == str(vid)
         assert data["first_name"] == "Jane"
         assert data["last_name"] == "Doe"
+        assert data["has_district_mismatch"] is True
         assert data["county"] == "DEKALB"
         assert data["normalized_election_type"] == "primary"
 
     def test_voter_id_nullable(self) -> None:
-        """voter_id and name fields serialize as null when no matching voter exists."""
+        """voter_id, name, and has_district_mismatch serialize as null when no matching voter."""
         record = ElectionParticipationRecord(
             id=uuid.uuid4(),
             voter_registration_number="12345678",
@@ -174,6 +176,7 @@ class TestElectionParticipationRecordContract:
         assert data["voter_id"] is None
         assert data["first_name"] is None
         assert data["last_name"] is None
+        assert data["has_district_mismatch"] is None
 
     def test_no_created_at(self) -> None:
         """ElectionParticipationRecord does not include created_at."""
