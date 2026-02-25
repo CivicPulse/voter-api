@@ -249,6 +249,16 @@ class Settings(BaseSettings):
         description="Frontend application URL for links in emails (invites, password resets)",
     )
 
+    @field_validator("frontend_url")
+    @classmethod
+    def validate_frontend_url(cls, v: str) -> str:
+        """Require a scheme and strip trailing slashes."""
+        url = v.strip().rstrip("/")
+        if not (url.startswith("http://") or url.startswith("https://")):
+            msg = "frontend_url must start with http:// or https://"
+            raise ValueError(msg)
+        return url
+
     # Environment
     environment: str = Field(
         default="production",
