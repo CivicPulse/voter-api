@@ -151,9 +151,9 @@ def _build_export_query(filters: dict) -> Select[Any]:
     return query.order_by(Voter.last_name, Voter.first_name)
 
 
-def _voter_to_dict(voter: Voter) -> dict:
+def _voter_to_dict(voter: Voter) -> dict[str, str | float | None]:
     """Convert a Voter ORM object to an export dict."""
-    record = {
+    record: dict[str, str | float | None] = {
         "voter_registration_number": voter.voter_registration_number,
         "county": voter.county,
         "status": voter.status,
