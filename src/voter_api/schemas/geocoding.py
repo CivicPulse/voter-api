@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from voter_api.schemas.common import PaginationMeta
+
 
 class GeocodedLocationResponse(BaseModel):
     """Response schema for a geocoded location."""
@@ -59,6 +61,13 @@ class GeocodingJobResponse(BaseModel):
     started_at: datetime | None = None
     completed_at: datetime | None = None
     created_at: datetime
+
+
+class PaginatedGeocodingJobResponse(BaseModel):
+    """Paginated list of geocoding jobs."""
+
+    items: list[GeocodingJobResponse]
+    pagination: PaginationMeta
 
 
 class CacheProviderStats(BaseModel):

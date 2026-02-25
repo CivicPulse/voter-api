@@ -13,6 +13,7 @@ from voter_api.lib.geocoder import get_all_provider_metadata, get_configured_pro
 from voter_api.lib.geocoder.base import GeocodingProviderError
 from voter_api.lib.geocoder.point_lookup import validate_georgia_coordinates
 from voter_api.models.user import User
+from voter_api.schemas.common import PaginationMeta, PaginationParams
 from voter_api.schemas.geocoding import (
     AddressGeocodeResponse,
     AddressVerifyResponse,
@@ -21,6 +22,7 @@ from voter_api.schemas.geocoding import (
     DistrictInfo,
     GeocodedLocationResponse,
     GeocodingJobResponse,
+    PaginatedGeocodingJobResponse,
     PointLookupResponse,
     ProviderGeocodeResult,
     ProviderInfo,
@@ -34,6 +36,7 @@ from voter_api.services.geocoding_service import (
     geocode_voter_all_providers,
     get_cache_stats,
     get_geocoding_job,
+    list_geocoding_jobs,
     process_geocoding_job,
     verify_address,
 )
@@ -292,6 +295,38 @@ async def trigger_batch_geocoding(
     task_runner.submit_task(_run_geocoding())
 
     return GeocodingJobResponse.model_validate(job)
+
+
+@geocoding_router.get(
+    "/jobs",
+    response_model=PaginatedGeocodingJobResponse,
+    dependencies=[Depends(require_role("admin", "analyst"))],
+)
+async def list_jobs(
+    session: AsyncSession = Depends(get_async_session),  # noqa: B008
+    pagination: PaginationParams = Depends(),  # noqa: B008
+    job_status: str | None = None,
+    provider: str | None = None,
+    county: str | None = None,
+) -> PaginatedGeocodingJobResponse:
+    """List geocoding jobs with optional filters (admin/analyst only)."""
+    jobs, total = await list_geocoding_jobs(
+        session,
+        status=job_status,
+        provider=provider,
+        county=county,
+        page=pagination.page,
+        page_size=pagination.page_size,
+    )
+    return PaginatedGeocodingJobResponse(
+        items=[GeocodingJobResponse.model_validate(j) for j in jobs],
+        pagination=PaginationMeta(
+            total=total,
+            page=pagination.page,
+            page_size=pagination.page_size,
+            total_pages=(total + pagination.page_size - 1) // pagination.page_size,
+        ),
+    )
 
 
 @geocoding_router.get(
