@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 from loguru import logger
-from sqlalchemy import ColumnElement, and_, delete, exists, func, or_, select, text
+from sqlalchemy import ColumnElement, Row, and_, delete, exists, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -501,7 +501,7 @@ async def list_election_participants(
     has_district_mismatch: bool | None = None,
     page: int = 1,
     page_size: int = 20,
-) -> tuple[list, int, bool]:
+) -> tuple[list[VoterHistory] | list[Row[Any]], int, bool]:
     """List voters who participated in an election.
 
     Looks up the election by ID to get (date, type), then queries
