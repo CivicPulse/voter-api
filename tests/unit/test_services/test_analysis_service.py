@@ -283,6 +283,53 @@ class TestFlushResults:
         assert session.execute.call_count == 2
 
 
+def _mock_process_session_with_voter(voter: MagicMock) -> AsyncMock:
+    """Create a mock session for process_analysis_run with one voter batch."""
+    session = AsyncMock()
+    cursor_result = MagicMock()
+    cursor_result.scalar_one_or_none.return_value = None
+    result_with_voters = MagicMock()
+    result_with_voters.scalars.return_value.all.return_value = [voter]
+    flush_result = MagicMock()
+    flush_result.all.return_value = [MagicMock()]
+    result_empty = MagicMock()
+    result_empty.scalars.return_value.all.return_value = []
+    bulk_update_result = MagicMock()
+    session.execute.side_effect = [
+        cursor_result,
+        result_with_voters,
+        flush_result,
+        result_empty,
+        bulk_update_result,
+    ]
+    return session
+
+
+def _mock_compare_session(
+    run_a: MagicMock,
+    run_b: MagicMock,
+    result_a: MagicMock,
+    result_b: MagicMock,
+) -> AsyncMock:
+    """Create a mock session for compare_runs."""
+    session = AsyncMock()
+    mock_run_a_result = MagicMock()
+    mock_run_a_result.scalar_one_or_none.return_value = run_a
+    mock_run_b_result = MagicMock()
+    mock_run_b_result.scalar_one_or_none.return_value = run_b
+    mock_results_a = MagicMock()
+    mock_results_a.scalars.return_value.all.return_value = [result_a]
+    mock_results_b = MagicMock()
+    mock_results_b.scalars.return_value.all.return_value = [result_b]
+    session.execute.side_effect = [
+        mock_run_a_result,
+        mock_run_b_result,
+        mock_results_a,
+        mock_results_b,
+    ]
+    return session
+
+
 class TestProcessAnalysisRun:
     """Tests for process_analysis_run."""
 
@@ -310,32 +357,9 @@ class TestProcessAnalysisRun:
 
     @pytest.mark.asyncio
     async def test_processes_voter_with_match(self) -> None:
-        session = AsyncMock()
         run = _mock_analysis_run()
-
         voter = _mock_voter()
-
-        # 1st: resume cursor (fresh run)
-        cursor_result = MagicMock()
-        cursor_result.scalar_one_or_none.return_value = None
-        # 2nd: voter batch with 1 voter
-        result_with_voters = MagicMock()
-        result_with_voters.scalars.return_value.all.return_value = [voter]
-        # 3rd: _flush_results INSERT ... RETURNING
-        flush_result = MagicMock()
-        flush_result.all.return_value = [MagicMock()]
-        # 4th: voter query returns empty (end)
-        result_empty = MagicMock()
-        result_empty.scalars.return_value.all.return_value = []
-        # 5th: bulk-update of has_district_mismatch
-        bulk_update_result = MagicMock()
-        session.execute.side_effect = [
-            cursor_result,
-            result_with_voters,
-            flush_result,
-            result_empty,
-            bulk_update_result,
-        ]
+        session = _mock_process_session_with_voter(voter)
 
         comparison_result = MagicMock()
         comparison_result.determined_boundaries = {"congressional": "05"}
@@ -387,32 +411,9 @@ class TestProcessAnalysisRun:
 
     @pytest.mark.asyncio
     async def test_handles_mismatch(self) -> None:
-        session = AsyncMock()
         run = _mock_analysis_run()
-
         voter = _mock_voter()
-
-        # 1st: resume cursor (fresh run)
-        cursor_result = MagicMock()
-        cursor_result.scalar_one_or_none.return_value = None
-        # 2nd: voter batch with 1 voter
-        result_with_voters = MagicMock()
-        result_with_voters.scalars.return_value.all.return_value = [voter]
-        # 3rd: _flush_results INSERT ... RETURNING
-        flush_result = MagicMock()
-        flush_result.all.return_value = [MagicMock()]
-        # 4th: voter query returns empty (end)
-        result_empty = MagicMock()
-        result_empty.scalars.return_value.all.return_value = []
-        # 5th: bulk-update of has_district_mismatch
-        bulk_update_result = MagicMock()
-        session.execute.side_effect = [
-            cursor_result,
-            result_with_voters,
-            flush_result,
-            result_empty,
-            bulk_update_result,
-        ]
+        session = _mock_process_session_with_voter(voter)
 
         comparison_result = MagicMock()
         comparison_result.determined_boundaries = {"congressional": "06"}
@@ -518,7 +519,6 @@ class TestCompareRuns:
 
     @pytest.mark.asyncio
     async def test_compares_matching_results(self) -> None:
-        session = AsyncMock()
         run_a = _mock_analysis_run()
         run_b = _mock_analysis_run()
         voter_id = uuid.uuid4()
@@ -533,20 +533,7 @@ class TestCompareRuns:
         result_b.voter_id = voter_id
         result_b.match_status = "match"
 
-        # Mock session.execute calls:
-        # 1. get_analysis_run(run_a) - scalar_one_or_none
-        # 2. get_analysis_run(run_b) - scalar_one_or_none
-        # 3. results_a select - scalars().all()
-        # 4. results_b select - scalars().all()
-        mock_run_a_result = MagicMock()
-        mock_run_a_result.scalar_one_or_none.return_value = run_a
-        mock_run_b_result = MagicMock()
-        mock_run_b_result.scalar_one_or_none.return_value = run_b
-        mock_results_a = MagicMock()
-        mock_results_a.scalars.return_value.all.return_value = [result_a]
-        mock_results_b = MagicMock()
-        mock_results_b.scalars.return_value.all.return_value = [result_b]
-        session.execute.side_effect = [mock_run_a_result, mock_run_b_result, mock_results_a, mock_results_b]
+        session = _mock_compare_session(run_a, run_b, result_a, result_b)
 
         comparison = await compare_runs(session, run_a.id, run_b.id)
         assert comparison["summary"]["unchanged"] == 1
@@ -554,7 +541,6 @@ class TestCompareRuns:
 
     @pytest.mark.asyncio
     async def test_detects_newly_matched(self) -> None:
-        session = AsyncMock()
         run_a = _mock_analysis_run()
         run_b = _mock_analysis_run()
         voter_id = uuid.uuid4()
@@ -569,15 +555,7 @@ class TestCompareRuns:
         result_b.voter_id = voter_id
         result_b.match_status = "match"
 
-        mock_run_a_result = MagicMock()
-        mock_run_a_result.scalar_one_or_none.return_value = run_a
-        mock_run_b_result = MagicMock()
-        mock_run_b_result.scalar_one_or_none.return_value = run_b
-        mock_results_a = MagicMock()
-        mock_results_a.scalars.return_value.all.return_value = [result_a]
-        mock_results_b = MagicMock()
-        mock_results_b.scalars.return_value.all.return_value = [result_b]
-        session.execute.side_effect = [mock_run_a_result, mock_run_b_result, mock_results_a, mock_results_b]
+        session = _mock_compare_session(run_a, run_b, result_a, result_b)
 
         comparison = await compare_runs(session, run_a.id, run_b.id)
         assert comparison["summary"]["newly_matched"] == 1

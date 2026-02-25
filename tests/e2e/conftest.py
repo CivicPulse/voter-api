@@ -428,7 +428,7 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
             "records_updated": 0,
             "records_skipped": 0,
             "records_unmatched": 0,
-            "created_by": ADMIN_USER_ID,
+            "triggered_by": ADMIN_USER_ID,
         }
         stmt = pg_insert(ImportJob).values(**import_job_data)
         stmt = stmt.on_conflict_do_update(

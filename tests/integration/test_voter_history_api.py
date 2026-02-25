@@ -23,6 +23,7 @@ from voter_api.models.voter_history import VoterHistory
 from voter_api.schemas.voter_history import (
     BallotStyleBreakdown,
     CountyBreakdown,
+    ParticipationFilters,
     ParticipationStatsResponse,
     ParticipationSummary,
     PrecinctBreakdown,
@@ -539,7 +540,7 @@ class TestListElectionParticipants:
 
     @pytest.mark.asyncio
     async def test_filter_by_county(self, analyst_client: AsyncClient) -> None:
-        """County filter is forwarded to service."""
+        """County filter is forwarded to service via ParticipationFilters."""
         with (
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
@@ -555,12 +556,12 @@ class TestListElectionParticipants:
             eid = uuid.uuid4()
             await analyst_client.get(f"/api/v1/elections/{eid}/participation?county=FULTON")
 
-        call_kwargs = mock_svc.call_args
-        assert call_kwargs[1]["county"] == "FULTON"
+        filters: ParticipationFilters = mock_svc.call_args[1]["filters"]
+        assert filters.county == "FULTON"
 
     @pytest.mark.asyncio
     async def test_filter_by_absentee(self, analyst_client: AsyncClient) -> None:
-        """Boolean absentee filter is forwarded."""
+        """Boolean absentee filter is forwarded via ParticipationFilters."""
         with (
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
@@ -576,8 +577,8 @@ class TestListElectionParticipants:
             eid = uuid.uuid4()
             await analyst_client.get(f"/api/v1/elections/{eid}/participation?absentee=true")
 
-        call_kwargs = mock_svc.call_args
-        assert call_kwargs[1]["absentee"] is True
+        filters: ParticipationFilters = mock_svc.call_args[1]["filters"]
+        assert filters.absentee is True
 
     @pytest.mark.asyncio
     async def test_pagination(self, analyst_client: AsyncClient) -> None:
@@ -603,7 +604,7 @@ class TestListElectionParticipants:
 
     @pytest.mark.asyncio
     async def test_voter_filter_forwarded(self, analyst_client: AsyncClient) -> None:
-        """Voter-table filters are forwarded to service."""
+        """Voter-table filters are forwarded to service via ParticipationFilters."""
         with (
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
@@ -618,15 +619,15 @@ class TestListElectionParticipants:
                 "&has_district_mismatch=true"
             )
 
-        call_kwargs = mock_svc.call_args
-        assert call_kwargs[1]["county_precinct"] == "HA2"
-        assert call_kwargs[1]["congressional_district"] == "8"
-        assert call_kwargs[1]["voter_status"] == "ACTIVE"
-        assert call_kwargs[1]["has_district_mismatch"] is True
+        filters: ParticipationFilters = mock_svc.call_args[1]["filters"]
+        assert filters.county_precinct == "HA2"
+        assert filters.congressional_district == "8"
+        assert filters.voter_status == "ACTIVE"
+        assert filters.has_district_mismatch is True
 
     @pytest.mark.asyncio
     async def test_q_param_forwarded(self, analyst_client: AsyncClient) -> None:
-        """The q search parameter is forwarded to service."""
+        """The q search parameter is forwarded to service via ParticipationFilters."""
         with (
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
@@ -637,8 +638,8 @@ class TestListElectionParticipants:
             eid = uuid.uuid4()
             await analyst_client.get(f"/api/v1/elections/{eid}/participation?q=Smith")
 
-        call_kwargs = mock_svc.call_args
-        assert call_kwargs[1]["q"] == "Smith"
+        filters: ParticipationFilters = mock_svc.call_args[1]["filters"]
+        assert filters.q == "Smith"
 
     @pytest.mark.asyncio
     async def test_join_path_response(self, analyst_client: AsyncClient) -> None:

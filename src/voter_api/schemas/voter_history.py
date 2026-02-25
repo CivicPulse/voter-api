@@ -1,11 +1,36 @@
 """Voter history Pydantic v2 request/response schemas."""
 
+from dataclasses import dataclass
 from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from voter_api.schemas.common import PaginationMeta
+
+
+@dataclass(frozen=True)
+class ParticipationFilters:
+    """Bundle of filter parameters for the election participation endpoint.
+
+    Groups voter-history filters and voter-table filters into a single
+    object to reduce parameter counts in route handlers and service functions.
+    """
+
+    county: str | None = None
+    ballot_style: str | None = None
+    absentee: bool | None = None
+    provisional: bool | None = None
+    supplemental: bool | None = None
+    q: str | None = None
+    county_precinct: str | None = None
+    congressional_district: str | None = None
+    state_senate_district: str | None = None
+    state_house_district: str | None = None
+    county_commission_district: str | None = None
+    school_board_district: str | None = None
+    voter_status: str | None = None
+    has_district_mismatch: bool | None = None
 
 
 class VoterHistoryRecord(BaseModel):

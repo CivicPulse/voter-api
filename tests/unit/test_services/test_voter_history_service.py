@@ -13,6 +13,7 @@ import pytest
 
 from voter_api.models.election import Election
 from voter_api.models.voter_history import VoterHistory
+from voter_api.schemas.voter_history import ParticipationFilters
 from voter_api.services.voter_history_service import (
     VoterLookupResult,
     _build_election_match_conditions,
@@ -89,6 +90,58 @@ def _mock_election(**overrides) -> MagicMock:
     for k, v in defaults.items():
         setattr(election, k, v)
     return election
+
+
+def _mock_join_session(election: MagicMock) -> AsyncMock:
+    """Create a mock session pre-configured for the JOIN path (5 execute calls)."""
+    session = AsyncMock()
+    election_result = MagicMock()
+    election_result.scalar_one_or_none.return_value = election
+    has_resolved_result = MagicMock()
+    has_resolved_result.scalar_one.return_value = False
+    match_count_result = MagicMock()
+    match_count_result.scalar_one.return_value = 1
+    count_result = MagicMock()
+    count_result.scalar_one.return_value = 0
+    records_result = MagicMock()
+    records_result.all.return_value = []
+    session.execute.side_effect = [
+        election_result,
+        has_resolved_result,
+        match_count_result,
+        count_result,
+        records_result,
+    ]
+    return session
+
+
+def _mock_stats_session(election: MagicMock) -> AsyncMock:
+    """Create a mock session pre-configured for get_participation_stats (7 execute calls)."""
+    session = AsyncMock()
+    election_result = MagicMock()
+    election_result.scalar_one_or_none.return_value = election
+    has_resolved_result = MagicMock()
+    has_resolved_result.scalar_one.return_value = False
+    match_count_result = MagicMock()
+    match_count_result.scalar_one.return_value = 1
+    total_result = MagicMock()
+    total_result.scalar_one.return_value = 50
+    county_result = MagicMock()
+    county_result.all.return_value = []
+    style_result = MagicMock()
+    style_result.all.return_value = []
+    precinct_result = MagicMock()
+    precinct_result.all.return_value = []
+    session.execute.side_effect = [
+        election_result,
+        has_resolved_result,
+        match_count_result,
+        total_result,
+        county_result,
+        style_result,
+        precinct_result,
+    ]
+    return session
 
 
 # ---------------------------------------------------------------------------
@@ -230,11 +283,13 @@ class TestListElectionParticipants:
         records, total, voter_details_included = await list_election_participants(
             session,
             election.id,
-            county="FULTON",
-            ballot_style="STD",
-            absentee=True,
-            provisional=False,
-            supplemental=True,
+            filters=ParticipationFilters(
+                county="FULTON",
+                ballot_style="STD",
+                absentee=True,
+                provisional=False,
+                supplemental=True,
+            ),
         )
 
         assert total == 0
@@ -246,30 +301,12 @@ class TestListElectionParticipants:
     async def test_voter_filter_triggers_join_path(self) -> None:
         """Voter-table filter (county_precinct) triggers JOIN path."""
         election = _mock_election()
-        session = AsyncMock()
-        election_result = MagicMock()
-        election_result.scalar_one_or_none.return_value = election
-        has_resolved_result = MagicMock()
-        has_resolved_result.scalar_one.return_value = False
-        match_count_result = MagicMock()
-        match_count_result.scalar_one.return_value = 1
-        count_result = MagicMock()
-        count_result.scalar_one.return_value = 0
-        records_result = MagicMock()
-        records_result.all.return_value = []
-
-        session.execute.side_effect = [
-            election_result,
-            has_resolved_result,
-            match_count_result,
-            count_result,
-            records_result,
-        ]
+        session = _mock_join_session(election)
 
         records, total, voter_details_included = await list_election_participants(
             session,
             election.id,
-            county_precinct="HA2",
+            filters=ParticipationFilters(county_precinct="HA2"),
         )
 
         assert total == 0
@@ -279,30 +316,12 @@ class TestListElectionParticipants:
     async def test_q_param_triggers_join_path(self) -> None:
         """The q search parameter triggers the JOIN path."""
         election = _mock_election()
-        session = AsyncMock()
-        election_result = MagicMock()
-        election_result.scalar_one_or_none.return_value = election
-        has_resolved_result = MagicMock()
-        has_resolved_result.scalar_one.return_value = False
-        match_count_result = MagicMock()
-        match_count_result.scalar_one.return_value = 1
-        count_result = MagicMock()
-        count_result.scalar_one.return_value = 0
-        records_result = MagicMock()
-        records_result.all.return_value = []
-
-        session.execute.side_effect = [
-            election_result,
-            has_resolved_result,
-            match_count_result,
-            count_result,
-            records_result,
-        ]
+        session = _mock_join_session(election)
 
         records, total, voter_details_included = await list_election_participants(
             session,
             election.id,
-            q="Smith",
+            filters=ParticipationFilters(q="Smith"),
         )
 
         assert total == 0
@@ -312,30 +331,12 @@ class TestListElectionParticipants:
     async def test_has_district_mismatch_triggers_join_path(self) -> None:
         """has_district_mismatch filter triggers the JOIN path."""
         election = _mock_election()
-        session = AsyncMock()
-        election_result = MagicMock()
-        election_result.scalar_one_or_none.return_value = election
-        has_resolved_result = MagicMock()
-        has_resolved_result.scalar_one.return_value = False
-        match_count_result = MagicMock()
-        match_count_result.scalar_one.return_value = 1
-        count_result = MagicMock()
-        count_result.scalar_one.return_value = 0
-        records_result = MagicMock()
-        records_result.all.return_value = []
-
-        session.execute.side_effect = [
-            election_result,
-            has_resolved_result,
-            match_count_result,
-            count_result,
-            records_result,
-        ]
+        session = _mock_join_session(election)
 
         records, total, voter_details_included = await list_election_participants(
             session,
             election.id,
-            has_district_mismatch=True,
+            filters=ParticipationFilters(has_district_mismatch=True),
         )
 
         assert total == 0
@@ -457,32 +458,7 @@ class TestGetParticipationStats:
         """Election without district info returns None for eligible voters."""
         election = _mock_election(district_type=None, district_identifier=None)
         eid = election.id
-
-        session = AsyncMock()
-        election_result = MagicMock()
-        election_result.scalar_one_or_none.return_value = election
-        has_resolved_result = MagicMock()
-        has_resolved_result.scalar_one.return_value = False
-        match_count_result = MagicMock()
-        match_count_result.scalar_one.return_value = 1
-        total_result = MagicMock()
-        total_result.scalar_one.return_value = 50
-        county_result = MagicMock()
-        county_result.all.return_value = []
-        style_result = MagicMock()
-        style_result.all.return_value = []
-        precinct_result = MagicMock()
-        precinct_result.all.return_value = []
-
-        session.execute.side_effect = [
-            election_result,
-            has_resolved_result,
-            match_count_result,
-            total_result,
-            county_result,
-            style_result,
-            precinct_result,
-        ]
+        session = _mock_stats_session(election)
 
         with patch(
             "voter_api.services.voter_stats_service.get_voter_stats_for_boundary",
@@ -563,32 +539,7 @@ class TestGetParticipationStats:
             district_identifier="1",
         )
         eid = election.id
-
-        session = AsyncMock()
-        election_result = MagicMock()
-        election_result.scalar_one_or_none.return_value = election
-        has_resolved_result = MagicMock()
-        has_resolved_result.scalar_one.return_value = False
-        match_count_result = MagicMock()
-        match_count_result.scalar_one.return_value = 1
-        total_result = MagicMock()
-        total_result.scalar_one.return_value = 50
-        county_result = MagicMock()
-        county_result.all.return_value = []
-        style_result = MagicMock()
-        style_result.all.return_value = []
-        precinct_result = MagicMock()
-        precinct_result.all.return_value = []
-
-        session.execute.side_effect = [
-            election_result,
-            has_resolved_result,
-            match_count_result,
-            total_result,
-            county_result,
-            style_result,
-            precinct_result,
-        ]
+        session = _mock_stats_session(election)
 
         with patch(
             "voter_api.services.voter_stats_service.get_voter_stats_for_boundary",

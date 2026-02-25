@@ -128,31 +128,13 @@ async def process_analysis_run(
             batch_results: list[dict] = []
 
             for voter in voters:
-                # Spatial analysis: find containing boundaries
-                determined = await find_boundaries_for_point(session, voter.official_point)
-
-                # Extract registered boundaries from voter record
-                registered = extract_registered_boundaries(voter)
-
-                # Compare and classify
-                comparison = compare_boundaries(determined, registered)
-
-                batch_results.append(
-                    {
-                        "id": uuid.uuid4(),
-                        "analysis_run_id": run.id,
-                        "voter_id": voter.id,
-                        "determined_boundaries": comparison.determined_boundaries,
-                        "registered_boundaries": comparison.registered_boundaries,
-                        "match_status": comparison.match_status,
-                        "mismatch_details": comparison.mismatch_details or None,
-                    }
-                )
+                result_dict, status = await _analyze_voter(session, run.id, voter)
+                batch_results.append(result_dict)
 
                 total_analyzed += 1
-                if comparison.match_status == "match":
+                if status == "match":
                     match_count += 1
-                elif comparison.match_status == "unable-to-analyze":
+                elif status == "unable-to-analyze":
                     unable_count += 1
                 else:
                     mismatch_count += 1
@@ -215,6 +197,37 @@ async def process_analysis_run(
         raise
 
     return run
+
+
+async def _analyze_voter(
+    session: AsyncSession,
+    run_id: uuid.UUID,
+    voter: Voter,
+) -> tuple[dict, str]:
+    """Perform spatial analysis for a single voter and return the result dict.
+
+    Args:
+        session: Database session (for spatial queries).
+        run_id: The analysis run ID.
+        voter: The voter to analyze.
+
+    Returns:
+        Tuple of (result dict for bulk insert, match_status string).
+    """
+    determined = await find_boundaries_for_point(session, voter.official_point)
+    registered = extract_registered_boundaries(voter)
+    comparison = compare_boundaries(determined, registered)
+
+    result_dict = {
+        "id": uuid.uuid4(),
+        "analysis_run_id": run_id,
+        "voter_id": voter.id,
+        "determined_boundaries": comparison.determined_boundaries,
+        "registered_boundaries": comparison.registered_boundaries,
+        "match_status": comparison.match_status,
+        "mismatch_details": comparison.mismatch_details or None,
+    }
+    return result_dict, comparison.match_status
 
 
 _FLUSH_SUB_BATCH = 500  # 8 columns × 500 = 4,000 params, well under asyncpg 32,767 limit
