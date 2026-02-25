@@ -735,10 +735,6 @@ async def _store_geocoded_location(
     """
     point = from_shape(Point(result.longitude, result.latitude), srid=4326)
 
-    # Check if voter has any existing geocoded location (for is_primary on first insert)
-    existing_count = await session.execute(select(func.count()).where(GeocodedLocation.voter_id == voter.id))
-    is_first = existing_count.scalar_one() == 0
-
     now = datetime.now(UTC)
     values = {
         "voter_id": voter.id,
@@ -747,7 +743,7 @@ async def _store_geocoded_location(
         "point": point,
         "confidence_score": result.confidence_score,
         "source_type": source_type,
-        "is_primary": is_first,
+        "is_primary": False,
         "input_address": input_address,
         "geocoded_at": now,
     }
@@ -768,6 +764,26 @@ async def _store_geocoded_location(
 
     result_row = await session.execute(upsert_stmt)
     location: GeocodedLocation = result_row.scalar_one()
+
+    # Atomically promote to primary if no other primary exists for this voter.
+    # This avoids the race where two concurrent inserts both see count==0 and
+    # both set is_primary=True.
+    await session.execute(
+        update(GeocodedLocation)
+        .where(
+            GeocodedLocation.id == location.id,
+            ~select(GeocodedLocation.id)
+            .where(
+                GeocodedLocation.voter_id == voter.id,
+                GeocodedLocation.is_primary.is_(True),
+                GeocodedLocation.id != location.id,
+            )
+            .exists(),
+        )
+        .values(is_primary=True)
+    )
+    # Refresh to pick up the possibly-updated is_primary value
+    await session.refresh(location)
 
     await session.flush()
     await sync_official_location(session, voter)
