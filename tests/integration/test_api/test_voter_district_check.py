@@ -94,7 +94,7 @@ class TestDistrictCheckEndpoint:
         assert body["match_status"] == "mismatch-district"
         assert body["mismatch_count"] == 1
         assert len(body["comparisons"]) == 2
-        assert body["geocoded_point"]["latitude"] == 32.8407
+        assert body["geocoded_point"]["latitude"] == pytest.approx(32.8407)
 
     async def test_not_geocoded_response(self, admin_client) -> None:
         """Voter without geocoded location returns not-geocoded status."""

@@ -1,6 +1,7 @@
 """Voter API endpoints for search, detail, and geocoded location management."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -169,14 +170,11 @@ async def get_voter(
     return VoterDetailResponse(**detail_dict)
 
 
-@voters_router.get(
-    "/{voter_id}/district-check",
-    response_model=DistrictCheckResponse,
-)
+@voters_router.get("/{voter_id}/district-check")
 async def check_voter_district_assignments(
     voter_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_user),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(get_current_user)],
 ) -> DistrictCheckResponse:
     """Check a voter's registered districts against their geocoded location.
 

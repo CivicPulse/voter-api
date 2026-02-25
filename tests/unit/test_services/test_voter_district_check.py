@@ -147,7 +147,7 @@ class TestCheckVoterDistricts:
         assert result is not None
         assert result["match_status"] == "match"
         assert result["mismatch_count"] == 0
-        assert result["geocoded_point"]["latitude"] == 32.8407
+        assert result["geocoded_point"]["latitude"] == pytest.approx(32.8407)
 
         # All comparisons should be "match"
         for comp in result["comparisons"]:
