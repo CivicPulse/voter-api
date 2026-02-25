@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from voter_api.services.analysis_service import (
-    _store_result,
+    _flush_results,
     compare_runs,
     create_analysis_run,
     get_analysis_run,
@@ -212,31 +212,75 @@ class TestListAnalysisResults:
         assert total == 0
 
 
-class TestStoreResult:
-    """Tests for _store_result."""
+class TestFlushResults:
+    """Tests for _flush_results."""
 
     @pytest.mark.asyncio
-    async def test_creates_analysis_result(self) -> None:
+    async def test_inserts_results_via_core(self) -> None:
         session = AsyncMock()
         run_id = uuid.uuid4()
         voter_id = uuid.uuid4()
 
-        await _store_result(
-            session,
-            run_id=run_id,
-            voter_id=voter_id,
-            determined={"congressional": "05"},
-            registered={"congressional": "05"},
-            match_status="match",
-            mismatch_details=None,
-        )
+        # Mock the RETURNING result
+        returning_result = MagicMock()
+        returning_result.all.return_value = [MagicMock()]  # 1 row inserted
+        session.execute.return_value = returning_result
 
-        session.add.assert_called_once()
-        added = session.add.call_args[0][0]
-        assert added.analysis_run_id == run_id
-        assert added.voter_id == voter_id
-        assert added.match_status == "match"
-        assert added.determined_boundaries == {"congressional": "05"}
+        results = [
+            {
+                "id": uuid.uuid4(),
+                "analysis_run_id": run_id,
+                "voter_id": voter_id,
+                "determined_boundaries": {"congressional": "05"},
+                "registered_boundaries": {"congressional": "05"},
+                "match_status": "match",
+                "mismatch_details": None,
+            }
+        ]
+
+        inserted = await _flush_results(session, results)
+
+        assert inserted == 1
+        session.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_returns_zero_for_empty_list(self) -> None:
+        session = AsyncMock()
+
+        inserted = await _flush_results(session, [])
+
+        assert inserted == 0
+        session.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_sub_batches_large_lists(self) -> None:
+        session = AsyncMock()
+        run_id = uuid.uuid4()
+
+        # Create 600 results (exceeds _FLUSH_SUB_BATCH of 500)
+        results = [
+            {
+                "id": uuid.uuid4(),
+                "analysis_run_id": run_id,
+                "voter_id": uuid.uuid4(),
+                "determined_boundaries": {},
+                "registered_boundaries": {},
+                "match_status": "match",
+                "mismatch_details": None,
+            }
+            for _ in range(600)
+        ]
+
+        returning_result = MagicMock()
+        returning_result.all.return_value = [MagicMock()] * 500
+        returning_result_2 = MagicMock()
+        returning_result_2.all.return_value = [MagicMock()] * 100
+        session.execute.side_effect = [returning_result, returning_result_2]
+
+        inserted = await _flush_results(session, results)
+
+        assert inserted == 600
+        assert session.execute.call_count == 2
 
 
 class TestProcessAnalysisRun:
@@ -247,10 +291,15 @@ class TestProcessAnalysisRun:
         session = AsyncMock()
         run = _mock_analysis_run()
 
-        # First execute returns empty voter list
+        # 1st: resume cursor query (MAX voter_id) returns None (fresh run)
+        cursor_result = MagicMock()
+        cursor_result.scalar_one_or_none.return_value = None
+        # 2nd: voter query returns empty
         select_result = MagicMock()
         select_result.scalars.return_value.all.return_value = []
-        session.execute.return_value = select_result
+        # 3rd: bulk-update of has_district_mismatch
+        bulk_update_result = MagicMock()
+        session.execute.side_effect = [cursor_result, select_result, bulk_update_result]
 
         await process_analysis_run(session, run)
 
@@ -266,14 +315,27 @@ class TestProcessAnalysisRun:
 
         voter = _mock_voter()
 
-        # First call returns voters, second returns empty (end of batch),
-        # third is the bulk-update of has_district_mismatch
+        # 1st: resume cursor (fresh run)
+        cursor_result = MagicMock()
+        cursor_result.scalar_one_or_none.return_value = None
+        # 2nd: voter batch with 1 voter
         result_with_voters = MagicMock()
         result_with_voters.scalars.return_value.all.return_value = [voter]
+        # 3rd: _flush_results INSERT ... RETURNING
+        flush_result = MagicMock()
+        flush_result.all.return_value = [MagicMock()]
+        # 4th: voter query returns empty (end)
         result_empty = MagicMock()
         result_empty.scalars.return_value.all.return_value = []
+        # 5th: bulk-update of has_district_mismatch
         bulk_update_result = MagicMock()
-        session.execute.side_effect = [result_with_voters, result_empty, bulk_update_result]
+        session.execute.side_effect = [
+            cursor_result,
+            result_with_voters,
+            flush_result,
+            result_empty,
+            bulk_update_result,
+        ]
 
         comparison_result = MagicMock()
         comparison_result.determined_boundaries = {"congressional": "05"}
@@ -308,10 +370,15 @@ class TestProcessAnalysisRun:
         session = AsyncMock()
         run = _mock_analysis_run()
 
-        # Query returns empty because no voters match official_point IS NOT NULL
+        # 1st: resume cursor (fresh run)
+        cursor_result = MagicMock()
+        cursor_result.scalar_one_or_none.return_value = None
+        # 2nd: voter query returns empty
         result_empty = MagicMock()
         result_empty.scalars.return_value.all.return_value = []
-        session.execute.return_value = result_empty
+        # 3rd: bulk-update of has_district_mismatch
+        bulk_update_result = MagicMock()
+        session.execute.side_effect = [cursor_result, result_empty, bulk_update_result]
 
         await process_analysis_run(session, run, batch_size=10)
 
@@ -325,12 +392,27 @@ class TestProcessAnalysisRun:
 
         voter = _mock_voter()
 
+        # 1st: resume cursor (fresh run)
+        cursor_result = MagicMock()
+        cursor_result.scalar_one_or_none.return_value = None
+        # 2nd: voter batch with 1 voter
         result_with_voters = MagicMock()
         result_with_voters.scalars.return_value.all.return_value = [voter]
+        # 3rd: _flush_results INSERT ... RETURNING
+        flush_result = MagicMock()
+        flush_result.all.return_value = [MagicMock()]
+        # 4th: voter query returns empty (end)
         result_empty = MagicMock()
         result_empty.scalars.return_value.all.return_value = []
+        # 5th: bulk-update of has_district_mismatch
         bulk_update_result = MagicMock()
-        session.execute.side_effect = [result_with_voters, result_empty, bulk_update_result]
+        session.execute.side_effect = [
+            cursor_result,
+            result_with_voters,
+            flush_result,
+            result_empty,
+            bulk_update_result,
+        ]
 
         comparison_result = MagicMock()
         comparison_result.determined_boundaries = {"congressional": "06"}
@@ -363,6 +445,7 @@ class TestProcessAnalysisRun:
         session = AsyncMock()
         run = _mock_analysis_run()
 
+        # Resume cursor query fails
         session.execute.side_effect = RuntimeError("DB error")
 
         with pytest.raises(RuntimeError, match="DB error"):
@@ -375,9 +458,15 @@ class TestProcessAnalysisRun:
         session = AsyncMock()
         run = _mock_analysis_run()
 
+        # 1st: resume cursor (fresh run)
+        cursor_result = MagicMock()
+        cursor_result.scalar_one_or_none.return_value = None
+        # 2nd: voter query returns empty
         result_empty = MagicMock()
         result_empty.scalars.return_value.all.return_value = []
-        session.execute.return_value = result_empty
+        # 3rd: bulk-update of has_district_mismatch
+        bulk_update_result = MagicMock()
+        session.execute.side_effect = [cursor_result, result_empty, bulk_update_result]
 
         await process_analysis_run(session, run, county="FULTON")
         assert run.status == "completed"
@@ -385,14 +474,33 @@ class TestProcessAnalysisRun:
     @pytest.mark.asyncio
     async def test_resumes_from_checkpoint(self) -> None:
         session = AsyncMock()
+        last_vid = uuid.uuid4()
         run = _mock_analysis_run(last_processed_voter_offset=5)
 
+        # 1st: resume cursor returns a voter_id (resuming)
+        cursor_result = MagicMock()
+        cursor_result.scalar_one_or_none.return_value = last_vid
+        # 2nd: counter restore query
+        counter_result = MagicMock()
+        counter_result.one.return_value = (5, 3, 1, 1)  # total, match, mismatch, unable
+        # 3rd: voter query returns empty (nothing left)
         result_empty = MagicMock()
         result_empty.scalars.return_value.all.return_value = []
-        session.execute.return_value = result_empty
+        # 4th: bulk-update of has_district_mismatch
+        bulk_update_result = MagicMock()
+        session.execute.side_effect = [
+            cursor_result,
+            counter_result,
+            result_empty,
+            bulk_update_result,
+        ]
 
         await process_analysis_run(session, run)
         assert run.status == "completed"
+        assert run.total_voters_analyzed == 5
+        assert run.match_count == 3
+        assert run.mismatch_count == 1
+        assert run.unable_to_analyze_count == 1
 
 
 class TestCompareRuns:

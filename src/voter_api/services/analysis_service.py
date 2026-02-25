@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 from loguru import logger
 from sqlalchemy import func, select, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.analyzer.comparator import compare_boundaries, extract_registered_boundaries
@@ -74,8 +75,34 @@ async def process_analysis_run(
     unable_count = 0
 
     try:
-        # Resume from checkpoint if available
-        offset = run.last_processed_voter_offset or 0
+        # Resume: derive keyset cursor and counters from committed results
+        cursor_result = await session.execute(
+            select(func.max(AnalysisResult.voter_id)).where(AnalysisResult.analysis_run_id == run.id)
+        )
+        last_voter_id: uuid.UUID | None = cursor_result.scalar_one_or_none()
+
+        if last_voter_id is not None:
+            # Restore counters from previously committed results
+            count_result = await session.execute(
+                select(
+                    func.count(AnalysisResult.id),
+                    func.count(AnalysisResult.id).filter(AnalysisResult.match_status == "match"),
+                    func.count(AnalysisResult.id).filter(
+                        AnalysisResult.match_status.in_(
+                            ["mismatch-district", "mismatch-precinct", "mismatch-both", "mismatch"]
+                        )
+                    ),
+                    func.count(AnalysisResult.id).filter(AnalysisResult.match_status == "unable-to-analyze"),
+                ).where(AnalysisResult.analysis_run_id == run.id)
+            )
+            row = count_result.one()
+            total_analyzed = row[0]
+            match_count = row[1]
+            mismatch_count = row[2]
+            unable_count = row[3]
+            logger.info(
+                f"Analysis run {run.id}: resuming after voter {last_voter_id}, {total_analyzed} already processed"
+            )
 
         while True:
             # Find eligible voters: those with an official location
@@ -87,13 +114,20 @@ async def process_analysis_run(
             if county:
                 voter_query = voter_query.where(Voter.county == county)
 
-            voter_query = voter_query.order_by(Voter.id).offset(offset).limit(batch_size)
+            # Keyset pagination: WHERE id > last_voter_id
+            if last_voter_id is not None:
+                voter_query = voter_query.where(Voter.id > last_voter_id)
+
+            voter_query = voter_query.order_by(Voter.id).limit(batch_size)
 
             result = await session.execute(voter_query)
             voters = list(result.scalars().all())
 
             if not voters:
                 break
+
+            # Collect results as plain dicts (no ORM objects in session = no autoflush)
+            batch_results: list[dict] = []
 
             for voter in voters:
                 # Spatial analysis: find containing boundaries
@@ -105,14 +139,16 @@ async def process_analysis_run(
                 # Compare and classify
                 comparison = compare_boundaries(determined, registered)
 
-                await _store_result(
-                    session,
-                    run_id=run.id,
-                    voter_id=voter.id,
-                    determined=comparison.determined_boundaries,
-                    registered=comparison.registered_boundaries,
-                    match_status=comparison.match_status,
-                    mismatch_details=comparison.mismatch_details or None,
+                batch_results.append(
+                    {
+                        "id": uuid.uuid4(),
+                        "analysis_run_id": run.id,
+                        "voter_id": voter.id,
+                        "determined_boundaries": comparison.determined_boundaries,
+                        "registered_boundaries": comparison.registered_boundaries,
+                        "match_status": comparison.match_status,
+                        "mismatch_details": comparison.mismatch_details or None,
+                    }
                 )
 
                 total_analyzed += 1
@@ -123,13 +159,16 @@ async def process_analysis_run(
                 else:
                     mismatch_count += 1
 
-            offset += len(voters)
+            # Flush batch via Core INSERT ... ON CONFLICT DO NOTHING
+            await _flush_results(session, batch_results)
 
-            # Checkpoint: persist progress
-            run.last_processed_voter_offset = offset
+            last_voter_id = voters[-1].id
+
+            # Checkpoint: persist progress (reuse offset field as progress counter)
+            run.last_processed_voter_offset = total_analyzed
             await session.commit()
 
-            logger.info(f"Analysis run {run.id}: processed {offset} voters so far")
+            logger.info(f"Analysis run {run.id}: processed {total_analyzed} voters so far")
 
         # Complete the run
         run.status = "completed"
@@ -180,27 +219,39 @@ async def process_analysis_run(
     return run
 
 
-async def _store_result(
-    session: AsyncSession,
-    *,
-    run_id: uuid.UUID,
-    voter_id: uuid.UUID,
-    determined: dict,
-    registered: dict,
-    match_status: str,
-    mismatch_details: list | None,
-) -> AnalysisResult:
-    """Store a single analysis result."""
-    result = AnalysisResult(
-        analysis_run_id=run_id,
-        voter_id=voter_id,
-        determined_boundaries=determined,
-        registered_boundaries=registered,
-        match_status=match_status,
-        mismatch_details=mismatch_details,
-    )
-    session.add(result)
-    return result
+_FLUSH_SUB_BATCH = 500  # 8 columns × 500 = 4,000 params, well under asyncpg 32,767 limit
+
+
+async def _flush_results(session: AsyncSession, results: list[dict]) -> int:
+    """Bulk-insert analysis results using Core INSERT ... ON CONFLICT DO NOTHING.
+
+    Uses the ``ix_result_run_voter`` unique constraint as the conflict target
+    so duplicate (run_id, voter_id) pairs from pagination instability or
+    resume are silently skipped.
+
+    Splits into sub-batches to stay within asyncpg's parameter limit.
+
+    Args:
+        session: Database session.
+        results: List of dicts with keys matching AnalysisResult columns.
+
+    Returns:
+        Number of rows actually inserted.
+    """
+    if not results:
+        return 0
+
+    total_inserted = 0
+
+    for i in range(0, len(results), _FLUSH_SUB_BATCH):
+        batch = results[i : i + _FLUSH_SUB_BATCH]
+        stmt = pg_insert(AnalysisResult).values(batch)
+        stmt = stmt.on_conflict_do_nothing(constraint="ix_result_run_voter")
+        stmt = stmt.returning(AnalysisResult.id)  # type: ignore[assignment]
+        row_result = await session.execute(stmt)
+        total_inserted += len(row_result.all())
+
+    return total_inserted
 
 
 async def get_analysis_run(
