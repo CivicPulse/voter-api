@@ -520,13 +520,19 @@ async def list_election_participants(
     election = await _get_election_or_raise(session, election_id)
     match_conditions = await _build_election_match_conditions(session, election)
 
-    # Normalize q: treat whitespace-only as None
-    q = filters.q.strip() or None if filters.q is not None else None
+    # Normalize q and pre-tokenize; treat non-token queries as None
+    q_terms: list[str] = []
+    if filters.q is not None:
+        q = filters.q.strip()
+        q_terms = [w for w in re.split(r"[\s,;.]+", q) if w]
+        q = q if q_terms else None
+    else:
+        q = None
 
     # Determine if we need to JOIN to voters table
     voter_filters_active = any(
         [
-            q,
+            q_terms,
             filters.county_precinct,
             filters.congressional_district,
             filters.state_senate_district,
@@ -560,7 +566,7 @@ async def list_election_participants(
             .where(*match_conditions)
         )
 
-        query, count_query = _apply_voter_filters(query, count_query, filters, q)
+        query, count_query = _apply_voter_filters(query, count_query, filters, q_terms)
     else:
         # Default path: query voter_history only
         query = select(VoterHistory).where(*match_conditions)
@@ -586,7 +592,7 @@ def _apply_voter_filters(
     query: Any,
     count_query: Any,
     filters: ParticipationFilters,
-    q: str | None,
+    q_terms: list[str],
 ) -> tuple[Any, Any]:
     """Apply voter-table filters and q search to query and count_query.
 
@@ -594,14 +600,13 @@ def _apply_voter_filters(
         query: The main SELECT query.
         count_query: The COUNT query.
         filters: Participation filters bundle.
-        q: Normalized search query (stripped, None if blank).
+        q_terms: Pre-tokenized search terms (empty list if no search).
 
     Returns:
         Tuple of (query, count_query) with filters applied.
     """
-    if q:
-        words = [w for w in re.split(r"[\s,;.]+", q.strip()) if w]
-        for word in words:
+    if q_terms:
+        for word in q_terms:
             word_escaped = word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             pattern = f"%{word_escaped}%"
             word_condition = or_(

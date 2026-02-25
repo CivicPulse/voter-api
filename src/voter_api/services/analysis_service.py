@@ -230,7 +230,7 @@ async def _analyze_voter(
     return result_dict, comparison.match_status
 
 
-_FLUSH_SUB_BATCH = 500  # 8 columns × 500 = 4,000 params, well under asyncpg 32,767 limit
+_FLUSH_SUB_BATCH = 500  # 7 columns × 500 = 3,500 params, well under asyncpg 32,767 limit
 
 
 async def _flush_results(session: AsyncSession, results: list[dict]) -> int:
@@ -256,10 +256,13 @@ async def _flush_results(session: AsyncSession, results: list[dict]) -> int:
 
     for i in range(0, len(results), _FLUSH_SUB_BATCH):
         batch = results[i : i + _FLUSH_SUB_BATCH]
-        stmt = pg_insert(AnalysisResult).values(batch)
-        stmt = stmt.on_conflict_do_nothing(constraint="ix_result_run_voter")
-        stmt = stmt.returning(AnalysisResult.id)  # type: ignore[assignment]
-        row_result = await session.execute(stmt)
+        insert_stmt = (
+            pg_insert(AnalysisResult)
+            .values(batch)
+            .on_conflict_do_nothing(constraint="ix_result_run_voter")
+            .returning(AnalysisResult.id)
+        )
+        row_result = await session.execute(insert_stmt)
         total_inserted += len(row_result.all())
 
     return total_inserted

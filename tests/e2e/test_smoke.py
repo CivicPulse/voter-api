@@ -967,6 +967,19 @@ class TestGeocoding:
         assert "items" in body
         assert "pagination" in body
 
+    async def test_jobs_list_as_analyst(self, analyst_client: httpx.AsyncClient) -> None:
+        """Analyst can list geocoding jobs."""
+        resp = await analyst_client.get(_url("/geocoding/jobs"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
+        assert "pagination" in body
+
+    async def test_jobs_list_viewer_forbidden(self, viewer_client: httpx.AsyncClient) -> None:
+        """Viewer cannot list geocoding jobs."""
+        resp = await viewer_client.get(_url("/geocoding/jobs"))
+        assert resp.status_code == 403
+
     async def test_cache_stats_requires_auth(self, client: httpx.AsyncClient) -> None:
         """Cache stats endpoint requires authentication (any role)."""
         resp = await client.get(_url("/geocoding/cache/stats"))

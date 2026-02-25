@@ -648,7 +648,7 @@ class TestListElectionParticipants:
         voter_id = uuid.uuid4()
         # Simulate JOIN path: mock SQLAlchemy Row with _mapping for named access
         mock_row = MagicMock()
-        mock_row.__getitem__ = lambda self, idx: (vh, voter_id, "Jane", "Doe", True)[idx]
+        mock_row.__getitem__.side_effect = lambda idx: (vh, voter_id, "Jane", "Doe", True)[idx]
         mock_row._mapping = {
             "voter_id": voter_id,
             "first_name": "Jane",
