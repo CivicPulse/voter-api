@@ -38,12 +38,16 @@ from voter_api.services.voter_service import (
 
 voters_router = APIRouter(prefix="/voters", tags=["voters"])
 
+VOTER_NOT_FOUND = "Voter not found"
+
 
 @voters_router.get(
     "",
     response_model=PaginatedVoterResponse,
 )
 async def search_voters_endpoint(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(get_current_user)],
     q: str | None = Query(None, description="Combined name search across first, last, and middle name", max_length=500),
     voter_registration_number: str | None = Query(None),
     first_name: str | None = Query(None),
@@ -62,8 +66,6 @@ async def search_voters_endpoint(
     has_district_mismatch: bool | None = Query(None, description="Filter by district mismatch status"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    session: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_user),
 ) -> PaginatedVoterResponse:
     """Search and list voters with multiple filter parameters."""
     if voter_registration_number:
@@ -106,6 +108,8 @@ async def search_voters_endpoint(
     response_model_exclude_none=True,
 )
 async def get_filter_options(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(get_current_user)],
     county: str | None = Query(None, description="County name to scope county-level filter options"),
     county_precinct: str | None = Query(None, description="Precinct to narrow other county-scoped options"),
     county_commission_district: str | None = Query(
@@ -114,8 +118,6 @@ async def get_filter_options(
     school_board_district: str | None = Query(
         None, description="School board district to narrow other county-scoped options"
     ),
-    session: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_user),
 ) -> VoterFilterOptions:
     """Return distinct values for voter search filter dropdowns.
 
@@ -157,13 +159,13 @@ async def get_filter_options(
 )
 async def get_voter(
     voter_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_user),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(get_current_user)],
 ) -> VoterDetailResponse:
     """Get full voter details by ID."""
     voter = await get_voter_detail(session, voter_id)
     if voter is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voter not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=VOTER_NOT_FOUND)
     detail_dict = build_voter_detail_dict(voter)
     summary = await get_participation_summary(session, voter.voter_registration_number)
     detail_dict["participation_summary"] = summary
@@ -183,7 +185,7 @@ async def check_voter_district_assignments(
     """
     result = await check_voter_districts(session, voter_id)
     if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voter not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=VOTER_NOT_FOUND)
     return DistrictCheckResponse(**result)
 
 
@@ -193,8 +195,8 @@ async def check_voter_district_assignments(
 )
 async def list_voter_locations(
     voter_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_user),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(get_current_user)],
 ) -> list[GeocodedLocationResponse]:
     """List all geocoded locations for a voter."""
     locations = await get_voter_locations(session, voter_id)
@@ -209,8 +211,8 @@ async def list_voter_locations(
 async def add_manual_geocoded_location(
     voter_id: uuid.UUID,
     request: ManualGeocodingRequest,
-    session: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_user),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(get_current_user)],
 ) -> GeocodedLocationResponse:
     """Add a manual geocoded location for a voter."""
     location = await add_manual_location(
@@ -232,8 +234,8 @@ async def add_manual_geocoded_location(
 async def set_primary_geocoded_location(
     voter_id: uuid.UUID,
     location_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_user),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(get_current_user)],
 ) -> GeocodedLocationResponse:
     """Set a geocoded location as primary for a voter (admin only)."""
     location = await set_primary_location(session, voter_id, location_id)
@@ -247,20 +249,19 @@ async def set_primary_geocoded_location(
 
 @voters_router.put(
     "/{voter_id}/official-location",
-    response_model=OfficialLocationResponse,
     dependencies=[Depends(require_role("admin"))],
 )
 async def set_voter_official_location(
     voter_id: uuid.UUID,
     request: SetOfficialLocationRequest,
-    session: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_user),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(get_current_user)],
 ) -> OfficialLocationResponse:
     """Set an admin override for a voter's official location (admin only)."""
     try:
         voter = await set_official_location_override(session, voter_id, request.latitude, request.longitude)
     except ValueError as err:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voter not found") from err
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=VOTER_NOT_FOUND) from err
     return OfficialLocationResponse(
         latitude=voter.official_latitude,
         longitude=voter.official_longitude,
@@ -271,19 +272,18 @@ async def set_voter_official_location(
 
 @voters_router.delete(
     "/{voter_id}/official-location/override",
-    response_model=OfficialLocationResponse,
     dependencies=[Depends(require_role("admin"))],
 )
 async def clear_voter_official_location_override(
     voter_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_user),
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(get_current_user)],
 ) -> OfficialLocationResponse:
     """Clear an admin override and revert to the best geocoded location (admin only)."""
     try:
         voter = await clear_official_location_override(session, voter_id)
     except ValueError as err:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voter not found") from err
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=VOTER_NOT_FOUND) from err
     return OfficialLocationResponse(
         latitude=voter.official_latitude,
         longitude=voter.official_longitude,

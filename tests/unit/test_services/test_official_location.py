@@ -52,8 +52,8 @@ class TestSyncOfficialLocation:
 
         await sync_official_location(session, voter)
 
-        assert voter.official_latitude == 33.749
-        assert voter.official_longitude == -84.388
+        assert voter.official_latitude == pytest.approx(33.749)
+        assert voter.official_longitude == pytest.approx(-84.388)
         assert voter.official_source == "census"
         assert voter.official_point is best_loc.point
         session.flush.assert_awaited_once()
@@ -71,7 +71,7 @@ class TestSyncOfficialLocation:
         await sync_official_location(session, voter)
 
         # Should not have changed
-        assert voter.official_latitude == 34.0
+        assert voter.official_latitude == pytest.approx(34.0)
         assert voter.official_source == "admin"
         session.execute.assert_not_awaited()
 
@@ -111,8 +111,8 @@ class TestSetOfficialLocationOverride:
         returned = await set_official_location_override(session, voter.id, 34.0, -85.0)
 
         assert returned is voter
-        assert voter.official_latitude == 34.0
-        assert voter.official_longitude == -85.0
+        assert voter.official_latitude == pytest.approx(34.0)
+        assert voter.official_longitude == pytest.approx(-85.0)
         assert voter.official_source == "admin"
         assert voter.official_is_override is True
         session.commit.assert_awaited_once()
@@ -155,7 +155,7 @@ class TestClearOfficialLocationOverride:
         assert returned is voter
         assert voter.official_is_override is False
         # sync_official_location was called since override was cleared
-        assert voter.official_latitude == 33.749
+        assert voter.official_latitude == pytest.approx(33.749)
         assert voter.official_source == "census"
 
     @pytest.mark.asyncio

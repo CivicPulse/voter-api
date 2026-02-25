@@ -4,6 +4,8 @@ from datetime import UTC, date, datetime
 from unittest.mock import MagicMock
 from uuid import uuid4
 
+import pytest
+
 from voter_api.services.voter_service import build_voter_detail_dict
 
 
@@ -156,8 +158,8 @@ class TestBuildVoterDetailDict:
         result = build_voter_detail_dict(voter)
         loc = result["official_location"]
         assert loc is not None
-        assert loc["latitude"] == 33.749
-        assert loc["longitude"] == -84.388
+        assert loc["latitude"] == pytest.approx(33.749)
+        assert loc["longitude"] == pytest.approx(-84.388)
         assert loc["source"] == "census"
         assert loc["is_override"] is False
 
