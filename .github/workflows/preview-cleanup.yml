@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Connect to Tailscale
-        uses: tailscale/github-action@v4
+        uses: tailscale/github-action@53acf823325fe9ca47f4cdaa951f90b4b0de5bb9 # v4
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
@@ -48,7 +48,7 @@ jobs:
           psql "${DATABASE_URL}" -c "DROP SCHEMA IF EXISTS pr_${PR_NUM} CASCADE;"
 
       - name: Update PR comment
-        uses: peter-evans/create-or-update-comment@v5
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-tag: preview-deploy
