@@ -4,7 +4,6 @@ import contextlib
 import uuid
 from datetime import UTC, datetime
 
-from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,10 +34,7 @@ async def cache_lookup(
     )
     entry = result.scalar_one_or_none()
     if entry is None:
-        logger.debug("Cache miss: {}/{}", provider, normalized_address)
         return None
-
-    logger.debug("Cache hit: {}/{}", provider, normalized_address)
 
     # Recover quality from raw_response metadata if stored
     quality = None
@@ -94,4 +90,3 @@ async def cache_store(
     )
     session.add(entry)
     await session.flush()
-    logger.debug("Cache store: {}/{}", provider, normalized_address)
