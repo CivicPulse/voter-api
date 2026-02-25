@@ -51,3 +51,7 @@ API_V1_PREFIX=/api/v1
 # --- R2 / S3 (disabled by default) ---
 R2_ENABLED=false
 
+# --- WebAuthn / Passkeys ---
+WEBAUTHN_RP_ID=hatchtech.dev
+WEBAUTHN_ORIGIN=https://voter-dev.hatchtech.dev
+
