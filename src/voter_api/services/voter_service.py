@@ -12,6 +12,7 @@ from voter_api.lib.analyzer.comparator import (
     BOUNDARY_TYPE_TO_VOTER_FIELD,
     compare_boundaries,
     extract_registered_boundaries,
+    normalize_for_comparison,
 )
 from voter_api.lib.analyzer.spatial import find_boundaries_for_point
 from voter_api.models.voter import Voter
@@ -408,7 +409,8 @@ async def check_voter_districts(
             continue
 
         if reg_val is not None and det_val is not None:
-            comp_status = "match" if reg_val == det_val else "mismatch"
+            norm_det, norm_reg = normalize_for_comparison(boundary_type, det_val, reg_val)
+            comp_status = "match" if norm_det == norm_reg else "mismatch"
         elif reg_val is not None:
             comp_status = "registered-only"
         else:
