@@ -41,6 +41,58 @@ class TestCreateApp:
         assert handler is not None
 
 
+class TestRecoverStaleAnalysisRuns:
+    """Tests for _recover_stale_analysis_runs."""
+
+    @pytest.mark.asyncio
+    async def test_marks_running_runs_as_failed(self) -> None:
+        """Running analysis runs are marked as failed on startup."""
+        from unittest.mock import MagicMock
+
+        from voter_api.main import _recover_stale_analysis_runs
+
+        mock_result = MagicMock()
+        mock_result.rowcount = 2
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.commit = AsyncMock()
+
+        mock_factory = MagicMock()
+        mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_factory.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("voter_api.main.get_session_factory", return_value=mock_factory):
+            await _recover_stale_analysis_runs()
+
+        mock_session.execute.assert_awaited_once()
+        mock_session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_no_op_when_no_stale_runs(self) -> None:
+        """No warnings logged when there are no stale runs."""
+        from unittest.mock import MagicMock
+
+        from voter_api.main import _recover_stale_analysis_runs
+
+        mock_result = MagicMock()
+        mock_result.rowcount = 0
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.commit = AsyncMock()
+
+        mock_factory = MagicMock()
+        mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_factory.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("voter_api.main.get_session_factory", return_value=mock_factory):
+            await _recover_stale_analysis_runs()
+
+        mock_session.execute.assert_awaited_once()
+        mock_session.commit.assert_awaited_once()
+
+
 class TestAppLifespan:
     """Tests for lifespan management."""
 
@@ -57,6 +109,7 @@ class TestAppLifespan:
             patch("voter_api.main.setup_logging") as mock_setup_logging,
             patch("voter_api.main.init_engine") as mock_init_engine,
             patch("voter_api.main.dispose_engine", new_callable=AsyncMock) as mock_dispose,
+            patch("voter_api.main._recover_stale_analysis_runs", new_callable=AsyncMock) as mock_recover,
         ):
             mock_get_settings.return_value = Settings(
                 database_url="sqlite+aiosqlite:///:memory:",
@@ -66,5 +119,6 @@ class TestAppLifespan:
             async with lifespan(mock_app):
                 mock_setup_logging.assert_called_once()
                 mock_init_engine.assert_called_once()
+                mock_recover.assert_awaited_once()
 
             mock_dispose.assert_awaited_once()
