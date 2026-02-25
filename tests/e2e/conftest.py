@@ -441,6 +441,16 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         await session.execute(stmt)
 
         # --- Voter History (participation record for the seeded election) --
+        # Pre-delete any stale VoterHistory row matching the participation key
+        # to avoid a unique violation on uq_voter_history_participation when a
+        # leftover row with a different id already exists.
+        await session.execute(
+            delete(VoterHistory).where(
+                VoterHistory.voter_registration_number == "E2E000001",
+                VoterHistory.election_date == date(2024, 11, 5),
+                VoterHistory.election_type == "General Election",
+            )
+        )
         voter_history_data = {
             "id": VOTER_HISTORY_ID,
             "voter_registration_number": "E2E000001",

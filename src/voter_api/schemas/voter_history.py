@@ -1,6 +1,5 @@
 """Voter history Pydantic v2 request/response schemas."""
 
-from dataclasses import dataclass
 from datetime import date, datetime
 from uuid import UUID
 
@@ -9,13 +8,14 @@ from pydantic import BaseModel, Field
 from voter_api.schemas.common import PaginationMeta
 
 
-@dataclass(frozen=True)
-class ParticipationFilters:
+class ParticipationFilters(BaseModel):
     """Bundle of filter parameters for the election participation endpoint.
 
     Groups voter-history filters and voter-table filters into a single
     object to reduce parameter counts in route handlers and service functions.
     """
+
+    model_config = {"frozen": True}
 
     county: str | None = None
     ballot_style: str | None = None
