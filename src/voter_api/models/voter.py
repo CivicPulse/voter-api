@@ -82,6 +82,9 @@ class Voter(Base, UUIDMixin, TimestampMixin):
     voter_created_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     last_party_voted: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
+    # District mismatch flag (set by analysis runs)
+    has_district_mismatch: Mapped[bool | None] = mapped_column(Boolean, nullable=True, index=True)
+
     # Soft-delete tracking
     present_in_latest_import: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true", index=True

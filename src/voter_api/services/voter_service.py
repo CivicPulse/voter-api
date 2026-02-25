@@ -35,6 +35,7 @@ async def search_voters(
     county_commission_district: str | None = None,
     school_board_district: str | None = None,
     present_in_latest_import: bool | None = None,
+    has_district_mismatch: bool | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[Voter], int]:
@@ -57,6 +58,7 @@ async def search_voters(
         county_commission_district: Exact match.
         school_board_district: Exact match.
         present_in_latest_import: Filter by import presence.
+        has_district_mismatch: Filter by district mismatch flag.
         page: Page number.
         page_size: Items per page.
 
@@ -145,6 +147,10 @@ async def search_voters(
     if present_in_latest_import is not None:
         query = query.where(Voter.present_in_latest_import == present_in_latest_import)
         count_query = count_query.where(Voter.present_in_latest_import == present_in_latest_import)
+
+    if has_district_mismatch is not None:
+        query = query.where(Voter.has_district_mismatch == has_district_mismatch)
+        count_query = count_query.where(Voter.has_district_mismatch == has_district_mismatch)
 
     total = (await session.execute(count_query)).scalar_one()
     offset = (page - 1) * page_size

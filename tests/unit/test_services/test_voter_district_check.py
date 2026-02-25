@@ -1,4 +1,4 @@
-"""Unit tests for check_voter_districts service function."""
+"""Unit tests for check_voter_districts and district mismatch filter."""
 
 from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from voter_api.services.voter_service import check_voter_districts
+from voter_api.services.voter_service import check_voter_districts, search_voters
 
 
 def _make_voter(**overrides: object) -> MagicMock:
@@ -275,3 +275,55 @@ class TestCheckVoterDistricts:
         assert result is not None
         assert result["match_status"] == "mismatch-precinct"
         assert result["mismatch_count"] == 1
+
+
+@pytest.mark.asyncio
+class TestSearchVotersDistrictMismatchFilter:
+    """Tests for has_district_mismatch filter in search_voters."""
+
+    async def test_filter_true_applies_where_clause(self) -> None:
+        """search_voters with has_district_mismatch=True adds filter."""
+        session = AsyncMock()
+        # Mock execute to return count=0 then empty list
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 0
+        list_result = MagicMock()
+        list_result.scalars.return_value.all.return_value = []
+        session.execute = AsyncMock(side_effect=[count_result, list_result])
+
+        voters, total = await search_voters(session, has_district_mismatch=True)
+
+        assert total == 0
+        assert voters == []
+        # Verify execute was called (count + query)
+        assert session.execute.call_count == 2
+
+    async def test_filter_false_applies_where_clause(self) -> None:
+        """search_voters with has_district_mismatch=False adds filter."""
+        session = AsyncMock()
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 0
+        list_result = MagicMock()
+        list_result.scalars.return_value.all.return_value = []
+        session.execute = AsyncMock(side_effect=[count_result, list_result])
+
+        voters, total = await search_voters(session, has_district_mismatch=False)
+
+        assert total == 0
+        assert voters == []
+        assert session.execute.call_count == 2
+
+    async def test_filter_none_returns_all(self) -> None:
+        """search_voters with has_district_mismatch=None doesn't add filter."""
+        session = AsyncMock()
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 0
+        list_result = MagicMock()
+        list_result.scalars.return_value.all.return_value = []
+        session.execute = AsyncMock(side_effect=[count_result, list_result])
+
+        voters, total = await search_voters(session, has_district_mismatch=None)
+
+        assert total == 0
+        assert voters == []
+        assert session.execute.call_count == 2

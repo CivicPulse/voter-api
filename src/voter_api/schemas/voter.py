@@ -89,6 +89,7 @@ class VoterSummaryResponse(BaseModel):
     middle_name: str | None = None
     residence_city: str | None = None
     residence_zipcode: str | None = None
+    has_district_mismatch: bool | None = None
     present_in_latest_import: bool
 
     model_config = {"from_attributes": True}

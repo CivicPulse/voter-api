@@ -819,6 +819,17 @@ class TestVoters:
         body = resp.json()
         assert "items" in body
         assert "pagination" in body
+        # Verify has_district_mismatch field is present in schema
+        for item in body["items"]:
+            assert "has_district_mismatch" in item
+
+    async def test_search_voters_filter_by_mismatch(self, admin_client: httpx.AsyncClient) -> None:
+        """Search with has_district_mismatch filter returns 200."""
+        resp = await admin_client.get(_url("/voters"), params={"has_district_mismatch": "true"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
+        assert "pagination" in body
 
     async def test_voter_not_found(self, admin_client: httpx.AsyncClient) -> None:
         resp = await admin_client.get(_url(f"/voters/{uuid.uuid4()}"))

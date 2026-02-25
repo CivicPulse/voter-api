@@ -1,4 +1,4 @@
-"""Integration tests for GET /api/v1/voters/{voter_id}/district-check."""
+"""Integration tests for voter district check and mismatch filter."""
 
 import uuid
 from datetime import UTC, datetime
@@ -122,3 +122,53 @@ class TestDistrictCheckEndpoint:
         assert body["match_status"] == "not-geocoded"
         assert body["geocoded_point"] is None
         assert body["comparisons"] == []
+
+
+class TestDistrictMismatchFilter:
+    """Tests for has_district_mismatch query parameter on search endpoint."""
+
+    async def test_filter_accepted_true(self, admin_client) -> None:
+        """Search endpoint accepts has_district_mismatch=true."""
+        with patch(
+            "voter_api.api.v1.voters.search_voters",
+            new_callable=AsyncMock,
+            return_value=([], 0),
+        ) as mock_search:
+            resp = await admin_client.get("/api/v1/voters?has_district_mismatch=true")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["items"] == []
+        assert body["pagination"]["total"] == 0
+        # Verify the filter was passed through
+        mock_search.assert_called_once()
+        call_kwargs = mock_search.call_args.kwargs
+        assert call_kwargs["has_district_mismatch"] is True
+
+    async def test_filter_accepted_false(self, admin_client) -> None:
+        """Search endpoint accepts has_district_mismatch=false."""
+        with patch(
+            "voter_api.api.v1.voters.search_voters",
+            new_callable=AsyncMock,
+            return_value=([], 0),
+        ) as mock_search:
+            resp = await admin_client.get("/api/v1/voters?has_district_mismatch=false")
+
+        assert resp.status_code == 200
+        mock_search.assert_called_once()
+        call_kwargs = mock_search.call_args.kwargs
+        assert call_kwargs["has_district_mismatch"] is False
+
+    async def test_filter_omitted_passes_none(self, admin_client) -> None:
+        """Omitting has_district_mismatch passes None to service."""
+        with patch(
+            "voter_api.api.v1.voters.search_voters",
+            new_callable=AsyncMock,
+            return_value=([], 0),
+        ) as mock_search:
+            resp = await admin_client.get("/api/v1/voters")
+
+        assert resp.status_code == 200
+        mock_search.assert_called_once()
+        call_kwargs = mock_search.call_args.kwargs
+        assert call_kwargs["has_district_mismatch"] is None

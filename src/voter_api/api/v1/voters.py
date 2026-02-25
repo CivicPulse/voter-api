@@ -54,6 +54,7 @@ async def search_voters_endpoint(
     county_commission_district: str | None = Query(None),
     school_board_district: str | None = Query(None),
     present_in_latest_import: bool | None = Query(None),
+    has_district_mismatch: bool | None = Query(None, description="Filter by district mismatch status"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     session: AsyncSession = Depends(get_async_session),
@@ -79,6 +80,7 @@ async def search_voters_endpoint(
         county_commission_district=county_commission_district,
         school_board_district=school_board_district,
         present_in_latest_import=present_in_latest_import,
+        has_district_mismatch=has_district_mismatch,
         page=page,
         page_size=page_size,
     )

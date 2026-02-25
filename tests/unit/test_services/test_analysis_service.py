@@ -266,12 +266,14 @@ class TestProcessAnalysisRun:
         loc = _mock_location(is_primary=True)
         voter = _mock_voter(geocoded_locations=[loc])
 
-        # First call returns voters, second call returns empty (end of batch)
+        # First call returns voters, second returns empty (end of batch),
+        # third is the bulk-update of has_district_mismatch
         result_with_voters = MagicMock()
         result_with_voters.scalars.return_value.all.return_value = [voter]
         result_empty = MagicMock()
         result_empty.scalars.return_value.all.return_value = []
-        session.execute.side_effect = [result_with_voters, result_empty]
+        bulk_update_result = MagicMock()
+        session.execute.side_effect = [result_with_voters, result_empty, bulk_update_result]
 
         comparison_result = MagicMock()
         comparison_result.determined_boundaries = {"congressional": "05"}
@@ -311,7 +313,8 @@ class TestProcessAnalysisRun:
         result_with_voters.scalars.return_value.all.return_value = [voter]
         result_empty = MagicMock()
         result_empty.scalars.return_value.all.return_value = []
-        session.execute.side_effect = [result_with_voters, result_empty]
+        bulk_update_result = MagicMock()
+        session.execute.side_effect = [result_with_voters, result_empty, bulk_update_result]
 
         with patch("voter_api.services.analysis_service.extract_registered_boundaries", return_value={}):
             await process_analysis_run(session, run, batch_size=10)
@@ -331,7 +334,8 @@ class TestProcessAnalysisRun:
         result_with_voters.scalars.return_value.all.return_value = [voter]
         result_empty = MagicMock()
         result_empty.scalars.return_value.all.return_value = []
-        session.execute.side_effect = [result_with_voters, result_empty]
+        bulk_update_result = MagicMock()
+        session.execute.side_effect = [result_with_voters, result_empty, bulk_update_result]
 
         comparison_result = MagicMock()
         comparison_result.determined_boundaries = {"congressional": "06"}

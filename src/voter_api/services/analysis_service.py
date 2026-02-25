@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime
 
 from loguru import logger
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.analyzer.comparator import compare_boundaries, extract_registered_boundaries
@@ -163,6 +163,17 @@ async def process_analysis_run(
         run.match_count = match_count
         run.mismatch_count = mismatch_count
         run.unable_to_analyze_count = unable_count
+
+        # Bulk-update voters.has_district_mismatch from this run's results
+        await session.execute(
+            text("""
+                UPDATE voters SET has_district_mismatch = (ar.match_status != 'match')
+                FROM analysis_results ar
+                WHERE ar.voter_id = voters.id AND ar.analysis_run_id = :run_id
+            """),
+            {"run_id": str(run.id)},
+        )
+
         await session.commit()
         await session.refresh(run)
 
