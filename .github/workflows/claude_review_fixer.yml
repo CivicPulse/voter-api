@@ -48,7 +48,7 @@ jobs:
       # for understanding what the author has already changed since the review.
       # Without this, git log and git diff commands would be limited.
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
         with:
           fetch-depth: 0
           # Explicitly check out the PR head branch by name so that Claude's
@@ -134,7 +134,7 @@ jobs:
       # should and shouldn't change.
       - name: Run Claude to fix and resolve threads
         if: steps.fetch-threads.outputs.count != '0'
-        uses: anthropics/claude-code-action@ade221fd1c400376a4799977d683a4eda09f9d7c # v1
+        uses: anthropics/claude-code-action@ade221fd1c400376a4799977d683a4eda09f9d7c  # v1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

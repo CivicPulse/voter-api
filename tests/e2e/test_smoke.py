@@ -723,7 +723,7 @@ class TestElectedOfficials:
     async def test_list_by_district(self, client: httpx.AsyncClient) -> None:
         resp = await client.get(
             _url("/elected-officials/by-district"),
-            params={"boundary_type": "congressional", "district_identifier": "99"},
+            params={"boundary_type": "congressional", "district_identifier": "099"},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -733,7 +733,7 @@ class TestElectedOfficials:
     async def test_create_official_requires_admin(self, viewer_client: httpx.AsyncClient) -> None:
         payload = {
             "boundary_type": "congressional",
-            "district_identifier": "99",
+            "district_identifier": "099",
             "full_name": "Forbidden Official",
         }
         resp = await viewer_client.post(_url("/elected-officials"), json=payload)
@@ -843,6 +843,23 @@ class TestVoters:
         resp = await admin_client.get(_url(f"/voters/{uuid.uuid4()}/district-check"))
         assert resp.status_code == 404
 
+    async def test_district_check_happy_path(self, admin_client: httpx.AsyncClient) -> None:
+        """GET /voters/{id}/district-check returns 200 with expected fields for a real voter."""
+        voters_resp = await admin_client.get(_url("/voters"), params={"page": 1, "page_size": 1})
+        assert voters_resp.status_code == 200
+        items = voters_resp.json()["items"]
+        if not items:
+            pytest.skip("No voters in E2E database")
+
+        voter_id = items[0]["id"]
+        resp = await admin_client.get(_url(f"/voters/{voter_id}/district-check"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["voter_id"] == voter_id
+        assert "match_status" in body
+        assert "mismatch_count" in body
+        assert "checked_at" in body
+
     async def test_set_official_location_not_found(self, admin_client: httpx.AsyncClient) -> None:
         """PUT /voters/{id}/official-location returns 404 for unknown voter."""
         resp = await admin_client.put(
@@ -868,6 +885,33 @@ class TestVoters:
         """Viewer role gets 403 on DELETE /voters/{id}/official-location/override."""
         resp = await viewer_client.delete(_url(f"/voters/{uuid.uuid4()}/official-location/override"))
         assert resp.status_code == 403
+
+    async def test_set_and_clear_official_location_happy_path(self, admin_client: httpx.AsyncClient) -> None:
+        """PUT then DELETE official-location succeeds for a real voter."""
+        voters_resp = await admin_client.get(_url("/voters"), params={"page": 1, "page_size": 1})
+        assert voters_resp.status_code == 200
+        items = voters_resp.json()["items"]
+        if not items:
+            pytest.skip("No voters in E2E database")
+
+        voter_id = items[0]["id"]
+
+        # Set an override
+        set_resp = await admin_client.put(
+            _url(f"/voters/{voter_id}/official-location"),
+            json={"latitude": 33.749, "longitude": -84.388},
+        )
+        assert set_resp.status_code == 200
+        set_body = set_resp.json()
+        assert set_body["latitude"] == pytest.approx(33.749)
+        assert set_body["longitude"] == pytest.approx(-84.388)
+        assert set_body["is_override"] is True
+
+        # Clear the override
+        clear_resp = await admin_client.delete(_url(f"/voters/{voter_id}/official-location/override"))
+        assert clear_resp.status_code == 200
+        clear_body = clear_resp.json()
+        assert clear_body["is_override"] is False
 
 
 # ── Geocoding ──────────────────────────────────────────────────────────────

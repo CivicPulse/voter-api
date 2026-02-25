@@ -42,6 +42,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Cannot reliably restore which locations were previously primary.
-    # The upgrade is a data-quality fix; downgrade is a no-op.
-    pass
+    """Irreversible: cannot restore which locations were previously primary."""
+    raise NotImplementedError("Migration 034 is irreversible — cannot restore original primary flags.")

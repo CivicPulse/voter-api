@@ -149,11 +149,17 @@ class TestCheckVoterDistricts:
         assert result["mismatch_count"] == 0
         assert result["geocoded_point"]["latitude"] == pytest.approx(32.8407)
 
-        # All comparisons should be "match"
+        # All comparisons with both registered and determined values should be "match"
         for comp in result["comparisons"]:
-            if comp["status"] in ("match", "registered-only", "determined-only"):
+            if comp["status"] == "match":
+                continue
+            if comp["status"] in ("registered-only", "determined-only"):
+                # Expected for boundary types present on only one side
                 continue
             pytest.fail(f"Unexpected mismatch: {comp}")
+        # Verify at least some comparisons are actual matches (not all one-sided)
+        match_count = sum(1 for c in result["comparisons"] if c["status"] == "match")
+        assert match_count > 0, "Expected at least one 'match' comparison"
 
     async def test_district_mismatch(self) -> None:
         voter = _make_voter(
@@ -307,7 +313,6 @@ class TestSearchVotersDistrictMismatchFilter:
     async def test_filter_true_applies_where_clause(self) -> None:
         """search_voters with has_district_mismatch=True adds filter."""
         session = AsyncMock()
-        # Mock execute to return count=0 then empty list
         count_result = MagicMock()
         count_result.scalar_one.return_value = 0
         list_result = MagicMock()
@@ -318,8 +323,10 @@ class TestSearchVotersDistrictMismatchFilter:
 
         assert total == 0
         assert voters == []
-        # Verify execute was called (count + query)
         assert session.execute.call_count == 2
+        # Verify the WHERE clause includes has_district_mismatch
+        count_query = str(session.execute.call_args_list[0][0][0])
+        assert "has_district_mismatch" in count_query
 
     async def test_filter_false_applies_where_clause(self) -> None:
         """search_voters with has_district_mismatch=False adds filter."""
@@ -335,6 +342,9 @@ class TestSearchVotersDistrictMismatchFilter:
         assert total == 0
         assert voters == []
         assert session.execute.call_count == 2
+        # Verify the WHERE clause includes has_district_mismatch
+        count_query = str(session.execute.call_args_list[0][0][0])
+        assert "has_district_mismatch" in count_query
 
     async def test_filter_none_returns_all(self) -> None:
         """search_voters with has_district_mismatch=None doesn't add filter."""
@@ -350,3 +360,6 @@ class TestSearchVotersDistrictMismatchFilter:
         assert total == 0
         assert voters == []
         assert session.execute.call_count == 2
+        # Verify has_district_mismatch is NOT in the query when None
+        count_query = str(session.execute.call_args_list[0][0][0])
+        assert "has_district_mismatch" not in count_query

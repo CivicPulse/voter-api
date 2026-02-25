@@ -98,8 +98,8 @@ class VoterSummaryResponse(BaseModel):
 class OfficialLocationResponse(BaseModel):
     """The voter's authoritative location used for analysis and exports."""
 
-    latitude: float
-    longitude: float
+    latitude: float | None = None
+    longitude: float | None = None
     source: str | None = None
     is_override: bool
 

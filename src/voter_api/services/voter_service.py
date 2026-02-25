@@ -423,7 +423,9 @@ async def check_voter_districts(
             }
         )
 
-    mismatch_count = sum(1 for c in comparisons if c["status"] == "mismatch")
+    # Derive mismatch_count from the comparator result to stay consistent
+    # with match_status (both come from compare_boundaries).
+    mismatch_count = len(comparison_result.mismatch_details)
 
     return {
         "voter_id": voter.id,

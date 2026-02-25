@@ -4,8 +4,7 @@ Given a voter's primary geocoded location, finds all containing
 boundaries grouped by boundary type using PostGIS ST_Contains.
 """
 
-from typing import Any
-
+from geoalchemy2.elements import WKBElement
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,13 +14,13 @@ from voter_api.models.geocoded_location import GeocodedLocation
 
 async def find_boundaries_for_point(
     session: AsyncSession,
-    point: Any,
+    point: WKBElement,
 ) -> dict[str, str]:
     """Find all boundaries containing a raw PostGIS geometry point.
 
     Args:
         session: Database session.
-        point: A PostGIS geometry (POINT, SRID 4326).
+        point: A PostGIS WKBElement geometry (POINT, SRID 4326).
 
     Returns:
         Dict mapping boundary_type to boundary_identifier for all

@@ -139,10 +139,18 @@ async def process_analysis_run(
         run.mismatch_count = mismatch_count
         run.unable_to_analyze_count = unable_count
 
-        # Bulk-update voters.has_district_mismatch from this run's results
+        # Bulk-update voters.has_district_mismatch from this run's results.
+        # Only set TRUE/FALSE for definitive statuses; leave NULL for
+        # unable-to-analyze / not-geocoded (indeterminate).
         await session.execute(
             text("""
-                UPDATE voters SET has_district_mismatch = (ar.match_status != 'match')
+                UPDATE voters SET has_district_mismatch = CASE
+                    WHEN ar.match_status = 'match' THEN false
+                    WHEN ar.match_status IN (
+                        'mismatch-district', 'mismatch-precinct', 'mismatch-both'
+                    ) THEN true
+                    ELSE NULL
+                END
                 FROM analysis_results ar
                 WHERE ar.voter_id = voters.id AND ar.analysis_run_id = :run_id
             """),

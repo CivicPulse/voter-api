@@ -6,8 +6,11 @@ import json
 import sys
 import uuid
 from pathlib import Path
+from typing import TextIO
 
 import typer
+
+from voter_api.models.analysis_result import AnalysisResult
 
 analyze_app = typer.Typer()
 
@@ -30,7 +33,15 @@ def export_mismatches(
     run_id: str | None = typer.Option(None, "--run-id", help="Specific analysis run ID (default: latest completed)"),
 ) -> None:
     """Export voters with district mismatches to CSV or JSON."""
-    parsed_run_id = uuid.UUID(run_id) if run_id else None
+    valid_formats = ("csv", "json")
+    if output_format not in valid_formats:
+        typer.echo(f"Invalid format '{output_format}'. Must be one of: {', '.join(valid_formats)}", err=True)
+        raise typer.Exit(code=1)
+    try:
+        parsed_run_id = uuid.UUID(run_id) if run_id else None
+    except ValueError:
+        typer.echo(f"Invalid run ID: '{run_id}' is not a valid UUID.", err=True)
+        raise typer.Exit(code=1)  # noqa: B904
     asyncio.run(_export_mismatches(output_format, county, output, parsed_run_id))
 
 
@@ -77,12 +88,14 @@ async def _export_mismatches(
 
             typer.echo(f"Using analysis run: {run.id} (completed {run.completed_at})", err=True)
 
-            # Query mismatched results with voter data
+            # Query mismatched results with voter data (exclude match,
+            # unable-to-analyze, and not-geocoded — only true mismatches)
+            mismatch_statuses = ("mismatch-district", "mismatch-precinct", "mismatch-both")
             query = (
                 select(AnalysisResult)
                 .options(selectinload(AnalysisResult.voter))
                 .where(AnalysisResult.analysis_run_id == run.id)
-                .where(AnalysisResult.match_status != "match")
+                .where(AnalysisResult.match_status.in_(mismatch_statuses))
             )
 
             if county:
@@ -111,7 +124,7 @@ async def _export_mismatches(
         await dispose_engine()
 
 
-def _write_csv(out, results) -> None:  # type: ignore[no-untyped-def]
+def _write_csv(out: TextIO, results: list[AnalysisResult]) -> None:
     """Write mismatch results as CSV."""
     writer = csv.writer(out)
     writer.writerow(
@@ -144,7 +157,7 @@ def _write_csv(out, results) -> None:  # type: ignore[no-untyped-def]
         )
 
 
-def _write_json(out, results) -> None:  # type: ignore[no-untyped-def]
+def _write_json(out: TextIO, results: list[AnalysisResult]) -> None:
     """Write mismatch results as JSON."""
     items = []
     for ar in results:

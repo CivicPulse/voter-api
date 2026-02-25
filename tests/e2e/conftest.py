@@ -376,7 +376,7 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         official_data = {
             "id": OFFICIAL_ID,
             "boundary_type": "congressional",
-            "district_identifier": "99",
+            "district_identifier": "099",
             "full_name": "Jane E2E Doe",
             "first_name": "Jane",
             "last_name": "Doe",

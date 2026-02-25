@@ -23,12 +23,22 @@ def upgrade() -> None:
     op.add_column("voters", sa.Column("has_district_mismatch", sa.Boolean(), nullable=True))
     op.create_index("ix_voters_has_district_mismatch", "voters", ["has_district_mismatch"])
 
-    # Backfill from the latest completed analysis run (if one exists)
+    # Backfill from the latest completed analysis run (if one exists).
+    # Only set has_district_mismatch for definitive statuses:
+    #   - TRUE for mismatch-district, mismatch-precinct, mismatch-both
+    #   - FALSE for match
+    # Leave NULL for unable-to-analyze, not-geocoded (indeterminate).
     conn = op.get_bind()
     conn.execute(
         sa.text("""
             UPDATE voters v
-            SET has_district_mismatch = (ar.match_status != 'match')
+            SET has_district_mismatch = CASE
+                WHEN ar.match_status = 'match' THEN false
+                WHEN ar.match_status IN (
+                    'mismatch-district', 'mismatch-precinct', 'mismatch-both'
+                ) THEN true
+                ELSE NULL
+            END
             FROM analysis_results ar
             JOIN analysis_runs run ON ar.analysis_run_id = run.id
             WHERE ar.voter_id = v.id
