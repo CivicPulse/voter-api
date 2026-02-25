@@ -51,6 +51,9 @@ API_V1_PREFIX=/api/v1
 # --- R2 / S3 (disabled by default) ---
 R2_ENABLED=false
 
+# --- Frontend URL ---
+FRONTEND_URL=https://votedev.civpulse.org
+
 # --- WebAuthn / Passkeys ---
 WEBAUTHN_RP_ID=hatchtech.dev
 WEBAUTHN_ORIGIN=https://voter-dev.hatchtech.dev

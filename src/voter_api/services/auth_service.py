@@ -379,7 +379,7 @@ async def request_password_reset(
     expires_at = now + timedelta(hours=24)
 
     # Send email first — stay enumeration-safe on delivery failure
-    reset_url = f"token={raw_token}"  # clients construct full URL; we embed only the token value
+    reset_url = f"{settings.frontend_url}/reset-password?token={raw_token}"
     try:
         await mailer.send_template(
             to=email,
@@ -501,7 +501,7 @@ async def create_invite(
     expires_at = now + timedelta(days=7)
 
     # Send email — fail-fast
-    invite_url = f"token={raw_token}"
+    invite_url = f"{settings.frontend_url}/invite/accept?token={raw_token}"
     await mailer.send_template(
         to=email,
         subject=f"You've been invited to {settings.webauthn_rp_name}",
@@ -606,7 +606,7 @@ async def resend_invite(
     expires_at = now + timedelta(days=7)
 
     # Send email — fail-fast
-    invite_url = f"token={raw_token}"
+    invite_url = f"{settings.frontend_url}/invite/accept?token={raw_token}"
     await mailer.send_template(
         to=row.email,
         subject=f"You've been invited to {settings.webauthn_rp_name}",

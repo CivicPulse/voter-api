@@ -243,6 +243,12 @@ class Settings(BaseSettings):
         gt=0,
     )
 
+    # Frontend URL (used in email links)
+    frontend_url: str = Field(
+        default="http://localhost:5173",
+        description="Frontend application URL for links in emails (invites, password resets)",
+    )
+
     # Environment
     environment: str = Field(
         default="production",
