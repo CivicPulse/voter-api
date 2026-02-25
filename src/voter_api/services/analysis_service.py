@@ -77,7 +77,10 @@ async def process_analysis_run(
     try:
         # Resume: derive keyset cursor and counters from committed results
         cursor_result = await session.execute(
-            select(func.max(AnalysisResult.voter_id)).where(AnalysisResult.analysis_run_id == run.id)
+            select(AnalysisResult.voter_id)
+            .where(AnalysisResult.analysis_run_id == run.id)
+            .order_by(AnalysisResult.voter_id.desc())
+            .limit(1)
         )
         last_voter_id: uuid.UUID | None = cursor_result.scalar_one_or_none()
 

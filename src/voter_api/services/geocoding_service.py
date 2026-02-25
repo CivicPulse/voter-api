@@ -8,6 +8,7 @@ from geoalchemy2.shape import from_shape
 from loguru import logger
 from shapely.geometry import Point
 from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.config import get_settings
@@ -734,39 +735,55 @@ async def _store_geocoded_location(
     """
     point = from_shape(Point(result.longitude, result.latitude), srid=4326)
 
-    # Check if voter has any existing geocoded location
-    existing_count = await session.execute(select(func.count()).where(GeocodedLocation.voter_id == voter.id))
-    is_first = existing_count.scalar_one() == 0
+    now = datetime.now(UTC)
+    values = {
+        "voter_id": voter.id,
+        "latitude": result.latitude,
+        "longitude": result.longitude,
+        "point": point,
+        "confidence_score": result.confidence_score,
+        "source_type": source_type,
+        "is_primary": False,
+        "input_address": input_address,
+        "geocoded_at": now,
+    }
 
-    # Check if this source already exists (for upsert on force_regeocode)
-    existing = await session.execute(
-        select(GeocodedLocation).where(
-            GeocodedLocation.voter_id == voter.id,
-            GeocodedLocation.source_type == source_type,
+    # Atomic upsert — prevents UniqueViolationError on (voter_id, source_type)
+    insert_stmt = pg_insert(GeocodedLocation).values(values)
+    upsert_stmt = insert_stmt.on_conflict_do_update(
+        constraint="uq_voter_source",
+        set_={
+            "latitude": insert_stmt.excluded.latitude,
+            "longitude": insert_stmt.excluded.longitude,
+            "point": insert_stmt.excluded.point,
+            "confidence_score": insert_stmt.excluded.confidence_score,
+            "input_address": insert_stmt.excluded.input_address,
+            "geocoded_at": insert_stmt.excluded.geocoded_at,
+        },
+    ).returning(GeocodedLocation)
+
+    result_row = await session.execute(upsert_stmt)
+    location: GeocodedLocation = result_row.scalar_one()
+
+    # Atomically promote to primary if no other primary exists for this voter.
+    # This avoids the race where two concurrent inserts both see count==0 and
+    # both set is_primary=True.
+    await session.execute(
+        update(GeocodedLocation)
+        .where(
+            GeocodedLocation.id == location.id,
+            ~select(GeocodedLocation.id)
+            .where(
+                GeocodedLocation.voter_id == voter.id,
+                GeocodedLocation.is_primary.is_(True),
+                GeocodedLocation.id != location.id,
+            )
+            .exists(),
         )
+        .values(is_primary=True)
     )
-    location = existing.scalar_one_or_none()
-
-    if location:
-        location.latitude = result.latitude
-        location.longitude = result.longitude
-        location.point = point
-        location.confidence_score = result.confidence_score
-        location.input_address = input_address
-        location.geocoded_at = datetime.now(UTC)
-    else:
-        location = GeocodedLocation(
-            voter_id=voter.id,
-            latitude=result.latitude,
-            longitude=result.longitude,
-            point=point,
-            confidence_score=result.confidence_score,
-            source_type=source_type,
-            is_primary=is_first,
-            input_address=input_address,
-            geocoded_at=datetime.now(UTC),
-        )
-        session.add(location)
+    # Refresh to pick up the possibly-updated is_primary value
+    await session.refresh(location)
 
     await session.flush()
     await sync_official_location(session, voter)
