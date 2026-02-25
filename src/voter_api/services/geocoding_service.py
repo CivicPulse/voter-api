@@ -8,6 +8,7 @@ from geoalchemy2.shape import from_shape
 from loguru import logger
 from shapely.geometry import Point
 from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.config import get_settings
@@ -734,39 +735,39 @@ async def _store_geocoded_location(
     """
     point = from_shape(Point(result.longitude, result.latitude), srid=4326)
 
-    # Check if voter has any existing geocoded location
+    # Check if voter has any existing geocoded location (for is_primary on first insert)
     existing_count = await session.execute(select(func.count()).where(GeocodedLocation.voter_id == voter.id))
     is_first = existing_count.scalar_one() == 0
 
-    # Check if this source already exists (for upsert on force_regeocode)
-    existing = await session.execute(
-        select(GeocodedLocation).where(
-            GeocodedLocation.voter_id == voter.id,
-            GeocodedLocation.source_type == source_type,
-        )
-    )
-    location = existing.scalar_one_or_none()
+    now = datetime.now(UTC)
+    values = {
+        "voter_id": voter.id,
+        "latitude": result.latitude,
+        "longitude": result.longitude,
+        "point": point,
+        "confidence_score": result.confidence_score,
+        "source_type": source_type,
+        "is_primary": is_first,
+        "input_address": input_address,
+        "geocoded_at": now,
+    }
 
-    if location:
-        location.latitude = result.latitude
-        location.longitude = result.longitude
-        location.point = point
-        location.confidence_score = result.confidence_score
-        location.input_address = input_address
-        location.geocoded_at = datetime.now(UTC)
-    else:
-        location = GeocodedLocation(
-            voter_id=voter.id,
-            latitude=result.latitude,
-            longitude=result.longitude,
-            point=point,
-            confidence_score=result.confidence_score,
-            source_type=source_type,
-            is_primary=is_first,
-            input_address=input_address,
-            geocoded_at=datetime.now(UTC),
-        )
-        session.add(location)
+    # Atomic upsert — prevents UniqueViolationError on (voter_id, source_type)
+    stmt = pg_insert(GeocodedLocation).values(values)
+    stmt = stmt.on_conflict_do_update(
+        constraint="uq_voter_source",
+        set_={
+            "latitude": stmt.excluded.latitude,
+            "longitude": stmt.excluded.longitude,
+            "point": stmt.excluded.point,
+            "confidence_score": stmt.excluded.confidence_score,
+            "input_address": stmt.excluded.input_address,
+            "geocoded_at": stmt.excluded.geocoded_at,
+        },
+    ).returning(GeocodedLocation)
+
+    result_row = await session.execute(stmt)
+    location = result_row.scalar_one()
 
     await session.flush()
     await sync_official_location(session, voter)
