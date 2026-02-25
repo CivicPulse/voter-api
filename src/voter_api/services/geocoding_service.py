@@ -632,14 +632,16 @@ async def process_geocoding_job(
             processed,
             succeeded,
         )
-        job.status = "cancelled"
-        job.processed = processed
-        job.succeeded = succeeded
-        job.failed = failed_count
-        job.cache_hits = cache_hits
-        job.error_log = errors if errors else None
-        job.completed_at = datetime.now(UTC)
         try:
+            await session.rollback()
+            session.add(job)
+            job.status = "cancelled"
+            job.processed = processed
+            job.succeeded = succeeded
+            job.failed = failed_count
+            job.cache_hits = cache_hits
+            job.error_log = errors if errors else None
+            job.completed_at = datetime.now(UTC)
             await session.commit()
             logger.info("Progress saved successfully")
         except Exception:
@@ -647,9 +649,11 @@ async def process_geocoding_job(
 
     except Exception as e:
         errors.append({"error": f"Job failed: {e}"})
-        job.status = "failed"
-        job.error_log = errors if errors else None
         try:
+            await session.rollback()
+            session.add(job)
+            job.status = "failed"
+            job.error_log = errors if errors else None
             await session.commit()
         except Exception:
             logger.exception("Failed to persist job failure status")
