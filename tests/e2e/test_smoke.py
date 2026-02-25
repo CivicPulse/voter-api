@@ -669,7 +669,7 @@ class TestElections:
             "name": f"E2E Auto-Parse {uuid.uuid4().hex[:8]}",
             "election_date": "2025-06-15",
             "election_type": "special",
-            "district": "US House of Representatives - District 1",
+            "district": "US House of Representatives - District 99",
             "data_source_url": "https://results.enr.clarityelections.com/GA/autoparse/json",
             "refresh_interval_seconds": 120,
         }
@@ -679,9 +679,9 @@ class TestElections:
             assert create_resp.status_code == 201
             body = create_resp.json()
             assert body["district_type"] == "congressional"
-            assert body["district_identifier"] == "1"
+            assert body["district_identifier"] == "99"
             assert body["district_party"] is None
-            # Boundary ID links to seeded congressional boundary "1"
+            # Boundary ID links to seeded congressional boundary "99"
             assert body["boundary_id"] == str(BOUNDARY_ID)
         finally:
             if election_id is not None:
@@ -723,7 +723,7 @@ class TestElectedOfficials:
     async def test_list_by_district(self, client: httpx.AsyncClient) -> None:
         resp = await client.get(
             _url("/elected-officials/by-district"),
-            params={"boundary_type": "congressional", "district_identifier": "1"},
+            params={"boundary_type": "congressional", "district_identifier": "99"},
         )
         assert resp.status_code == 200
         body = resp.json()

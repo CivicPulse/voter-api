@@ -348,14 +348,14 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         # --- Boundary (simple polygon in Georgia) -------------------------
         boundary_data = {
             "id": BOUNDARY_ID,
-            "name": "E2E Test Congressional 1",
+            "name": "E2E Test Congressional 99",
             "boundary_type": "congressional",
-            "boundary_identifier": "001",
+            "boundary_identifier": "099",
             "geometry": func.ST_GeomFromText(
                 "MULTIPOLYGON(((-84.4 33.7, -84.3 33.7, -84.3 33.8, -84.4 33.8, -84.4 33.7)))",
                 4326,
             ),
-            "properties": {"district_number": "1"},
+            "properties": {"district_number": "99"},
             "source": "e2e-test",
         }
         stmt = pg_insert(Boundary).values(**boundary_data)
@@ -376,7 +376,7 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         official_data = {
             "id": OFFICIAL_ID,
             "boundary_type": "congressional",
-            "district_identifier": "1",
+            "district_identifier": "99",
             "full_name": "Jane E2E Doe",
             "first_name": "Jane",
             "last_name": "Doe",
