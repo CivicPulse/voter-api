@@ -399,7 +399,7 @@ async def check_voter_districts(
     comparison_result = compare_boundaries(determined, registered)
 
     # Build full comparison list across all boundary types
-    all_types = sorted(set(BOUNDARY_TYPE_TO_VOTER_FIELD.keys()))
+    all_types = sorted(set(BOUNDARY_TYPE_TO_VOTER_FIELD.keys()) | set(determined.keys()))
     comparisons = []
     for boundary_type in all_types:
         reg_val = registered.get(boundary_type)
@@ -436,7 +436,6 @@ async def check_voter_districts(
             "latitude": voter.official_latitude,
             "longitude": voter.official_longitude,
             "source_type": voter.official_source,
-            "confidence_score": None,
         },
         "registered_boundaries": registered,
         "determined_boundaries": determined,

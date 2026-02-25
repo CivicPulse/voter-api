@@ -103,6 +103,8 @@ class OfficialLocationResponse(BaseModel):
     source: str | None = None
     is_override: bool
 
+    model_config = {"from_attributes": True}
+
 
 class SetOfficialLocationRequest(BaseModel):
     """Request body for setting an admin override on official location."""

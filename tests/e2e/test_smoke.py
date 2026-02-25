@@ -830,6 +830,8 @@ class TestVoters:
         body = resp.json()
         assert "items" in body
         assert "pagination" in body
+        for item in body["items"]:
+            assert item.get("has_district_mismatch") is True
 
     async def test_voter_not_found(self, admin_client: httpx.AsyncClient) -> None:
         resp = await admin_client.get(_url(f"/voters/{uuid.uuid4()}"))
@@ -848,8 +850,7 @@ class TestVoters:
         voters_resp = await admin_client.get(_url("/voters"), params={"page": 1, "page_size": 1})
         assert voters_resp.status_code == 200
         items = voters_resp.json()["items"]
-        if not items:
-            pytest.skip("No voters in E2E database")
+        assert items, "E2E database has no voters — seed fixture may have failed"
 
         voter_id = items[0]["id"]
         resp = await admin_client.get(_url(f"/voters/{voter_id}/district-check"))
@@ -891,8 +892,7 @@ class TestVoters:
         voters_resp = await admin_client.get(_url("/voters"), params={"page": 1, "page_size": 1})
         assert voters_resp.status_code == 200
         items = voters_resp.json()["items"]
-        if not items:
-            pytest.skip("No voters in E2E database")
+        assert items, "E2E database has no voters — seed fixture may have failed"
 
         voter_id = items[0]["id"]
 

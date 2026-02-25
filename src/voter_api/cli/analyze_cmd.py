@@ -57,7 +57,6 @@ async def _export_mismatches(
 
     from voter_api.core.config import get_settings
     from voter_api.core.database import dispose_engine, get_session_factory, init_engine
-    from voter_api.models.analysis_result import AnalysisResult
     from voter_api.models.analysis_run import AnalysisRun
     from voter_api.models.voter import Voter
 

@@ -72,17 +72,6 @@ def _make_voter(**overrides: object) -> MagicMock:
     return voter
 
 
-def _make_location(*, is_primary: bool = True) -> MagicMock:
-    """Create a mock geocoded location."""
-    loc = MagicMock()
-    loc.is_primary = is_primary
-    loc.latitude = 32.8407
-    loc.longitude = -83.6324
-    loc.source_type = "census"
-    loc.confidence_score = 100.0
-    return loc
-
-
 @pytest.mark.asyncio
 class TestCheckVoterDistricts:
     """Tests for check_voter_districts."""
