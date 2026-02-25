@@ -5,6 +5,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.geocoder.base import GeocodeQuality, GeocodingResult
@@ -77,16 +78,28 @@ async def cache_store(
         raw = dict(raw) if raw else {}
         raw["_quality"] = result.quality.value
 
-    entry = GeocoderCache(
-        provider=provider,
-        normalized_address=normalized_address,
-        latitude=result.latitude,
-        longitude=result.longitude,
-        confidence_score=result.confidence_score,
-        raw_response=raw,
-        matched_address=result.matched_address,
-        address_id=address_id,
-        cached_at=datetime.now(UTC),
+    values = {
+        "provider": provider,
+        "normalized_address": normalized_address,
+        "latitude": result.latitude,
+        "longitude": result.longitude,
+        "confidence_score": result.confidence_score,
+        "raw_response": raw,
+        "matched_address": result.matched_address,
+        "address_id": address_id,
+        "cached_at": datetime.now(UTC),
+    }
+    stmt = pg_insert(GeocoderCache).values(values)
+    stmt = stmt.on_conflict_do_update(
+        constraint="uq_provider_address",
+        set_={
+            "latitude": stmt.excluded.latitude,
+            "longitude": stmt.excluded.longitude,
+            "confidence_score": stmt.excluded.confidence_score,
+            "raw_response": stmt.excluded.raw_response,
+            "matched_address": stmt.excluded.matched_address,
+            "address_id": stmt.excluded.address_id,
+            "cached_at": stmt.excluded.cached_at,
+        },
     )
-    session.add(entry)
-    await session.flush()
+    await session.execute(stmt)
