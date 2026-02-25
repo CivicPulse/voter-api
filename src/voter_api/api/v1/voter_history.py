@@ -138,10 +138,11 @@ async def list_election_participants(
         for row in results:
             vh = row[0]
             item = ElectionParticipationRecord.model_validate(vh)
-            item.voter_id = row[1]
-            item.first_name = row[2]
-            item.last_name = row[3]
-            item.has_district_mismatch = row[4]
+            mapping = row._mapping
+            item.voter_id = mapping["voter_id"]
+            item.first_name = mapping["first_name"]
+            item.last_name = mapping["last_name"]
+            item.has_district_mismatch = mapping["has_district_mismatch"]
             items.append(item)
     else:
         # Default path: enrich from separate lookup

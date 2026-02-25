@@ -1205,6 +1205,7 @@ class TestVoterHistory:
         resp = await analyst_client.get(_url(f"/elections/{ELECTION_ID}/participation"))
         assert resp.status_code == 200
         body = resp.json()
+        assert body["items"], "Expected at least one participation item for field validation"
         for item in body["items"]:
             assert "has_district_mismatch" in item
 

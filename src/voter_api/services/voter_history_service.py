@@ -7,7 +7,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from loguru import logger
 from sqlalchemy import ColumnElement, and_, delete, exists, func, or_, select, text
@@ -542,6 +542,10 @@ async def list_election_participants(
     election = await _get_election_or_raise(session, election_id)
     match_conditions = await _build_election_match_conditions(session, election)
 
+    # Normalize q: treat whitespace-only as None
+    if q is not None:
+        q = q.strip() or None
+
     # Determine if we need to JOIN to voters table
     voter_filters_active = any(
         [
@@ -557,8 +561,12 @@ async def list_election_participants(
         ]
     )
 
+    query: Any
+    count_query: Any
+
     if voter_filters_active:
         # JOIN path: query voter_history + voters in one query
+        # Use outerjoin so voter_history rows without a matching voter are still returned
         query = (
             select(
                 VoterHistory,
@@ -567,12 +575,12 @@ async def list_election_participants(
                 Voter.last_name,
                 Voter.has_district_mismatch,
             )
-            .join(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+            .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
             .where(*match_conditions)
         )
         count_query = (
             select(func.count(VoterHistory.id))
-            .join(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+            .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
             .where(*match_conditions)
         )
 
@@ -644,7 +652,7 @@ async def list_election_participants(
     result = await session.execute(query)
 
     if voter_filters_active:
-        rows = result.all()
+        rows = list(result.all())
         return rows, total, True
 
     records = list(result.scalars().all())

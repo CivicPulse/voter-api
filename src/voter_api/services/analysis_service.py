@@ -88,9 +88,7 @@ async def process_analysis_run(
                     func.count(AnalysisResult.id),
                     func.count(AnalysisResult.id).filter(AnalysisResult.match_status == "match"),
                     func.count(AnalysisResult.id).filter(
-                        AnalysisResult.match_status.in_(
-                            ["mismatch-district", "mismatch-precinct", "mismatch-both", "mismatch"]
-                        )
+                        AnalysisResult.match_status.in_(["mismatch-district", "mismatch-precinct", "mismatch-both"])
                     ),
                     func.count(AnalysisResult.id).filter(AnalysisResult.match_status == "unable-to-analyze"),
                 ).where(AnalysisResult.analysis_run_id == run.id)

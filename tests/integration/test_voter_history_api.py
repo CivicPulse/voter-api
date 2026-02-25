@@ -645,8 +645,16 @@ class TestListElectionParticipants:
         """JOIN path returns has_district_mismatch in response items."""
         vh = _make_voter_history()
         voter_id = uuid.uuid4()
-        # Simulate JOIN path: rows are (VoterHistory, voter_id, first_name, last_name, has_district_mismatch)
-        rows = [(vh, voter_id, "Jane", "Doe", True)]
+        # Simulate JOIN path: mock SQLAlchemy Row with _mapping for named access
+        mock_row = MagicMock()
+        mock_row.__getitem__ = lambda self, idx: (vh, voter_id, "Jane", "Doe", True)[idx]
+        mock_row._mapping = {
+            "voter_id": voter_id,
+            "first_name": "Jane",
+            "last_name": "Doe",
+            "has_district_mismatch": True,
+        }
+        rows = [mock_row]
         with patch(
             "voter_api.services.voter_history_service.list_election_participants",
             new_callable=AsyncMock,
