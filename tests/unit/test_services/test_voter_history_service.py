@@ -155,7 +155,7 @@ class TestListElectionParticipants:
     """Tests for list_election_participants query function."""
 
     async def test_returns_participants(self) -> None:
-        """Returns participants for a valid election."""
+        """Returns participants for a valid election (default path, no voter filters)."""
         election = _mock_election()
         records = [_mock_voter_history()]
 
@@ -186,10 +186,11 @@ class TestListElectionParticipants:
             records_result,
         ]
 
-        result_records, total = await list_election_participants(session, election.id)
+        result_records, total, voter_details_included = await list_election_participants(session, election.id)
 
         assert total == 1
         assert len(result_records) == 1
+        assert voter_details_included is False
 
     async def test_election_not_found_raises(self) -> None:
         """Raises ValueError when election does not exist."""
@@ -202,7 +203,7 @@ class TestListElectionParticipants:
             await list_election_participants(session, uuid.uuid4())
 
     async def test_with_filters(self) -> None:
-        """Filters are applied correctly."""
+        """VoterHistory-only filters are applied correctly (default path)."""
         election = _mock_election()
         session = AsyncMock()
         election_result = MagicMock()
@@ -226,7 +227,7 @@ class TestListElectionParticipants:
             records_result,
         ]
 
-        records, total = await list_election_participants(
+        records, total, voter_details_included = await list_election_participants(
             session,
             election.id,
             county="FULTON",
@@ -238,8 +239,108 @@ class TestListElectionParticipants:
 
         assert total == 0
         assert records == []
+        assert voter_details_included is False
         # 5 execute calls: election lookup + has_resolved + match count + count + records
         assert session.execute.await_count == 5
+
+    async def test_voter_filter_triggers_join_path(self) -> None:
+        """Voter-table filter (county_precinct) triggers JOIN path."""
+        election = _mock_election()
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        has_resolved_result = MagicMock()
+        has_resolved_result.scalar_one.return_value = False
+        match_count_result = MagicMock()
+        match_count_result.scalar_one.return_value = 1
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 0
+        records_result = MagicMock()
+        records_result.all.return_value = []
+
+        session.execute.side_effect = [
+            election_result,
+            has_resolved_result,
+            match_count_result,
+            count_result,
+            records_result,
+        ]
+
+        records, total, voter_details_included = await list_election_participants(
+            session,
+            election.id,
+            county_precinct="HA2",
+        )
+
+        assert total == 0
+        assert records == []
+        assert voter_details_included is True
+
+    async def test_q_param_triggers_join_path(self) -> None:
+        """The q search parameter triggers the JOIN path."""
+        election = _mock_election()
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        has_resolved_result = MagicMock()
+        has_resolved_result.scalar_one.return_value = False
+        match_count_result = MagicMock()
+        match_count_result.scalar_one.return_value = 1
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 0
+        records_result = MagicMock()
+        records_result.all.return_value = []
+
+        session.execute.side_effect = [
+            election_result,
+            has_resolved_result,
+            match_count_result,
+            count_result,
+            records_result,
+        ]
+
+        records, total, voter_details_included = await list_election_participants(
+            session,
+            election.id,
+            q="Smith",
+        )
+
+        assert total == 0
+        assert records == []
+        assert voter_details_included is True
+
+    async def test_has_district_mismatch_triggers_join_path(self) -> None:
+        """has_district_mismatch filter triggers the JOIN path."""
+        election = _mock_election()
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        has_resolved_result = MagicMock()
+        has_resolved_result.scalar_one.return_value = False
+        match_count_result = MagicMock()
+        match_count_result.scalar_one.return_value = 1
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 0
+        records_result = MagicMock()
+        records_result.all.return_value = []
+
+        session.execute.side_effect = [
+            election_result,
+            has_resolved_result,
+            match_count_result,
+            count_result,
+            records_result,
+        ]
+
+        records, total, voter_details_included = await list_election_participants(
+            session,
+            election.id,
+            has_district_mismatch=True,
+        )
+
+        assert total == 0
+        assert records == []
+        assert voter_details_included is True
 
 
 # ---------------------------------------------------------------------------
@@ -672,10 +773,11 @@ class TestBuildElectionMatchConditions:
             records_result,
         ]
 
-        result_records, total = await list_election_participants(session, election.id)
+        result_records, total, voter_details_included = await list_election_participants(session, election.id)
 
         assert total == 1
         assert len(result_records) == 1
+        assert voter_details_included is False
 
 
 # ---------------------------------------------------------------------------
@@ -698,12 +800,14 @@ class TestLookupVoterDetails:
         voter_id = uuid.uuid4()
         session = AsyncMock()
         query_result = MagicMock()
-        query_result.all.return_value = [("12345678", voter_id, "Jane", "Doe")]
+        query_result.all.return_value = [("12345678", voter_id, "Jane", "Doe", None)]
         session.execute.return_value = query_result
 
         result = await lookup_voter_details(session, ["12345678"])
 
-        assert result == {"12345678": VoterLookupResult(id=voter_id, first_name="Jane", last_name="Doe")}
+        assert result == {
+            "12345678": VoterLookupResult(id=voter_id, first_name="Jane", last_name="Doe", has_district_mismatch=None)
+        }
 
     async def test_missing_voter_omitted(self) -> None:
         """Unmatched registration numbers are excluded from result."""
@@ -722,12 +826,14 @@ class TestLookupVoterDetails:
         voter_id = uuid.uuid4()
         session = AsyncMock()
         query_result = MagicMock()
-        query_result.all.return_value = [("12345678", voter_id, "Jane", "Doe")]
+        query_result.all.return_value = [("12345678", voter_id, "Jane", "Doe", None)]
         session.execute.return_value = query_result
 
         result = await lookup_voter_details(session, ["12345678", "12345678", "12345678"])
 
-        assert result == {"12345678": VoterLookupResult(id=voter_id, first_name="Jane", last_name="Doe")}
+        assert result == {
+            "12345678": VoterLookupResult(id=voter_id, first_name="Jane", last_name="Doe", has_district_mismatch=None)
+        }
         session.execute.assert_awaited_once()
 
 

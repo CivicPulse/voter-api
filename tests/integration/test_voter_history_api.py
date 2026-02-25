@@ -465,17 +465,19 @@ class TestListElectionParticipants:
 
     @pytest.mark.asyncio
     async def test_returns_participants(self, analyst_client: AsyncClient) -> None:
-        """Returns paginated list of participants with voter_id and name."""
+        """Returns paginated list of participants with voter_id, name, and has_district_mismatch."""
         voter_id = uuid.uuid4()
         records = [_make_voter_history(), _make_voter_history()]
         voter_detail_map = {
-            records[0].voter_registration_number: VoterLookupResult(id=voter_id, first_name="Jane", last_name="Doe"),
+            records[0].voter_registration_number: VoterLookupResult(
+                id=voter_id, first_name="Jane", last_name="Doe", has_district_mismatch=False
+            ),
         }
         with (
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
                 new_callable=AsyncMock,
-                return_value=(records, 2),
+                return_value=(records, 2, False),
             ),
             patch(
                 "voter_api.services.voter_history_service.lookup_voter_details",
@@ -493,6 +495,7 @@ class TestListElectionParticipants:
         assert data["items"][0]["voter_id"] == str(voter_id)
         assert data["items"][0]["first_name"] == "Jane"
         assert data["items"][0]["last_name"] == "Doe"
+        assert data["items"][0]["has_district_mismatch"] is False
 
     @pytest.mark.asyncio
     async def test_404_for_unknown_election(self, analyst_client: AsyncClient) -> None:
@@ -510,13 +513,13 @@ class TestListElectionParticipants:
 
     @pytest.mark.asyncio
     async def test_voter_id_null_when_no_voter(self, analyst_client: AsyncClient) -> None:
-        """voter_id and name fields are null when no matching voter record exists."""
+        """voter_id, name, and has_district_mismatch are null when no matching voter."""
         records = [_make_voter_history()]
         with (
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
                 new_callable=AsyncMock,
-                return_value=(records, 1),
+                return_value=(records, 1, False),
             ),
             patch(
                 "voter_api.services.voter_history_service.lookup_voter_details",
@@ -532,6 +535,7 @@ class TestListElectionParticipants:
         assert data["items"][0]["voter_id"] is None
         assert data["items"][0]["first_name"] is None
         assert data["items"][0]["last_name"] is None
+        assert data["items"][0]["has_district_mismatch"] is None
 
     @pytest.mark.asyncio
     async def test_filter_by_county(self, analyst_client: AsyncClient) -> None:
@@ -540,7 +544,7 @@ class TestListElectionParticipants:
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
                 new_callable=AsyncMock,
-                return_value=([], 0),
+                return_value=([], 0, False),
             ) as mock_svc,
             patch(
                 "voter_api.services.voter_history_service.lookup_voter_details",
@@ -561,7 +565,7 @@ class TestListElectionParticipants:
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
                 new_callable=AsyncMock,
-                return_value=([], 0),
+                return_value=([], 0, False),
             ) as mock_svc,
             patch(
                 "voter_api.services.voter_history_service.lookup_voter_details",
@@ -582,7 +586,7 @@ class TestListElectionParticipants:
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
                 new_callable=AsyncMock,
-                return_value=([], 0),
+                return_value=([], 0, False),
             ) as mock_svc,
             patch(
                 "voter_api.services.voter_history_service.lookup_voter_details",
@@ -596,6 +600,66 @@ class TestListElectionParticipants:
         call_kwargs = mock_svc.call_args
         assert call_kwargs[1]["page"] == 2
         assert call_kwargs[1]["page_size"] == 50
+
+    @pytest.mark.asyncio
+    async def test_voter_filter_forwarded(self, analyst_client: AsyncClient) -> None:
+        """Voter-table filters are forwarded to service."""
+        with (
+            patch(
+                "voter_api.services.voter_history_service.list_election_participants",
+                new_callable=AsyncMock,
+                return_value=([], 0, True),
+            ) as mock_svc,
+        ):
+            eid = uuid.uuid4()
+            await analyst_client.get(
+                f"/api/v1/elections/{eid}/participation"
+                "?county_precinct=HA2&congressional_district=8&voter_status=ACTIVE"
+                "&has_district_mismatch=true"
+            )
+
+        call_kwargs = mock_svc.call_args
+        assert call_kwargs[1]["county_precinct"] == "HA2"
+        assert call_kwargs[1]["congressional_district"] == "8"
+        assert call_kwargs[1]["voter_status"] == "ACTIVE"
+        assert call_kwargs[1]["has_district_mismatch"] is True
+
+    @pytest.mark.asyncio
+    async def test_q_param_forwarded(self, analyst_client: AsyncClient) -> None:
+        """The q search parameter is forwarded to service."""
+        with (
+            patch(
+                "voter_api.services.voter_history_service.list_election_participants",
+                new_callable=AsyncMock,
+                return_value=([], 0, True),
+            ) as mock_svc,
+        ):
+            eid = uuid.uuid4()
+            await analyst_client.get(f"/api/v1/elections/{eid}/participation?q=Smith")
+
+        call_kwargs = mock_svc.call_args
+        assert call_kwargs[1]["q"] == "Smith"
+
+    @pytest.mark.asyncio
+    async def test_join_path_response(self, analyst_client: AsyncClient) -> None:
+        """JOIN path returns has_district_mismatch in response items."""
+        vh = _make_voter_history()
+        voter_id = uuid.uuid4()
+        # Simulate JOIN path: rows are (VoterHistory, voter_id, first_name, last_name, has_district_mismatch)
+        rows = [(vh, voter_id, "Jane", "Doe", True)]
+        with patch(
+            "voter_api.services.voter_history_service.list_election_participants",
+            new_callable=AsyncMock,
+            return_value=(rows, 1, True),
+        ):
+            eid = uuid.uuid4()
+            resp = await analyst_client.get(f"/api/v1/elections/{eid}/participation?q=Jane")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["items"][0]["voter_id"] == str(voter_id)
+        assert data["items"][0]["first_name"] == "Jane"
+        assert data["items"][0]["has_district_mismatch"] is True
 
     @pytest.mark.asyncio
     async def test_viewer_forbidden(self, viewer_client: AsyncClient) -> None:

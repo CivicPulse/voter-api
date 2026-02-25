@@ -1,5 +1,6 @@
 """Voter history service — import, query, and aggregate participation data."""
 
+import re
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -489,27 +490,51 @@ async def list_election_participants(
     absentee: bool | None = None,
     provisional: bool | None = None,
     supplemental: bool | None = None,
+    q: str | None = None,
+    county_precinct: str | None = None,
+    congressional_district: str | None = None,
+    state_senate_district: str | None = None,
+    state_house_district: str | None = None,
+    county_commission_district: str | None = None,
+    school_board_district: str | None = None,
+    voter_status: str | None = None,
+    has_district_mismatch: bool | None = None,
     page: int = 1,
     page_size: int = 20,
-) -> tuple[list[VoterHistory], int]:
+) -> tuple[list, int, bool]:
     """List voters who participated in an election.
 
     Looks up the election by ID to get (date, type), then queries
     voter_history by (election_date, normalized_election_type).
 
+    When voter-table filters are active (q, county_precinct, districts,
+    voter_status, has_district_mismatch), JOINs to the voters table and
+    returns rows with voter details included (3rd element is True).
+
     Args:
         session: Database session.
         election_id: Election UUID.
-        county: Filter by county.
+        county: Filter by county (voter_history table).
         ballot_style: Filter by ballot style.
         absentee: Filter by absentee flag.
         provisional: Filter by provisional flag.
         supplemental: Filter by supplemental flag.
+        q: Combined name/registration number search query.
+        county_precinct: Filter by voter county precinct.
+        congressional_district: Filter by congressional district.
+        state_senate_district: Filter by state senate district.
+        state_house_district: Filter by state house district.
+        county_commission_district: Filter by county commission district.
+        school_board_district: Filter by school board district.
+        voter_status: Filter by voter status.
+        has_district_mismatch: Filter by district mismatch flag.
         page: Page number.
         page_size: Items per page.
 
     Returns:
-        Tuple of (records, total count).
+        Tuple of (records, total count, voter_details_included).
+        When voter_details_included is True, each record is a tuple of
+        (VoterHistory, voter_id, first_name, last_name, has_district_mismatch).
 
     Raises:
         ValueError: If election not found.
@@ -517,9 +542,86 @@ async def list_election_participants(
     election = await _get_election_or_raise(session, election_id)
     match_conditions = await _build_election_match_conditions(session, election)
 
-    query = select(VoterHistory).where(*match_conditions)
-    count_query = select(func.count(VoterHistory.id)).where(*match_conditions)
+    # Determine if we need to JOIN to voters table
+    voter_filters_active = any(
+        [
+            q,
+            county_precinct,
+            congressional_district,
+            state_senate_district,
+            state_house_district,
+            county_commission_district,
+            school_board_district,
+            voter_status,
+            has_district_mismatch is not None,
+        ]
+    )
 
+    if voter_filters_active:
+        # JOIN path: query voter_history + voters in one query
+        query = (
+            select(
+                VoterHistory,
+                Voter.id.label("voter_id"),
+                Voter.first_name,
+                Voter.last_name,
+                Voter.has_district_mismatch,
+            )
+            .join(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+            .where(*match_conditions)
+        )
+        count_query = (
+            select(func.count(VoterHistory.id))
+            .join(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+            .where(*match_conditions)
+        )
+
+        # Apply q search (name/reg number)
+        if q:
+            words = [w for w in re.split(r"[\s,;.]+", q.strip()) if w]
+            for word in words:
+                word_escaped = word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                pattern = f"%{word_escaped}%"
+                word_condition = or_(
+                    Voter.first_name.ilike(pattern, escape="\\"),
+                    Voter.last_name.ilike(pattern, escape="\\"),
+                    Voter.middle_name.ilike(pattern, escape="\\"),
+                    VoterHistory.voter_registration_number.ilike(pattern, escape="\\"),
+                )
+                query = query.where(word_condition)
+                count_query = count_query.where(word_condition)
+
+        # Apply voter-table filters
+        if county_precinct:
+            query = query.where(Voter.county_precinct == county_precinct)
+            count_query = count_query.where(Voter.county_precinct == county_precinct)
+        if congressional_district:
+            query = query.where(Voter.congressional_district == congressional_district)
+            count_query = count_query.where(Voter.congressional_district == congressional_district)
+        if state_senate_district:
+            query = query.where(Voter.state_senate_district == state_senate_district)
+            count_query = count_query.where(Voter.state_senate_district == state_senate_district)
+        if state_house_district:
+            query = query.where(Voter.state_house_district == state_house_district)
+            count_query = count_query.where(Voter.state_house_district == state_house_district)
+        if county_commission_district:
+            query = query.where(Voter.county_commission_district == county_commission_district)
+            count_query = count_query.where(Voter.county_commission_district == county_commission_district)
+        if school_board_district:
+            query = query.where(Voter.school_board_district == school_board_district)
+            count_query = count_query.where(Voter.school_board_district == school_board_district)
+        if voter_status:
+            query = query.where(Voter.status == voter_status)
+            count_query = count_query.where(Voter.status == voter_status)
+        if has_district_mismatch is not None:
+            query = query.where(Voter.has_district_mismatch == has_district_mismatch)
+            count_query = count_query.where(Voter.has_district_mismatch == has_district_mismatch)
+    else:
+        # Default path: query voter_history only
+        query = select(VoterHistory).where(*match_conditions)
+        count_query = select(func.count(VoterHistory.id)).where(*match_conditions)
+
+    # Apply voter_history filters (common to both paths)
     if county:
         query = query.where(VoterHistory.county == county)
         count_query = count_query.where(VoterHistory.county == county)
@@ -540,9 +642,13 @@ async def list_election_participants(
     offset = (page - 1) * page_size
     query = query.order_by(VoterHistory.voter_registration_number).offset(offset).limit(page_size)
     result = await session.execute(query)
-    records = list(result.scalars().all())
 
-    return records, total
+    if voter_filters_active:
+        rows = result.all()
+        return rows, total, True
+
+    records = list(result.scalars().all())
+    return records, total, False
 
 
 async def get_participation_stats(
@@ -714,11 +820,13 @@ class VoterLookupResult(NamedTuple):
         id: Voter UUID primary key.
         first_name: Voter's first name.
         last_name: Voter's last name.
+        has_district_mismatch: Whether voter has a district mismatch.
     """
 
     id: uuid.UUID
     first_name: str
     last_name: str
+    has_district_mismatch: bool | None
 
 
 async def lookup_voter_details(
@@ -744,9 +852,13 @@ async def lookup_voter_details(
             Voter.id,
             Voter.first_name,
             Voter.last_name,
+            Voter.has_district_mismatch,
         ).where(Voter.voter_registration_number.in_(unique_nums))
     )
-    return {row[0]: VoterLookupResult(id=row[1], first_name=row[2], last_name=row[3]) for row in result.all()}
+    return {
+        row[0]: VoterLookupResult(id=row[1], first_name=row[2], last_name=row[3], has_district_mismatch=row[4])
+        for row in result.all()
+    }
 
 
 async def _build_election_match_conditions(
