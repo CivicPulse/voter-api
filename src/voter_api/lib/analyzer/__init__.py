@@ -10,13 +10,18 @@ from voter_api.lib.analyzer.comparator import (
     compare_boundaries,
     extract_registered_boundaries,
 )
-from voter_api.lib.analyzer.spatial import find_voter_boundaries, find_voter_boundaries_batch
+from voter_api.lib.analyzer.spatial import (
+    find_boundaries_for_point,
+    find_voter_boundaries,
+    find_voter_boundaries_batch,
+)
 
 __all__ = [
     "BOUNDARY_TYPE_TO_VOTER_FIELD",
     "ComparisonResult",
     "compare_boundaries",
     "extract_registered_boundaries",
+    "find_boundaries_for_point",
     "find_voter_boundaries",
     "find_voter_boundaries_batch",
 ]

@@ -38,7 +38,7 @@ def _mock_analysis_run(**overrides: object) -> MagicMock:
 
 
 def _mock_voter(**overrides: object) -> MagicMock:
-    """Create a mock Voter with geocoded locations."""
+    """Create a mock Voter with official location."""
     voter = MagicMock()
     voter.id = uuid.uuid4()
     voter.county = "FULTON"
@@ -46,6 +46,7 @@ def _mock_voter(**overrides: object) -> MagicMock:
     voter.state_senate_district = "34"
     voter.state_house_district = "55"
     voter.county_precinct = "SS01"
+    voter.official_point = MagicMock()  # Non-None means voter has a location
     voter.geocoded_locations = []
     for key, value in overrides.items():
         setattr(voter, key, value)
@@ -263,8 +264,7 @@ class TestProcessAnalysisRun:
         session = AsyncMock()
         run = _mock_analysis_run()
 
-        loc = _mock_location(is_primary=True)
-        voter = _mock_voter(geocoded_locations=[loc])
+        voter = _mock_voter()
 
         # First call returns voters, second returns empty (end of batch),
         # third is the bulk-update of has_district_mismatch
@@ -283,7 +283,7 @@ class TestProcessAnalysisRun:
 
         with (
             patch(
-                "voter_api.services.analysis_service.find_voter_boundaries",
+                "voter_api.services.analysis_service.find_boundaries_for_point",
                 new_callable=AsyncMock,
                 return_value={"congressional": "05"},
             ),
@@ -303,32 +303,27 @@ class TestProcessAnalysisRun:
         assert run.total_voters_analyzed == 1
 
     @pytest.mark.asyncio
-    async def test_handles_voter_without_primary_location(self) -> None:
+    async def test_skips_voter_without_official_point(self) -> None:
+        """Voters without official_point are excluded by the query filter, so 0 analyzed."""
         session = AsyncMock()
         run = _mock_analysis_run()
 
-        voter = _mock_voter(geocoded_locations=[])
-
-        result_with_voters = MagicMock()
-        result_with_voters.scalars.return_value.all.return_value = [voter]
+        # Query returns empty because no voters match official_point IS NOT NULL
         result_empty = MagicMock()
         result_empty.scalars.return_value.all.return_value = []
-        bulk_update_result = MagicMock()
-        session.execute.side_effect = [result_with_voters, result_empty, bulk_update_result]
+        session.execute.return_value = result_empty
 
-        with patch("voter_api.services.analysis_service.extract_registered_boundaries", return_value={}):
-            await process_analysis_run(session, run, batch_size=10)
+        await process_analysis_run(session, run, batch_size=10)
 
         assert run.status == "completed"
-        assert run.unable_to_analyze_count == 1
+        assert run.total_voters_analyzed == 0
 
     @pytest.mark.asyncio
     async def test_handles_mismatch(self) -> None:
         session = AsyncMock()
         run = _mock_analysis_run()
 
-        loc = _mock_location(is_primary=True)
-        voter = _mock_voter(geocoded_locations=[loc])
+        voter = _mock_voter()
 
         result_with_voters = MagicMock()
         result_with_voters.scalars.return_value.all.return_value = [voter]
@@ -345,7 +340,7 @@ class TestProcessAnalysisRun:
 
         with (
             patch(
-                "voter_api.services.analysis_service.find_voter_boundaries",
+                "voter_api.services.analysis_service.find_boundaries_for_point",
                 new_callable=AsyncMock,
                 return_value={"congressional": "06"},
             ),

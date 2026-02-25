@@ -4,6 +4,8 @@ Given a voter's primary geocoded location, finds all containing
 boundaries grouped by boundary type using PostGIS ST_Contains.
 """
 
+from typing import Any
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,25 +13,22 @@ from voter_api.models.boundary import Boundary
 from voter_api.models.geocoded_location import GeocodedLocation
 
 
-async def find_voter_boundaries(
+async def find_boundaries_for_point(
     session: AsyncSession,
-    geocoded_location: GeocodedLocation,
+    point: Any,
 ) -> dict[str, str]:
-    """Find all boundaries containing a voter's geocoded point.
+    """Find all boundaries containing a raw PostGIS geometry point.
 
     Args:
         session: Database session.
-        geocoded_location: The voter's primary geocoded location.
+        point: A PostGIS geometry (POINT, SRID 4326).
 
     Returns:
         Dict mapping boundary_type to boundary_identifier for all
         boundaries containing the point.
     """
     query = select(Boundary.boundary_type, Boundary.boundary_identifier).where(
-        func.ST_Contains(
-            Boundary.geometry,
-            geocoded_location.point,
-        )
+        func.ST_Contains(Boundary.geometry, point)
     )
 
     result = await session.execute(query)
@@ -48,6 +47,25 @@ async def find_voter_boundaries(
         determined[boundary_type] = identifiers[0]
 
     return determined
+
+
+async def find_voter_boundaries(
+    session: AsyncSession,
+    geocoded_location: GeocodedLocation,
+) -> dict[str, str]:
+    """Find all boundaries containing a voter's geocoded point.
+
+    Delegates to find_boundaries_for_point using the location's point geometry.
+
+    Args:
+        session: Database session.
+        geocoded_location: The voter's primary geocoded location.
+
+    Returns:
+        Dict mapping boundary_type to boundary_identifier for all
+        boundaries containing the point.
+    """
+    return await find_boundaries_for_point(session, geocoded_location.point)
 
 
 async def find_voter_boundaries_batch(

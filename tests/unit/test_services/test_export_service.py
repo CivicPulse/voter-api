@@ -53,6 +53,8 @@ def _mock_voter(**overrides: object) -> MagicMock:
     voter.state_senate_district = "34"
     voter.state_house_district = "55"
     voter.county_precinct = "SS01"
+    voter.official_latitude = None
+    voter.official_longitude = None
     voter.geocoded_locations = []
     for key, value in overrides.items():
         setattr(voter, key, value)
@@ -106,31 +108,20 @@ class TestVoterToDict:
         assert result["last_name"] == "SMITH"
         assert result["first_name"] == "JOHN"
 
-    def test_without_geocoded_location(self) -> None:
+    def test_without_official_location(self) -> None:
         voter = _mock_voter()
         result = _voter_to_dict(voter)
         assert "latitude" not in result
         assert "longitude" not in result
 
-    def test_with_primary_geocoded_location(self) -> None:
-        loc = MagicMock()
-        loc.is_primary = True
-        loc.latitude = 33.749
-        loc.longitude = -84.388
-        voter = _mock_voter(geocoded_locations=[loc])
+    def test_with_official_location(self) -> None:
+        voter = _mock_voter(official_latitude=33.749, official_longitude=-84.388)
         result = _voter_to_dict(voter)
         assert result["latitude"] == 33.749
         assert result["longitude"] == -84.388
 
-    def test_with_non_primary_location_excluded(self) -> None:
-        loc = MagicMock()
-        loc.is_primary = False
-        voter = _mock_voter(geocoded_locations=[loc])
-        result = _voter_to_dict(voter)
-        assert "latitude" not in result
-
-    def test_with_none_geocoded_locations(self) -> None:
-        voter = _mock_voter(geocoded_locations=None)
+    def test_without_official_latitude_excluded(self) -> None:
+        voter = _mock_voter(official_latitude=None, official_longitude=None)
         result = _voter_to_dict(voter)
         assert "latitude" not in result
 

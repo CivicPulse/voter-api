@@ -8,10 +8,9 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.analyzer.comparator import compare_boundaries, extract_registered_boundaries
-from voter_api.lib.analyzer.spatial import find_voter_boundaries
+from voter_api.lib.analyzer.spatial import find_boundaries_for_point
 from voter_api.models.analysis_result import AnalysisResult
 from voter_api.models.analysis_run import AnalysisRun
-from voter_api.models.geocoded_location import GeocodedLocation
 from voter_api.models.voter import Voter
 
 ANALYSIS_BATCH_SIZE = 100
@@ -79,13 +78,10 @@ async def process_analysis_run(
         offset = run.last_processed_voter_offset or 0
 
         while True:
-            # Find eligible voters: those with a primary geocoded location
+            # Find eligible voters: those with an official location
             voter_query = select(Voter).where(
                 Voter.present_in_latest_import.is_(True),
-                select(GeocodedLocation.id)
-                .where(GeocodedLocation.voter_id == Voter.id)
-                .where(GeocodedLocation.is_primary.is_(True))
-                .exists(),
+                Voter.official_point.isnot(None),
             )
 
             if county:
@@ -100,28 +96,8 @@ async def process_analysis_run(
                 break
 
             for voter in voters:
-                # Get the voter's primary geocoded location
-                primary_loc = next(
-                    (loc for loc in voter.geocoded_locations if loc.is_primary),
-                    None,
-                )
-
-                if not primary_loc:
-                    unable_count += 1
-                    total_analyzed += 1
-                    await _store_result(
-                        session,
-                        run_id=run.id,
-                        voter_id=voter.id,
-                        determined={},
-                        registered=extract_registered_boundaries(voter),
-                        match_status="unable-to-analyze",
-                        mismatch_details=None,
-                    )
-                    continue
-
                 # Spatial analysis: find containing boundaries
-                determined = await find_voter_boundaries(session, primary_loc)
+                determined = await find_boundaries_for_point(session, voter.official_point)
 
                 # Extract registered boundaries from voter record
                 registered = extract_registered_boundaries(voter)

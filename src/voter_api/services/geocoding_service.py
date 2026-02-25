@@ -717,6 +717,7 @@ async def _store_geocoded_location(
         session.add(location)
 
     await session.flush()
+    await sync_official_location(session, voter)
     return location
 
 
@@ -761,6 +762,12 @@ async def add_manual_location(
     if set_as_primary and not is_first:
         await _set_primary(session, voter_id, location)
 
+    # Sync official location from best geocode
+    voter_result = await session.execute(select(Voter).where(Voter.id == voter_id))
+    voter = voter_result.scalar_one_or_none()
+    if voter:
+        await sync_official_location(session, voter)
+
     await session.commit()
     await session.refresh(location)
     return location
@@ -792,6 +799,13 @@ async def set_primary_location(
         return None
 
     await _set_primary(session, voter_id, location)
+
+    # Sync official location from best geocode
+    voter_result = await session.execute(select(Voter).where(Voter.id == voter_id))
+    voter = voter_result.scalar_one_or_none()
+    if voter:
+        await sync_official_location(session, voter)
+
     await session.commit()
     await session.refresh(location)
     return location
@@ -824,6 +838,114 @@ async def get_voter_locations(session: AsyncSession, voter_id: uuid.UUID) -> lis
         .order_by(GeocodedLocation.is_primary.desc(), GeocodedLocation.geocoded_at.desc())
     )
     return list(result.scalars().all())
+
+
+async def sync_official_location(
+    session: AsyncSession,
+    voter: Voter,
+) -> None:
+    """Sync official location from the best geocoded location.
+
+    Selects the geocoded location with the highest confidence score
+    (tie-break: most recent geocoded_at) and writes to the voter's
+    official_* columns.  Skips if official_is_override is True.
+
+    Args:
+        session: Database session.
+        voter: The voter record to update.
+    """
+    if voter.official_is_override:
+        return
+
+    result = await session.execute(
+        select(GeocodedLocation)
+        .where(GeocodedLocation.voter_id == voter.id)
+        .order_by(
+            GeocodedLocation.confidence_score.desc().nullslast(),
+            GeocodedLocation.geocoded_at.desc(),
+        )
+        .limit(1)
+    )
+    best = result.scalar_one_or_none()
+
+    if best:
+        voter.official_latitude = best.latitude
+        voter.official_longitude = best.longitude
+        voter.official_point = best.point
+        voter.official_source = best.source_type
+    else:
+        voter.official_latitude = None
+        voter.official_longitude = None
+        voter.official_point = None
+        voter.official_source = None
+
+    await session.flush()
+
+
+async def set_official_location_override(
+    session: AsyncSession,
+    voter_id: uuid.UUID,
+    latitude: float,
+    longitude: float,
+) -> Voter:
+    """Set an admin override for a voter's official location.
+
+    Args:
+        session: Database session.
+        voter_id: The voter's UUID.
+        latitude: Override latitude.
+        longitude: Override longitude.
+
+    Returns:
+        The updated Voter.
+
+    Raises:
+        ValueError: If the voter is not found.
+    """
+    result = await session.execute(select(Voter).where(Voter.id == voter_id))
+    voter = result.scalar_one_or_none()
+    if voter is None:
+        msg = f"Voter {voter_id} not found"
+        raise ValueError(msg)
+
+    point = from_shape(Point(longitude, latitude), srid=4326)
+    voter.official_latitude = latitude
+    voter.official_longitude = longitude
+    voter.official_point = point
+    voter.official_source = "admin"
+    voter.official_is_override = True
+    await session.commit()
+    await session.refresh(voter)
+    return voter
+
+
+async def clear_official_location_override(
+    session: AsyncSession,
+    voter_id: uuid.UUID,
+) -> Voter:
+    """Clear an admin override and revert to the best geocoded location.
+
+    Args:
+        session: Database session.
+        voter_id: The voter's UUID.
+
+    Returns:
+        The updated Voter.
+
+    Raises:
+        ValueError: If the voter is not found.
+    """
+    result = await session.execute(select(Voter).where(Voter.id == voter_id))
+    voter = result.scalar_one_or_none()
+    if voter is None:
+        msg = f"Voter {voter_id} not found"
+        raise ValueError(msg)
+
+    voter.official_is_override = False
+    await sync_official_location(session, voter)
+    await session.commit()
+    await session.refresh(voter)
+    return voter
 
 
 async def get_cache_stats(session: AsyncSession) -> list[CacheProviderStats]:

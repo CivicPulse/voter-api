@@ -12,14 +12,18 @@ from voter_api.schemas.common import PaginationMeta
 from voter_api.schemas.geocoding import GeocodedLocationResponse, ManualGeocodingRequest
 from voter_api.schemas.voter import (
     DistrictCheckResponse,
+    OfficialLocationResponse,
     PaginatedVoterResponse,
+    SetOfficialLocationRequest,
     VoterDetailResponse,
     VoterFilterOptions,
     VoterSummaryResponse,
 )
 from voter_api.services.geocoding_service import (
     add_manual_location,
+    clear_official_location_override,
     get_voter_locations,
+    set_official_location_override,
     set_primary_location,
 )
 from voter_api.services.voter_history_service import get_participation_summary
@@ -241,3 +245,50 @@ async def set_primary_geocoded_location(
             detail="Geocoded location not found",
         )
     return GeocodedLocationResponse.model_validate(location)
+
+
+@voters_router.put(
+    "/{voter_id}/official-location",
+    response_model=OfficialLocationResponse,
+    dependencies=[Depends(require_role("admin"))],
+)
+async def set_voter_official_location(
+    voter_id: uuid.UUID,
+    request: SetOfficialLocationRequest,
+    session: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_user),
+) -> OfficialLocationResponse:
+    """Set an admin override for a voter's official location (admin only)."""
+    try:
+        voter = await set_official_location_override(session, voter_id, request.latitude, request.longitude)
+    except ValueError as err:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voter not found") from err
+    return OfficialLocationResponse(
+        latitude=voter.official_latitude,
+        longitude=voter.official_longitude,
+        source=voter.official_source,
+        is_override=voter.official_is_override,
+    )
+
+
+@voters_router.delete(
+    "/{voter_id}/official-location/override",
+    response_model=OfficialLocationResponse,
+    dependencies=[Depends(require_role("admin"))],
+)
+async def clear_voter_official_location_override(
+    voter_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_user),
+) -> OfficialLocationResponse:
+    """Clear an admin override and revert to the best geocoded location (admin only)."""
+    try:
+        voter = await clear_official_location_override(session, voter_id)
+    except ValueError as err:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voter not found") from err
+    return OfficialLocationResponse(
+        latitude=voter.official_latitude,
+        longitude=voter.official_longitude,
+        source=voter.official_source,
+        is_override=voter.official_is_override,
+    )

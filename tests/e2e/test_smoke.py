@@ -843,6 +843,32 @@ class TestVoters:
         resp = await admin_client.get(_url(f"/voters/{uuid.uuid4()}/district-check"))
         assert resp.status_code == 404
 
+    async def test_set_official_location_not_found(self, admin_client: httpx.AsyncClient) -> None:
+        """PUT /voters/{id}/official-location returns 404 for unknown voter."""
+        resp = await admin_client.put(
+            _url(f"/voters/{uuid.uuid4()}/official-location"),
+            json={"latitude": 33.749, "longitude": -84.388},
+        )
+        assert resp.status_code == 404
+
+    async def test_clear_official_location_not_found(self, admin_client: httpx.AsyncClient) -> None:
+        """DELETE /voters/{id}/official-location/override returns 404 for unknown voter."""
+        resp = await admin_client.delete(_url(f"/voters/{uuid.uuid4()}/official-location/override"))
+        assert resp.status_code == 404
+
+    async def test_set_official_location_viewer_forbidden(self, viewer_client: httpx.AsyncClient) -> None:
+        """Viewer role gets 403 on PUT /voters/{id}/official-location."""
+        resp = await viewer_client.put(
+            _url(f"/voters/{uuid.uuid4()}/official-location"),
+            json={"latitude": 33.749, "longitude": -84.388},
+        )
+        assert resp.status_code == 403
+
+    async def test_clear_official_location_viewer_forbidden(self, viewer_client: httpx.AsyncClient) -> None:
+        """Viewer role gets 403 on DELETE /voters/{id}/official-location/override."""
+        resp = await viewer_client.delete(_url(f"/voters/{uuid.uuid4()}/official-location/override"))
+        assert resp.status_code == 403
+
 
 # ── Geocoding ──────────────────────────────────────────────────────────────
 

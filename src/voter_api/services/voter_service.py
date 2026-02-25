@@ -13,7 +13,7 @@ from voter_api.lib.analyzer.comparator import (
     compare_boundaries,
     extract_registered_boundaries,
 )
-from voter_api.lib.analyzer.spatial import find_voter_boundaries
+from voter_api.lib.analyzer.spatial import find_boundaries_for_point
 from voter_api.models.voter import Voter
 
 
@@ -278,11 +278,14 @@ def build_voter_detail_dict(voter: Voter) -> dict:
     Returns:
         Dict suitable for VoterDetailResponse construction.
     """
-    # Find primary geocoded location
-    primary_location = next(
-        (loc for loc in (voter.geocoded_locations or []) if loc.is_primary),
-        None,
-    )
+    official_location = None
+    if voter.official_latitude is not None and voter.official_longitude is not None:
+        official_location = {
+            "latitude": voter.official_latitude,
+            "longitude": voter.official_longitude,
+            "source": voter.official_source,
+            "is_override": voter.official_is_override,
+        }
 
     return {
         "id": voter.id,
@@ -349,16 +352,7 @@ def build_voter_detail_dict(voter: Voter) -> dict:
         "soft_deleted_at": voter.soft_deleted_at,
         "created_at": voter.created_at,
         "updated_at": voter.updated_at,
-        "primary_geocoded_location": (
-            {
-                "latitude": primary_location.latitude,
-                "longitude": primary_location.longitude,
-                "source_type": primary_location.source_type,
-                "confidence_score": primary_location.confidence_score,
-            }
-            if primary_location
-            else None
-        ),
+        "official_location": official_location,
     }
 
 
@@ -385,13 +379,7 @@ async def check_voter_districts(
 
     registered = extract_registered_boundaries(voter)
 
-    # Find primary geocoded location
-    primary_location = next(
-        (loc for loc in (voter.geocoded_locations or []) if loc.is_primary),
-        None,
-    )
-
-    if primary_location is None:
+    if voter.official_point is None:
         return {
             "voter_id": voter.id,
             "match_status": "not-geocoded",
@@ -403,8 +391,8 @@ async def check_voter_districts(
             "checked_at": datetime.now(UTC),
         }
 
-    # Spatial lookup — find all boundaries containing this point
-    determined = await find_voter_boundaries(session, primary_location)
+    # Spatial lookup — find all boundaries containing the official point
+    determined = await find_boundaries_for_point(session, voter.official_point)
 
     # Compare determined vs registered
     comparison_result = compare_boundaries(determined, registered)
@@ -441,10 +429,10 @@ async def check_voter_districts(
         "voter_id": voter.id,
         "match_status": comparison_result.match_status,
         "geocoded_point": {
-            "latitude": primary_location.latitude,
-            "longitude": primary_location.longitude,
-            "source_type": primary_location.source_type,
-            "confidence_score": primary_location.confidence_score,
+            "latitude": voter.official_latitude,
+            "longitude": voter.official_longitude,
+            "source_type": voter.official_source,
+            "confidence_score": None,
         },
         "registered_boundaries": registered,
         "determined_boundaries": determined,

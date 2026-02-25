@@ -95,6 +95,22 @@ class VoterSummaryResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class OfficialLocationResponse(BaseModel):
+    """The voter's authoritative location used for analysis and exports."""
+
+    latitude: float
+    longitude: float
+    source: str | None = None
+    is_override: bool
+
+
+class SetOfficialLocationRequest(BaseModel):
+    """Request body for setting an admin override on official location."""
+
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
 class VoterDetailResponse(BaseModel):
     """Full voter detail including nested address and district objects."""
 
@@ -123,6 +139,7 @@ class VoterDetailResponse(BaseModel):
     last_party_voted: str | None = None
     municipality: str | None = None
 
+    official_location: OfficialLocationResponse | None = None
     participation_summary: ParticipationSummary = Field(default_factory=ParticipationSummary)
 
     present_in_latest_import: bool

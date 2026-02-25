@@ -56,6 +56,13 @@ def _make_voter(**overrides: object) -> MagicMock:
     voter.created_at = datetime(2024, 1, 1, tzinfo=UTC)
     voter.updated_at = datetime(2024, 6, 1, tzinfo=UTC)
 
+    # Official location
+    voter.official_latitude = None
+    voter.official_longitude = None
+    voter.official_point = None
+    voter.official_source = None
+    voter.official_is_override = False
+
     # Relationships
     voter.geocoded_locations = []
 
@@ -90,8 +97,8 @@ class TestCheckVoterDistricts:
             result = await check_voter_districts(session, uuid4())
         assert result is None
 
-    async def test_no_geocoded_location_returns_not_geocoded(self) -> None:
-        voter = _make_voter()
+    async def test_no_official_point_returns_not_geocoded(self) -> None:
+        voter = _make_voter()  # official_point defaults to None
         session = AsyncMock()
         with patch(
             "voter_api.services.voter_service.get_voter_detail",
@@ -107,8 +114,12 @@ class TestCheckVoterDistricts:
         assert result["mismatch_count"] == 0
 
     async def test_all_districts_match(self) -> None:
-        loc = _make_location()
-        voter = _make_voter(geocoded_locations=[loc])
+        voter = _make_voter(
+            official_point=MagicMock(),
+            official_latitude=32.8407,
+            official_longitude=-83.6324,
+            official_source="census",
+        )
         session = AsyncMock()
 
         determined = {
@@ -126,7 +137,7 @@ class TestCheckVoterDistricts:
                 return_value=voter,
             ),
             patch(
-                "voter_api.services.voter_service.find_voter_boundaries",
+                "voter_api.services.voter_service.find_boundaries_for_point",
                 new_callable=AsyncMock,
                 return_value=determined,
             ),
@@ -145,8 +156,12 @@ class TestCheckVoterDistricts:
             pytest.fail(f"Unexpected mismatch: {comp}")
 
     async def test_district_mismatch(self) -> None:
-        loc = _make_location()
-        voter = _make_voter(geocoded_locations=[loc])
+        voter = _make_voter(
+            official_point=MagicMock(),
+            official_latitude=32.8407,
+            official_longitude=-83.6324,
+            official_source="census",
+        )
         session = AsyncMock()
 
         # county_commission differs: registered "1" vs determined "5"
@@ -165,7 +180,7 @@ class TestCheckVoterDistricts:
                 return_value=voter,
             ),
             patch(
-                "voter_api.services.voter_service.find_voter_boundaries",
+                "voter_api.services.voter_service.find_boundaries_for_point",
                 new_callable=AsyncMock,
                 return_value=determined,
             ),
@@ -183,8 +198,12 @@ class TestCheckVoterDistricts:
         assert mismatches[0]["determined_value"] == "5"
 
     async def test_no_boundaries_found_returns_unable_to_analyze(self) -> None:
-        loc = _make_location()
-        voter = _make_voter(geocoded_locations=[loc])
+        voter = _make_voter(
+            official_point=MagicMock(),
+            official_latitude=32.8407,
+            official_longitude=-83.6324,
+            official_source="census",
+        )
         session = AsyncMock()
 
         with (
@@ -194,7 +213,7 @@ class TestCheckVoterDistricts:
                 return_value=voter,
             ),
             patch(
-                "voter_api.services.voter_service.find_voter_boundaries",
+                "voter_api.services.voter_service.find_boundaries_for_point",
                 new_callable=AsyncMock,
                 return_value={},
             ),
@@ -205,10 +224,12 @@ class TestCheckVoterDistricts:
         assert result["match_status"] == "unable-to-analyze"
 
     async def test_comparisons_include_registered_only_and_determined_only(self) -> None:
-        loc = _make_location()
         # Voter has congressional and state_senate registered but not school_board
         voter = _make_voter(
-            geocoded_locations=[loc],
+            official_point=MagicMock(),
+            official_latitude=32.8407,
+            official_longitude=-83.6324,
+            official_source="census",
             congressional_district="8",
             state_senate_district="18",
             state_house_district=None,
@@ -230,7 +251,7 @@ class TestCheckVoterDistricts:
                 return_value=voter,
             ),
             patch(
-                "voter_api.services.voter_service.find_voter_boundaries",
+                "voter_api.services.voter_service.find_boundaries_for_point",
                 new_callable=AsyncMock,
                 return_value=determined,
             ),
@@ -245,9 +266,11 @@ class TestCheckVoterDistricts:
         assert statuses["school_board"] == "determined-only"
 
     async def test_precinct_mismatch(self) -> None:
-        loc = _make_location()
         voter = _make_voter(
-            geocoded_locations=[loc],
+            official_point=MagicMock(),
+            official_latitude=32.8407,
+            official_longitude=-83.6324,
+            official_source="census",
             congressional_district="8",
             county_precinct="BB01",
         )
@@ -265,7 +288,7 @@ class TestCheckVoterDistricts:
                 return_value=voter,
             ),
             patch(
-                "voter_api.services.voter_service.find_voter_boundaries",
+                "voter_api.services.voter_service.find_boundaries_for_point",
                 new_callable=AsyncMock,
                 return_value=determined,
             ),

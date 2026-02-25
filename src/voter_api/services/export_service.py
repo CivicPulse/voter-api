@@ -171,14 +171,10 @@ def _voter_to_dict(voter: Voter) -> dict:
         "county_precinct": voter.county_precinct,
     }
 
-    # Add geocoded location for GeoJSON
-    primary_loc = next(
-        (loc for loc in (voter.geocoded_locations or []) if loc.is_primary),
-        None,
-    )
-    if primary_loc:
-        record["latitude"] = primary_loc.latitude
-        record["longitude"] = primary_loc.longitude
+    # Add official location for GeoJSON
+    if voter.official_latitude is not None:
+        record["latitude"] = voter.official_latitude
+        record["longitude"] = voter.official_longitude
 
     return record
 
