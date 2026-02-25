@@ -9,6 +9,9 @@ from typing import Self
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_HTTPS_SCHEME = "https://"
+_HTTP_SCHEME = "http://"
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
@@ -254,8 +257,8 @@ class Settings(BaseSettings):
     def validate_frontend_url(cls, v: str) -> str:
         """Require a scheme and strip trailing slashes."""
         url = v.strip().rstrip("/")
-        if not (url.startswith("http://") or url.startswith("https://")):
-            msg = "frontend_url must start with http:// or https://"
+        if not (url.startswith(_HTTP_SCHEME) or url.startswith(_HTTPS_SCHEME)):
+            msg = f"frontend_url must start with {_HTTP_SCHEME} or {_HTTPS_SCHEME}"
             raise ValueError(msg)
         return url
 
@@ -301,7 +304,7 @@ class Settings(BaseSettings):
     @field_validator("data_root_url")
     @classmethod
     def validate_data_root_url(cls, v: str) -> str:
-        if not v.startswith("https://"):
+        if not v.startswith(_HTTPS_SCHEME):
             msg = "data_root_url must use HTTPS"
             raise ValueError(msg)
         return v.rstrip("/") + "/"
@@ -365,7 +368,7 @@ class Settings(BaseSettings):
     @classmethod
     def validate_webauthn_origin(cls, v: str) -> str:
         """Require HTTPS for webauthn_origin except localhost development."""
-        if not (v.startswith("https://") or v.startswith("http://localhost")):
+        if not (v.startswith(_HTTPS_SCHEME) or v.startswith(f"{_HTTP_SCHEME}localhost")):
             msg = "webauthn_origin must use HTTPS (or http://localhost for development)"
             raise ValueError(msg)
         return v
