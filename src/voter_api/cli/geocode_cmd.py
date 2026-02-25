@@ -93,7 +93,8 @@ async def _batch_geocode(county: str | None, provider: str, force: bool, batch_s
                 fallback_providers=fallback_providers,
             )
 
-            typer.echo(f"\nGeocoding {'completed' if job.status == 'completed' else 'failed'}:")
+            status_label = {"completed": "completed", "cancelled": "cancelled (Ctrl+C)"}.get(job.status, "failed")
+            typer.echo(f"\nGeocoding {status_label}:")
             typer.echo(f"  Total records:  {job.total_records or 0}")
             typer.echo(f"  Processed:      {job.processed or 0}")
             typer.echo(f"  Succeeded:      {job.succeeded or 0}")

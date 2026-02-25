@@ -624,6 +624,27 @@ async def process_geocoding_job(
             f"{failed_count} failed, {cache_hits} cache hits"
         )
 
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        # Ctrl+C: commit work done so far and mark job as cancelled
+        logger.warning(
+            "Geocoding job {} interrupted — saving progress ({} processed, {} succeeded)",
+            job.id,
+            processed,
+            succeeded,
+        )
+        job.status = "cancelled"
+        job.processed = processed
+        job.succeeded = succeeded
+        job.failed = failed_count
+        job.cache_hits = cache_hits
+        job.error_log = errors if errors else None
+        job.completed_at = datetime.now(UTC)
+        try:
+            await session.commit()
+            logger.info("Progress saved successfully")
+        except Exception:
+            logger.exception("Failed to persist cancelled job status")
+
     except Exception as e:
         errors.append({"error": f"Job failed: {e}"})
         job.status = "failed"
