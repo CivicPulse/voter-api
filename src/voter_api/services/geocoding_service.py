@@ -753,21 +753,21 @@ async def _store_geocoded_location(
     }
 
     # Atomic upsert — prevents UniqueViolationError on (voter_id, source_type)
-    stmt = pg_insert(GeocodedLocation).values(values)
-    stmt = stmt.on_conflict_do_update(
+    insert_stmt = pg_insert(GeocodedLocation).values(values)
+    upsert_stmt = insert_stmt.on_conflict_do_update(
         constraint="uq_voter_source",
         set_={
-            "latitude": stmt.excluded.latitude,
-            "longitude": stmt.excluded.longitude,
-            "point": stmt.excluded.point,
-            "confidence_score": stmt.excluded.confidence_score,
-            "input_address": stmt.excluded.input_address,
-            "geocoded_at": stmt.excluded.geocoded_at,
+            "latitude": insert_stmt.excluded.latitude,
+            "longitude": insert_stmt.excluded.longitude,
+            "point": insert_stmt.excluded.point,
+            "confidence_score": insert_stmt.excluded.confidence_score,
+            "input_address": insert_stmt.excluded.input_address,
+            "geocoded_at": insert_stmt.excluded.geocoded_at,
         },
     ).returning(GeocodedLocation)
 
-    result_row = await session.execute(stmt)
-    location = result_row.scalar_one()
+    result_row = await session.execute(upsert_stmt)
+    location: GeocodedLocation = result_row.scalar_one()
 
     await session.flush()
     await sync_official_location(session, voter)
