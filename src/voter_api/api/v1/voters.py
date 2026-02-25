@@ -11,6 +11,7 @@ from voter_api.models.user import User
 from voter_api.schemas.common import PaginationMeta
 from voter_api.schemas.geocoding import GeocodedLocationResponse, ManualGeocodingRequest
 from voter_api.schemas.voter import (
+    DistrictCheckResponse,
     PaginatedVoterResponse,
     VoterDetailResponse,
     VoterFilterOptions,
@@ -24,6 +25,7 @@ from voter_api.services.geocoding_service import (
 from voter_api.services.voter_history_service import get_participation_summary
 from voter_api.services.voter_service import (
     build_voter_detail_dict,
+    check_voter_districts,
     get_voter_detail,
     get_voter_filter_options,
     search_voters,
@@ -159,6 +161,26 @@ async def get_voter(
     summary = await get_participation_summary(session, voter.voter_registration_number)
     detail_dict["participation_summary"] = summary
     return VoterDetailResponse(**detail_dict)
+
+
+@voters_router.get(
+    "/{voter_id}/district-check",
+    response_model=DistrictCheckResponse,
+)
+async def check_voter_district_assignments(
+    voter_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_user),
+) -> DistrictCheckResponse:
+    """Check a voter's registered districts against their geocoded location.
+
+    Performs real-time point-in-polygon analysis and returns registered vs
+    geographic districts with mismatch classification.
+    """
+    result = await check_voter_districts(session, voter_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voter not found")
+    return DistrictCheckResponse(**result)
 
 
 @voters_router.get(

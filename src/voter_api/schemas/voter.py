@@ -1,6 +1,7 @@
 """Voter Pydantic v2 request/response schemas."""
 
 from datetime import date, datetime
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel, Field, computed_field
@@ -136,6 +137,57 @@ class PaginatedVoterResponse(BaseModel):
 
     items: list[VoterSummaryResponse]
     pagination: PaginationMeta
+
+
+class MatchStatus(StrEnum):
+    """Overall match status for a voter's district check."""
+
+    MATCH = "match"
+    MISMATCH_DISTRICT = "mismatch-district"
+    MISMATCH_PRECINCT = "mismatch-precinct"
+    MISMATCH_BOTH = "mismatch-both"
+    UNABLE_TO_ANALYZE = "unable-to-analyze"
+    NOT_GEOCODED = "not-geocoded"
+
+
+class ComparisonStatus(StrEnum):
+    """Per-boundary-type comparison status."""
+
+    MATCH = "match"
+    MISMATCH = "mismatch"
+    REGISTERED_ONLY = "registered-only"
+    DETERMINED_ONLY = "determined-only"
+
+
+class GeocodedPointSummary(BaseModel):
+    """Summary of the geocoded point used for district check."""
+
+    latitude: float
+    longitude: float
+    source_type: str
+    confidence_score: float | None = None
+
+
+class DistrictComparisonItem(BaseModel):
+    """Per-boundary-type comparison result."""
+
+    boundary_type: str
+    registered_value: str | None = None
+    determined_value: str | None = None
+    status: ComparisonStatus
+
+
+class DistrictCheckResponse(BaseModel):
+    """Full response for a voter district mismatch check."""
+
+    voter_id: UUID
+    match_status: MatchStatus
+    geocoded_point: GeocodedPointSummary | None = None
+    registered_boundaries: dict[str, str]
+    determined_boundaries: dict[str, str]
+    comparisons: list[DistrictComparisonItem]
+    mismatch_count: int
+    checked_at: datetime
 
 
 class VoterFilterOptions(BaseModel):

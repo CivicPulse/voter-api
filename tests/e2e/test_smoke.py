@@ -824,6 +824,14 @@ class TestVoters:
         resp = await admin_client.get(_url(f"/voters/{uuid.uuid4()}"))
         assert resp.status_code == 404
 
+    async def test_district_check_requires_auth(self, client: httpx.AsyncClient) -> None:
+        resp = await client.get(_url(f"/voters/{uuid.uuid4()}/district-check"))
+        assert resp.status_code == 401
+
+    async def test_district_check_voter_not_found(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.get(_url(f"/voters/{uuid.uuid4()}/district-check"))
+        assert resp.status_code == 404
+
 
 # ── Geocoding ──────────────────────────────────────────────────────────────
 

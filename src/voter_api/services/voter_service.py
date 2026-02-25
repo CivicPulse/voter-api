@@ -2,11 +2,18 @@
 
 import re
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import ColumnElement, distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
+from voter_api.lib.analyzer.comparator import (
+    BOUNDARY_TYPE_TO_VOTER_FIELD,
+    compare_boundaries,
+    extract_registered_boundaries,
+)
+from voter_api.lib.analyzer.spatial import find_voter_boundaries
 from voter_api.models.voter import Voter
 
 
@@ -346,4 +353,96 @@ def build_voter_detail_dict(voter: Voter) -> dict:
             if primary_location
             else None
         ),
+    }
+
+
+async def check_voter_districts(
+    session: AsyncSession,
+    voter_id: uuid.UUID,
+) -> dict | None:
+    """Check a voter's registered districts against their geocoded location.
+
+    Performs real-time point-in-polygon analysis for a single voter and
+    returns registered vs geographic districts with mismatch classification.
+
+    Args:
+        session: Database session.
+        voter_id: The voter's UUID.
+
+    Returns:
+        Dict suitable for DistrictCheckResponse construction, or None if
+        the voter is not found.
+    """
+    voter = await get_voter_detail(session, voter_id)
+    if voter is None:
+        return None
+
+    registered = extract_registered_boundaries(voter)
+
+    # Find primary geocoded location
+    primary_location = next(
+        (loc for loc in (voter.geocoded_locations or []) if loc.is_primary),
+        None,
+    )
+
+    if primary_location is None:
+        return {
+            "voter_id": voter.id,
+            "match_status": "not-geocoded",
+            "geocoded_point": None,
+            "registered_boundaries": registered,
+            "determined_boundaries": {},
+            "comparisons": [],
+            "mismatch_count": 0,
+            "checked_at": datetime.now(UTC),
+        }
+
+    # Spatial lookup — find all boundaries containing this point
+    determined = await find_voter_boundaries(session, primary_location)
+
+    # Compare determined vs registered
+    comparison_result = compare_boundaries(determined, registered)
+
+    # Build full comparison list across all boundary types
+    all_types = sorted(set(BOUNDARY_TYPE_TO_VOTER_FIELD.keys()))
+    comparisons = []
+    for boundary_type in all_types:
+        reg_val = registered.get(boundary_type)
+        det_val = determined.get(boundary_type)
+
+        if reg_val is None and det_val is None:
+            continue
+
+        if reg_val is not None and det_val is not None:
+            comp_status = "match" if reg_val == det_val else "mismatch"
+        elif reg_val is not None:
+            comp_status = "registered-only"
+        else:
+            comp_status = "determined-only"
+
+        comparisons.append(
+            {
+                "boundary_type": boundary_type,
+                "registered_value": reg_val,
+                "determined_value": det_val,
+                "status": comp_status,
+            }
+        )
+
+    mismatch_count = sum(1 for c in comparisons if c["status"] == "mismatch")
+
+    return {
+        "voter_id": voter.id,
+        "match_status": comparison_result.match_status,
+        "geocoded_point": {
+            "latitude": primary_location.latitude,
+            "longitude": primary_location.longitude,
+            "source_type": primary_location.source_type,
+            "confidence_score": primary_location.confidence_score,
+        },
+        "registered_boundaries": registered,
+        "determined_boundaries": determined,
+        "comparisons": comparisons,
+        "mismatch_count": mismatch_count,
+        "checked_at": datetime.now(UTC),
     }
