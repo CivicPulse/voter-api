@@ -520,14 +520,11 @@ async def list_election_participants(
     election = await _get_election_or_raise(session, election_id)
     match_conditions = await _build_election_match_conditions(session, election)
 
-    # Normalize q and pre-tokenize; treat non-token queries as None
+    # Normalize q and pre-tokenize; treat non-token queries as empty
     q_terms: list[str] = []
     if filters.q is not None:
-        q = filters.q.strip()
-        q_terms = [w for w in re.split(r"[\s,;.]+", q) if w]
-        q = q if q_terms else None
-    else:
-        q = None
+        stripped = filters.q.strip()
+        q_terms = [w for w in re.split(r"[\s,;.]+", stripped) if w]
 
     # Determine if we need to JOIN to voters table
     voter_filters_active = any(
