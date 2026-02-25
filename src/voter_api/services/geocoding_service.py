@@ -439,6 +439,13 @@ async def process_geocoding_job(
     job.status = "running"
     job.started_at = datetime.now(UTC)
     await session.commit()
+    logger.info(
+        "Geocoding job {} started (provider={}, county={}, force={})",
+        job.id,
+        job.provider,
+        job.county or "all",
+        job.force_regeocode,
+    )
 
     succeeded = 0
     failed_count = 0
@@ -476,6 +483,7 @@ async def process_geocoding_job(
         total = count_result.scalar_one()
         job.total_records = total
         await session.commit()
+        logger.info("Found {} voters to geocode", total)
 
         # Process in batches with keyset pagination
         offset = job.last_processed_voter_offset or 0
@@ -489,7 +497,12 @@ async def process_geocoding_job(
             voters = list(result.scalars().all())
 
             if not voters:
+                logger.debug("Empty batch at offset {}, ending early", offset)
                 break
+
+            batch_num = offset // batch_size + 1
+            batch_end = min(offset + len(voters), total)
+            logger.info("Processing batch {}: voters {}-{}/{}", batch_num, offset + 1, batch_end, total)
 
             for voter in voters:
                 address = reconstruct_address(
@@ -504,6 +517,7 @@ async def process_geocoding_job(
                 )
 
                 if not address:
+                    logger.debug("Voter {}: skipped, no address components", voter.id)
                     processed += 1
                     failed_count += 1
                     errors.append(
@@ -517,6 +531,7 @@ async def process_geocoding_job(
                 # Try cache first
                 cached = await cache_lookup(session, geocoder.provider_name, address)
                 if cached:
+                    logger.debug("Voter {}: cache hit", voter.id)
                     await _store_geocoded_location(session, voter, cached, geocoder.provider_name, address)
                     cache_hits += 1
                     succeeded += 1
@@ -524,9 +539,11 @@ async def process_geocoding_job(
                     continue
 
                 # Geocode with rate limiting and retry
+                logger.debug("Voter {}: geocoding via {}", voter.id, geocoder.provider_name)
                 try:
                     geo_result = await _geocode_with_retry(geocoder, address, semaphore)
                 except GeocodingProviderError as e:
+                    logger.warning("Voter {}: provider error after retries: {}", voter.id, e)
                     failed_count += 1
                     errors.append(
                         {
@@ -538,6 +555,7 @@ async def process_geocoding_job(
                     continue
 
                 if geo_result:
+                    logger.debug("Voter {}: geocoded, quality={}", voter.id, geo_result.quality)
                     await cache_store(session, geocoder.provider_name, address, geo_result)
                     store_provider = geocoder.provider_name
                     store_result = geo_result
@@ -565,6 +583,7 @@ async def process_geocoding_job(
                             processed += 1
                             continue
 
+                    logger.debug("Voter {}: no result from provider", voter.id)
                     failed_count += 1
                     errors.append(
                         {
@@ -586,6 +605,16 @@ async def process_geocoding_job(
             job.failed = failed_count
             job.cache_hits = cache_hits
             await session.commit()
+            pct = offset * 100 // total if total else 0
+            logger.info(
+                "Batch complete: {}/{} ({}%) — {} ok, {} failed, {} cached",
+                offset,
+                total,
+                pct,
+                succeeded,
+                failed_count,
+                cache_hits,
+            )
 
         # Final update
         job.status = "completed"
