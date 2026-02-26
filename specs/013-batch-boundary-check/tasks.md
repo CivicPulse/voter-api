@@ -155,7 +155,7 @@
   - Smoke test: `POST /api/v1/voters/{seeded_voter_id}/geocode/check-boundaries` with admin client → HTTP 200 with expected response structure
   - Smoke test: same endpoint with viewer client → HTTP 403
 
-- [ ] T025 Run full test suite: `uv run pytest tests/unit/ tests/integration/ -v` and confirm all tests pass
+- [x] T025 Run full test suite: `uv run pytest tests/unit/ tests/integration/ -v` and confirm all tests pass
 
 **Checkpoint**: Full test coverage for new endpoint + security fix.
 
@@ -163,12 +163,12 @@
 
 ## Phase 7: Polish & Final Validation
 
-- [ ] T026 Run `uv run ruff check . && uv run ruff format --check .` — fix any remaining violations
-- [ ] T027 Run `uv run pytest --cov=voter_api --cov-report=term-missing` and confirm coverage is ≥ 90%
-- [ ] T028 Run E2E tests locally if PostGIS is available: `DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_api JWT_SECRET_KEY=test-secret-key-minimum-32-characters ELECTION_REFRESH_ENABLED=false uv run pytest tests/e2e/ -v -k "batch_boundary or check_boundaries"`
+- [x] T026 Run `uv run ruff check . && uv run ruff format --check .` — fix any remaining violations
+- [x] T027 Run `uv run pytest --cov=voter_api --cov-report=term-missing` and confirm coverage is ≥ 90%
+- [x] T028 Run E2E tests locally if PostGIS is available: `DATABASE_URL=postgresql+asyncpg://voter_api:voter_api_dev@localhost:5432/voter_api JWT_SECRET_KEY=test-secret-key-minimum-32-characters ELECTION_REFRESH_ENABLED=false uv run pytest tests/e2e/ -v -k "batch_boundary or check_boundaries"`
 - [ ] T029 Verify the OpenAPI docs render correctly by starting the server (`uv run voter-api serve`) and checking `/docs` for the new endpoint schema; also manually time a request for a voter with ≥2 geocoded locations and ≥2 district assignments and confirm response returns in under 2 seconds (SC-002)
-- [ ] T030 Confirm the CROSS JOIN query uses the GiST index: run `EXPLAIN ANALYZE` via the PostgreSQL MCP on the CROSS JOIN query with a real voter and confirm `Index Scan` or `Bitmap Index Scan` on `boundaries_geometry_idx` (FR-011)
-- [ ] T031 Commit all changes with a conventional commit message: `feat(voters): add batch boundary check endpoint and Georgia bounds validation`
+- [x] T030 Confirm the CROSS JOIN query uses the GiST index: run `EXPLAIN ANALYZE` via the PostgreSQL MCP on the CROSS JOIN query with a real voter and confirm `Index Scan` or `Bitmap Index Scan` on `boundaries_geometry_idx` (FR-011)
+- [x] T031 Commit all changes with a conventional commit message: `feat(voters): add batch boundary check endpoint and Georgia bounds validation`
 
 ---
 
