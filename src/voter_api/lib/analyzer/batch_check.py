@@ -184,19 +184,32 @@ async def check_batch_boundaries(
         select(Boundary).where(tuple_(Boundary.boundary_type, Boundary.boundary_identifier).in_(boundary_pairs))
     )
     boundaries = boundary_result.scalars().all()
-    boundary_ids = [b.id for b in boundaries]
 
     # Build a lookup: (boundary_type, boundary_identifier) -> Boundary
-    # Fail fast on duplicate keys — ambiguous matches must not silently overwrite results.
-    boundary_lookup: dict[tuple[str, str], Boundary] = {}
+    # The DB unique constraint is on (type, identifier, county), so multiple rows can share
+    # the same (type, identifier) across counties. Disambiguate by voter county; if still
+    # ambiguous, omit the key so downstream treats it as has_geometry=False.
+    grouped_boundaries: dict[tuple[str, str], list[Boundary]] = defaultdict(list)
     for boundary in boundaries:
-        bkey = (boundary.boundary_type, boundary.boundary_identifier)
-        if bkey in boundary_lookup:
-            raise ValueError(f"Ambiguous boundary match for key={bkey}")
-        boundary_lookup[bkey] = boundary
+        grouped_boundaries[(boundary.boundary_type, boundary.boundary_identifier)].append(boundary)
 
-    # Query geocoded locations for this voter
-    loc_result = await session.execute(select(GeocodedLocation).where(GeocodedLocation.voter_id == voter_id))
+    boundary_lookup: dict[tuple[str, str], Boundary] = {}
+    for bkey, bgroup in grouped_boundaries.items():
+        if len(bgroup) == 1:
+            boundary_lookup[bkey] = bgroup[0]
+        else:
+            # Multiple candidates: prefer the one matching voter's county
+            county_matches = [b for b in bgroup if b.county == voter.county]
+            if len(county_matches) == 1:
+                boundary_lookup[bkey] = county_matches[0]
+            # else: ambiguous — omit so callers treat it as has_geometry=False
+
+    boundary_ids = [b.id for b in boundary_lookup.values()]
+
+    # Query geocoded locations for this voter, ordered for deterministic provider_summary
+    loc_result = await session.execute(
+        select(GeocodedLocation).where(GeocodedLocation.voter_id == voter_id).order_by(GeocodedLocation.source_type)
+    )
     locations = loc_result.scalars().all()
 
     # US2 edge case: no geocoded locations
