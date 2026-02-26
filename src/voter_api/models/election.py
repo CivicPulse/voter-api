@@ -23,12 +23,12 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from voter_api.models.base import Base, TimestampMixin, UUIDMixin
+from voter_api.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
 from voter_api.models.boundary import Boundary  # noqa: TC001
 from voter_api.models.candidate import Candidate  # noqa: TC001
 
 
-class Election(Base, UUIDMixin, TimestampMixin):
+class Election(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     """An election event being tracked with SoS data feed configuration."""
 
     __tablename__ = "elections"
@@ -37,7 +37,8 @@ class Election(Base, UUIDMixin, TimestampMixin):
     election_date: Mapped[date] = mapped_column(Date, nullable=False)
     election_type: Mapped[str] = mapped_column(String(50), nullable=False)
     district: Mapped[str] = mapped_column(String(200), nullable=False)
-    data_source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    data_source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source: Mapped[str] = mapped_column(String(20), nullable=False, server_default="sos_feed")
     ballot_item_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
     creation_method: Mapped[str] = mapped_column(String(20), nullable=False, server_default="manual")
@@ -79,12 +80,14 @@ class Election(Base, UUIDMixin, TimestampMixin):
         UniqueConstraint("name", "election_date", name="uq_election_name_date"),
         CheckConstraint("status IN ('active', 'finalized')", name="ck_election_status"),
         CheckConstraint("refresh_interval_seconds >= 60", name="ck_election_refresh_interval"),
+        CheckConstraint("source IN ('sos_feed', 'manual', 'linked')", name="ck_election_source"),
         Index("idx_elections_status", "status"),
         Index("idx_elections_election_date", "election_date"),
         Index("idx_elections_ballot_item_id", "ballot_item_id"),
         Index("idx_elections_creation_method", "creation_method"),
         Index("idx_elections_boundary_id", "boundary_id"),
         Index("idx_elections_district_type", "district_type"),
+        Index("idx_elections_source", "source"),
         Index(
             "uq_election_feed_ballot_item",
             "data_source_url",
