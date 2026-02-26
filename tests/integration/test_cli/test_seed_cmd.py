@@ -10,10 +10,12 @@ from __future__ import annotations
 import hashlib
 import json
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from pytest_httpx import HTTPXMock
 
 from typer.testing import CliRunner
 
@@ -74,7 +76,7 @@ def _make_manifest(files: list[dict] | None = None) -> str:
 class TestSeedFullBootstrap:
     """US1: Full seed command downloads and imports everything."""
 
-    def test_seed_with_download_only_no_db(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_seed_with_download_only_no_db(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify seed --download-only works end-to-end without DB."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -135,7 +137,7 @@ class TestSeedFullBootstrap:
         assert (data_dir / "counties.csv").exists()
         assert (data_dir / "congress.zip").exists()
 
-    def test_seed_unreachable_url(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_seed_unreachable_url(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify clear error when Data Root URL is unreachable."""
         import httpx
 
@@ -161,7 +163,7 @@ class TestSeedFullBootstrap:
         assert result.exit_code != 0
         assert "Connection refused" in result.output or "error" in result.output.lower()
 
-    def test_seed_skip_if_cached(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_seed_skip_if_cached(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify cached files with matching checksums are not re-downloaded."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -212,7 +214,7 @@ class TestSeedFullBootstrap:
     def test_seed_fail_fast_stops_on_first_error(
         self,
         tmp_path: Path,
-        httpx_mock,  # type: ignore[no-untyped-def]
+        httpx_mock: HTTPXMock,
     ) -> None:
         """Verify --fail-fast stops after first download failure."""
         import httpx
@@ -267,7 +269,7 @@ class TestSeedFullBootstrap:
 
         assert result.exit_code != 0
 
-    def test_seed_import_order_enforcement(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_seed_import_order_enforcement(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify imports run in order: county-districts → boundaries → elections → voters → voter-history."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -402,7 +404,7 @@ class TestSeedFullBootstrap:
 class TestSeedCategoryFilter:
     """US2: --category option filters downloads and imports."""
 
-    def test_category_boundaries_only(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_category_boundaries_only(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --category boundaries downloads only boundary files."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -459,33 +461,22 @@ class TestSeedCategoryFilter:
         assert not (data_dir / "counties.csv").exists()
         assert not (data_dir / "voter" / "Bibb.csv").exists()
 
-    def test_category_voters_only(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_category_voters_only(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --category voters downloads only voter files."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
 
         voter_content = b"voter data"
-        voter_sha = hashlib.sha512(voter_content).hexdigest()
-
-        manifest = json.dumps(
-            {
-                "version": "1",
-                "updated_at": "2026-02-20T09:00:00Z",
-                "files": [
-                    {
-                        "filename": "congress.zip",
-                        "sha512": "b" * 128,
-                        "category": "boundary",
-                        "size_bytes": 100,
-                    },
-                    {
-                        "filename": "Bibb.csv",
-                        "sha512": voter_sha,
-                        "category": "voter",
-                        "size_bytes": len(voter_content),
-                    },
-                ],
-            }
+        manifest = _make_manifest(
+            [
+                {"filename": "congress.zip", "sha512": "b" * 128, "category": "boundary", "size_bytes": 100},
+                {
+                    "filename": "Bibb.csv",
+                    "sha512": hashlib.sha512(voter_content).hexdigest(),
+                    "category": "voter",
+                    "size_bytes": len(voter_content),
+                },
+            ]
         )
 
         httpx_mock.add_response(url="https://test.example.com/manifest.json", text=manifest)
@@ -509,33 +500,22 @@ class TestSeedCategoryFilter:
         assert (data_dir / "voter" / "Bibb.csv").exists()
         assert not (data_dir / "congress.zip").exists()
 
-    def test_category_voter_history_only(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_category_voter_history_only(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --category voter-history downloads only voter history files."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
 
         vh_content = b"voter history data"
-        vh_sha = hashlib.sha512(vh_content).hexdigest()
-
-        manifest = json.dumps(
-            {
-                "version": "1",
-                "updated_at": "2026-02-20T09:00:00Z",
-                "files": [
-                    {
-                        "filename": "congress.zip",
-                        "sha512": "b" * 128,
-                        "category": "boundary",
-                        "size_bytes": 100,
-                    },
-                    {
-                        "filename": "2024.zip",
-                        "sha512": vh_sha,
-                        "category": "voter_history",
-                        "size_bytes": len(vh_content),
-                    },
-                ],
-            }
+        manifest = _make_manifest(
+            [
+                {"filename": "congress.zip", "sha512": "b" * 128, "category": "boundary", "size_bytes": 100},
+                {
+                    "filename": "2024.zip",
+                    "sha512": hashlib.sha512(vh_content).hexdigest(),
+                    "category": "voter_history",
+                    "size_bytes": len(vh_content),
+                },
+            ]
         )
 
         httpx_mock.add_response(url="https://test.example.com/manifest.json", text=manifest)
@@ -579,6 +559,283 @@ class TestSeedCategoryFilter:
 
         assert result.exit_code != 0
 
+    def test_category_elections_only(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
+        """--category elections seeds elections from API without downloading files."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+
+        # Manifest has boundary + voter files — none should be downloaded
+        manifest = json.dumps(
+            {
+                "version": "1",
+                "updated_at": "2026-02-20T09:00:00Z",
+                "files": [
+                    {
+                        "filename": "congress.zip",
+                        "sha512": "b" * 128,
+                        "category": "boundary",
+                        "size_bytes": 100,
+                    },
+                    {
+                        "filename": "Bibb.csv",
+                        "sha512": "c" * 128,
+                        "category": "voter",
+                        "size_bytes": 200,
+                    },
+                ],
+            }
+        )
+        httpx_mock.add_response(url="https://test.example.com/manifest.json", text=manifest)
+
+        election_calls: list[str] = []
+
+        def mock_seed_elections(source_url: str) -> int:
+            election_calls.append(source_url)
+            return 3
+
+        with (
+            patch(
+                "voter_api.cli.seed_cmd._seed_elections_from_api",
+                side_effect=mock_seed_elections,
+            ),
+            patch("voter_api.cli.seed_cmd._import_voters_batch", new_callable=AsyncMock) as mock_voters,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "seed",
+                    "--data-root",
+                    "https://test.example.com/",
+                    "--data-dir",
+                    str(data_dir),
+                    "--category",
+                    "elections",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        # Elections were seeded from the API
+        assert len(election_calls) == 1
+        # No voter files downloaded or imported
+        assert not (data_dir / "voter" / "Bibb.csv").exists()
+        assert not (data_dir / "congress.zip").exists()
+        mock_voters.assert_not_called()
+
+    def test_category_elections_skipped_without_voter_category(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
+        """--category boundaries does NOT trigger election seeding."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+
+        boundary_content = b"boundary data"
+        manifest = _make_manifest(
+            [
+                {
+                    "filename": "congress.zip",
+                    "sha512": hashlib.sha512(boundary_content).hexdigest(),
+                    "category": "boundary",
+                    "size_bytes": len(boundary_content),
+                },
+            ]
+        )
+        httpx_mock.add_response(url="https://test.example.com/manifest.json", text=manifest)
+        httpx_mock.add_response(url="https://test.example.com/congress.zip", content=boundary_content)
+
+        with (
+            patch(
+                "voter_api.cli.seed_cmd._import_all_boundaries",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "voter_api.cli.seed_cmd._seed_elections_from_api",
+                new_callable=AsyncMock,
+            ) as mock_elections,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "seed",
+                    "--data-root",
+                    "https://test.example.com/",
+                    "--data-dir",
+                    str(data_dir),
+                    "--category",
+                    "boundaries",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        # Elections must NOT be seeded when only boundaries category is selected
+        mock_elections.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Election boundary_id resolution
+# ---------------------------------------------------------------------------
+
+
+def _make_seeder_mock_factory(boundary_ids: list[str]) -> MagicMock:
+    """Build a mock session/factory for election seeder boundary-resolution tests."""
+    mock_session = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.__iter__ = MagicMock(return_value=iter([(bid,) for bid in boundary_ids]))
+    mock_session.execute = AsyncMock(return_value=mock_result)
+    mock_session.commit = AsyncMock()
+    mock_factory = MagicMock()
+    mock_context = AsyncMock()
+    mock_context.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_context.__aexit__ = AsyncMock(return_value=None)
+    mock_factory.return_value = mock_context
+    return mock_factory
+
+
+def _run_seed_elections(raw_records: list, mock_factory: MagicMock) -> None:
+    """Invoke _seed_elections_from_api with all external dependencies patched."""
+    import asyncio
+
+    from voter_api.cli.seed_cmd import _seed_elections_from_api
+
+    with (
+        patch(
+            "voter_api.lib.data_loader.election_seeder.fetch_elections_from_api",
+            new_callable=AsyncMock,
+            return_value=raw_records,
+        ),
+        patch("voter_api.core.database.get_session_factory", return_value=mock_factory),
+        patch("sqlalchemy.dialects.postgresql.insert", autospec=False),
+    ):
+        asyncio.run(_seed_elections_from_api("https://example.com"))
+
+
+class TestElectionBoundaryResolution:
+    """Verify boundary_id is nulled out when referenced boundary doesn't exist locally."""
+
+    def test_elections_seed_nullifies_missing_boundary_ids(self) -> None:
+        """boundary_id is set to None for records referencing unknown local boundaries."""
+        import uuid
+        from datetime import date
+
+        known_id = str(uuid.uuid4())
+        unknown_id = str(uuid.uuid4())
+        election_id_1 = str(uuid.uuid4())
+        election_id_2 = str(uuid.uuid4())
+
+        raw_records = [
+            {
+                "id": election_id_1,
+                "name": "Election With Known Boundary",
+                "election_date": date(2024, 11, 5),
+                "election_type": "general",
+                "district": "State",
+                "boundary_id": known_id,
+                "district_type": None,
+                "district_identifier": None,
+                "district_party": None,
+                "status": "scheduled",
+                "data_source_url": "https://example.com",
+                "refresh_interval_seconds": 3600,
+                "ballot_item_id": None,
+                "last_refreshed_at": None,
+                "creation_method": "manual",
+            },
+            {
+                "id": election_id_2,
+                "name": "Election With Unknown Boundary",
+                "election_date": date(2024, 11, 5),
+                "election_type": "general",
+                "district": "State",
+                "boundary_id": unknown_id,
+                "district_type": None,
+                "district_identifier": None,
+                "district_party": None,
+                "status": "scheduled",
+                "data_source_url": "https://example.com",
+                "refresh_interval_seconds": 3600,
+                "ballot_item_id": None,
+                "last_refreshed_at": None,
+                "creation_method": "manual",
+            },
+        ]
+
+        # Mock the session: boundary query returns only the known_id
+        mock_factory = _make_seeder_mock_factory([known_id])
+        _run_seed_elections(raw_records, mock_factory)
+
+        # Record with known boundary_id should keep its value
+        assert raw_records[0]["boundary_id"] == known_id
+        # Record with unknown boundary_id should be nulled out
+        assert raw_records[1]["boundary_id"] is None
+
+    def test_elections_seed_all_nullified_when_no_boundaries(self) -> None:
+        """All boundary_ids are nulled out when no boundaries exist locally."""
+        import uuid
+        from datetime import date
+
+        boundary_id = str(uuid.uuid4())
+
+        raw_records = [
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Election",
+                "election_date": date(2024, 11, 5),
+                "election_type": "general",
+                "district": "State",
+                "boundary_id": boundary_id,
+                "district_type": None,
+                "district_identifier": None,
+                "district_party": None,
+                "status": "scheduled",
+                "data_source_url": "https://example.com",
+                "refresh_interval_seconds": 3600,
+                "ballot_item_id": None,
+                "last_refreshed_at": None,
+                "creation_method": "manual",
+            },
+        ]
+
+        # Session returns empty result (no boundaries exist)
+        mock_factory = _make_seeder_mock_factory([])
+        _run_seed_elections(raw_records, mock_factory)
+
+        assert raw_records[0]["boundary_id"] is None
+
+    def test_elections_seed_preserves_null_boundary_id(self) -> None:
+        """Records with no boundary_id (None) are unaffected by the resolution step."""
+        from datetime import date
+
+        raw_records = [
+            {
+                "id": "some-id",
+                "name": "Election",
+                "election_date": date(2024, 11, 5),
+                "election_type": "general",
+                "district": "State",
+                "boundary_id": None,
+                "district_type": None,
+                "district_identifier": None,
+                "district_party": None,
+                "status": "scheduled",
+                "data_source_url": "https://example.com",
+                "refresh_interval_seconds": 3600,
+                "ballot_item_id": None,
+                "last_refreshed_at": None,
+                "creation_method": "manual",
+            },
+        ]
+
+        mock_session = AsyncMock()
+        mock_session.commit = AsyncMock()
+        mock_factory = MagicMock()
+        mock_context = AsyncMock()
+        mock_context.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_context.__aexit__ = AsyncMock(return_value=None)
+        mock_factory.return_value = mock_context
+
+        _run_seed_elections(raw_records, mock_factory)
+
+        # No boundary query should be made (no candidate IDs to check) — only the upsert execute
+        assert mock_session.execute.call_count == 1
+        assert raw_records[0]["boundary_id"] is None
+
 
 # ---------------------------------------------------------------------------
 # US3: Download Only
@@ -588,7 +845,7 @@ class TestSeedCategoryFilter:
 class TestSeedDownloadOnly:
     """US3: --download-only flag skips database imports."""
 
-    def test_download_only_no_import(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_download_only_no_import(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --download-only downloads files without importing."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -647,7 +904,7 @@ class TestSeedDownloadOnly:
         mock_boundaries.assert_not_called()
         mock_voters.assert_not_called()
 
-    def test_download_only_with_category(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_download_only_with_category(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --download-only --category voters downloads only voter files."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -706,7 +963,7 @@ class TestSeedDownloadOnly:
 class TestSeedMaxVoters:
     """US4: --max-voters flag limits total voter records imported."""
 
-    def test_max_voters_passed_to_voter_batch(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_max_voters_passed_to_voter_batch(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --max-voters is threaded through to _import_voters_batch."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -778,7 +1035,7 @@ class TestSeedMaxVoters:
         assert result.exit_code == 0, result.output
         assert captured_kwargs["max_voters"] == 10000
 
-    def test_max_voters_default_is_none(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_max_voters_default_is_none(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --max-voters defaults to None (unlimited) when not specified."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()

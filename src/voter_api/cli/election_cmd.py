@@ -58,6 +58,7 @@ async def _create_impl(
                 election_date=election_date,
                 election_type=election_type,
                 district=district,
+                source="sos_feed",
                 data_source_url=data_source_url,
                 refresh_interval_seconds=refresh_interval,
             )
