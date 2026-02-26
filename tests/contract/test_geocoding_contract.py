@@ -39,7 +39,7 @@ def app(mock_session: AsyncMock) -> FastAPI:
 @pytest.fixture
 async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Create an async test client."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False) as c:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="https://test", follow_redirects=False) as c:
         yield c
 
 
@@ -206,7 +206,7 @@ async def admin_client(admin_app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Create an async test client authenticated as admin."""
     async with AsyncClient(
         transport=ASGITransport(app=admin_app),
-        base_url="http://test",
+        base_url="https://test",
         follow_redirects=False,
     ) as c:
         yield c

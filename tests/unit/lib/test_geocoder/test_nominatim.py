@@ -88,7 +88,7 @@ class TestNominatimGeocoderErrors:
 
     async def test_http_error_raises_provider_error(self) -> None:
         geocoder = NominatimGeocoder()
-        mock_response = httpx.Response(status_code=429, request=httpx.Request("GET", "http://test"))
+        mock_response = httpx.Response(status_code=429, request=httpx.Request("GET", "https://test"))
         with (
             patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get,
             pytest.raises(GeocodingProviderError) as exc_info,

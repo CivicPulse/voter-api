@@ -63,7 +63,7 @@ async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Create an async test client (no auth)."""
     async with AsyncClient(
         transport=ASGITransport(app=app),
-        base_url="http://test",  # NOSONAR — in-memory ASGI transport, no real HTTP
+        base_url="https://test",
         follow_redirects=False,
     ) as c:
         yield c
@@ -74,7 +74,7 @@ async def admin_client(admin_app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Create an async test client with admin auth."""
     async with AsyncClient(
         transport=ASGITransport(app=admin_app),
-        base_url="http://test",  # NOSONAR — in-memory ASGI transport, no real HTTP
+        base_url="https://test",
         follow_redirects=False,
     ) as c:
         yield c
@@ -85,7 +85,7 @@ async def viewer_client(viewer_app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Create an async test client with viewer auth."""
     async with AsyncClient(
         transport=ASGITransport(app=viewer_app),
-        base_url="http://test",  # NOSONAR — in-memory ASGI transport, no real HTTP
+        base_url="https://test",
         follow_redirects=False,
     ) as c:
         yield c

@@ -115,7 +115,7 @@ class TestCensusGeocoderErrorDifferentiation:
     async def test_http_status_error_raises_provider_error(self) -> None:
         """httpx.HTTPStatusError raises GeocodingProviderError."""
         geocoder = CensusGeocoder()
-        mock_response = httpx.Response(status_code=500, request=httpx.Request("GET", "http://test"))
+        mock_response = httpx.Response(status_code=500, request=httpx.Request("GET", "https://test"))
         with (
             patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get,
             pytest.raises(GeocodingProviderError) as exc_info,

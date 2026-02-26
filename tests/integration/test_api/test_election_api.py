@@ -160,12 +160,12 @@ def admin_app(mock_session, mock_admin_user) -> FastAPI:
 
 @pytest.fixture
 def client(app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+    return AsyncClient(transport=ASGITransport(app=app), base_url="https://test")
 
 
 @pytest.fixture
 def admin_client(admin_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=admin_app), base_url="http://test")
+    return AsyncClient(transport=ASGITransport(app=admin_app), base_url="https://test")
 
 
 # --- US1: GET /elections/{id} ---
