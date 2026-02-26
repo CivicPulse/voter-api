@@ -1079,6 +1079,9 @@ async def set_official_location_override(
         msg = f"Voter {voter_id} not found"
         raise ValueError(msg)
 
+    # Guard against worldwide coordinates being stored as official location
+    validate_georgia_coordinates(latitude, longitude)
+
     point = from_shape(Point(longitude, latitude), srid=4326)
     voter.official_latitude = latitude
     voter.official_longitude = longitude

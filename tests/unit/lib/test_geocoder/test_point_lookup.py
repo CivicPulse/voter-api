@@ -66,7 +66,7 @@ class TestMetersToDegrees:
 
     def test_zero_meters(self) -> None:
         """Zero meters returns 0.0."""
-        assert meters_to_degrees(0, 33.0) == 0.0
+        assert meters_to_degrees(0, 33.0) == pytest.approx(0.0)
 
     def test_100_meters_at_georgia_latitude(self) -> None:
         """100m at 33°N returns a reasonable degree value."""
@@ -83,7 +83,7 @@ class TestMetersToDegrees:
 
     def test_negative_meters_returns_zero(self) -> None:
         """Negative meters returns 0.0."""
-        assert meters_to_degrees(-10, 33.0) == 0.0
+        assert meters_to_degrees(-10, 33.0) == pytest.approx(0.0)
 
     def test_small_distance(self) -> None:
         """1 meter returns a small positive value."""

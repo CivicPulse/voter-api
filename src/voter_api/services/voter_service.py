@@ -3,6 +3,7 @@
 import re
 import uuid
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ColumnElement, distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,9 @@ from voter_api.lib.analyzer.comparator import (
 )
 from voter_api.lib.analyzer.spatial import find_boundaries_for_point
 from voter_api.models.voter import Voter
+
+if TYPE_CHECKING:
+    from voter_api.schemas.voter import BatchBoundaryCheckResponse
 
 
 async def search_voters(
@@ -449,3 +453,61 @@ async def check_voter_districts(
         "mismatch_count": mismatch_count,
         "checked_at": datetime.now(UTC),
     }
+
+
+async def check_batch_boundaries_for_voter(
+    session: AsyncSession,
+    voter_id: uuid.UUID,
+) -> "BatchBoundaryCheckResponse | None":
+    """Run batch boundary check for a voter across all their geocoded locations.
+
+    Args:
+        session: Database session.
+        voter_id: The voter's UUID.
+
+    Returns:
+        BatchBoundaryCheckResponse if voter found, None otherwise.
+    """
+    from voter_api.lib.analyzer.batch_check import (
+        VoterNotFoundError,
+        check_batch_boundaries,
+    )
+    from voter_api.schemas.voter import (
+        BatchBoundaryCheckResponse,
+        DistrictBoundaryResult,
+        ProviderResult,
+        ProviderSummary,
+    )
+
+    try:
+        result = await check_batch_boundaries(session, voter_id)
+    except VoterNotFoundError:
+        return None
+
+    return BatchBoundaryCheckResponse(
+        voter_id=result.voter_id,
+        districts=[
+            DistrictBoundaryResult(
+                boundary_id=d.boundary_id,
+                boundary_type=d.boundary_type,
+                boundary_identifier=d.boundary_identifier,
+                has_geometry=d.has_geometry,
+                providers=[ProviderResult(source_type=p.source_type, is_contained=p.is_contained) for p in d.providers],
+            )
+            for d in result.districts
+        ],
+        provider_summary=[
+            ProviderSummary(
+                source_type=s.source_type,
+                latitude=s.latitude,
+                longitude=s.longitude,
+                confidence_score=s.confidence_score,
+                districts_matched=s.districts_matched,
+                districts_checked=s.districts_checked,
+            )
+            for s in result.provider_summary
+        ],
+        total_locations=result.total_locations,
+        total_districts=result.total_districts,
+        checked_at=result.checked_at,
+    )

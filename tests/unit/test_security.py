@@ -21,7 +21,7 @@ from voter_api.schemas.auth import LoginRequest, UserCreateRequest
 class TestJWTEdgeCases:
     """Extended JWT token validation edge cases."""
 
-    SECRET = "test-secret-key-for-testing-32chars"
+    SECRET = "test-secret-key-for-testing-32chars"  # NOSONAR
 
     def test_expired_token_rejected(self) -> None:
         token = create_access_token(
@@ -178,7 +178,7 @@ class TestInputValidationSecurity:
 
     def test_login_password_too_short_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            LoginRequest(username="validuser", password="short")
+            LoginRequest(username="validuser", password="short")  # NOSONAR
 
     def test_user_create_invalid_role_rejected(self) -> None:
         with pytest.raises(ValidationError):
@@ -257,8 +257,8 @@ class TestGeocodingResultValidation:
         from voter_api.lib.geocoder.base import GeocodingResult
 
         result = GeocodingResult(latitude=33.749, longitude=-84.388)
-        assert result.latitude == 33.749
-        assert result.longitude == -84.388
+        assert result.latitude == pytest.approx(33.749)
+        assert result.longitude == pytest.approx(-84.388)
 
     def test_latitude_out_of_range(self) -> None:
         from voter_api.lib.geocoder.base import GeocodingResult

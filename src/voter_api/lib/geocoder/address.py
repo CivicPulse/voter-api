@@ -356,7 +356,7 @@ def parse_address_components(address: str) -> AddressComponents:
 
     # Extract city: typically the part before state/zip
     if len(parts) >= 3:
-        # parts[0] = street, parts[1] = city, parts[2] = state+zip
+        # Index 0=street, 1=city, 2=state+zip
         components.city = parts[1].strip()
     elif len(parts) == 2:
         # Could be "street, city" or "street, state zip"

@@ -7,11 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.dependencies import get_async_session, get_current_user, require_role
+from voter_api.lib.geocoder.point_lookup import OutOfBoundsError
 from voter_api.lib.normalize import normalize_registration_number
 from voter_api.models.user import User
 from voter_api.schemas.common import PaginationMeta
 from voter_api.schemas.geocoding import GeocodedLocationResponse, ManualGeocodingRequest
 from voter_api.schemas.voter import (
+    BatchBoundaryCheckResponse,
     DistrictCheckResponse,
     OfficialLocationResponse,
     PaginatedVoterResponse,
@@ -30,6 +32,7 @@ from voter_api.services.geocoding_service import (
 from voter_api.services.voter_history_service import get_participation_summary
 from voter_api.services.voter_service import (
     build_voter_detail_dict,
+    check_batch_boundaries_for_voter,
     check_voter_districts,
     get_voter_detail,
     get_voter_filter_options,
@@ -261,6 +264,8 @@ async def set_voter_official_location(
     """Set an admin override for a voter's official location (admin only)."""
     try:
         voter = await set_official_location_override(session, voter_id, request.latitude, request.longitude)
+    except OutOfBoundsError as err:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(err)) from err
     except ValueError as err:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=VOTER_NOT_FOUND) from err
     return OfficialLocationResponse(
@@ -292,3 +297,34 @@ async def clear_voter_official_location_override(
         source=voter.official_source,
         is_override=voter.official_is_override,
     )
+
+
+@voters_router.post(
+    "/{voter_id}/geocode/check-boundaries",
+    response_model=BatchBoundaryCheckResponse,
+    dependencies=[Depends(require_role("admin"))],
+    summary="Batch boundary check",
+    description="Cross-join all geocoded locations for a voter against their registered district boundaries.",
+)
+async def check_voter_batch_boundaries(
+    voter_id: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(get_current_user)],
+) -> BatchBoundaryCheckResponse:
+    """Check all geocoded provider locations against all registered district boundaries.
+
+    Args:
+        voter_id: UUID of the voter to check.
+        session: Async database session.
+        _current_user: Authenticated user dependency (admin role required).
+
+    Returns:
+        BatchBoundaryCheckResponse with district and provider containment results.
+
+    Raises:
+        HTTPException: 404 if the voter is not found.
+    """
+    result = await check_batch_boundaries_for_voter(session, voter_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=VOTER_NOT_FOUND)
+    return result

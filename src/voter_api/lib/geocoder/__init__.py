@@ -54,6 +54,7 @@ from voter_api.lib.geocoder.mapbox import MapboxGeocoder
 from voter_api.lib.geocoder.nominatim import NominatimGeocoder
 from voter_api.lib.geocoder.photon import PhotonGeocoder
 from voter_api.lib.geocoder.point_lookup import (
+    OutOfBoundsError,
     meters_to_degrees,
     validate_georgia_coordinates,
 )
@@ -275,6 +276,7 @@ __all__ = [
     "get_available_providers",
     "get_configured_providers",
     "get_geocoder",
+    "OutOfBoundsError",
     "meters_to_degrees",
     "normalize_freeform_address",
     "parse_address_components",
