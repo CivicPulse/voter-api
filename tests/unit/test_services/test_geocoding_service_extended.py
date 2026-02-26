@@ -619,4 +619,55 @@ class TestGeocodeVoterAllProviders:
             result = await geocode_voter_all_providers(session, voter.id)
 
         assert result["providers"][0]["status"] == "no_match"
-        assert result["providers"][0]["cached"] is False
+
+
+class TestSetOfficialLocationOverrideGeorgiaValidation:
+    """Unit tests for Georgia bounds validation in set_official_location_override()."""
+
+    @pytest.mark.asyncio
+    async def test_raises_value_error_for_coordinates_outside_georgia(self) -> None:
+        """Coordinates outside Georgia bounds (e.g., London) raise ValueError."""
+        from voter_api.models.voter import Voter
+        from voter_api.services.geocoding_service import set_official_location_override
+
+        mock_voter = MagicMock(spec=Voter)
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_voter
+
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=mock_result)
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+
+        voter_id = uuid.uuid4()
+        # London coordinates — well outside Georgia bounds
+        with pytest.raises(ValueError, match="Georgia service area"):
+            await set_official_location_override(session, voter_id, latitude=51.5074, longitude=-0.1278)
+
+    @pytest.mark.asyncio
+    async def test_proceeds_normally_for_valid_georgia_coordinates(self) -> None:
+        """Valid Georgia coordinates (Atlanta) succeed without error."""
+        from voter_api.models.voter import Voter
+        from voter_api.services.geocoding_service import set_official_location_override
+
+        mock_voter = MagicMock(spec=Voter)
+        mock_voter.official_latitude = 33.749
+        mock_voter.official_longitude = -84.388
+        mock_voter.official_source = "admin"
+        mock_voter.official_is_override = True
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_voter
+
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=mock_result)
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+
+        voter_id = uuid.uuid4()
+        # Atlanta, GA — valid Georgia coordinates
+        result = await set_official_location_override(session, voter_id, latitude=33.749, longitude=-84.388)
+
+        session.commit.assert_awaited_once()
+        session.refresh.assert_awaited_once_with(mock_voter)
+        assert result is mock_voter

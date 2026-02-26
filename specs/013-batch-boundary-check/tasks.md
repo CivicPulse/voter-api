@@ -139,7 +139,7 @@
   - The existing API route already maps `ValueError` → HTTP 422 — no route changes needed
   - Add a comment noting this guards against worldwide coordinates being stored as official location
 
-- [ ] T022 [P] Add integration tests for the new endpoint in `tests/integration/api/test_voters.py`:
+- [x] T022 [P] Add integration tests for the new endpoint in `tests/integration/api/test_voters.py`:
   - Test: admin user gets 200 with correctly structured response (mock DB + spatial query)
   - Test: non-admin (analyst / viewer) gets 403
   - Test: unauthenticated request gets 401
@@ -151,7 +151,7 @@
   - Test: `set_official_location_override()` raises `ValueError` when coordinates are outside Georgia bounds
   - Test: `set_official_location_override()` proceeds normally for valid Georgia coordinates
 
-- [ ] T024 Add E2E smoke test to `tests/e2e/test_smoke.py` in the appropriate test class (add to `TestGeocoding` or add a new method to an existing voter test class):
+- [x] T024 Add E2E smoke test to `tests/e2e/test_smoke.py` in the appropriate test class (add to `TestGeocoding` or add a new method to an existing voter test class):
   - Smoke test: `POST /api/v1/voters/{seeded_voter_id}/geocode/check-boundaries` with admin client → HTTP 200 with expected response structure
   - Smoke test: same endpoint with viewer client → HTTP 403
 

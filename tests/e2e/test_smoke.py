@@ -24,6 +24,7 @@ from tests.e2e.conftest import (
     OFFICIAL_ID,
     TOTP_USER_ID,
     TOTP_USERNAME,
+    VOTER_ID,
 )
 from voter_api.models.auth_tokens import UserInvite
 from voter_api.models.election import Election
@@ -1116,6 +1117,23 @@ class TestVoters:
         assert clear_resp.status_code == 200
         clear_body = clear_resp.json()
         assert clear_body["is_override"] is False
+
+    async def test_batch_boundary_check_admin_200(self, admin_client: httpx.AsyncClient) -> None:
+        """POST /voters/{id}/geocode/check-boundaries returns 200 with expected structure for admin."""
+        resp = await admin_client.post(_url(f"/voters/{VOTER_ID}/geocode/check-boundaries"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "voter_id" in body
+        assert "districts" in body
+        assert "provider_summary" in body
+        assert "total_locations" in body
+        assert "total_districts" in body
+        assert "checked_at" in body
+
+    async def test_batch_boundary_check_viewer_403(self, viewer_client: httpx.AsyncClient) -> None:
+        """POST /voters/{id}/geocode/check-boundaries returns 403 for viewer role."""
+        resp = await viewer_client.post(_url(f"/voters/{VOTER_ID}/geocode/check-boundaries"))
+        assert resp.status_code == 403
 
 
 # ── Geocoding ──────────────────────────────────────────────────────────────
