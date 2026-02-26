@@ -1196,6 +1196,43 @@ class TestGeocoding:
         )
         assert resp.status_code == 404
 
+    async def test_cancel_job_happy_path(self, admin_client: httpx.AsyncClient) -> None:
+        """Admin can create a batch job and cancel it successfully."""
+        create_resp = await admin_client.post(
+            _url("/geocoding/batch"),
+            json={"provider": "census", "fallback": False},
+        )
+        assert create_resp.status_code == 202
+        job_id = create_resp.json()["id"]
+
+        cancel_resp = await admin_client.patch(_url(f"/geocoding/jobs/{job_id}/cancel"))
+        assert cancel_resp.status_code == 200
+        body = cancel_resp.json()
+        assert body["id"] == job_id
+        assert body["status"] == "cancelled"
+        assert body["completed_at"] is not None
+        assert body["message"] == "Job cancelled successfully"
+
+    async def test_fail_job_happy_path(self, admin_client: httpx.AsyncClient) -> None:
+        """Admin can create a batch job and mark it as failed with a reason."""
+        create_resp = await admin_client.post(
+            _url("/geocoding/batch"),
+            json={"provider": "census", "fallback": False},
+        )
+        assert create_resp.status_code == 202
+        job_id = create_resp.json()["id"]
+
+        fail_resp = await admin_client.patch(
+            _url(f"/geocoding/jobs/{job_id}/fail"),
+            json={"reason": "E2E test failure reason"},
+        )
+        assert fail_resp.status_code == 200
+        body = fail_resp.json()
+        assert body["id"] == job_id
+        assert body["status"] == "failed"
+        assert body["completed_at"] is not None
+        assert body["message"] == "Job marked as failed"
+
 
 # ── Imports ────────────────────────────────────────────────────────────────
 

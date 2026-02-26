@@ -336,6 +336,12 @@ async def list_jobs(
 @geocoding_router.patch(
     "/jobs/{job_id}/cancel",
     response_model=CancelJobResponse,
+    responses={
+        401: {"description": "Unauthorized"},
+        403: {"description": "Forbidden"},
+        404: {"description": "Geocoding job not found"},
+        409: {"description": "Job already in terminal state"},
+    },
     dependencies=[Depends(require_role("admin"))],
 )
 async def cancel_job(
@@ -344,8 +350,15 @@ async def cancel_job(
 ) -> CancelJobResponse:
     """Cancel a running or pending geocoding job (admin only).
 
-    Sets the job status to "cancelled" and records a completion timestamp.
-    Returns 409 if the job is already in a terminal state.
+    Args:
+        job_id: Geocoding job UUID.
+        session: Async database session (injected).
+
+    Returns:
+        CancelJobResponse with the updated job status.
+
+    Raises:
+        HTTPException: 404 if job does not exist; 409 if job is already terminal.
     """
     try:
         job = await cancel_geocoding_job(session, job_id)
@@ -374,6 +387,12 @@ async def cancel_job(
 @geocoding_router.patch(
     "/jobs/{job_id}/fail",
     response_model=CancelJobResponse,
+    responses={
+        401: {"description": "Unauthorized"},
+        403: {"description": "Forbidden"},
+        404: {"description": "Geocoding job not found"},
+        409: {"description": "Job already in terminal state"},
+    },
     dependencies=[Depends(require_role("admin"))],
 )
 async def mark_job_failed(
@@ -383,8 +402,16 @@ async def mark_job_failed(
 ) -> CancelJobResponse:
     """Mark a running or pending geocoding job as failed (admin only).
 
-    Optionally accepts a reason that is appended to the job's error log.
-    Returns 409 if the job is already in a terminal state.
+    Args:
+        job_id: Geocoding job UUID.
+        body: Optional request body with a failure reason.
+        session: Async database session (injected).
+
+    Returns:
+        CancelJobResponse with the updated job status.
+
+    Raises:
+        HTTPException: 404 if job does not exist; 409 if job is already terminal.
     """
     reason = body.reason if body else None
     try:

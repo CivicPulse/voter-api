@@ -1,6 +1,7 @@
 """Contract tests for geocoding endpoints against OpenAPI schema."""
 
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -36,9 +37,10 @@ def app(mock_session: AsyncMock) -> FastAPI:
 
 
 @pytest.fixture
-def client(app: FastAPI) -> AsyncClient:
+async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Create an async test client."""
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False) as c:
+        yield c
 
 
 class TestGeocodeContractResponse:
@@ -200,13 +202,14 @@ def admin_app(mock_session, admin_user):
 
 
 @pytest.fixture
-def admin_client(admin_app):
+async def admin_client(admin_app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Create an async test client authenticated as admin."""
-    return AsyncClient(
+    async with AsyncClient(
         transport=ASGITransport(app=admin_app),
         base_url="http://test",
         follow_redirects=False,
-    )
+    ) as c:
+        yield c
 
 
 # ---------------------------------------------------------------------------

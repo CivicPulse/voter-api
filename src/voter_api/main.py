@@ -12,7 +12,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
-from sqlalchemy import type_coerce
 
 from voter_api import __version__
 from voter_api.core.config import get_settings
@@ -60,7 +59,7 @@ async def _recover_stale_geocoding_jobs() -> None:
     still in these statuses at boot time are orphaned. Appends a recovery
     note to the JSONB error_log array.
     """
-    from sqlalchemy import func, update
+    from sqlalchemy import func, type_coerce, update
     from sqlalchemy.dialects.postgresql import JSONB as JSONB_TYPE
 
     from voter_api.models.geocoding_job import GeocodingJob

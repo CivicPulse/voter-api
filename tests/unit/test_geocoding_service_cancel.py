@@ -8,8 +8,6 @@ has been externally set to a terminal status (cancelled, failed, completed).
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from voter_api.models.geocoding_job import GeocodingJob
 from voter_api.services.geocoding_service import (
     TERMINAL_STATUSES,
@@ -17,7 +15,7 @@ from voter_api.services.geocoding_service import (
 )
 
 
-def _make_job(**overrides) -> GeocodingJob:
+def _make_job(**overrides: object) -> GeocodingJob:
     """Create a GeocodingJob with sensible defaults for testing."""
     job = GeocodingJob(
         id=overrides.pop("id", uuid.uuid4()),
@@ -31,7 +29,7 @@ def _make_job(**overrides) -> GeocodingJob:
     return job
 
 
-def _make_mock_geocoder():
+def _make_mock_geocoder() -> MagicMock:
     """Create a mock geocoder provider."""
     geocoder = MagicMock()
     geocoder.provider_name = "census"
@@ -43,7 +41,6 @@ def _make_mock_geocoder():
 class TestCooperativeCancellation:
     """Tests for cooperative cancellation in process_geocoding_job()."""
 
-    @pytest.mark.asyncio
     async def test_cancelled_mid_batch_stops_and_preserves_progress(self) -> None:
         """Job status changed to 'cancelled' mid-batch stops processing and returns early."""
         job = _make_job(
@@ -95,7 +92,6 @@ class TestCooperativeCancellation:
         # Should NOT have reached "completed" status
         assert result.completed_at is None
 
-    @pytest.mark.asyncio
     async def test_failed_mid_batch_stops_and_preserves_progress(self) -> None:
         """Job status changed to 'failed' mid-batch stops processing and returns early."""
         job = _make_job(
@@ -139,7 +135,6 @@ class TestCooperativeCancellation:
         assert result.cache_hits == 0
         assert result.completed_at is None
 
-    @pytest.mark.asyncio
     async def test_running_status_continues_processing(self) -> None:
         """Job status remains 'running' allows processing to continue past the check."""
         job = _make_job(
