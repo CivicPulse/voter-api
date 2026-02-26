@@ -242,13 +242,16 @@ class TestCreateElectionManual:
 
         created_election = _make_election(source="manual", boundary_id=boundary_id, data_source_url=None)
 
-        # Session: boundary found via get; manual elections skip duplicate check so only refetch execute
+        # Session: name+date duplicate check (no duplicate), then re-fetch after commit.
+        no_duplicate_result = MagicMock()
+        no_duplicate_result.scalar_one_or_none.return_value = None
+
         refetch_result = MagicMock()
         refetch_result.scalar_one.return_value = created_election
 
         session = AsyncMock()
         session.add = MagicMock()
-        session.execute = AsyncMock(return_value=refetch_result)
+        session.execute = AsyncMock(side_effect=[no_duplicate_result, refetch_result])
         session.get = AsyncMock(return_value=boundary_mock)
 
         election = await create_election(session, request)
@@ -275,7 +278,7 @@ class TestCreateElectionManual:
             data_source_url="https://results.sos.ga.gov/feed.json",
         )
 
-        # No duplicate exists, then refetch returns the created election
+        # No duplicate by feed+ballot_item, no duplicate by name+date, then re-fetch.
         no_election_result = MagicMock()
         no_election_result.scalar_one_or_none.return_value = None
 
@@ -284,7 +287,8 @@ class TestCreateElectionManual:
 
         session = AsyncMock()
         session.add = MagicMock()
-        session.execute = AsyncMock(side_effect=[no_election_result, refetch_result])
+        # Three execute calls: feed+ballot_item check, name+date check, selectinload re-fetch.
+        session.execute = AsyncMock(side_effect=[no_election_result, no_election_result, refetch_result])
 
         with patch(
             "voter_api.services.election_resolution_service.link_election_to_boundary",

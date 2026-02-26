@@ -105,16 +105,19 @@ async def create_election(
                 f"from '{request.data_source_url}' already exists."
             )
             raise DuplicateElectionError(msg)
-    elif request.source != "manual":
-        existing = await session.execute(
-            select(Election).where(
-                Election.name == request.name,
-                Election.election_date == request.election_date,
-            )
+    # Always enforce name+date uniqueness before commit to avoid an unhandled
+    # IntegrityError from the DB constraint.  This applies to all sources,
+    # including "manual" which has no ballot_item_id/data_source_url pair.
+    existing_name_date = await session.execute(
+        select(Election).where(
+            Election.name == request.name,
+            Election.election_date == request.election_date,
+            Election.deleted_at.is_(None),
         )
-        if existing.scalar_one_or_none() is not None:
-            msg = f"An election with name '{request.name}' and date '{request.election_date}' already exists."
-            raise DuplicateElectionError(msg)
+    )
+    if existing_name_date.scalar_one_or_none() is not None:
+        msg = f"An election with name '{request.name}' and date '{request.election_date}' already exists."
+        raise DuplicateElectionError(msg)
 
     data_source_url = str(request.data_source_url) if request.data_source_url is not None else None
 

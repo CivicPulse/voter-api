@@ -32,4 +32,19 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_index("uq_election_name_date", table_name="elections")
+    # Before restoring the full unique constraint, remove any soft-deleted rows whose
+    # (name, election_date) duplicates an active row.  Without this step, the
+    # CREATE UNIQUE CONSTRAINT would fail if a name+date pair was reused after a
+    # soft-delete (which is precisely what revision 040 was designed to allow).
+    op.execute(
+        sa.text(
+            """
+            DELETE FROM elections
+            WHERE deleted_at IS NOT NULL
+              AND (name, election_date) IN (
+                  SELECT name, election_date FROM elections WHERE deleted_at IS NULL
+              )
+            """
+        )
+    )
     op.create_unique_constraint("uq_election_name_date", "elections", ["name", "election_date"])
