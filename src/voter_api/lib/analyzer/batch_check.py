@@ -7,8 +7,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from geoalchemy2.functions import ST_Contains
-from sqlalchemy import select, tuple_
+from sqlalchemy import func, select, tuple_
 
 from voter_api.lib.analyzer.comparator import extract_registered_boundaries
 from voter_api.models.boundary import Boundary
@@ -187,7 +186,13 @@ async def check_batch_boundaries(
     boundary_ids = [b.id for b in boundaries]
 
     # Build a lookup: (boundary_type, boundary_identifier) -> Boundary
-    boundary_lookup: dict[tuple[str, str], Boundary] = {(b.boundary_type, b.boundary_identifier): b for b in boundaries}
+    # Fail fast on duplicate keys — ambiguous matches must not silently overwrite results.
+    boundary_lookup: dict[tuple[str, str], Boundary] = {}
+    for b in boundaries:
+        key = (b.boundary_type, b.boundary_identifier)
+        if key in boundary_lookup:
+            raise ValueError(f"Ambiguous boundary match for key={key}")
+        boundary_lookup[key] = b
 
     # Query geocoded locations for this voter
     loc_result = await session.execute(select(GeocodedLocation).where(GeocodedLocation.voter_id == voter_id))
@@ -229,7 +234,7 @@ async def check_batch_boundaries(
                 Boundary.id.label("boundary_id"),
                 Boundary.boundary_type,
                 Boundary.boundary_identifier,
-                ST_Contains(Boundary.geometry, GeocodedLocation.point).label("is_contained"),
+                func.ST_Contains(Boundary.geometry, GeocodedLocation.point).label("is_contained"),
             )
             .where(GeocodedLocation.voter_id == voter_id)
             .where(Boundary.id.in_(boundary_ids))

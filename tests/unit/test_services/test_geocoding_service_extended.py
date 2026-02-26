@@ -619,6 +619,7 @@ class TestGeocodeVoterAllProviders:
             result = await geocode_voter_all_providers(session, voter.id)
 
         assert result["providers"][0]["status"] == "no_match"
+        assert result["providers"][0]["cached"] is False
 
 
 class TestSetOfficialLocationOverrideGeorgiaValidation:
@@ -643,6 +644,8 @@ class TestSetOfficialLocationOverrideGeorgiaValidation:
         # London coordinates — well outside Georgia bounds
         with pytest.raises(ValueError, match="Georgia service area"):
             await set_official_location_override(session, voter_id, latitude=51.5074, longitude=-0.1278)
+        session.commit.assert_not_awaited()
+        session.refresh.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_proceeds_normally_for_valid_georgia_coordinates(self) -> None:

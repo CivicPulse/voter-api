@@ -70,7 +70,17 @@ curl -s -X POST \
 
 **Voter has no geocoded locations** (200, not an error):
 ```json
-{ "voter_id": "...", "districts": [], "provider_summary": [], "total_locations": 0, "total_districts": 3, "checked_at": "..." }
+{
+  "voter_id": "...",
+  "districts": [
+    { "boundary_type": "congressional", "boundary_identifier": "7", "has_geometry": true, "providers": [] },
+    { "boundary_type": "state_senate", "boundary_identifier": "42", "has_geometry": false, "providers": [] }
+  ],
+  "provider_summary": [],
+  "total_locations": 0,
+  "total_districts": 2,
+  "checked_at": "..."
+}
 ```
 
 **Voter not found** → 404
