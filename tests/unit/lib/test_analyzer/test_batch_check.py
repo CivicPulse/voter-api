@@ -200,9 +200,9 @@ class TestHappyPath:
 
         assert by_source["google"].districts_checked == 2
         assert by_source["google"].districts_matched == 1
-        assert by_source["google"].latitude == 33.5
-        assert by_source["google"].longitude == -84.3
-        assert by_source["google"].confidence_score == 0.9
+        assert by_source["google"].latitude == pytest.approx(33.5)
+        assert by_source["google"].longitude == pytest.approx(-84.3)
+        assert by_source["google"].confidence_score == pytest.approx(0.9)
 
         assert by_source["census"].districts_checked == 2
         assert by_source["census"].districts_matched == 2
@@ -416,9 +416,9 @@ class TestNoRegisteredDistricts:
 
         assert by_source["google"].districts_matched == 0
         assert by_source["google"].districts_checked == 0
-        assert by_source["google"].latitude == 33.5
-        assert by_source["google"].longitude == -84.3
-        assert by_source["google"].confidence_score == 0.85
+        assert by_source["google"].latitude == pytest.approx(33.5)
+        assert by_source["google"].longitude == pytest.approx(-84.3)
+        assert by_source["google"].confidence_score == pytest.approx(0.85)
 
         assert by_source["census"].districts_matched == 0
         assert by_source["census"].districts_checked == 0

@@ -18,6 +18,7 @@ from voter_api.models.voter import Voter
 if TYPE_CHECKING:
     import uuid
 
+    from sqlalchemy.engine import Row
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -60,6 +61,72 @@ class BatchBoundaryCheckResult:
     total_locations: int
     total_districts: int
     checked_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+def _build_provider_summary(
+    locations: Any,
+    cross_rows: list[Row[Any]],
+) -> list[_ProviderSummary]:
+    """Build per-provider summary from geocoded locations and cross-join rows."""
+    provider_counts: dict[str, dict[str, Any]] = {}
+    for loc in locations:
+        provider_counts[loc.source_type] = {
+            "latitude": loc.latitude,
+            "longitude": loc.longitude,
+            "confidence_score": loc.confidence_score,
+            "matched": 0,
+            "checked": 0,
+        }
+    for row in cross_rows:
+        pc = provider_counts[row.source_type]
+        pc["checked"] += 1
+        if row.is_contained:
+            pc["matched"] += 1
+    return [
+        _ProviderSummary(
+            source_type=stype,
+            latitude=pc["latitude"],
+            longitude=pc["longitude"],
+            confidence_score=pc["confidence_score"],
+            districts_matched=pc["matched"],
+            districts_checked=pc["checked"],
+        )
+        for stype, pc in provider_counts.items()
+    ]
+
+
+def _build_district_results(
+    registered: dict[str, str],
+    boundary_lookup: dict[tuple[str, str], Any],
+    district_providers: dict[tuple, list[_ProviderResult]],
+) -> list[_DistrictBoundaryResult]:
+    """Build district boundary results from registered assignments."""
+    districts: list[_DistrictBoundaryResult] = []
+    for btype, bident in registered.items():
+        b = boundary_lookup.get((btype, bident))
+        if b is not None:
+            key = (b.id, b.boundary_type, b.boundary_identifier)
+            providers = district_providers.get(key, [])
+            districts.append(
+                _DistrictBoundaryResult(
+                    boundary_id=b.id,
+                    boundary_type=btype,
+                    boundary_identifier=bident,
+                    has_geometry=True,
+                    providers=providers,
+                )
+            )
+        else:
+            districts.append(
+                _DistrictBoundaryResult(
+                    boundary_id=None,
+                    boundary_type=btype,
+                    boundary_identifier=bident,
+                    has_geometry=False,
+                    providers=[],
+                )
+            )
+    return districts
 
 
 async def check_batch_boundaries(
@@ -151,7 +218,7 @@ async def check_batch_boundaries(
 
     # CROSS JOIN: geocoded_locations × boundaries with ST_Contains
     # Only execute if we have boundary_ids to avoid full-table scan
-    cross_rows: list[Any] = []
+    cross_rows: list[Row[Any]] = []
     if boundary_ids:
         cross_stmt = (
             select(
@@ -169,7 +236,7 @@ async def check_batch_boundaries(
             .order_by(GeocodedLocation.source_type, Boundary.boundary_type)
         )
         cross_result = await session.execute(cross_stmt)
-        cross_rows = cross_result.all()
+        cross_rows = list(cross_result.all())
 
     # Aggregate cross-join rows into district results
     # Group by (boundary_id, boundary_type, boundary_identifier)
@@ -180,61 +247,8 @@ async def check_batch_boundaries(
             _ProviderResult(source_type=row.source_type, is_contained=bool(row.is_contained))
         )
 
-    # Compute provider summaries from cross-join rows
-    provider_counts: dict[str, dict[str, Any]] = {}
-    for loc in locations:
-        provider_counts[loc.source_type] = {
-            "latitude": loc.latitude,
-            "longitude": loc.longitude,
-            "confidence_score": loc.confidence_score,
-            "matched": 0,
-            "checked": 0,
-        }
-    for row in cross_rows:
-        pc = provider_counts[row.source_type]
-        pc["checked"] += 1
-        if row.is_contained:
-            pc["matched"] += 1
-
-    provider_summary = [
-        _ProviderSummary(
-            source_type=stype,
-            latitude=pc["latitude"],
-            longitude=pc["longitude"],
-            confidence_score=pc["confidence_score"],
-            districts_matched=pc["matched"],
-            districts_checked=pc["checked"],
-        )
-        for stype, pc in provider_counts.items()
-    ]
-
-    # Build district results list
-    districts: list[_DistrictBoundaryResult] = []
-    for btype, bident in registered.items():
-        b = boundary_lookup.get((btype, bident))
-        if b is not None:
-            key = (b.id, b.boundary_type, b.boundary_identifier)
-            providers = district_providers.get(key, [])
-            districts.append(
-                _DistrictBoundaryResult(
-                    boundary_id=b.id,
-                    boundary_type=btype,
-                    boundary_identifier=bident,
-                    has_geometry=True,
-                    providers=providers,
-                )
-            )
-        else:
-            # Registered district not in DB (no boundary geometry loaded)
-            districts.append(
-                _DistrictBoundaryResult(
-                    boundary_id=None,
-                    boundary_type=btype,
-                    boundary_identifier=bident,
-                    has_geometry=False,
-                    providers=[],
-                )
-            )
+    provider_summary = _build_provider_summary(locations, cross_rows)
+    districts = _build_district_results(registered, boundary_lookup, district_providers)
 
     return BatchBoundaryCheckResult(
         voter_id=voter_id,

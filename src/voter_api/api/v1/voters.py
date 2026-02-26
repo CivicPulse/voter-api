@@ -297,7 +297,6 @@ async def clear_voter_official_location_override(
 
 @voters_router.post(
     "/{voter_id}/geocode/check-boundaries",
-    response_model=BatchBoundaryCheckResponse,
     dependencies=[Depends(require_role("admin"))],
     summary="Batch boundary check",
     description="Cross-join all geocoded locations for a voter against their registered district boundaries.",

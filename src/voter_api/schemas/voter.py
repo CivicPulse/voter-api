@@ -233,7 +233,7 @@ class ProviderResult(BaseModel):
 class DistrictBoundaryResult(BaseModel):
     """Result for one registered district boundary across all providers."""
 
-    boundary_id: UUID | None
+    boundary_id: UUID | None = None
     boundary_type: str
     boundary_identifier: str
     has_geometry: bool
@@ -246,7 +246,7 @@ class ProviderSummary(BaseModel):
     source_type: str
     latitude: float
     longitude: float
-    confidence_score: float | None
+    confidence_score: float | None = None
     districts_matched: int
     districts_checked: int
 
