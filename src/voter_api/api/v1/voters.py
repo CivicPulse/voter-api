@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.dependencies import get_async_session, get_current_user, require_role
+from voter_api.lib.geocoder.point_lookup import OutOfBoundsError
 from voter_api.lib.normalize import normalize_registration_number
 from voter_api.models.user import User
 from voter_api.schemas.common import PaginationMeta
@@ -262,6 +263,8 @@ async def set_voter_official_location(
     """Set an admin override for a voter's official location (admin only)."""
     try:
         voter = await set_official_location_override(session, voter_id, request.latitude, request.longitude)
+    except OutOfBoundsError as err:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(err)) from err
     except ValueError as err:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=VOTER_NOT_FOUND) from err
     return OfficialLocationResponse(

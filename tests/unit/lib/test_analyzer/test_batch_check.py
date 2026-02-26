@@ -100,7 +100,6 @@ def _all_result(rows: list) -> MagicMock:
 class TestHappyPath:
     """US1: voter with multiple providers and district boundaries."""
 
-    @pytest.mark.asyncio
     async def test_two_providers_three_districts_produces_correct_structure(self) -> None:
         """2 providers × 3 districts → 3 DistrictBoundaryResult entries, each with 2 providers."""
         voter = _make_voter()
@@ -155,7 +154,6 @@ class TestHappyPath:
             assert district.has_geometry is True
             assert len(district.providers) == 2
 
-    @pytest.mark.asyncio
     async def test_provider_summary_counts_matched_vs_checked(self) -> None:
         """provider_summary correctly counts districts_matched (True rows) vs districts_checked."""
         voter = _make_voter()
@@ -208,7 +206,6 @@ class TestHappyPath:
         assert by_source["census"].districts_matched == 2
         assert by_source["census"].confidence_score is None
 
-    @pytest.mark.asyncio
     async def test_missing_boundary_has_geometry_false_empty_providers(self) -> None:
         """Registered district with no matching boundary row → has_geometry=False, providers=[]."""
         voter = _make_voter()
@@ -252,7 +249,6 @@ class TestHappyPath:
         assert by_type["state_senate"].boundary_id is None
         assert by_type["state_senate"].providers == []
 
-    @pytest.mark.asyncio
     async def test_voter_not_found_raises_error(self) -> None:
         """VoterNotFoundError raised when voter does not exist."""
         session = _make_session(_scalar_one_or_none_result(None))
@@ -272,7 +268,6 @@ class TestHappyPath:
 class TestNoGeocodedLocations:
     """US2: voter has registered districts but no geocoded locations."""
 
-    @pytest.mark.asyncio
     async def test_no_locations_returns_zero_total_and_empty_summary(self) -> None:
         """total_locations=0, provider_summary=[], districts have correct has_geometry status."""
         voter = _make_voter()
@@ -305,7 +300,6 @@ class TestNoGeocodedLocations:
             assert district.has_geometry is True
             assert district.providers == []
 
-    @pytest.mark.asyncio
     async def test_no_locations_missing_boundary_still_has_geometry_false(self) -> None:
         """When no locations and a district has no boundary, has_geometry=False."""
         voter = _make_voter()
@@ -333,7 +327,6 @@ class TestNoGeocodedLocations:
         assert by_type["congressional"].has_geometry is True
         assert by_type["state_senate"].has_geometry is False
 
-    @pytest.mark.asyncio
     async def test_no_locations_no_cross_join_executed(self) -> None:
         """Cross-join query is skipped entirely when there are no geocoded locations."""
         voter = _make_voter()
@@ -364,7 +357,6 @@ class TestNoGeocodedLocations:
 class TestNoRegisteredDistricts:
     """US3: voter has geocoded locations but no registered district assignments."""
 
-    @pytest.mark.asyncio
     async def test_no_districts_returns_empty_districts_list(self) -> None:
         """total_districts=0, districts=[], provider_summary lists all providers."""
         voter = _make_voter()
@@ -389,7 +381,6 @@ class TestNoRegisteredDistricts:
         assert result.districts == []
         assert result.total_locations == 2
 
-    @pytest.mark.asyncio
     async def test_no_districts_provider_summary_has_zero_counts(self) -> None:
         """provider_summary lists all providers with districts_matched=0, districts_checked=0."""
         voter = _make_voter()
@@ -424,7 +415,6 @@ class TestNoRegisteredDistricts:
         assert by_source["census"].districts_checked == 0
         assert by_source["census"].confidence_score is None
 
-    @pytest.mark.asyncio
     async def test_no_districts_skips_boundary_and_cross_join_queries(self) -> None:
         """When no registered districts, boundary and cross-join queries are not executed."""
         voter = _make_voter()
@@ -444,7 +434,6 @@ class TestNoRegisteredDistricts:
         # Only 2 execute calls: voter + locations (no boundary query, no cross-join)
         assert session.execute.call_count == 2
 
-    @pytest.mark.asyncio
     async def test_no_districts_and_no_locations(self) -> None:
         """Edge case: voter with no districts AND no locations returns all-empty result."""
         voter = _make_voter()

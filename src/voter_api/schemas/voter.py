@@ -226,12 +226,16 @@ class VoterFilterOptions(BaseModel):
 class ProviderResult(BaseModel):
     """Per-provider inside/outside result for a single district boundary."""
 
+    model_config = {"from_attributes": True}
+
     source_type: str
     is_contained: bool
 
 
 class DistrictBoundaryResult(BaseModel):
     """Result for one registered district boundary across all providers."""
+
+    model_config = {"from_attributes": True}
 
     boundary_id: UUID | None = None
     boundary_type: str
@@ -243,6 +247,8 @@ class DistrictBoundaryResult(BaseModel):
 class ProviderSummary(BaseModel):
     """Per-provider summary of district match counts."""
 
+    model_config = {"from_attributes": True}
+
     source_type: str
     latitude: float
     longitude: float
@@ -253,6 +259,8 @@ class ProviderSummary(BaseModel):
 
 class BatchBoundaryCheckResponse(BaseModel):
     """Response for POST /voters/{voter_id}/geocode/check-boundaries."""
+
+    model_config = {"from_attributes": True}
 
     voter_id: UUID
     districts: list[DistrictBoundaryResult]
