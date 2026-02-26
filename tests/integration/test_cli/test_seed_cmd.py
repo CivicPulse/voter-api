@@ -695,6 +695,208 @@ class TestSeedCategoryFilter:
 
 
 # ---------------------------------------------------------------------------
+# Election boundary_id resolution
+# ---------------------------------------------------------------------------
+
+
+class TestElectionBoundaryResolution:
+    """Verify boundary_id is nulled out when referenced boundary doesn't exist locally."""
+
+    def test_elections_seed_nullifies_missing_boundary_ids(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+        """boundary_id is set to None for records referencing unknown local boundaries."""
+        import uuid
+        from datetime import date
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        known_id = str(uuid.uuid4())
+        unknown_id = str(uuid.uuid4())
+        election_id_1 = str(uuid.uuid4())
+        election_id_2 = str(uuid.uuid4())
+
+        raw_records = [
+            {
+                "id": election_id_1,
+                "name": "Election With Known Boundary",
+                "election_date": date(2024, 11, 5),
+                "election_type": "general",
+                "district": "State",
+                "boundary_id": known_id,
+                "district_type": None,
+                "district_identifier": None,
+                "district_party": None,
+                "status": "scheduled",
+                "data_source_url": "https://example.com",
+                "refresh_interval_seconds": 3600,
+                "ballot_item_id": None,
+                "last_refreshed_at": None,
+                "creation_method": "manual",
+            },
+            {
+                "id": election_id_2,
+                "name": "Election With Unknown Boundary",
+                "election_date": date(2024, 11, 5),
+                "election_type": "general",
+                "district": "State",
+                "boundary_id": unknown_id,
+                "district_type": None,
+                "district_identifier": None,
+                "district_party": None,
+                "status": "scheduled",
+                "data_source_url": "https://example.com",
+                "refresh_interval_seconds": 3600,
+                "ballot_item_id": None,
+                "last_refreshed_at": None,
+                "creation_method": "manual",
+            },
+        ]
+
+        # Mock fetch_elections_from_api to return our test records
+        # Mock the session: boundary query returns only the known_id
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.__iter__ = MagicMock(return_value=iter([(known_id,)]))
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.commit = AsyncMock()
+
+        mock_factory = MagicMock()
+        mock_context = AsyncMock()
+        mock_context.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_context.__aexit__ = AsyncMock(return_value=None)
+        mock_factory.return_value = mock_context
+
+        with (
+            patch(
+                "voter_api.lib.data_loader.election_seeder.fetch_elections_from_api",
+                new_callable=AsyncMock,
+                return_value=raw_records,
+            ),
+            patch("voter_api.core.database.get_session_factory", return_value=mock_factory),
+            patch("sqlalchemy.dialects.postgresql.insert", autospec=False),
+        ):
+            import asyncio
+
+            from voter_api.cli.seed_cmd import _seed_elections_from_api
+
+            asyncio.run(_seed_elections_from_api("https://example.com"))
+
+        # Record with known boundary_id should keep its value
+        assert raw_records[0]["boundary_id"] == known_id
+        # Record with unknown boundary_id should be nulled out
+        assert raw_records[1]["boundary_id"] is None
+
+    def test_elections_seed_all_nullified_when_no_boundaries(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+        """All boundary_ids are nulled out when no boundaries exist locally."""
+        import uuid
+        from datetime import date
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        boundary_id = str(uuid.uuid4())
+
+        raw_records = [
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Election",
+                "election_date": date(2024, 11, 5),
+                "election_type": "general",
+                "district": "State",
+                "boundary_id": boundary_id,
+                "district_type": None,
+                "district_identifier": None,
+                "district_party": None,
+                "status": "scheduled",
+                "data_source_url": "https://example.com",
+                "refresh_interval_seconds": 3600,
+                "ballot_item_id": None,
+                "last_refreshed_at": None,
+                "creation_method": "manual",
+            },
+        ]
+
+        # Session returns empty result (no boundaries exist)
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.__iter__ = MagicMock(return_value=iter([]))
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.commit = AsyncMock()
+
+        mock_factory = MagicMock()
+        mock_context = AsyncMock()
+        mock_context.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_context.__aexit__ = AsyncMock(return_value=None)
+        mock_factory.return_value = mock_context
+
+        with (
+            patch(
+                "voter_api.lib.data_loader.election_seeder.fetch_elections_from_api",
+                new_callable=AsyncMock,
+                return_value=raw_records,
+            ),
+            patch("voter_api.core.database.get_session_factory", return_value=mock_factory),
+            patch("sqlalchemy.dialects.postgresql.insert", autospec=False),
+        ):
+            import asyncio
+
+            from voter_api.cli.seed_cmd import _seed_elections_from_api
+
+            asyncio.run(_seed_elections_from_api("https://example.com"))
+
+        assert raw_records[0]["boundary_id"] is None
+
+    def test_elections_seed_preserves_null_boundary_id(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+        """Records with no boundary_id (None) are unaffected by the resolution step."""
+        from datetime import date
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        raw_records = [
+            {
+                "id": "some-id",
+                "name": "Election",
+                "election_date": date(2024, 11, 5),
+                "election_type": "general",
+                "district": "State",
+                "boundary_id": None,
+                "district_type": None,
+                "district_identifier": None,
+                "district_party": None,
+                "status": "scheduled",
+                "data_source_url": "https://example.com",
+                "refresh_interval_seconds": 3600,
+                "ballot_item_id": None,
+                "last_refreshed_at": None,
+                "creation_method": "manual",
+            },
+        ]
+
+        mock_session = AsyncMock()
+        mock_session.commit = AsyncMock()
+
+        mock_factory = MagicMock()
+        mock_context = AsyncMock()
+        mock_context.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_context.__aexit__ = AsyncMock(return_value=None)
+        mock_factory.return_value = mock_context
+
+        with (
+            patch(
+                "voter_api.lib.data_loader.election_seeder.fetch_elections_from_api",
+                new_callable=AsyncMock,
+                return_value=raw_records,
+            ),
+            patch("voter_api.core.database.get_session_factory", return_value=mock_factory),
+            patch("sqlalchemy.dialects.postgresql.insert", autospec=False),
+        ):
+            import asyncio
+
+            from voter_api.cli.seed_cmd import _seed_elections_from_api
+
+            asyncio.run(_seed_elections_from_api("https://example.com"))
+
+        # No boundary query should be made (no candidate IDs to check) — only the upsert execute
+        assert mock_session.execute.call_count == 1
+        assert raw_records[0]["boundary_id"] is None
+
+
+# ---------------------------------------------------------------------------
 # US3: Download Only
 # ---------------------------------------------------------------------------
 

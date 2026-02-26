@@ -448,6 +448,10 @@ async def _import_all_boundaries(
 async def _seed_elections_from_api(source_url: str) -> int:
     """Fetch elections from a remote API and upsert into the local database.
 
+    Before upserting, nulls out any ``boundary_id`` values that don't exist
+    in the local ``boundaries`` table to avoid FK violations when boundaries
+    haven't been imported yet.
+
     Args:
         source_url: Base URL of the source API
             (e.g. ``https://voteapi.civpulse.org``).
@@ -455,10 +459,12 @@ async def _seed_elections_from_api(source_url: str) -> int:
     Returns:
         Number of elections upserted.
     """
+    from sqlalchemy import select
     from sqlalchemy.dialects.postgresql import insert as pg_insert
 
     from voter_api.core.database import get_session_factory
     from voter_api.lib.data_loader.election_seeder import fetch_elections_from_api
+    from voter_api.models.boundary import Boundary
     from voter_api.models.election import Election
 
     records = await fetch_elections_from_api(source_url)
@@ -470,6 +476,16 @@ async def _seed_elections_from_api(source_url: str) -> int:
 
     factory = get_session_factory()
     async with factory() as session:
+        # Resolve boundary_id: null out any that don't exist locally to avoid
+        # FK violations when boundaries haven't been imported yet.
+        candidate_ids = {r["boundary_id"] for r in records if r.get("boundary_id")}
+        if candidate_ids:
+            result = await session.execute(select(Boundary.id).where(Boundary.id.in_(candidate_ids)))
+            existing_ids = {str(row[0]) for row in result}
+            for r in records:
+                if r.get("boundary_id") and str(r["boundary_id"]) not in existing_ids:
+                    r["boundary_id"] = None
+
         stmt = pg_insert(Election).values(records)
         stmt = stmt.on_conflict_do_update(
             index_elements=["id"],
