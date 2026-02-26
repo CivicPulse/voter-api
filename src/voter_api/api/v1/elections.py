@@ -28,6 +28,7 @@ from voter_api.schemas.common import PaginationMeta
 from voter_api.schemas.election import (
     ElectionCreateRequest,
     ElectionDetailResponse,
+    ElectionLinkRequest,
     ElectionResultsResponse,
     ElectionUpdateRequest,
     FeedImportPreviewResponse,
@@ -38,7 +39,7 @@ from voter_api.schemas.election import (
     RefreshResponse,
 )
 from voter_api.services import election_service
-from voter_api.services.election_service import DuplicateElectionError
+from voter_api.services.election_service import DuplicateElectionError, soft_delete_election
 
 elections_router = APIRouter(prefix="/elections", tags=["elections"])
 
@@ -60,6 +61,7 @@ async def list_elections(
     early_voting_active: bool | None = Query(default=None, description="Filter to elections currently in early voting"),
     district_type: str | None = Query(default=None, description="Filter by parsed district type"),
     district_identifier: str | None = Query(default=None, description="Filter by parsed district identifier"),
+    source: str | None = Query(default=None, description="Filter by source type (sos_feed, manual, linked)"),
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Results per page"),
 ) -> PaginatedElectionListResponse:
@@ -75,6 +77,7 @@ async def list_elections(
         early_voting_active=early_voting_active,
         district_type=district_type,
         district_identifier=district_identifier,
+        source=source,
         page=page,
         page_size=page_size,
     )
@@ -107,6 +110,8 @@ async def create_election(
         election = await election_service.create_election(session, request)
     except DuplicateElectionError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
     return election_service.build_detail_response(election)
 
 
@@ -183,6 +188,43 @@ async def update_election(
 ) -> ElectionDetailResponse:
     """Update election metadata. Admin-only."""
     election = await election_service.update_election(session, election_id, request)
+    if election is None:
+        raise HTTPException(status_code=404, detail="Election not found.")
+    return election_service.build_detail_response(election)
+
+
+# --- Election lifecycle: soft-delete ---
+
+
+@elections_router.delete("/{election_id}", status_code=204)
+async def delete_election(
+    election_id: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(require_role("admin"))],
+) -> None:
+    """Soft-delete an election by ID. Admin-only."""
+    deleted = await soft_delete_election(session, election_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Election not found.")
+
+
+# --- Election lifecycle: link to feed ---
+
+
+@elections_router.post("/{election_id}/link", response_model=ElectionDetailResponse)
+async def link_election(
+    election_id: uuid.UUID,
+    request: ElectionLinkRequest,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(require_role("admin"))],
+) -> ElectionDetailResponse:
+    """Link a manual election to an SOS feed URL. Admin-only."""
+    try:
+        election = await election_service.link_election(session, election_id, request)
+    except DuplicateElectionError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if election is None:
         raise HTTPException(status_code=404, detail="Election not found.")
     return election_service.build_detail_response(election)
