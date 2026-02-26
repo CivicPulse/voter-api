@@ -467,27 +467,16 @@ class TestSeedCategoryFilter:
         data_dir.mkdir()
 
         voter_content = b"voter data"
-        voter_sha = hashlib.sha512(voter_content).hexdigest()
-
-        manifest = json.dumps(
-            {
-                "version": "1",
-                "updated_at": "2026-02-20T09:00:00Z",
-                "files": [
-                    {
-                        "filename": "congress.zip",
-                        "sha512": "b" * 128,
-                        "category": "boundary",
-                        "size_bytes": 100,
-                    },
-                    {
-                        "filename": "Bibb.csv",
-                        "sha512": voter_sha,
-                        "category": "voter",
-                        "size_bytes": len(voter_content),
-                    },
-                ],
-            }
+        manifest = _make_manifest(
+            [
+                {"filename": "congress.zip", "sha512": "b" * 128, "category": "boundary", "size_bytes": 100},
+                {
+                    "filename": "Bibb.csv",
+                    "sha512": hashlib.sha512(voter_content).hexdigest(),
+                    "category": "voter",
+                    "size_bytes": len(voter_content),
+                },
+            ]
         )
 
         httpx_mock.add_response(url="https://test.example.com/manifest.json", text=manifest)
@@ -517,27 +506,16 @@ class TestSeedCategoryFilter:
         data_dir.mkdir()
 
         vh_content = b"voter history data"
-        vh_sha = hashlib.sha512(vh_content).hexdigest()
-
-        manifest = json.dumps(
-            {
-                "version": "1",
-                "updated_at": "2026-02-20T09:00:00Z",
-                "files": [
-                    {
-                        "filename": "congress.zip",
-                        "sha512": "b" * 128,
-                        "category": "boundary",
-                        "size_bytes": 100,
-                    },
-                    {
-                        "filename": "2024.zip",
-                        "sha512": vh_sha,
-                        "category": "voter_history",
-                        "size_bytes": len(vh_content),
-                    },
-                ],
-            }
+        manifest = _make_manifest(
+            [
+                {"filename": "congress.zip", "sha512": "b" * 128, "category": "boundary", "size_bytes": 100},
+                {
+                    "filename": "2024.zip",
+                    "sha512": hashlib.sha512(vh_content).hexdigest(),
+                    "category": "voter_history",
+                    "size_bytes": len(vh_content),
+                },
+            ]
         )
 
         httpx_mock.add_response(url="https://test.example.com/manifest.json", text=manifest)
@@ -649,21 +627,15 @@ class TestSeedCategoryFilter:
         data_dir.mkdir()
 
         boundary_content = b"boundary data"
-        boundary_sha = hashlib.sha512(boundary_content).hexdigest()
-
-        manifest = json.dumps(
-            {
-                "version": "1",
-                "updated_at": "2026-02-20T09:00:00Z",
-                "files": [
-                    {
-                        "filename": "congress.zip",
-                        "sha512": boundary_sha,
-                        "category": "boundary",
-                        "size_bytes": len(boundary_content),
-                    },
-                ],
-            }
+        manifest = _make_manifest(
+            [
+                {
+                    "filename": "congress.zip",
+                    "sha512": hashlib.sha512(boundary_content).hexdigest(),
+                    "category": "boundary",
+                    "size_bytes": len(boundary_content),
+                },
+            ]
         )
         httpx_mock.add_response(url="https://test.example.com/manifest.json", text=manifest)
         httpx_mock.add_response(url="https://test.example.com/congress.zip", content=boundary_content)
@@ -699,6 +671,39 @@ class TestSeedCategoryFilter:
 # ---------------------------------------------------------------------------
 # Election boundary_id resolution
 # ---------------------------------------------------------------------------
+
+
+def _make_seeder_mock_factory(boundary_ids: list[str]) -> MagicMock:
+    """Build a mock session/factory for election seeder boundary-resolution tests."""
+    mock_session = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.__iter__ = MagicMock(return_value=iter([(bid,) for bid in boundary_ids]))
+    mock_session.execute = AsyncMock(return_value=mock_result)
+    mock_session.commit = AsyncMock()
+    mock_factory = MagicMock()
+    mock_context = AsyncMock()
+    mock_context.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_context.__aexit__ = AsyncMock(return_value=None)
+    mock_factory.return_value = mock_context
+    return mock_factory
+
+
+def _run_seed_elections(raw_records: list, mock_factory: MagicMock) -> None:
+    """Invoke _seed_elections_from_api with all external dependencies patched."""
+    import asyncio
+
+    from voter_api.cli.seed_cmd import _seed_elections_from_api
+
+    with (
+        patch(
+            "voter_api.lib.data_loader.election_seeder.fetch_elections_from_api",
+            new_callable=AsyncMock,
+            return_value=raw_records,
+        ),
+        patch("voter_api.core.database.get_session_factory", return_value=mock_factory),
+        patch("sqlalchemy.dialects.postgresql.insert", autospec=False),
+    ):
+        asyncio.run(_seed_elections_from_api("https://example.com"))
 
 
 class TestElectionBoundaryResolution:
@@ -751,34 +756,9 @@ class TestElectionBoundaryResolution:
             },
         ]
 
-        # Mock fetch_elections_from_api to return our test records
         # Mock the session: boundary query returns only the known_id
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.__iter__ = MagicMock(return_value=iter([(known_id,)]))
-        mock_session.execute = AsyncMock(return_value=mock_result)
-        mock_session.commit = AsyncMock()
-
-        mock_factory = MagicMock()
-        mock_context = AsyncMock()
-        mock_context.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_context.__aexit__ = AsyncMock(return_value=None)
-        mock_factory.return_value = mock_context
-
-        with (
-            patch(
-                "voter_api.lib.data_loader.election_seeder.fetch_elections_from_api",
-                new_callable=AsyncMock,
-                return_value=raw_records,
-            ),
-            patch("voter_api.core.database.get_session_factory", return_value=mock_factory),
-            patch("sqlalchemy.dialects.postgresql.insert", autospec=False),
-        ):
-            import asyncio
-
-            from voter_api.cli.seed_cmd import _seed_elections_from_api
-
-            asyncio.run(_seed_elections_from_api("https://example.com"))
+        mock_factory = _make_seeder_mock_factory([known_id])
+        _run_seed_elections(raw_records, mock_factory)
 
         # Record with known boundary_id should keep its value
         assert raw_records[0]["boundary_id"] == known_id
@@ -813,32 +793,8 @@ class TestElectionBoundaryResolution:
         ]
 
         # Session returns empty result (no boundaries exist)
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.__iter__ = MagicMock(return_value=iter([]))
-        mock_session.execute = AsyncMock(return_value=mock_result)
-        mock_session.commit = AsyncMock()
-
-        mock_factory = MagicMock()
-        mock_context = AsyncMock()
-        mock_context.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_context.__aexit__ = AsyncMock(return_value=None)
-        mock_factory.return_value = mock_context
-
-        with (
-            patch(
-                "voter_api.lib.data_loader.election_seeder.fetch_elections_from_api",
-                new_callable=AsyncMock,
-                return_value=raw_records,
-            ),
-            patch("voter_api.core.database.get_session_factory", return_value=mock_factory),
-            patch("sqlalchemy.dialects.postgresql.insert", autospec=False),
-        ):
-            import asyncio
-
-            from voter_api.cli.seed_cmd import _seed_elections_from_api
-
-            asyncio.run(_seed_elections_from_api("https://example.com"))
+        mock_factory = _make_seeder_mock_factory([])
+        _run_seed_elections(raw_records, mock_factory)
 
         assert raw_records[0]["boundary_id"] is None
 
@@ -868,27 +824,13 @@ class TestElectionBoundaryResolution:
 
         mock_session = AsyncMock()
         mock_session.commit = AsyncMock()
-
         mock_factory = MagicMock()
         mock_context = AsyncMock()
         mock_context.__aenter__ = AsyncMock(return_value=mock_session)
         mock_context.__aexit__ = AsyncMock(return_value=None)
         mock_factory.return_value = mock_context
 
-        with (
-            patch(
-                "voter_api.lib.data_loader.election_seeder.fetch_elections_from_api",
-                new_callable=AsyncMock,
-                return_value=raw_records,
-            ),
-            patch("voter_api.core.database.get_session_factory", return_value=mock_factory),
-            patch("sqlalchemy.dialects.postgresql.insert", autospec=False),
-        ):
-            import asyncio
-
-            from voter_api.cli.seed_cmd import _seed_elections_from_api
-
-            asyncio.run(_seed_elections_from_api("https://example.com"))
+        _run_seed_elections(raw_records, mock_factory)
 
         # No boundary query should be made (no candidate IDs to check) — only the upsert execute
         assert mock_session.execute.call_count == 1

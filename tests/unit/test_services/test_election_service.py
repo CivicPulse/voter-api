@@ -1154,6 +1154,19 @@ class TestTransposePrecinctResults:
 # --- Tests for get_election_precinct_results_geojson ---
 
 
+def _make_geojson_session(election, county_result, meta_results=None):
+    """Build a mock async session for get_election_precinct_results_geojson tests."""
+    session = AsyncMock()
+    election_query = MagicMock()
+    election_query.scalar_one_or_none.return_value = election
+    county_query = MagicMock()
+    county_query.scalars.return_value.all.return_value = [county_result]
+    meta_query = MagicMock()
+    meta_query.scalars.return_value.all.return_value = meta_results if meta_results is not None else []
+    session.execute = AsyncMock(side_effect=[election_query, county_query, meta_query])
+    return session
+
+
 class TestGetElectionPrecinctResultsGeoJSON:
     """Tests for get_election_precinct_results_geojson()."""
 
@@ -1252,16 +1265,7 @@ class TestGetElectionPrecinctResultsGeoJSON:
             },
         ]
 
-        session = AsyncMock()
-        election_query = MagicMock()
-        election_query.scalar_one_or_none.return_value = election
-        county_query = MagicMock()
-        county_query.scalars.return_value.all.return_value = [county_result]
-        # metadata query returns empty (no match)
-        meta_query = MagicMock()
-        meta_query.scalars.return_value.all.return_value = []
-
-        session.execute = AsyncMock(side_effect=[election_query, county_query, meta_query])
+        session = _make_geojson_session(election, county_result)
 
         result = await get_election_precinct_results_geojson(session, election.id)
         assert result is not None
@@ -1282,15 +1286,7 @@ class TestGetElectionPrecinctResultsGeoJSON:
             },
         ]
 
-        session = AsyncMock()
-        election_query = MagicMock()
-        election_query.scalar_one_or_none.return_value = election
-        county_query = MagicMock()
-        county_query.scalars.return_value.all.return_value = [county_result]
-        meta_query = MagicMock()
-        meta_query.scalars.return_value.all.return_value = []
-
-        session.execute = AsyncMock(side_effect=[election_query, county_query, meta_query])
+        session = _make_geojson_session(election, county_result)
 
         result = await get_election_precinct_results_geojson(session, election.id, county="Houston")
         assert result is not None
@@ -1313,15 +1309,7 @@ class TestGetElectionPrecinctResultsGeoJSON:
             },
         ]
 
-        session = AsyncMock()
-        election_query = MagicMock()
-        election_query.scalar_one_or_none.return_value = election
-        county_query = MagicMock()
-        county_query.scalars.return_value.all.return_value = [county_result]
-        meta_query = MagicMock()
-        meta_query.scalars.return_value.all.return_value = []
-
-        session.execute = AsyncMock(side_effect=[election_query, county_query, meta_query])
+        session = _make_geojson_session(election, county_result)
 
         with patch(
             "voter_api.services.precinct_metadata_service.get_precinct_metadata_by_county_multi_strategy",
