@@ -105,7 +105,7 @@ class TestBatchBoundaryCheck:
         mock_result = _make_response()
 
         with patch(
-            "voter_api.services.voter_service.check_batch_boundaries_for_voter",
+            "voter_api.api.v1.voters.check_batch_boundaries_for_voter",
             new_callable=AsyncMock,
             return_value=mock_result,
         ):
@@ -138,7 +138,7 @@ class TestBatchBoundaryCheck:
     async def test_voter_not_found_returns_404(self, admin_client) -> None:
         """When service returns None, the endpoint raises 404."""
         with patch(
-            "voter_api.services.voter_service.check_batch_boundaries_for_voter",
+            "voter_api.api.v1.voters.check_batch_boundaries_for_voter",
             new_callable=AsyncMock,
             return_value=None,
         ):
@@ -151,7 +151,7 @@ class TestBatchBoundaryCheck:
         mock_result = _make_response(total_locations=0, total_districts=2)
 
         with patch(
-            "voter_api.services.voter_service.check_batch_boundaries_for_voter",
+            "voter_api.api.v1.voters.check_batch_boundaries_for_voter",
             new_callable=AsyncMock,
             return_value=mock_result,
         ):
@@ -167,7 +167,7 @@ class TestBatchBoundaryCheck:
         mock_result = _make_response(total_locations=2, total_districts=0)
 
         with patch(
-            "voter_api.services.voter_service.check_batch_boundaries_for_voter",
+            "voter_api.api.v1.voters.check_batch_boundaries_for_voter",
             new_callable=AsyncMock,
             return_value=mock_result,
         ):

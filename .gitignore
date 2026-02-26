@@ -230,3 +230,6 @@ data/sos-feeds-research/
 
 # Claude Code MCP config (contains DB credentials)
 .mcp.json
+
+# One-shot seed scripts (may contain credentials)
+scripts/seed_*.py

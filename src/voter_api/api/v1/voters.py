@@ -32,6 +32,7 @@ from voter_api.services.geocoding_service import (
 from voter_api.services.voter_history_service import get_participation_summary
 from voter_api.services.voter_service import (
     build_voter_detail_dict,
+    check_batch_boundaries_for_voter,
     check_voter_districts,
     get_voter_detail,
     get_voter_filter_options,
@@ -300,6 +301,7 @@ async def clear_voter_official_location_override(
 
 @voters_router.post(
     "/{voter_id}/geocode/check-boundaries",
+    response_model=BatchBoundaryCheckResponse,
     dependencies=[Depends(require_role("admin"))],
     summary="Batch boundary check",
     description="Cross-join all geocoded locations for a voter against their registered district boundaries.",
@@ -322,8 +324,6 @@ async def check_voter_batch_boundaries(
     Raises:
         HTTPException: 404 if the voter is not found.
     """
-    from voter_api.services.voter_service import check_batch_boundaries_for_voter
-
     result = await check_batch_boundaries_for_voter(session, voter_id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=VOTER_NOT_FOUND)
