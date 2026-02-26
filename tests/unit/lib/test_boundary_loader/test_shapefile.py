@@ -321,7 +321,7 @@ class TestSerializeValue:
         assert isinstance(_serialize_value(np.int64(42)), int)
 
     def test_numpy_float(self) -> None:
-        assert _serialize_value(np.float64(3.14)) == 3.14
+        assert _serialize_value(np.float64(3.14)) == pytest.approx(3.14)
         assert isinstance(_serialize_value(np.float64(3.14)), float)
 
     def test_numpy_array(self) -> None:

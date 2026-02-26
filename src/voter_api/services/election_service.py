@@ -1212,6 +1212,6 @@ async def election_refresh_loop(
                     logger.info("Refreshed {} active election(s)", count)
         except asyncio.CancelledError:
             logger.info("Election refresh loop cancelled")
-            break
+            raise  # Re-raise so the task cancellation propagates
         except Exception:
             logger.exception("Election refresh loop error")

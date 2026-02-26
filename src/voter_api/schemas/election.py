@@ -97,7 +97,7 @@ class ElectionSummary(BaseModel):
     district: str
     status: ElectionStatus
     source: str
-    last_refreshed_at: datetime | None
+    last_refreshed_at: datetime | None = None
     precincts_reporting: int | None = None
     precincts_participating: int | None = None
     ballot_item_id: str | None = None
@@ -167,7 +167,7 @@ class ElectionResultsResponse(BaseModel):
     election_name: str
     election_date: date
     status: ElectionStatus
-    last_refreshed_at: datetime | None
+    last_refreshed_at: datetime | None = None
     precincts_participating: int | None = None
     precincts_reporting: int | None = None
     candidates: list[CandidateResult] = Field(default_factory=list)
@@ -190,7 +190,7 @@ class RawElectionResultsResponse(BaseModel):
     election_name: str
     election_date: date
     status: ElectionStatus
-    last_refreshed_at: datetime | None
+    last_refreshed_at: datetime | None = None
     source_created_at: datetime | None = None
     precincts_participating: int | None = None
     precincts_reporting: int | None = None
@@ -214,7 +214,7 @@ class ElectionResultFeatureCollection(BaseModel):
     election_name: str
     election_date: date
     status: ElectionStatus
-    last_refreshed_at: datetime | None
+    last_refreshed_at: datetime | None = None
     features: list[ElectionResultFeature] = Field(default_factory=list)
 
 
@@ -259,7 +259,7 @@ class PrecinctElectionResultFeatureCollection(BaseModel):
     election_name: str
     election_date: date
     status: ElectionStatus
-    last_refreshed_at: datetime | None
+    last_refreshed_at: datetime | None = None
     features: list[PrecinctElectionResultFeature] = Field(default_factory=list)
 
 

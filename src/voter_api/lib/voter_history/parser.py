@@ -230,7 +230,6 @@ def _process_chunk_vectorized(
         raw_type_upper = chunk["election_type"].fillna("").str.strip().str.upper()
         normalized_type = raw_type_upper.map(upper_type_map).fillna(DEFAULT_ELECTION_TYPE)
     else:
-        raw_type_upper = pd.Series("", index=chunk.index)
         normalized_type = pd.Series(DEFAULT_ELECTION_TYPE, index=chunk.index)
 
     # --- Registration number normalization (vectorized) ---

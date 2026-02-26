@@ -117,8 +117,8 @@ class TestVoterToDict:
     def test_with_official_location(self) -> None:
         voter = _mock_voter(official_latitude=33.749, official_longitude=-84.388)
         result = _voter_to_dict(voter)
-        assert result["latitude"] == 33.749
-        assert result["longitude"] == -84.388
+        assert result["latitude"] == pytest.approx(33.749)
+        assert result["longitude"] == pytest.approx(-84.388)
 
     def test_without_official_latitude_excluded(self) -> None:
         voter = _mock_voter(official_latitude=None, official_longitude=None)
@@ -318,5 +318,5 @@ class TestListExportJobs:
         select_result.scalars.return_value.all.return_value = [MagicMock()]
         session.execute.side_effect = [count_result, select_result]
 
-        jobs, total = await list_export_jobs(session, status_filter="completed")
+        _, total = await list_export_jobs(session, status_filter="completed")
         assert total == 1

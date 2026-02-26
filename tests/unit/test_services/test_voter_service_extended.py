@@ -56,7 +56,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = [voter]
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(session, voter_registration_number="12345678")
+        _, total = await search_voters(session, voter_registration_number="12345678")
         assert total == 1
 
     @pytest.mark.asyncio
@@ -69,7 +69,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(session, first_name="JOHN", last_name="SMITH")
+        _, total = await search_voters(session, first_name="JOHN", last_name="SMITH")
         assert total == 0
 
     @pytest.mark.asyncio
@@ -82,7 +82,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(session, county="FULTON")
+        _, total = await search_voters(session, county="FULTON")
         assert total == 0
 
     @pytest.mark.asyncio
@@ -95,7 +95,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(session, residence_city="ATLANTA", residence_zipcode="30301")
+        _, total = await search_voters(session, residence_city="ATLANTA", residence_zipcode="30301")
         assert total == 0
 
     @pytest.mark.asyncio
@@ -108,7 +108,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(session, status="ACTIVE")
+        _, total = await search_voters(session, status="ACTIVE")
         assert total == 0
 
     @pytest.mark.asyncio
@@ -121,7 +121,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(
+        _, total = await search_voters(
             session,
             congressional_district="05",
             state_senate_district="34",
@@ -140,7 +140,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(session, present_in_latest_import=True)
+        _, total = await search_voters(session, present_in_latest_import=True)
         assert total == 0
 
     @pytest.mark.asyncio
@@ -167,7 +167,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(
+        _, total = await search_voters(
             session,
             voter_registration_number="12345678",
             first_name="JOHN",
@@ -195,7 +195,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = [_mock_voter()]
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(session, q="Smith")
+        _, total = await search_voters(session, q="Smith")
         assert total == 1
 
         # Verify the count query actually contains ILIKE conditions for all 3 name fields
@@ -217,7 +217,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = [_mock_voter()]
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(session, q="John Smith")
+        _, total = await search_voters(session, q="John Smith")
         assert total == 1
 
         # Both tokens must appear in the query (AND across words, OR across fields)
@@ -239,7 +239,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = [_mock_voter()]
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(session, q="Smith", county="FULTON")
+        _, total = await search_voters(session, q="Smith", county="FULTON")
         assert total == 1
 
         # Verify both the ILIKE name filter and the county equality filter are present
@@ -260,7 +260,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = [_mock_voter(), _mock_voter()]
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(session, q="")
+        _, total = await search_voters(session, q="")
         assert total == 2
 
         # No ILIKE conditions should be generated for an empty q
@@ -279,7 +279,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = [_mock_voter(), _mock_voter()]
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(session, q="   ")
+        _, total = await search_voters(session, q="   ")
         assert total == 2
 
         # Whitespace-only input produces no tokens, so no ILIKE conditions
@@ -298,7 +298,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(session, q="100%")
+        _, total = await search_voters(session, q="100%")
         assert total == 0
 
         count_stmt = session.execute.call_args_list[0][0][0]
@@ -321,7 +321,7 @@ class TestSearchVoters:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        result_voters, total = await search_voters(session, q="_mith")
+        _, total = await search_voters(session, q="_mith")
         assert total == 0
 
         count_stmt = session.execute.call_args_list[0][0][0]

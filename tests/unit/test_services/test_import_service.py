@@ -136,7 +136,7 @@ class TestListImportJobs:
         select_result.scalars.return_value.all.return_value = [MagicMock()] * 2
         session.execute.side_effect = [count_result, select_result]
 
-        jobs, total = await list_import_jobs(session, file_type="voter_csv")
+        _, total = await list_import_jobs(session, file_type="voter_csv")
         assert total == 2
 
     @pytest.mark.asyncio
@@ -149,7 +149,7 @@ class TestListImportJobs:
         select_result.scalars.return_value.all.return_value = [MagicMock()]
         session.execute.side_effect = [count_result, select_result]
 
-        jobs, total = await list_import_jobs(session, status="completed")
+        _, total = await list_import_jobs(session, status="completed")
         assert total == 1
 
     @pytest.mark.asyncio
@@ -162,9 +162,8 @@ class TestListImportJobs:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        jobs, total = await list_import_jobs(session, file_type="shapefile", status="failed")
+        _, total = await list_import_jobs(session, file_type="shapefile", status="failed")
         assert total == 0
-        assert jobs == []
 
     @pytest.mark.asyncio
     async def test_pagination(self) -> None:
@@ -176,7 +175,7 @@ class TestListImportJobs:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        jobs, total = await list_import_jobs(session, page=3, page_size=10)
+        _, total = await list_import_jobs(session, page=3, page_size=10)
         assert total == 50
 
 

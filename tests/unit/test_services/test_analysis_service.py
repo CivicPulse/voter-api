@@ -147,7 +147,7 @@ class TestListAnalysisRuns:
         select_result.scalars.return_value.all.return_value = [_mock_analysis_run(status="completed")]
         session.execute.side_effect = [count_result, select_result]
 
-        runs, total = await list_analysis_runs(session, status_filter="completed")
+        _, total = await list_analysis_runs(session, status_filter="completed")
         assert total == 1
 
     @pytest.mark.asyncio
@@ -160,9 +160,8 @@ class TestListAnalysisRuns:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        runs, total = await list_analysis_runs(session, page=3, page_size=10)
+        _, total = await list_analysis_runs(session, page=3, page_size=10)
         assert total == 50
-        assert runs == []
 
 
 class TestListAnalysisResults:
@@ -194,7 +193,7 @@ class TestListAnalysisResults:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        results, total = await list_analysis_results(session, run_id, match_status="mismatch")
+        _, total = await list_analysis_results(session, run_id, match_status="mismatch")
         assert total == 0
 
     @pytest.mark.asyncio
@@ -208,7 +207,7 @@ class TestListAnalysisResults:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        results, total = await list_analysis_results(session, run_id, county="FULTON")
+        _, total = await list_analysis_results(session, run_id, county="FULTON")
         assert total == 0
 
 

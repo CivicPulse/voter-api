@@ -106,4 +106,4 @@ class TestPointLookupEndpoint:
 
         assert resp.status_code == 200
         data = resp.json()
-        assert data["accuracy"] == 50.0
+        assert data["accuracy"] == pytest.approx(50.0)

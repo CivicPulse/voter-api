@@ -102,9 +102,9 @@ class InviteResponse(BaseModel):
     id: UUID
     email: str
     role: str
-    invited_by_id: UUID | None
+    invited_by_id: UUID | None = None
     expires_at: datetime
-    accepted_at: datetime | None
+    accepted_at: datetime | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

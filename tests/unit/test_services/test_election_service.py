@@ -833,7 +833,7 @@ class TestListElections:
         select_result.scalars.return_value.all.return_value = [election]
         session.execute = AsyncMock(side_effect=[count_result, select_result])
 
-        items, total = await list_elections(session)
+        items, _ = await list_elections(session)
         assert items[0].precincts_reporting == 95
         assert items[0].precincts_participating == 100
 
@@ -920,7 +920,8 @@ class TestElectionRefreshLoop:
             mock_sleep.side_effect = [None, asyncio.CancelledError()]
 
             task = asyncio.create_task(election_refresh_loop(interval=60))
-            await task  # should complete due to CancelledError
+            with pytest.raises(asyncio.CancelledError):
+                await task  # CancelledError propagates since we re-raise it
 
     @pytest.mark.asyncio
     async def test_loop_recovers_from_errors(self):
@@ -954,7 +955,8 @@ class TestElectionRefreshLoop:
             mock_sleep.side_effect = [None, None, asyncio.CancelledError()]
 
             task = asyncio.create_task(election_refresh_loop(interval=10))
-            await task
+            with pytest.raises(asyncio.CancelledError):
+                await task  # CancelledError propagates since we re-raise it
 
         assert call_count == 2  # called twice before cancel
 

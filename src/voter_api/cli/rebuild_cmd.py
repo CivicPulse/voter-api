@@ -90,7 +90,7 @@ async def _drop_and_recreate_schema(database_url: str, schema: str | None) -> No
 
     # Validate schema name to prevent SQL injection — only allow
     # alphanumeric characters and underscores (valid PostgreSQL identifiers).
-    if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", schema_name):
+    if not re.fullmatch(r"[a-zA-Z_]\w*", schema_name, re.ASCII):
         msg = f"Invalid schema name: {schema_name!r}"
         raise ValueError(msg)
 

@@ -30,9 +30,9 @@ class TestCensusResponseParsing:
         }
         result = self.geocoder._parse_response(data)
         assert result is not None
-        assert result.latitude == 33.7490
-        assert result.longitude == -84.3880
-        assert result.confidence_score == 1.0
+        assert result.latitude == pytest.approx(33.7490)
+        assert result.longitude == pytest.approx(-84.3880)
+        assert result.confidence_score == pytest.approx(1.0)
         assert result.matched_address == "123 N MAIN ST, ATLANTA, GA, 30301"
         assert result.quality == GeocodeQuality.EXACT
 
@@ -91,7 +91,7 @@ class TestCensusResponseParsing:
         }
         result = self.geocoder._parse_response(data)
         assert result is not None
-        assert result.confidence_score == 0.8
+        assert result.confidence_score == pytest.approx(0.8)
         assert result.quality == GeocodeQuality.INTERPOLATED
 
 
@@ -178,8 +178,8 @@ class TestCensusGeocoderErrorDifferentiation:
             result = await geocoder.geocode("123 MAIN ST, ATLANTA, GA 30303")
 
         assert result is not None
-        assert result.latitude == 33.749
-        assert result.longitude == -84.388
+        assert result.latitude == pytest.approx(33.749)
+        assert result.longitude == pytest.approx(-84.388)
 
 
 class TestGetGeocoder:

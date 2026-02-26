@@ -100,7 +100,7 @@ class TestQueryAuditLogs:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        logs, total = await query_audit_logs(session, action="export")
+        _, total = await query_audit_logs(session, action="export")
         assert total == 0
 
     @pytest.mark.asyncio
@@ -113,7 +113,7 @@ class TestQueryAuditLogs:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        logs, total = await query_audit_logs(session, resource_type="voter")
+        _, total = await query_audit_logs(session, resource_type="voter")
         assert total == 0
 
     @pytest.mark.asyncio
@@ -128,7 +128,7 @@ class TestQueryAuditLogs:
 
         start = datetime(2024, 1, 1, tzinfo=UTC)
         end = datetime(2024, 12, 31, tzinfo=UTC)
-        logs, total = await query_audit_logs(session, start_time=start, end_time=end)
+        _, total = await query_audit_logs(session, start_time=start, end_time=end)
         assert total == 0
 
     @pytest.mark.asyncio
@@ -141,7 +141,7 @@ class TestQueryAuditLogs:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        logs, total = await query_audit_logs(session, page=3, page_size=10)
+        _, total = await query_audit_logs(session, page=3, page_size=10)
         assert total == 50
 
     @pytest.mark.asyncio
@@ -155,7 +155,7 @@ class TestQueryAuditLogs:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        logs, total = await query_audit_logs(
+        _, total = await query_audit_logs(
             session,
             user_id=user_id,
             action="view",
