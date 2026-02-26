@@ -60,7 +60,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     init_engine(settings.database_url, echo=False, schema=settings.database_schema)
 
     # Recover analysis runs orphaned by a previous server restart
-    await _recover_stale_analysis_runs()
+    try:
+        await _recover_stale_analysis_runs()
+    except Exception:
+        logger.warning("Could not recover stale analysis runs on startup (table may not exist yet)")
 
     # Start election auto-refresh background task
     refresh_task = None

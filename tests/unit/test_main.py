@@ -126,3 +126,36 @@ class TestAppLifespan:
                 mock_recover.assert_awaited_once()
 
             mock_dispose.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_lifespan_continues_when_recovery_fails(self) -> None:
+        """Lifespan proceeds normally even if stale-run recovery raises."""
+        from voter_api.core.config import Settings
+        from voter_api.main import lifespan
+
+        mock_app = AsyncMock()
+
+        with (
+            patch("voter_api.main.get_settings") as mock_get_settings,
+            patch("voter_api.main.setup_logging"),
+            patch("voter_api.main.init_engine"),
+            patch("voter_api.main.dispose_engine", new_callable=AsyncMock) as mock_dispose,
+            patch(
+                "voter_api.main._recover_stale_analysis_runs",
+                new_callable=AsyncMock,
+                side_effect=Exception("relation does not exist"),
+            ),
+            patch("voter_api.main.logger") as mock_logger,
+        ):
+            mock_get_settings.return_value = Settings(
+                database_url="sqlite+aiosqlite:///:memory:",
+                jwt_secret_key="test-secret-key-not-for-production",
+            )
+
+            async with lifespan(mock_app):
+                pass  # App should start successfully
+
+            mock_dispose.assert_awaited_once()
+            mock_logger.warning.assert_called_once_with(
+                "Could not recover stale analysis runs on startup (table may not exist yet)"
+            )
