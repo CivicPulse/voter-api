@@ -180,6 +180,21 @@ class ProvidersListResponse(BaseModel):
     fallback_order: list[str]
 
 
+class CancelJobResponse(BaseModel):
+    """Response schema for cancel/fail job endpoints."""
+
+    id: uuid.UUID
+    status: str
+    completed_at: datetime
+    message: str
+
+
+class MarkFailedRequest(BaseModel):
+    """Request body for marking a geocoding job as failed."""
+
+    reason: str | None = Field(default=None, max_length=1000)
+
+
 class DistrictInfo(BaseModel):
     """A boundary district containing a queried point."""
 

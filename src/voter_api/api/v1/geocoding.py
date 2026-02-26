@@ -19,9 +19,11 @@ from voter_api.schemas.geocoding import (
     AddressVerifyResponse,
     BatchGeocodingRequest,
     CacheStatsResponse,
+    CancelJobResponse,
     DistrictInfo,
     GeocodedLocationResponse,
     GeocodingJobResponse,
+    MarkFailedRequest,
     PaginatedGeocodingJobResponse,
     PointLookupResponse,
     ProviderGeocodeResult,
@@ -31,12 +33,14 @@ from voter_api.schemas.geocoding import (
 )
 from voter_api.services.boundary_service import find_boundaries_at_point
 from voter_api.services.geocoding_service import (
+    cancel_geocoding_job,
     create_geocoding_job,
     geocode_single_address,
     geocode_voter_all_providers,
     get_cache_stats,
     get_geocoding_job,
     list_geocoding_jobs,
+    mark_geocoding_job_failed,
     process_geocoding_job,
     verify_address,
 )
@@ -326,6 +330,83 @@ async def list_jobs(
             page_size=pagination.page_size,
             total_pages=(total + pagination.page_size - 1) // pagination.page_size,
         ),
+    )
+
+
+@geocoding_router.patch(
+    "/jobs/{job_id}/cancel",
+    response_model=CancelJobResponse,
+    dependencies=[Depends(require_role("admin"))],
+)
+async def cancel_job(
+    job_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),  # noqa: B008
+) -> CancelJobResponse:
+    """Cancel a running or pending geocoding job (admin only).
+
+    Sets the job status to "cancelled" and records a completion timestamp.
+    Returns 409 if the job is already in a terminal state.
+    """
+    try:
+        job = await cancel_geocoding_job(session, job_id)
+    except ValueError as e:
+        err = str(e)
+        if err == "not_found":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Geocoding job not found",
+            ) from e
+        # terminal:<status>
+        terminal_status = err.split(":", 1)[1] if ":" in err else "unknown"
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Job is already in terminal state '{terminal_status}' and cannot be cancelled",
+        ) from e
+
+    return CancelJobResponse(
+        id=job.id,
+        status=job.status,
+        completed_at=job.completed_at,
+        message="Job cancelled successfully",
+    )
+
+
+@geocoding_router.patch(
+    "/jobs/{job_id}/fail",
+    response_model=CancelJobResponse,
+    dependencies=[Depends(require_role("admin"))],
+)
+async def mark_job_failed(
+    job_id: uuid.UUID,
+    body: MarkFailedRequest | None = None,
+    session: AsyncSession = Depends(get_async_session),  # noqa: B008
+) -> CancelJobResponse:
+    """Mark a running or pending geocoding job as failed (admin only).
+
+    Optionally accepts a reason that is appended to the job's error log.
+    Returns 409 if the job is already in a terminal state.
+    """
+    reason = body.reason if body else None
+    try:
+        job = await mark_geocoding_job_failed(session, job_id, reason=reason)
+    except ValueError as e:
+        err = str(e)
+        if err == "not_found":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Geocoding job not found",
+            ) from e
+        terminal_status = err.split(":", 1)[1] if ":" in err else "unknown"
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Job is already in terminal state '{terminal_status}' and cannot be marked as failed",
+        ) from e
+
+    return CancelJobResponse(
+        id=job.id,
+        status=job.status,
+        completed_at=job.completed_at,
+        message="Job marked as failed",
     )
 
 

@@ -47,6 +47,9 @@ from voter_api.services.address_service import prefix_search, upsert_from_geocod
 MAX_RETRIES = 3
 RETRY_BASE_DELAY = 60.0  # seconds
 
+# Terminal job statuses — no further transitions allowed
+TERMINAL_STATUSES: frozenset[str] = frozenset({"completed", "failed", "cancelled"})
+
 # Provider name and timeout for single-address endpoint
 _SINGLE_PROVIDER = "census"
 _SINGLE_TIMEOUT = 2.0  # 2s per attempt, max 2 attempts per FR-009
@@ -492,6 +495,23 @@ async def process_geocoding_job(
         next_log_pct = 10  # Log progress every 10%
 
         while offset < total:
+            # Cooperative cancellation: re-read job status to detect external cancel/fail
+            status_result = await session.execute(select(GeocodingJob.status).where(GeocodingJob.id == job.id))
+            current_status = status_result.scalar_one()
+            if current_status in TERMINAL_STATUSES:
+                logger.warning(
+                    "Geocoding job {} externally set to '{}' — stopping processing",
+                    job.id,
+                    current_status,
+                )
+                job.processed = processed
+                job.succeeded = succeeded
+                job.failed = failed_count
+                job.cache_hits = cache_hits
+                job.status = current_status
+                await session.commit()
+                return job
+
             batch_query = query.limit(batch_size)
             if last_voter_id is not None:
                 batch_query = batch_query.where(Voter.id > last_voter_id)
@@ -1059,6 +1079,108 @@ async def clear_official_location_override(
     await session.commit()
     await session.refresh(voter)
     return voter
+
+
+async def cancel_geocoding_job(
+    session: AsyncSession,
+    job_id: uuid.UUID,
+) -> GeocodingJob:
+    """Cancel a running or pending geocoding job.
+
+    Uses an atomic UPDATE with a WHERE clause that excludes terminal statuses
+    to prevent race conditions from concurrent cancel requests.
+
+    Args:
+        session: Database session.
+        job_id: The geocoding job UUID.
+
+    Returns:
+        The updated GeocodingJob.
+
+    Raises:
+        ValueError: If the job is not found (key: "not_found") or already
+            in a terminal state (key: "terminal").
+    """
+    result = await session.execute(
+        update(GeocodingJob)
+        .where(GeocodingJob.id == job_id, GeocodingJob.status.not_in(TERMINAL_STATUSES))
+        .values(status="cancelled", completed_at=datetime.now(UTC))
+        .returning(GeocodingJob)
+    )
+    job = result.scalar_one_or_none()
+
+    if job is not None:
+        await session.commit()
+        return job
+
+    # Distinguish 404 (not found) from 409 (already terminal)
+    existing = await session.execute(select(GeocodingJob).where(GeocodingJob.id == job_id))
+    existing_job = existing.scalar_one_or_none()
+    if existing_job is None:
+        msg = "not_found"
+        raise ValueError(msg)
+    msg = f"terminal:{existing_job.status}"
+    raise ValueError(msg)
+
+
+async def mark_geocoding_job_failed(
+    session: AsyncSession,
+    job_id: uuid.UUID,
+    reason: str | None = None,
+) -> GeocodingJob:
+    """Mark a running or pending geocoding job as failed.
+
+    Uses an atomic UPDATE with a WHERE clause that excludes terminal statuses
+    to prevent race conditions. Optionally appends a reason to the JSONB
+    error_log array.
+
+    Args:
+        session: Database session.
+        job_id: The geocoding job UUID.
+        reason: Optional reason for marking the job as failed.
+
+    Returns:
+        The updated GeocodingJob.
+
+    Raises:
+        ValueError: If the job is not found (key: "not_found") or already
+            in a terminal state (key: "terminal").
+    """
+    from sqlalchemy.dialects.postgresql import JSONB as JSONB_TYPE
+
+    values: dict = {
+        "status": "failed",
+        "completed_at": datetime.now(UTC),
+    }
+
+    if reason:
+        from sqlalchemy import type_coerce
+
+        reason_entry = [{"error": reason}]
+        values["error_log"] = func.coalesce(GeocodingJob.error_log, type_coerce([], JSONB_TYPE)) + type_coerce(
+            reason_entry, JSONB_TYPE
+        )
+
+    result = await session.execute(
+        update(GeocodingJob)
+        .where(GeocodingJob.id == job_id, GeocodingJob.status.not_in(TERMINAL_STATUSES))
+        .values(**values)
+        .returning(GeocodingJob)
+    )
+    job = result.scalar_one_or_none()
+
+    if job is not None:
+        await session.commit()
+        return job
+
+    # Distinguish 404 (not found) from 409 (already terminal)
+    existing = await session.execute(select(GeocodingJob).where(GeocodingJob.id == job_id))
+    existing_job = existing.scalar_one_or_none()
+    if existing_job is None:
+        msg = "not_found"
+        raise ValueError(msg)
+    msg = f"terminal:{existing_job.status}"
+    raise ValueError(msg)
 
 
 async def get_cache_stats(session: AsyncSession) -> list[CacheProviderStats]:

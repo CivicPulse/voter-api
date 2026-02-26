@@ -338,3 +338,162 @@ class TestCacheStatsEndpoint:
             resp = await viewer_client.get("/api/v1/geocoding/cache/stats")
 
         assert resp.status_code == 200
+
+
+class TestCancelJobEndpoint:
+    """Tests for PATCH /api/v1/geocoding/jobs/{job_id}/cancel (admin-only)."""
+
+    async def test_cancel_running_job_returns_200(self, admin_client) -> None:
+        """Cancelling a running job returns 200 with cancelled status and message."""
+        job_id = uuid.uuid4()
+        mock_job = _make_geocoding_job(job_id=job_id, status="cancelled")
+        mock_job.completed_at = datetime.now(UTC)
+
+        with patch(
+            "voter_api.api.v1.geocoding.cancel_geocoding_job",
+            new_callable=AsyncMock,
+            return_value=mock_job,
+        ):
+            resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/cancel")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["id"] == str(job_id)
+        assert data["status"] == "cancelled"
+        assert data["completed_at"] is not None
+        assert "message" in data
+        assert data["message"] == "Job cancelled successfully"
+
+    async def test_cancel_pending_job_returns_200(self, admin_client) -> None:
+        """Cancelling a pending job returns 200 with cancelled status."""
+        job_id = uuid.uuid4()
+        mock_job = _make_geocoding_job(job_id=job_id, status="cancelled")
+        mock_job.completed_at = datetime.now(UTC)
+
+        with patch(
+            "voter_api.api.v1.geocoding.cancel_geocoding_job",
+            new_callable=AsyncMock,
+            return_value=mock_job,
+        ):
+            resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/cancel")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "cancelled"
+
+    async def test_cancel_completed_job_returns_409(self, admin_client) -> None:
+        """Cancelling a completed job returns 409 conflict."""
+        job_id = uuid.uuid4()
+        with patch(
+            "voter_api.api.v1.geocoding.cancel_geocoding_job",
+            new_callable=AsyncMock,
+            side_effect=ValueError("terminal:completed"),
+        ):
+            resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/cancel")
+
+        assert resp.status_code == 409
+        assert "completed" in resp.json()["detail"].lower()
+
+    async def test_cancel_failed_job_returns_409(self, admin_client) -> None:
+        """Cancelling a failed job returns 409 conflict."""
+        job_id = uuid.uuid4()
+        with patch(
+            "voter_api.api.v1.geocoding.cancel_geocoding_job",
+            new_callable=AsyncMock,
+            side_effect=ValueError("terminal:failed"),
+        ):
+            resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/cancel")
+
+        assert resp.status_code == 409
+        assert "failed" in resp.json()["detail"].lower()
+
+    async def test_viewer_cannot_cancel_returns_403(self, viewer_client) -> None:
+        """Viewer role cannot cancel a job (admin-only endpoint returns 403)."""
+        resp = await viewer_client.patch(f"/api/v1/geocoding/jobs/{uuid.uuid4()}/cancel")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_cancel_returns_401(self, client) -> None:
+        """Unauthenticated request to cancel returns 401."""
+        resp = await client.patch(f"/api/v1/geocoding/jobs/{uuid.uuid4()}/cancel")
+        assert resp.status_code == 401
+
+    async def test_cancel_unknown_job_returns_404(self, admin_client) -> None:
+        """Cancelling a non-existent job returns 404."""
+        job_id = uuid.uuid4()
+        with patch(
+            "voter_api.api.v1.geocoding.cancel_geocoding_job",
+            new_callable=AsyncMock,
+            side_effect=ValueError("not_found"),
+        ):
+            resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/cancel")
+
+        assert resp.status_code == 404
+        assert "not found" in resp.json()["detail"].lower()
+
+
+class TestMarkJobFailedEndpoint:
+    """Tests for PATCH /api/v1/geocoding/jobs/{job_id}/fail (admin-only)."""
+
+    async def test_mark_running_job_failed_with_reason_returns_200(self, admin_client) -> None:
+        """Marking a running job as failed with a reason returns 200."""
+        job_id = uuid.uuid4()
+        mock_job = _make_geocoding_job(job_id=job_id, status="failed")
+        mock_job.completed_at = datetime.now(UTC)
+
+        with patch(
+            "voter_api.api.v1.geocoding.mark_geocoding_job_failed",
+            new_callable=AsyncMock,
+            return_value=mock_job,
+        ):
+            resp = await admin_client.patch(
+                f"/api/v1/geocoding/jobs/{job_id}/fail",
+                json={"reason": "Bad data"},
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["id"] == str(job_id)
+        assert data["status"] == "failed"
+        assert data["completed_at"] is not None
+        assert data["message"] == "Job marked as failed"
+
+    async def test_mark_pending_job_failed_without_reason_returns_200(self, admin_client) -> None:
+        """Marking a pending job as failed without a reason body returns 200."""
+        job_id = uuid.uuid4()
+        mock_job = _make_geocoding_job(job_id=job_id, status="failed")
+        mock_job.completed_at = datetime.now(UTC)
+
+        with patch(
+            "voter_api.api.v1.geocoding.mark_geocoding_job_failed",
+            new_callable=AsyncMock,
+            return_value=mock_job,
+        ):
+            resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/fail")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "failed"
+        assert data["message"] == "Job marked as failed"
+
+    async def test_mark_completed_job_failed_returns_409(self, admin_client) -> None:
+        """Marking a completed job as failed returns 409 conflict."""
+        job_id = uuid.uuid4()
+        with patch(
+            "voter_api.api.v1.geocoding.mark_geocoding_job_failed",
+            new_callable=AsyncMock,
+            side_effect=ValueError("terminal:completed"),
+        ):
+            resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/fail")
+
+        assert resp.status_code == 409
+        assert "completed" in resp.json()["detail"].lower()
+
+    async def test_viewer_cannot_mark_failed_returns_403(self, viewer_client) -> None:
+        """Viewer role cannot mark a job as failed (admin-only endpoint returns 403)."""
+        resp = await viewer_client.patch(f"/api/v1/geocoding/jobs/{uuid.uuid4()}/fail")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_mark_failed_returns_401(self, client) -> None:
+        """Unauthenticated request to mark failed returns 401."""
+        resp = await client.patch(f"/api/v1/geocoding/jobs/{uuid.uuid4()}/fail")
+        assert resp.status_code == 401

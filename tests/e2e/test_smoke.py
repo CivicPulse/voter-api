@@ -1173,6 +1173,29 @@ class TestGeocoding:
         resp = await admin_client.post(_url(f"/geocoding/voter/{uuid.uuid4()}/geocode-all"))
         assert resp.status_code == 404
 
+    async def test_cancel_job_requires_admin(self, viewer_client: httpx.AsyncClient) -> None:
+        """Cancel job endpoint requires admin role — viewer gets 403."""
+        resp = await viewer_client.patch(_url(f"/geocoding/jobs/{uuid.uuid4()}/cancel"))
+        assert resp.status_code == 403
+
+    async def test_cancel_nonexistent_job(self, admin_client: httpx.AsyncClient) -> None:
+        """Cancel job returns 404 for a nonexistent job ID."""
+        resp = await admin_client.patch(_url(f"/geocoding/jobs/{uuid.uuid4()}/cancel"))
+        assert resp.status_code == 404
+
+    async def test_fail_job_requires_admin(self, viewer_client: httpx.AsyncClient) -> None:
+        """Fail job endpoint requires admin role — viewer gets 403."""
+        resp = await viewer_client.patch(_url(f"/geocoding/jobs/{uuid.uuid4()}/fail"))
+        assert resp.status_code == 403
+
+    async def test_fail_nonexistent_job(self, admin_client: httpx.AsyncClient) -> None:
+        """Fail job returns 404 for a nonexistent job ID."""
+        resp = await admin_client.patch(
+            _url(f"/geocoding/jobs/{uuid.uuid4()}/fail"),
+            json={"reason": "test failure reason"},
+        )
+        assert resp.status_code == 404
+
 
 # ── Imports ────────────────────────────────────────────────────────────────
 
