@@ -655,6 +655,7 @@ class TestElections:
             "election_date": "2025-06-15",
             "election_type": "runoff",
             "district": "Statewide",
+            "source": "sos_feed",
             "data_source_url": "https://results.enr.clarityelections.com/GA/temp/json",
             "refresh_interval_seconds": 120,
         }
@@ -671,7 +672,7 @@ class TestElections:
             assert detail_resp.status_code == 200
             assert detail_resp.json()["name"] == payload["name"]
         finally:
-            # Cleanup: no DELETE /elections endpoint, so remove via DB directly.
+            # Cleanup: soft-delete via API endpoint, then hard-delete from DB.
             # Runs even if assertions fail to keep the DB idempotent.
             if election_id is not None:
                 await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))
@@ -686,6 +687,7 @@ class TestElections:
             "election_date": "2025-06-15",
             "election_type": "special",
             "district": "US House of Representatives - District 99",
+            "source": "sos_feed",
             "data_source_url": "https://results.enr.clarityelections.com/GA/autoparse/json",
             "refresh_interval_seconds": 120,
         }
@@ -802,6 +804,65 @@ class TestCandidates:
             json={"full_name": "Forbidden Candidate"},
         )
         assert resp.status_code == 403
+
+    async def test_election_soft_delete_admin(self, admin_client: httpx.AsyncClient, db_session: AsyncSession) -> None:
+        """Admin soft-deletes an election; subsequent GET returns 404."""
+        # Create a temporary election to delete
+        payload = {
+            "name": f"E2E Soft-Delete {uuid.uuid4().hex[:8]}",
+            "election_date": "2025-08-01",
+            "election_type": "special",
+            "district": "Statewide",
+            "source": "sos_feed",
+            "data_source_url": "https://results.enr.clarityelections.com/GA/softdelete/json",
+            "refresh_interval_seconds": 120,
+        }
+        create_resp = await admin_client.post(_url("/elections"), json=payload)
+        assert create_resp.status_code == 201
+        election_id = create_resp.json()["id"]
+
+        try:
+            # Soft-delete
+            del_resp = await admin_client.delete(_url(f"/elections/{election_id}"))
+            assert del_resp.status_code == 204
+
+            # Deleted election should return 404
+            get_resp = await admin_client.get(_url(f"/elections/{election_id}"))
+            assert get_resp.status_code == 404
+        finally:
+            # Hard-delete from DB to fully clean up
+            await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))
+            await db_session.commit()
+
+    async def test_election_source_filter(self, client: httpx.AsyncClient) -> None:
+        """GET /elections?source=sos_feed returns seeded sos_feed elections."""
+        resp = await client.get(_url("/elections"), params={"source": "sos_feed"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert all(item["source"] == "sos_feed" for item in data["items"])
+
+    async def test_election_create_manual(self, admin_client: httpx.AsyncClient, db_session: AsyncSession) -> None:
+        """Admin creates a manual election with boundary_id; response has source='manual'."""
+        payload = {
+            "name": f"E2E Manual Election {uuid.uuid4().hex[:8]}",
+            "election_date": "2026-03-01",
+            "election_type": "special",
+            "district": "Commission District 5",
+            "source": "manual",
+            "boundary_id": str(BOUNDARY_ID),
+        }
+        create_resp = await admin_client.post(_url("/elections"), json=payload)
+        election_id: str | None = create_resp.json().get("id") if create_resp.status_code == 201 else None
+        try:
+            assert create_resp.status_code == 201
+            body = create_resp.json()
+            assert body["source"] == "manual"
+            assert body["data_source_url"] is None
+            assert body["boundary_id"] == str(BOUNDARY_ID)
+        finally:
+            if election_id is not None:
+                await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))
+                await db_session.commit()
 
 
 # ── Elected Officials ─────────────────────────────────────────────────────

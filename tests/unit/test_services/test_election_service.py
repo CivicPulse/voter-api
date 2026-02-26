@@ -55,6 +55,7 @@ def _mock_election(**overrides: object) -> MagicMock:
     election.district = "State Senate - District 18"
     election.status = "active"
     election.data_source_url = "https://results.enr.clarityelections.com/feed.json"
+    election.source = "sos_feed"
     election.refresh_interval_seconds = 120
     election.ballot_item_id = None
     election.last_refreshed_at = None
@@ -244,6 +245,7 @@ class TestCreateElection:
             election_date=date(2026, 2, 17),
             election_type="special",
             district="State Senate - District 18",
+            source="sos_feed",
             data_source_url="https://results.enr.clarityelections.com/feed.json",
             refresh_interval_seconds=120,
         )
@@ -265,6 +267,7 @@ class TestCreateElection:
             election_date=date(2026, 2, 17),
             election_type="special",
             district="State Senate - District 18",
+            source="sos_feed",
             data_source_url="https://results.enr.clarityelections.com/feed.json",
         )
 
@@ -286,6 +289,7 @@ class TestCreateElection:
             election_date=date(2026, 2, 17),
             election_type="special",
             district="PSC - District 2",
+            source="sos_feed",
             data_source_url="https://results.sos.ga.gov/feed.json",
             ballot_item_id="S10",
         )
@@ -306,6 +310,7 @@ class TestCreateElection:
             election_date=date(2026, 2, 17),
             election_type="special",
             district="PSC - District 2",
+            source="sos_feed",
             data_source_url="https://results.sos.ga.gov/feed.json",
             ballot_item_id="S10",
         )
@@ -328,6 +333,7 @@ class TestCreateElection:
             election_date=date(2025, 1, 1),
             election_type="special",
             district="State Senate - District 18",
+            source="sos_feed",
             data_source_url="https://results.sos.ga.gov/feed.json",
             status="finalized",
         )

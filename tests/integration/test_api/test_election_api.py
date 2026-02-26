@@ -27,6 +27,7 @@ def _make_election(**overrides) -> Election:
         "refresh_interval_seconds": 120,
         "created_at": datetime(2026, 2, 14, 10, 0, 0, tzinfo=UTC),
         "updated_at": datetime(2026, 2, 14, 10, 0, 0, tzinfo=UTC),
+        "source": "sos_feed",
         "ballot_item_id": None,
         "boundary_id": None,
         "district_type": None,
@@ -401,6 +402,7 @@ class TestCreateElection:
                     "election_date": "2026-02-17",
                     "election_type": "special",
                     "district": "State Senate - District 18",
+                    "source": "sos_feed",
                     "data_source_url": "https://example.com/feed.json",
                 },
             )
@@ -422,6 +424,7 @@ class TestCreateElection:
                     "election_date": "2026-02-17",
                     "election_type": "special",
                     "district": "State Senate - District 18",
+                    "source": "sos_feed",
                     "data_source_url": "https://example.com/feed.json",
                 },
             )
@@ -526,6 +529,7 @@ class TestListElections:
                 election_type="special",
                 district="District 18",
                 status="active",
+                source="sos_feed",
                 last_refreshed_at=None,
             ),
         ]
