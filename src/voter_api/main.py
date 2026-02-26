@@ -11,11 +11,45 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from loguru import logger
 
 from voter_api import __version__
 from voter_api.core.config import get_settings
-from voter_api.core.database import dispose_engine, init_engine
+from voter_api.core.database import dispose_engine, get_session_factory, init_engine
 from voter_api.core.logging import setup_logging
+
+
+async def _recover_stale_analysis_runs() -> None:
+    """Mark any 'running' or 'pending' analysis runs as 'failed' on startup.
+
+    In-process background tasks don't survive server restarts, so any runs
+    still in these statuses at boot time are orphaned.
+    """
+    from sqlalchemy import case, func, update
+
+    from voter_api.models.analysis_run import AnalysisRun
+
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            update(AnalysisRun)
+            .where(AnalysisRun.status.in_(["running", "pending"]))
+            .values(
+                status="failed",
+                notes=case(
+                    (
+                        AnalysisRun.notes.isnot(None),
+                        AnalysisRun.notes + "; Server restarted while task was in progress",
+                    ),
+                    else_="Server restarted while task was in progress",
+                ),
+                completed_at=func.now(),
+            )
+        )
+        await session.commit()
+        row_count = result.rowcount  # type: ignore[attr-defined]
+        if row_count is not None and row_count > 0:
+            logger.warning("Recovered {} stale analysis run(s) on startup", row_count)
 
 
 @asynccontextmanager
@@ -24,6 +58,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     settings = get_settings()
     setup_logging(settings.log_level, log_dir=settings.log_dir)
     init_engine(settings.database_url, echo=False, schema=settings.database_schema)
+
+    # Recover analysis runs orphaned by a previous server restart
+    try:
+        await _recover_stale_analysis_runs()
+    except Exception:
+        logger.warning("Could not recover stale analysis runs on startup (table may not exist yet)")
 
     # Start election auto-refresh background task
     refresh_task = None
