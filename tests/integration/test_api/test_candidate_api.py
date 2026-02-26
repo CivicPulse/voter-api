@@ -152,19 +152,19 @@ def viewer_app(mock_session, mock_viewer_user) -> FastAPI:
 
 @pytest.fixture
 async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="https://test") as c:
         yield c
 
 
 @pytest.fixture
 async def admin_client(admin_app: FastAPI) -> AsyncGenerator[AsyncClient]:
-    async with AsyncClient(transport=ASGITransport(app=admin_app), base_url="http://test") as c:
+    async with AsyncClient(transport=ASGITransport(app=admin_app), base_url="https://test") as c:
         yield c
 
 
 @pytest.fixture
 async def viewer_client(viewer_app: FastAPI) -> AsyncGenerator[AsyncClient]:
-    async with AsyncClient(transport=ASGITransport(app=viewer_app), base_url="http://test") as c:
+    async with AsyncClient(transport=ASGITransport(app=viewer_app), base_url="https://test") as c:
         yield c
 
 
