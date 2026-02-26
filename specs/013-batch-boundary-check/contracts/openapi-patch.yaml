@@ -1,0 +1,209 @@
+openapi: "3.1.0"
+info:
+  title: voter-api — 013-batch-boundary-check patch
+  description: |
+    New endpoint and security fix from feature branch 013-batch-boundary-check.
+    This is an additive patch to the base OpenAPI spec.
+  version: "0.13.0"
+
+paths:
+  /api/v1/voters/{voter_id}/geocode/check-boundaries:
+    post:
+      summary: Batch boundary check for all geocoded locations
+      description: |
+        Checks every geocoded location on file for the specified voter against
+        all of the voter's registered district boundaries, returning the
+        inside/outside result for every provider × district combination in a
+        single response.
+
+        Requires administrator role.
+      operationId: check_voter_batch_boundaries
+      tags:
+        - voters
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: voter_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the voter to check.
+      responses:
+        "200":
+          description: Boundary check results for all providers and districts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchBoundaryCheckResponse"
+              example:
+                voter_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                districts:
+                  - boundary_id: "d1e2f3a4-b5c6-7890-abcd-ef1234567890"
+                    boundary_type: "congressional"
+                    boundary_identifier: "7"
+                    has_geometry: true
+                    providers:
+                      - source_type: "census"
+                        is_contained: true
+                      - source_type: "nominatim"
+                        is_contained: false
+                  - boundary_id: null
+                    boundary_type: "state_senate"
+                    boundary_identifier: "42"
+                    has_geometry: false
+                    providers: []
+                provider_summary:
+                  - source_type: "census"
+                    latitude: 33.748
+                    longitude: -84.387
+                    confidence_score: 0.95
+                    districts_matched: 3
+                    districts_checked: 4
+                  - source_type: "nominatim"
+                    latitude: 33.751
+                    longitude: -84.391
+                    confidence_score: 0.72
+                    districts_matched: 2
+                    districts_checked: 4
+                total_locations: 2
+                total_districts: 5
+                checked_at: "2026-02-26T12:00:00Z"
+        "401":
+          description: Missing or invalid authentication token.
+        "403":
+          description: Authenticated user does not have the administrator role.
+        "404":
+          description: Voter not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPError"
+              example:
+                detail: "Voter not found"
+
+components:
+  schemas:
+    ProviderResult:
+      type: object
+      required: [source_type, is_contained]
+      properties:
+        source_type:
+          type: string
+          description: Geocoding provider name (e.g., "census", "nominatim", "google", "manual").
+          example: "census"
+        is_contained:
+          type: boolean
+          description: True if the provider's geocoded point falls inside this district boundary.
+          example: true
+
+    DistrictBoundaryResult:
+      type: object
+      required: [boundary_id, boundary_type, boundary_identifier, has_geometry, providers]
+      properties:
+        boundary_id:
+          type: [string, "null"]
+          format: uuid
+          description: UUID of the boundary record. Null if no boundary geometry is loaded for this district.
+          example: "d1e2f3a4-b5c6-7890-abcd-ef1234567890"
+        boundary_type:
+          type: string
+          description: District type (e.g., "congressional", "state_senate", "county_precinct").
+          example: "congressional"
+        boundary_identifier:
+          type: string
+          description: District identifier as registered for the voter.
+          example: "7"
+        has_geometry:
+          type: boolean
+          description: False if no boundary polygon is loaded in the system for this district (per FR-008).
+          example: true
+        providers:
+          type: array
+          description: Per-provider containment results. Empty when has_geometry is false.
+          items:
+            $ref: "#/components/schemas/ProviderResult"
+
+    ProviderSummary:
+      type: object
+      required: [source_type, latitude, longitude, districts_matched, districts_checked]
+      properties:
+        source_type:
+          type: string
+          description: Geocoding provider name.
+          example: "census"
+        latitude:
+          type: number
+          format: double
+          example: 33.748
+        longitude:
+          type: number
+          format: double
+          example: -84.387
+        confidence_score:
+          type: [number, "null"]
+          format: double
+          description: Geocoding confidence (0–1), or null if not available from provider.
+          example: 0.95
+        districts_matched:
+          type: integer
+          description: Count of districts where this provider's point fell inside the boundary.
+          example: 3
+        districts_checked:
+          type: integer
+          description: Count of districts with geometry available that were checked.
+          example: 4
+
+    BatchBoundaryCheckResponse:
+      type: object
+      required:
+        - voter_id
+        - districts
+        - provider_summary
+        - total_locations
+        - total_districts
+        - checked_at
+      properties:
+        voter_id:
+          type: string
+          format: uuid
+          description: The voter whose locations and districts were compared.
+        districts:
+          type: array
+          description: |
+            One entry per registered district. Grouped by district (FR-007).
+            Districts with no loaded geometry are included with has_geometry=false.
+          items:
+            $ref: "#/components/schemas/DistrictBoundaryResult"
+        provider_summary:
+          type: array
+          description: Per-provider summary showing how many districts each provider matched (FR-012).
+          items:
+            $ref: "#/components/schemas/ProviderSummary"
+        total_locations:
+          type: integer
+          description: Total geocoded locations found for this voter (0 if none).
+          example: 2
+        total_districts:
+          type: integer
+          description: Total registered district assignments for this voter.
+          example: 5
+        checked_at:
+          type: string
+          format: date-time
+          description: Timestamp when the check was performed (UTC).
+          example: "2026-02-26T12:00:00Z"
+
+    HTTPError:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
