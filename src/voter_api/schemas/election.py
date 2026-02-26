@@ -49,6 +49,16 @@ class ElectionUpdateRequest(BaseModel):
         max_length=50,
         description="SoS ballot item ID for multi-race feeds.",
     )
+    # Election metadata enrichment fields (010-election-info)
+    description: str | None = None
+    purpose: str | None = None
+    eligibility_description: str | None = None
+    registration_deadline: date | None = None
+    early_voting_start: date | None = None
+    early_voting_end: date | None = None
+    absentee_request_deadline: date | None = None
+    qualifying_start: datetime | None = None
+    qualifying_end: datetime | None = None
 
 
 # --- Response schemas ---
@@ -73,6 +83,16 @@ class ElectionSummary(BaseModel):
     district_type: str | None = None
     district_identifier: str | None = None
     district_party: str | None = None
+    # Election metadata enrichment fields (010-election-info)
+    description: str | None = None
+    purpose: str | None = None
+    eligibility_description: str | None = None
+    registration_deadline: date | None = None
+    early_voting_start: date | None = None
+    early_voting_end: date | None = None
+    absentee_request_deadline: date | None = None
+    qualifying_start: datetime | None = None
+    qualifying_end: datetime | None = None
 
 
 class ElectionDetailResponse(ElectionSummary):

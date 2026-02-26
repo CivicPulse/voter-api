@@ -65,6 +65,15 @@ def _mock_election(**overrides: object) -> MagicMock:
     election.district_type = None
     election.district_identifier = None
     election.district_party = None
+    election.description = None
+    election.purpose = None
+    election.eligibility_description = None
+    election.registration_deadline = None
+    election.early_voting_start = None
+    election.early_voting_end = None
+    election.absentee_request_deadline = None
+    election.qualifying_start = None
+    election.qualifying_end = None
     for key, value in overrides.items():
         setattr(election, key, value)
     return election

@@ -217,6 +217,15 @@ def build_detail_response(election: Election) -> ElectionDetailResponse:
         refresh_interval_seconds=election.refresh_interval_seconds,
         created_at=election.created_at,
         updated_at=election.updated_at,
+        description=election.description,
+        purpose=election.purpose,
+        eligibility_description=election.eligibility_description,
+        registration_deadline=election.registration_deadline,
+        early_voting_start=election.early_voting_start,
+        early_voting_end=election.early_voting_end,
+        absentee_request_deadline=election.absentee_request_deadline,
+        qualifying_start=election.qualifying_start,
+        qualifying_end=election.qualifying_end,
     )
 
 
@@ -470,6 +479,10 @@ async def list_elections(
     district: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
+    registration_open: bool | None = None,
+    early_voting_active: bool | None = None,
+    district_type: str | None = None,
+    district_identifier: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[ElectionSummary], int]:
@@ -482,6 +495,10 @@ async def list_elections(
         district: Filter by district (case-insensitive partial match).
         date_from: Filter elections on or after this date.
         date_to: Filter elections on or before this date.
+        registration_open: If True, only elections with future registration deadline.
+        early_voting_active: If True, only elections currently in early voting window.
+        district_type: Filter by parsed district type (exact match).
+        district_identifier: Filter by parsed district identifier (exact match).
         page: Page number (1-indexed).
         page_size: Results per page.
 
@@ -502,6 +519,19 @@ async def list_elections(
         filters.append(Election.election_date >= date_from)
     if date_to:
         filters.append(Election.election_date <= date_to)
+    if registration_open is True:
+        filters.append(Election.registration_deadline >= func.current_date())
+    if early_voting_active is True:
+        filters.append(
+            and_(
+                Election.early_voting_start <= func.current_date(),
+                Election.early_voting_end >= func.current_date(),
+            )
+        )
+    if district_type:
+        filters.append(Election.district_type == district_type)
+    if district_identifier:
+        filters.append(Election.district_identifier == district_identifier)
 
     if filters:
         query = query.where(and_(*filters))
@@ -539,6 +569,15 @@ async def list_elections(
                 district_type=election.district_type,
                 district_identifier=election.district_identifier,
                 district_party=election.district_party,
+                description=election.description,
+                purpose=election.purpose,
+                eligibility_description=election.eligibility_description,
+                registration_deadline=election.registration_deadline,
+                early_voting_start=election.early_voting_start,
+                early_voting_end=election.early_voting_end,
+                absentee_request_deadline=election.absentee_request_deadline,
+                qualifying_start=election.qualifying_start,
+                qualifying_end=election.qualifying_end,
             )
         )
 

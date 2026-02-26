@@ -25,6 +25,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from voter_api.models.base import Base, TimestampMixin, UUIDMixin
 from voter_api.models.boundary import Boundary  # noqa: TC001
+from voter_api.models.candidate import Candidate  # noqa: TC001
 
 
 class Election(Base, UUIDMixin, TimestampMixin):
@@ -42,6 +43,17 @@ class Election(Base, UUIDMixin, TimestampMixin):
     creation_method: Mapped[str] = mapped_column(String(20), nullable=False, server_default="manual")
     last_refreshed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     refresh_interval_seconds: Mapped[int] = mapped_column(Integer, nullable=False, server_default="120")
+
+    # Election metadata enrichment (all nullable for backward compatibility)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    purpose: Mapped[str | None] = mapped_column(Text, nullable=True)
+    eligibility_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    registration_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    early_voting_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    early_voting_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    absentee_request_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    qualifying_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    qualifying_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # District resolution fields (parsed from free-text `district` column)
     boundary_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -61,6 +73,7 @@ class Election(Base, UUIDMixin, TimestampMixin):
         back_populates="election", cascade="all, delete-orphan"
     )
     boundary: Mapped["Boundary | None"] = relationship(foreign_keys=[boundary_id])
+    candidates: Mapped[list["Candidate"]] = relationship(back_populates="election", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint("name", "election_date", name="uq_election_name_date"),
