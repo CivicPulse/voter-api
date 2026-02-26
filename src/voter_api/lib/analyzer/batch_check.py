@@ -188,11 +188,11 @@ async def check_batch_boundaries(
     # Build a lookup: (boundary_type, boundary_identifier) -> Boundary
     # Fail fast on duplicate keys — ambiguous matches must not silently overwrite results.
     boundary_lookup: dict[tuple[str, str], Boundary] = {}
-    for b in boundaries:
-        key = (b.boundary_type, b.boundary_identifier)
-        if key in boundary_lookup:
-            raise ValueError(f"Ambiguous boundary match for key={key}")
-        boundary_lookup[key] = b
+    for boundary in boundaries:
+        bkey = (boundary.boundary_type, boundary.boundary_identifier)
+        if bkey in boundary_lookup:
+            raise ValueError(f"Ambiguous boundary match for key={bkey}")
+        boundary_lookup[bkey] = boundary
 
     # Query geocoded locations for this voter
     loc_result = await session.execute(select(GeocodedLocation).where(GeocodedLocation.voter_id == voter_id))
