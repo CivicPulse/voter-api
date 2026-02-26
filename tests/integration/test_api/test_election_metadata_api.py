@@ -4,6 +4,7 @@ Tests election detail response with new metadata fields and milestone date filte
 """
 
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import UTC, date, datetime
 from unittest.mock import MagicMock, patch
 
@@ -89,13 +90,15 @@ def admin_app(mock_session, mock_admin_user) -> FastAPI:
 
 
 @pytest.fixture
-def client(app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        yield c
 
 
 @pytest.fixture
-def admin_client(admin_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=admin_app), base_url="http://test")
+async def admin_client(admin_app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=admin_app), base_url="http://test") as c:
+        yield c
 
 
 # --- Election detail metadata tests (T014) ---

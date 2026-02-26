@@ -1,6 +1,7 @@
 """Integration tests for candidate API endpoints."""
 
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -150,18 +151,21 @@ def viewer_app(mock_session, mock_viewer_user) -> FastAPI:
 
 
 @pytest.fixture
-def client(app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        yield c
 
 
 @pytest.fixture
-def admin_client(admin_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=admin_app), base_url="http://test")
+async def admin_client(admin_app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=admin_app), base_url="http://test") as c:
+        yield c
 
 
 @pytest.fixture
-def viewer_client(viewer_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=viewer_app), base_url="http://test")
+async def viewer_client(viewer_app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=viewer_app), base_url="http://test") as c:
+        yield c
 
 
 # --- GET /elections/{election_id}/candidates ---

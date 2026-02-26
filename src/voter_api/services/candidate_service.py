@@ -187,7 +187,11 @@ async def update_candidate(
         await session.commit()
     except IntegrityError as e:
         await session.rollback()
-        msg = f"A candidate named '{request.full_name}' already exists for this election."
+        candidate_name = update_data.get("full_name")
+        if candidate_name:
+            msg = f"A candidate named '{candidate_name}' already exists for this election."
+        else:
+            msg = "A candidate with these details already exists for this election."
         raise ValueError(msg) from e
 
     await session.refresh(candidate)

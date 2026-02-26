@@ -6,12 +6,16 @@ Candidates are admin-managed records that exist independently of SOS results.
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from voter_api.models.base import Base, TimestampMixin, UUIDMixin
+
+if TYPE_CHECKING:
+    from voter_api.models.election import Election
 
 
 class Candidate(Base, UUIDMixin, TimestampMixin):
@@ -39,7 +43,7 @@ class Candidate(Base, UUIDMixin, TimestampMixin):
     sos_ballot_option_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Relationships
-    election: Mapped["Election"] = relationship(back_populates="candidates")  # noqa: F821
+    election: Mapped["Election"] = relationship(back_populates="candidates")
     links: Mapped[list["CandidateLink"]] = relationship(
         back_populates="candidate",
         lazy="selectin",
