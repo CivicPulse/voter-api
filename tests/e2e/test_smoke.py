@@ -839,6 +839,7 @@ class TestCandidates:
         resp = await client.get(_url("/elections"), params={"source": "sos_feed"})
         assert resp.status_code == 200
         data = resp.json()
+        assert data["items"], "Expected at least one sos_feed election in seeded E2E data"
         assert all(item["source"] == "sos_feed" for item in data["items"])
 
     async def test_election_create_manual(self, admin_client: httpx.AsyncClient, db_session: AsyncSession) -> None:
@@ -863,6 +864,40 @@ class TestCandidates:
             if election_id is not None:
                 await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))
                 await db_session.commit()
+
+    async def test_election_link_admin(self, admin_client: httpx.AsyncClient, db_session: AsyncSession) -> None:
+        """Admin links a manual election to a SoS feed URL; response has source='linked'."""
+        create_payload = {
+            "name": f"E2E Link Test {uuid.uuid4().hex[:8]}",
+            "election_date": "2026-04-01",
+            "election_type": "special",
+            "district": "Statewide",
+            "source": "manual",
+            "boundary_id": str(BOUNDARY_ID),
+        }
+        create_resp = await admin_client.post(_url("/elections"), json=create_payload)
+        election_id: str | None = create_resp.json().get("id") if create_resp.status_code == 201 else None
+        try:
+            assert create_resp.status_code == 201
+            link_payload = {
+                "data_source_url": "https://results.enr.clarityelections.com/GA/e2e-link/json",
+            }
+            link_resp = await admin_client.post(_url(f"/elections/{election_id}/link"), json=link_payload)
+            assert link_resp.status_code == 200
+            body = link_resp.json()
+            assert body["source"] == "linked"
+            assert body["data_source_url"] is not None
+        finally:
+            if election_id is not None:
+                await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))
+                await db_session.commit()
+
+    async def test_election_link_unauthenticated_returns_401(self, client: httpx.AsyncClient) -> None:
+        """Unauthenticated POST /elections/{id}/link returns 401."""
+        resp = await client.post(
+            _url(f"/elections/{ELECTION_ID}/link"), json={"data_source_url": "https://example.com/feed.json"}
+        )
+        assert resp.status_code == 401
 
 
 # ── Elected Officials ─────────────────────────────────────────────────────

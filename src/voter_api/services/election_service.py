@@ -271,7 +271,6 @@ async def link_election(
                 Election.data_source_url == data_source_url_str,
                 Election.ballot_item_id == ballot_item_id,
                 Election.id != election_id,
-                Election.deleted_at.is_(None),
             )
         )
         if conflict.scalar_one_or_none() is not None:

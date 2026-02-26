@@ -15,6 +15,8 @@ from unittest.mock import AsyncMock, patch
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from pytest_httpx import HTTPXMock
+
 from typer.testing import CliRunner
 
 from voter_api.cli.app import app
@@ -74,7 +76,7 @@ def _make_manifest(files: list[dict] | None = None) -> str:
 class TestSeedFullBootstrap:
     """US1: Full seed command downloads and imports everything."""
 
-    def test_seed_with_download_only_no_db(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_seed_with_download_only_no_db(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify seed --download-only works end-to-end without DB."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -135,7 +137,7 @@ class TestSeedFullBootstrap:
         assert (data_dir / "counties.csv").exists()
         assert (data_dir / "congress.zip").exists()
 
-    def test_seed_unreachable_url(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_seed_unreachable_url(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify clear error when Data Root URL is unreachable."""
         import httpx
 
@@ -161,7 +163,7 @@ class TestSeedFullBootstrap:
         assert result.exit_code != 0
         assert "Connection refused" in result.output or "error" in result.output.lower()
 
-    def test_seed_skip_if_cached(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_seed_skip_if_cached(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify cached files with matching checksums are not re-downloaded."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -212,7 +214,7 @@ class TestSeedFullBootstrap:
     def test_seed_fail_fast_stops_on_first_error(
         self,
         tmp_path: Path,
-        httpx_mock,  # type: ignore[no-untyped-def]
+        httpx_mock: HTTPXMock,
     ) -> None:
         """Verify --fail-fast stops after first download failure."""
         import httpx
@@ -267,7 +269,7 @@ class TestSeedFullBootstrap:
 
         assert result.exit_code != 0
 
-    def test_seed_import_order_enforcement(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_seed_import_order_enforcement(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify imports run in order: county-districts → boundaries → elections → voters → voter-history."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -402,7 +404,7 @@ class TestSeedFullBootstrap:
 class TestSeedCategoryFilter:
     """US2: --category option filters downloads and imports."""
 
-    def test_category_boundaries_only(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_category_boundaries_only(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --category boundaries downloads only boundary files."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -459,7 +461,7 @@ class TestSeedCategoryFilter:
         assert not (data_dir / "counties.csv").exists()
         assert not (data_dir / "voter" / "Bibb.csv").exists()
 
-    def test_category_voters_only(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_category_voters_only(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --category voters downloads only voter files."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -509,7 +511,7 @@ class TestSeedCategoryFilter:
         assert (data_dir / "voter" / "Bibb.csv").exists()
         assert not (data_dir / "congress.zip").exists()
 
-    def test_category_voter_history_only(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_category_voter_history_only(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --category voter-history downloads only voter history files."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -579,7 +581,7 @@ class TestSeedCategoryFilter:
 
         assert result.exit_code != 0
 
-    def test_category_elections_only(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_category_elections_only(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """--category elections seeds elections from API without downloading files."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -641,7 +643,7 @@ class TestSeedCategoryFilter:
         assert not (data_dir / "congress.zip").exists()
         mock_voters.assert_not_called()
 
-    def test_category_elections_skipped_without_voter_category(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_category_elections_skipped_without_voter_category(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """--category boundaries does NOT trigger election seeding."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -702,7 +704,7 @@ class TestSeedCategoryFilter:
 class TestElectionBoundaryResolution:
     """Verify boundary_id is nulled out when referenced boundary doesn't exist locally."""
 
-    def test_elections_seed_nullifies_missing_boundary_ids(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_elections_seed_nullifies_missing_boundary_ids(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """boundary_id is set to None for records referencing unknown local boundaries."""
         import uuid
         from datetime import date
@@ -784,7 +786,7 @@ class TestElectionBoundaryResolution:
         # Record with unknown boundary_id should be nulled out
         assert raw_records[1]["boundary_id"] is None
 
-    def test_elections_seed_all_nullified_when_no_boundaries(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_elections_seed_all_nullified_when_no_boundaries(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """All boundary_ids are nulled out when no boundaries exist locally."""
         import uuid
         from datetime import date
@@ -842,7 +844,7 @@ class TestElectionBoundaryResolution:
 
         assert raw_records[0]["boundary_id"] is None
 
-    def test_elections_seed_preserves_null_boundary_id(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_elections_seed_preserves_null_boundary_id(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Records with no boundary_id (None) are unaffected by the resolution step."""
         from datetime import date
         from unittest.mock import AsyncMock, MagicMock, patch
@@ -904,7 +906,7 @@ class TestElectionBoundaryResolution:
 class TestSeedDownloadOnly:
     """US3: --download-only flag skips database imports."""
 
-    def test_download_only_no_import(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_download_only_no_import(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --download-only downloads files without importing."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -963,7 +965,7 @@ class TestSeedDownloadOnly:
         mock_boundaries.assert_not_called()
         mock_voters.assert_not_called()
 
-    def test_download_only_with_category(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_download_only_with_category(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --download-only --category voters downloads only voter files."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -1022,7 +1024,7 @@ class TestSeedDownloadOnly:
 class TestSeedMaxVoters:
     """US4: --max-voters flag limits total voter records imported."""
 
-    def test_max_voters_passed_to_voter_batch(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_max_voters_passed_to_voter_batch(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --max-voters is threaded through to _import_voters_batch."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -1094,7 +1096,7 @@ class TestSeedMaxVoters:
         assert result.exit_code == 0, result.output
         assert captured_kwargs["max_voters"] == 10000
 
-    def test_max_voters_default_is_none(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+    def test_max_voters_default_is_none(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         """Verify --max-voters defaults to None (unlimited) when not specified."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()

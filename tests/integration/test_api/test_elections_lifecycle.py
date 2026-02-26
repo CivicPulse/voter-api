@@ -8,6 +8,7 @@ Covers:
 """
 
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -141,18 +142,21 @@ def viewer_app(mock_session: AsyncMock, mock_viewer_user: MagicMock) -> FastAPI:
 
 
 @pytest.fixture
-def public_client(public_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=public_app), base_url="https://test")
+async def public_client(public_app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=public_app), base_url="https://test") as client:
+        yield client
 
 
 @pytest.fixture
-def admin_client(admin_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=admin_app), base_url="https://test")
+async def admin_client(admin_app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=admin_app), base_url="https://test") as client:
+        yield client
 
 
 @pytest.fixture
-def viewer_client(viewer_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=viewer_app), base_url="https://test")
+async def viewer_client(viewer_app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=viewer_app), base_url="https://test") as client:
+        yield client
 
 
 # ---------------------------------------------------------------------------
@@ -247,11 +251,12 @@ class TestSoftDeleteElection:
 
     @pytest.mark.asyncio
     async def test_voter_history_preserved_after_election_soft_delete(self, admin_client: AsyncClient) -> None:
-        """Soft-deleting an election does not delete voter_history rows (SET NULL FK).
+        """Soft-deleting an election does not affect voter_history rows.
 
-        Since soft-delete only sets deleted_at on the elections row and does NOT
-        delete the row, the voter_history.election_id FK is not triggered and
-        records remain intact with their original election_id.
+        voter_history records have no FK to elections. They are joined at query
+        time using (election_date, normalized_election_type). Soft-deleting an
+        election only sets deleted_at on the elections row; voter_history rows
+        are completely unaffected.
         """
         election_id = uuid.uuid4()
 
