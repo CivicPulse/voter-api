@@ -27,6 +27,8 @@ from voter_api.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMix
 from voter_api.models.boundary import Boundary  # noqa: TC001
 from voter_api.models.candidate import Candidate  # noqa: TC001
 
+_CASCADE = "all, delete-orphan"
+
 
 class Election(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     """An election event being tracked with SoS data feed configuration."""
@@ -67,14 +69,10 @@ class Election(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     district_party: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     # Relationships
-    result: Mapped["ElectionResult | None"] = relationship(
-        back_populates="election", uselist=False, cascade="all, delete-orphan"
-    )
-    county_results: Mapped[list["ElectionCountyResult"]] = relationship(
-        back_populates="election", cascade="all, delete-orphan"
-    )
+    result: Mapped["ElectionResult | None"] = relationship(back_populates="election", uselist=False, cascade=_CASCADE)
+    county_results: Mapped[list["ElectionCountyResult"]] = relationship(back_populates="election", cascade=_CASCADE)
     boundary: Mapped["Boundary | None"] = relationship(foreign_keys=[boundary_id])
-    candidates: Mapped[list["Candidate"]] = relationship(back_populates="election", cascade="all, delete-orphan")
+    candidates: Mapped[list["Candidate"]] = relationship(back_populates="election", cascade=_CASCADE)
 
     __table_args__ = (
         Index(

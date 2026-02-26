@@ -309,7 +309,19 @@ async def check_voter_batch_boundaries(
     session: Annotated[AsyncSession, Depends(get_async_session)],
     _current_user: Annotated[User, Depends(get_current_user)],
 ) -> BatchBoundaryCheckResponse:
-    """Check all geocoded provider locations against all registered district boundaries."""
+    """Check all geocoded provider locations against all registered district boundaries.
+
+    Args:
+        voter_id: UUID of the voter to check.
+        session: Async database session.
+        _current_user: Authenticated user dependency (admin role required).
+
+    Returns:
+        BatchBoundaryCheckResponse with district and provider containment results.
+
+    Raises:
+        HTTPException: 404 if the voter is not found.
+    """
     from voter_api.services.voter_service import check_batch_boundaries_for_voter
 
     result = await check_batch_boundaries_for_voter(session, voter_id)

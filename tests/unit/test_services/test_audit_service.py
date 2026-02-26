@@ -100,7 +100,8 @@ class TestQueryAuditLogs:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        _, total = await query_audit_logs(session, action="export")
+        logs, total = await query_audit_logs(session, action="export")
+        assert logs == []
         assert total == 0
 
     @pytest.mark.asyncio
@@ -113,7 +114,8 @@ class TestQueryAuditLogs:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        _, total = await query_audit_logs(session, resource_type="voter")
+        logs, total = await query_audit_logs(session, resource_type="voter")
+        assert logs == []
         assert total == 0
 
     @pytest.mark.asyncio
@@ -128,7 +130,8 @@ class TestQueryAuditLogs:
 
         start = datetime(2024, 1, 1, tzinfo=UTC)
         end = datetime(2024, 12, 31, tzinfo=UTC)
-        _, total = await query_audit_logs(session, start_time=start, end_time=end)
+        logs, total = await query_audit_logs(session, start_time=start, end_time=end)
+        assert logs == []
         assert total == 0
 
     @pytest.mark.asyncio
@@ -141,7 +144,8 @@ class TestQueryAuditLogs:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        _, total = await query_audit_logs(session, page=3, page_size=10)
+        logs, total = await query_audit_logs(session, page=3, page_size=10)
+        assert logs == []
         assert total == 50
 
     @pytest.mark.asyncio
@@ -155,7 +159,7 @@ class TestQueryAuditLogs:
         select_result.scalars.return_value.all.return_value = []
         session.execute.side_effect = [count_result, select_result]
 
-        _, total = await query_audit_logs(
+        logs, total = await query_audit_logs(
             session,
             user_id=user_id,
             action="view",
@@ -163,4 +167,5 @@ class TestQueryAuditLogs:
             start_time=datetime(2024, 1, 1, tzinfo=UTC),
             end_time=datetime(2024, 12, 31, tzinfo=UTC),
         )
+        assert logs == []
         assert total == 0
