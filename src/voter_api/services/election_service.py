@@ -283,8 +283,10 @@ async def link_election(
         election.ballot_item_id = ballot_item_id
 
     await session.commit()
-    await session.refresh(election, ["result"])
-    return election
+    refreshed = await session.execute(
+        select(Election).options(selectinload(Election.result)).where(Election.id == election.id)
+    )
+    return refreshed.scalar_one()
 
 
 def build_detail_response(election: Election) -> ElectionDetailResponse:
@@ -952,7 +954,13 @@ async def refresh_all_active_elections(session: AsyncSession) -> int:
     Returns:
         Number of elections successfully refreshed.
     """
-    result = await session.execute(select(Election).where(Election.status == "active", Election.deleted_at.is_(None)))
+    result = await session.execute(
+        select(Election).where(
+            Election.status == "active",
+            Election.deleted_at.is_(None),
+            Election.data_source_url.is_not(None),
+        )
+    )
     elections = result.scalars().all()
 
     refreshed = 0

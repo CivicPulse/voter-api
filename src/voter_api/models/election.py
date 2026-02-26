@@ -77,7 +77,13 @@ class Election(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     candidates: Mapped[list["Candidate"]] = relationship(back_populates="election", cascade="all, delete-orphan")
 
     __table_args__ = (
-        UniqueConstraint("name", "election_date", name="uq_election_name_date"),
+        Index(
+            "uq_election_name_date",
+            "name",
+            "election_date",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
         CheckConstraint("status IN ('active', 'finalized')", name="ck_election_status"),
         CheckConstraint("refresh_interval_seconds >= 60", name="ck_election_refresh_interval"),
         CheckConstraint("source IN ('sos_feed', 'manual', 'linked')", name="ck_election_source"),

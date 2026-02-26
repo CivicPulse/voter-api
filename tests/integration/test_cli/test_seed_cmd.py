@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -704,11 +704,10 @@ class TestSeedCategoryFilter:
 class TestElectionBoundaryResolution:
     """Verify boundary_id is nulled out when referenced boundary doesn't exist locally."""
 
-    def test_elections_seed_nullifies_missing_boundary_ids(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
+    def test_elections_seed_nullifies_missing_boundary_ids(self) -> None:
         """boundary_id is set to None for records referencing unknown local boundaries."""
         import uuid
         from datetime import date
-        from unittest.mock import AsyncMock, MagicMock, patch
 
         known_id = str(uuid.uuid4())
         unknown_id = str(uuid.uuid4())
@@ -786,11 +785,10 @@ class TestElectionBoundaryResolution:
         # Record with unknown boundary_id should be nulled out
         assert raw_records[1]["boundary_id"] is None
 
-    def test_elections_seed_all_nullified_when_no_boundaries(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
+    def test_elections_seed_all_nullified_when_no_boundaries(self) -> None:
         """All boundary_ids are nulled out when no boundaries exist locally."""
         import uuid
         from datetime import date
-        from unittest.mock import AsyncMock, MagicMock, patch
 
         boundary_id = str(uuid.uuid4())
 
@@ -844,10 +842,9 @@ class TestElectionBoundaryResolution:
 
         assert raw_records[0]["boundary_id"] is None
 
-    def test_elections_seed_preserves_null_boundary_id(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
+    def test_elections_seed_preserves_null_boundary_id(self) -> None:
         """Records with no boundary_id (None) are unaffected by the resolution step."""
         from datetime import date
-        from unittest.mock import AsyncMock, MagicMock, patch
 
         raw_records = [
             {

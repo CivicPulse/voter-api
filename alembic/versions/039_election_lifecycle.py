@@ -3,6 +3,9 @@
 Adds deleted_at (soft-delete), source (sos_feed/manual/linked), and
 makes data_source_url nullable to support manual elections without feed URLs.
 
+This migration is irreversible once rows exist with NULL data_source_url.
+Downgrade requires restoring from backup.
+
 Revision ID: 039
 Revises: 038
 Create Date: 2026-02-26
@@ -34,19 +37,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # This migration makes elections.data_source_url nullable to support manual
-    # elections without feed URLs. After applying it, the database may contain
-    # rows where data_source_url IS NULL, so attempting to set the column back
-    # to NOT NULL would fail on PostgreSQL. Downgrade is non-reversible once
-    # manual elections exist.
-    raise RuntimeError(
+    raise NotImplementedError(
         "Downgrade from revision 039 is not supported because "
         "elections.data_source_url may contain NULL values and cannot be "
         "safely made NOT NULL again."
     )
-    op.alter_column("elections", "data_source_url", nullable=False)  # unreachable; kept for reference
-    op.drop_index("idx_elections_source", table_name="elections")
-    op.drop_constraint("ck_election_source", "elections", type_="check")
-    op.drop_column("elections", "source")
-    op.drop_index("ix_elections_deleted_at", table_name="elections")
-    op.drop_column("elections", "deleted_at")

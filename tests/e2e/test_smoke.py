@@ -672,7 +672,7 @@ class TestElections:
             assert detail_resp.status_code == 200
             assert detail_resp.json()["name"] == payload["name"]
         finally:
-            # Cleanup: soft-delete via API endpoint, then hard-delete from DB.
+            # Cleanup: hard-delete from DB.
             # Runs even if assertions fail to keep the DB idempotent.
             if election_id is not None:
                 await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))

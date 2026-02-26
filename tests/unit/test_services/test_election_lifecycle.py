@@ -319,7 +319,11 @@ class TestLinkElection:
         dup_result = MagicMock()
         dup_result.scalar_one_or_none.return_value = None
 
-        session.execute = AsyncMock(side_effect=[get_result, dup_result])
+        # Re-fetch after commit with selectinload
+        refetch_result = MagicMock()
+        refetch_result.scalar_one.return_value = election
+
+        session.execute = AsyncMock(side_effect=[get_result, dup_result, refetch_result])
 
         request = ElectionLinkRequest(
             data_source_url="https://results.sos.ga.gov/feed.json",
@@ -345,7 +349,11 @@ class TestLinkElection:
         dup_result = MagicMock()
         dup_result.scalar_one_or_none.return_value = None
 
-        session.execute = AsyncMock(side_effect=[get_result, dup_result])
+        # Re-fetch after commit with selectinload
+        refetch_result = MagicMock()
+        refetch_result.scalar_one.return_value = election
+
+        session.execute = AsyncMock(side_effect=[get_result, dup_result, refetch_result])
 
         feed_url = "https://results.sos.ga.gov/feed.json"
         request = ElectionLinkRequest(
