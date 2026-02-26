@@ -672,7 +672,7 @@ class TestSetOfficialLocationOverrideGeorgiaValidation:
         session.commit.assert_awaited_once()
         session.refresh.assert_awaited_once_with(mock_voter)
         assert result is mock_voter
-        assert mock_voter.official_latitude == 33.749
-        assert mock_voter.official_longitude == -84.388
+        assert mock_voter.official_latitude == pytest.approx(33.749)
+        assert mock_voter.official_longitude == pytest.approx(-84.388)
         assert mock_voter.official_source == "admin"
         assert mock_voter.official_is_override is True
