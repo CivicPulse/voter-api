@@ -145,6 +145,11 @@ class TestAppLifespan:
                 new_callable=AsyncMock,
                 side_effect=Exception("relation does not exist"),
             ),
+            patch(
+                "voter_api.main._recover_stale_geocoding_jobs",
+                new_callable=AsyncMock,
+                side_effect=Exception("relation does not exist"),
+            ),
             patch("voter_api.main.logger") as mock_logger,
         ):
             mock_get_settings.return_value = Settings(
@@ -156,6 +161,7 @@ class TestAppLifespan:
                 pass  # App should start successfully
 
             mock_dispose.assert_awaited_once()
-            mock_logger.warning.assert_called_once_with(
-                "Could not recover stale analysis runs on startup (table may not exist yet)"
-            )
+            # Both recovery functions should log warnings when they fail
+            warning_calls = [str(c) for c in mock_logger.warning.call_args_list]
+            assert any("analysis runs" in c for c in warning_calls)
+            assert any("geocoding jobs" in c for c in warning_calls)

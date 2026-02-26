@@ -1,13 +1,17 @@
 """Contract tests for geocoding endpoints against OpenAPI schema."""
 
-from unittest.mock import AsyncMock, patch
+import uuid
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from voter_api.api.v1.geocoding import geocoding_router
-from voter_api.core.dependencies import get_async_session
+from voter_api.core.dependencies import get_async_session, get_current_user
+from voter_api.models.geocoding_job import GeocodingJob
 from voter_api.schemas.geocoding import (
     AddressGeocodeResponse,
     AddressSuggestion,
@@ -15,6 +19,7 @@ from voter_api.schemas.geocoding import (
     GeocodeMetadata,
     ValidationDetail,
 )
+from voter_api.services.geocoding_service import GeocodingJobTerminalStateError
 
 
 @pytest.fixture
@@ -33,9 +38,10 @@ def app(mock_session: AsyncMock) -> FastAPI:
 
 
 @pytest.fixture
-def client(app: FastAPI) -> AsyncClient:
+async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Create an async test client."""
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="https://test", follow_redirects=False) as c:
+        yield c
 
 
 class TestGeocodeContractResponse:
@@ -170,3 +176,162 @@ class TestVerifyContractResponse:
         """422 response on empty address."""
         resp = await client.get("/api/v1/geocoding/verify?address=")
         assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Admin fixtures for cancel/fail endpoints
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def admin_user() -> MagicMock:
+    """Create a mock admin user for authenticated endpoints."""
+    user = MagicMock()
+    user.role = "admin"
+    user.id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    return user
+
+
+@pytest.fixture
+def admin_app(mock_session: AsyncMock, admin_user: MagicMock) -> FastAPI:
+    """Create a FastAPI app with admin auth overrides."""
+    app = FastAPI()
+    app.include_router(geocoding_router, prefix="/api/v1")
+    app.dependency_overrides[get_async_session] = lambda: mock_session
+    app.dependency_overrides[get_current_user] = lambda: admin_user
+    return app
+
+
+@pytest.fixture
+async def admin_client(admin_app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    """Create an async test client authenticated as admin."""
+    async with AsyncClient(
+        transport=ASGITransport(app=admin_app),
+        base_url="https://test",
+        follow_redirects=False,
+    ) as c:
+        yield c
+
+
+# ---------------------------------------------------------------------------
+# Cancel job contract tests
+# ---------------------------------------------------------------------------
+
+
+class TestCancelJobContractResponse:
+    """Contract tests for PATCH /geocoding/jobs/{job_id}/cancel."""
+
+    @pytest.mark.asyncio
+    async def test_200_cancel_response_matches_schema(self, admin_client) -> None:
+        """200 response matches CancelJobResponse schema."""
+        mock_job = GeocodingJob(
+            id=uuid.uuid4(),
+            provider="census",
+            status="cancelled",
+            force_regeocode=False,
+            completed_at=datetime.now(UTC),
+            created_at=datetime.now(UTC),
+        )
+        with patch(
+            "voter_api.api.v1.geocoding.cancel_geocoding_job",
+            new_callable=AsyncMock,
+            return_value=mock_job,
+        ):
+            resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{mock_job.id}/cancel")
+
+        assert resp.status_code == 200
+        data = resp.json()
+
+        # Required fields per CancelJobResponse schema
+        assert "id" in data
+        assert isinstance(data["id"], str)
+        uuid.UUID(data["id"])  # validates UUID format
+
+        assert "status" in data
+        assert isinstance(data["status"], str)
+        assert data["status"] == "cancelled"
+
+        assert "completed_at" in data
+        assert isinstance(data["completed_at"], str)
+        datetime.fromisoformat(data["completed_at"])  # validates datetime format
+
+        assert "message" in data
+        assert isinstance(data["message"], str)
+
+    @pytest.mark.asyncio
+    async def test_409_cancel_response_has_detail(self, admin_client) -> None:
+        """409 response includes detail string when job is in terminal state."""
+        job_id = uuid.uuid4()
+        with patch(
+            "voter_api.api.v1.geocoding.cancel_geocoding_job",
+            new_callable=AsyncMock,
+            side_effect=GeocodingJobTerminalStateError("completed"),
+        ):
+            resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/cancel")
+
+        assert resp.status_code == 409
+        data = resp.json()
+        assert "detail" in data
+        assert isinstance(data["detail"], str)
+
+
+# ---------------------------------------------------------------------------
+# Mark failed contract tests
+# ---------------------------------------------------------------------------
+
+
+class TestMarkFailedContractResponse:
+    """Contract tests for PATCH /geocoding/jobs/{job_id}/fail."""
+
+    @pytest.mark.asyncio
+    async def test_200_fail_response_matches_schema(self, admin_client) -> None:
+        """200 response matches CancelJobResponse schema."""
+        mock_job = GeocodingJob(
+            id=uuid.uuid4(),
+            provider="census",
+            status="failed",
+            force_regeocode=False,
+            completed_at=datetime.now(UTC),
+            created_at=datetime.now(UTC),
+        )
+        with patch(
+            "voter_api.api.v1.geocoding.mark_geocoding_job_failed",
+            new_callable=AsyncMock,
+            return_value=mock_job,
+        ):
+            resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{mock_job.id}/fail")
+
+        assert resp.status_code == 200
+        data = resp.json()
+
+        # Required fields per CancelJobResponse schema
+        assert "id" in data
+        assert isinstance(data["id"], str)
+        uuid.UUID(data["id"])  # validates UUID format
+
+        assert "status" in data
+        assert isinstance(data["status"], str)
+        assert data["status"] == "failed"
+
+        assert "completed_at" in data
+        assert isinstance(data["completed_at"], str)
+        datetime.fromisoformat(data["completed_at"])  # validates datetime format
+
+        assert "message" in data
+        assert isinstance(data["message"], str)
+
+    @pytest.mark.asyncio
+    async def test_409_fail_response_has_detail(self, admin_client) -> None:
+        """409 response includes detail string when job is in terminal state."""
+        job_id = uuid.uuid4()
+        with patch(
+            "voter_api.api.v1.geocoding.mark_geocoding_job_failed",
+            new_callable=AsyncMock,
+            side_effect=GeocodingJobTerminalStateError("completed"),
+        ):
+            resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/fail")
+
+        assert resp.status_code == 409
+        data = resp.json()
+        assert "detail" in data
+        assert isinstance(data["detail"], str)

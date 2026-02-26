@@ -138,22 +138,22 @@ def unauth_app(mock_session) -> FastAPI:
 
 @pytest.fixture
 def admin_client(admin_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=admin_app), base_url="http://test")
+    return AsyncClient(transport=ASGITransport(app=admin_app), base_url="https://test")
 
 
 @pytest.fixture
 def analyst_client(analyst_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=analyst_app), base_url="http://test")
+    return AsyncClient(transport=ASGITransport(app=analyst_app), base_url="https://test")
 
 
 @pytest.fixture
 def viewer_client(viewer_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=viewer_app), base_url="http://test")
+    return AsyncClient(transport=ASGITransport(app=viewer_app), base_url="https://test")
 
 
 @pytest.fixture
 def unauth_client(unauth_app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=unauth_app), base_url="http://test")
+    return AsyncClient(transport=ASGITransport(app=unauth_app), base_url="https://test")
 
 
 # ---------------------------------------------------------------------------
@@ -227,7 +227,7 @@ class TestImportVoterHistoryEndpoint:
         app.include_router(imports_router, prefix="/api/v1")
         app.dependency_overrides[get_async_session] = lambda: mock_session
         app.dependency_overrides[get_current_user] = lambda: mock_viewer_user
-        client = AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+        client = AsyncClient(transport=ASGITransport(app=app), base_url="https://test")
 
         resp = await client.post(
             "/api/v1/imports/voter-history",

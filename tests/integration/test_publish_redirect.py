@@ -97,7 +97,7 @@ def app() -> FastAPI:
 @pytest.fixture
 def client(app: FastAPI) -> AsyncClient:
     """Create an async test client."""
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False)
+    return AsyncClient(transport=ASGITransport(app=app), base_url="https://test", follow_redirects=False)
 
 
 class TestRedirectWithManifest:

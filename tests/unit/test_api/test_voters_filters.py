@@ -50,7 +50,7 @@ def app() -> FastAPI:
 @pytest.fixture
 def client(app: FastAPI) -> AsyncClient:
     """Create async test client."""
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+    return AsyncClient(transport=ASGITransport(app=app), base_url="https://test")
 
 
 @pytest.fixture
@@ -65,7 +65,7 @@ def unauthenticated_app() -> FastAPI:
 @pytest.fixture
 def unauthenticated_client(unauthenticated_app: FastAPI) -> AsyncClient:
     """Create async test client without auth."""
-    return AsyncClient(transport=ASGITransport(app=unauthenticated_app), base_url="http://test")
+    return AsyncClient(transport=ASGITransport(app=unauthenticated_app), base_url="https://test")
 
 
 class TestGetVoterFilterOptions:

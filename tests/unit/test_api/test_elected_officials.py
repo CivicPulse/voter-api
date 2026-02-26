@@ -102,7 +102,7 @@ def app(admin_user: MagicMock) -> FastAPI:
 @pytest.fixture
 def client(app: FastAPI) -> AsyncClient:
     """Create async test client."""
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+    return AsyncClient(transport=ASGITransport(app=app), base_url="https://test")
 
 
 class TestListAllOfficials:
@@ -569,7 +569,7 @@ def viewer_app() -> FastAPI:
 @pytest.fixture
 def viewer_client(viewer_app: FastAPI) -> AsyncClient:
     """Create async test client with viewer-role user."""
-    return AsyncClient(transport=ASGITransport(app=viewer_app), base_url="http://test")
+    return AsyncClient(transport=ASGITransport(app=viewer_app), base_url="https://test")
 
 
 class TestAuthEnforcement:

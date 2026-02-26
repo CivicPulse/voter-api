@@ -332,9 +332,9 @@ uv run voter-api deploy-check                                            # prod 
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes
+- 011-stale-geocoding-jobs: Added Python 3.13 + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Loguru
 - 010-election-info: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Alembic
 - 009-enhanced-auth: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x async, Pydantic v2, httpx (existing); pyotp, segno, cryptography, py-webauthn (new)
-- 008-auto-data-import: Added Python 3.13 + httpx (async HTTP downloads), typer (CLI), loguru (logging), tqdm (progress bars) — all already in pyproject.toml
 
 ### 009-enhanced-auth
 
@@ -369,5 +369,5 @@ Key files:
 
 
 ## Active Technologies
-- Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Alembic (010-election-info)
-- PostgreSQL 15+ / PostGIS 3.x (existing) (010-election-info)
+- Python 3.13 + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Loguru (011-stale-geocoding-jobs)
+- PostgreSQL 15+ / PostGIS 3.x (existing `geocoding_jobs` table) (011-stale-geocoding-jobs)

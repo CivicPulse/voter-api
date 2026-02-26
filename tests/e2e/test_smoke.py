@@ -1173,6 +1173,66 @@ class TestGeocoding:
         resp = await admin_client.post(_url(f"/geocoding/voter/{uuid.uuid4()}/geocode-all"))
         assert resp.status_code == 404
 
+    async def test_cancel_job_requires_admin(self, viewer_client: httpx.AsyncClient) -> None:
+        """Cancel job endpoint requires admin role — viewer gets 403."""
+        resp = await viewer_client.patch(_url(f"/geocoding/jobs/{uuid.uuid4()}/cancel"))
+        assert resp.status_code == 403
+
+    async def test_cancel_nonexistent_job(self, admin_client: httpx.AsyncClient) -> None:
+        """Cancel job returns 404 for a nonexistent job ID."""
+        resp = await admin_client.patch(_url(f"/geocoding/jobs/{uuid.uuid4()}/cancel"))
+        assert resp.status_code == 404
+
+    async def test_fail_job_requires_admin(self, viewer_client: httpx.AsyncClient) -> None:
+        """Fail job endpoint requires admin role — viewer gets 403."""
+        resp = await viewer_client.patch(_url(f"/geocoding/jobs/{uuid.uuid4()}/fail"))
+        assert resp.status_code == 403
+
+    async def test_fail_nonexistent_job(self, admin_client: httpx.AsyncClient) -> None:
+        """Fail job returns 404 for a nonexistent job ID."""
+        resp = await admin_client.patch(
+            _url(f"/geocoding/jobs/{uuid.uuid4()}/fail"),
+            json={"reason": "test failure reason"},
+        )
+        assert resp.status_code == 404
+
+    async def test_cancel_job_happy_path(self, admin_client: httpx.AsyncClient) -> None:
+        """Admin can create a batch job and cancel it successfully."""
+        create_resp = await admin_client.post(
+            _url("/geocoding/batch"),
+            json={"provider": "census", "fallback": False},
+        )
+        assert create_resp.status_code == 202
+        job_id = create_resp.json()["id"]
+
+        cancel_resp = await admin_client.patch(_url(f"/geocoding/jobs/{job_id}/cancel"))
+        assert cancel_resp.status_code == 200
+        body = cancel_resp.json()
+        assert body["id"] == job_id
+        assert body["status"] == "cancelled"
+        assert body["completed_at"] is not None
+        assert body["message"] == "Job cancelled successfully"
+
+    async def test_fail_job_happy_path(self, admin_client: httpx.AsyncClient) -> None:
+        """Admin can create a batch job and mark it as failed with a reason."""
+        create_resp = await admin_client.post(
+            _url("/geocoding/batch"),
+            json={"provider": "census", "fallback": False},
+        )
+        assert create_resp.status_code == 202
+        job_id = create_resp.json()["id"]
+
+        fail_resp = await admin_client.patch(
+            _url(f"/geocoding/jobs/{job_id}/fail"),
+            json={"reason": "E2E test failure reason"},
+        )
+        assert fail_resp.status_code == 200
+        body = fail_resp.json()
+        assert body["id"] == job_id
+        assert body["status"] == "failed"
+        assert body["completed_at"] is not None
+        assert body["message"] == "Job marked as failed"
+
 
 # ── Imports ────────────────────────────────────────────────────────────────
 
