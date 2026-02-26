@@ -120,7 +120,7 @@ class ElectionSummary(BaseModel):
 class ElectionDetailResponse(ElectionSummary):
     """Full election detail response."""
 
-    data_source_url: str | None
+    data_source_url: str | None = None
     refresh_interval_seconds: int
     created_at: datetime
     updated_at: datetime

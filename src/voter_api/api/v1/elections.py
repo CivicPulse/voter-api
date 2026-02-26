@@ -61,7 +61,7 @@ async def list_elections(
     early_voting_active: bool | None = Query(default=None, description="Filter to elections currently in early voting"),
     district_type: str | None = Query(default=None, description="Filter by parsed district type"),
     district_identifier: str | None = Query(default=None, description="Filter by parsed district identifier"),
-    source: str | None = Query(default=None, description="Filter by source type (sos_feed, manual, linked)"),
+    source: Annotated[str | None, Query(description="Filter by source type (sos_feed, manual, linked)")] = None,
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Results per page"),
 ) -> PaginatedElectionListResponse:
@@ -99,6 +99,10 @@ async def list_elections(
     "",
     response_model=ElectionDetailResponse,
     status_code=201,
+    responses={
+        409: {"description": "Duplicate election"},
+        422: {"description": "Validation error"},
+    },
 )
 async def create_election(
     request: ElectionCreateRequest,
@@ -179,7 +183,11 @@ async def get_election(
 # --- US4: Admin update ---
 
 
-@elections_router.patch("/{election_id}", response_model=ElectionDetailResponse)
+@elections_router.patch(
+    "/{election_id}",
+    response_model=ElectionDetailResponse,
+    responses={404: {"description": "Election not found"}},
+)
 async def update_election(
     election_id: uuid.UUID,
     request: ElectionUpdateRequest,
@@ -196,7 +204,11 @@ async def update_election(
 # --- Election lifecycle: soft-delete ---
 
 
-@elections_router.delete("/{election_id}", status_code=204)
+@elections_router.delete(
+    "/{election_id}",
+    status_code=204,
+    responses={404: {"description": "Election not found"}},
+)
 async def delete_election(
     election_id: uuid.UUID,
     session: Annotated[AsyncSession, Depends(get_async_session)],
@@ -211,7 +223,14 @@ async def delete_election(
 # --- Election lifecycle: link to feed ---
 
 
-@elections_router.post("/{election_id}/link", response_model=ElectionDetailResponse)
+@elections_router.post(
+    "/{election_id}/link",
+    responses={
+        400: {"description": "Validation error"},
+        404: {"description": "Election not found"},
+        409: {"description": "Duplicate election"},
+    },
+)
 async def link_election(
     election_id: uuid.UUID,
     request: ElectionLinkRequest,

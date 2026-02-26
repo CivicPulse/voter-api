@@ -589,7 +589,7 @@ class TestSeedCategoryFilter:
 
         election_calls: list[str] = []
 
-        async def mock_seed_elections(source_url: str) -> int:
+        def mock_seed_elections(source_url: str) -> int:
             election_calls.append(source_url)
             return 3
 
