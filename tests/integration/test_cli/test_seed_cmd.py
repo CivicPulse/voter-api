@@ -579,6 +579,120 @@ class TestSeedCategoryFilter:
 
         assert result.exit_code != 0
 
+    def test_category_elections_only(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+        """--category elections seeds elections from API without downloading files."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+
+        # Manifest has boundary + voter files — none should be downloaded
+        manifest = json.dumps(
+            {
+                "version": "1",
+                "updated_at": "2026-02-20T09:00:00Z",
+                "files": [
+                    {
+                        "filename": "congress.zip",
+                        "sha512": "b" * 128,
+                        "category": "boundary",
+                        "size_bytes": 100,
+                    },
+                    {
+                        "filename": "Bibb.csv",
+                        "sha512": "c" * 128,
+                        "category": "voter",
+                        "size_bytes": 200,
+                    },
+                ],
+            }
+        )
+        httpx_mock.add_response(url="https://test.example.com/manifest.json", text=manifest)
+
+        election_calls: list[str] = []
+
+        async def mock_seed_elections(source_url: str) -> int:
+            election_calls.append(source_url)
+            return 3
+
+        with (
+            patch(
+                "voter_api.cli.seed_cmd._seed_elections_from_api",
+                side_effect=mock_seed_elections,
+            ),
+            patch("voter_api.cli.seed_cmd._import_voters_batch", new_callable=AsyncMock) as mock_voters,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "seed",
+                    "--data-root",
+                    "https://test.example.com/",
+                    "--data-dir",
+                    str(data_dir),
+                    "--category",
+                    "elections",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        # Elections were seeded from the API
+        assert len(election_calls) == 1
+        # No voter files downloaded or imported
+        assert not (data_dir / "voter" / "Bibb.csv").exists()
+        assert not (data_dir / "congress.zip").exists()
+        mock_voters.assert_not_called()
+
+    def test_category_elections_skipped_without_voter_category(self, tmp_path: Path, httpx_mock) -> None:  # type: ignore[no-untyped-def]
+        """--category boundaries does NOT trigger election seeding."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+
+        boundary_content = b"boundary data"
+        boundary_sha = hashlib.sha512(boundary_content).hexdigest()
+
+        manifest = json.dumps(
+            {
+                "version": "1",
+                "updated_at": "2026-02-20T09:00:00Z",
+                "files": [
+                    {
+                        "filename": "congress.zip",
+                        "sha512": boundary_sha,
+                        "category": "boundary",
+                        "size_bytes": len(boundary_content),
+                    },
+                ],
+            }
+        )
+        httpx_mock.add_response(url="https://test.example.com/manifest.json", text=manifest)
+        httpx_mock.add_response(url="https://test.example.com/congress.zip", content=boundary_content)
+
+        with (
+            patch(
+                "voter_api.cli.seed_cmd._import_all_boundaries",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "voter_api.cli.seed_cmd._seed_elections_from_api",
+                new_callable=AsyncMock,
+            ) as mock_elections,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "seed",
+                    "--data-root",
+                    "https://test.example.com/",
+                    "--data-dir",
+                    str(data_dir),
+                    "--category",
+                    "boundaries",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        # Elections must NOT be seeded when only boundaries category is selected
+        mock_elections.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # US3: Download Only

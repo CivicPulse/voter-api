@@ -228,23 +228,33 @@ def rebuild(
 
     typer.echo("Step 4/4: Running seed/import pipeline...")
 
-    from voter_api.cli.seed_cmd import _CATEGORY_MAP, _VALID_CATEGORIES, _run_seed, _validate_data_root
+    from voter_api.cli.seed_cmd import (
+        _CATEGORY_MAP,
+        _ELECTION_CATEGORY,
+        _VALID_CATEGORIES,
+        _run_seed,
+        _validate_data_root,
+    )
 
     # Validate data_root the same way the seed command does
     data_root = _validate_data_root(data_root)
 
-    # Validate categories
+    # Validate categories — "elections" is API-fetched so handled separately
     category_filters = None
+    seed_elections_explicitly = False
     if category:
         category_filters = set()
         for cat in category:
-            if cat not in _CATEGORY_MAP:
+            if cat == _ELECTION_CATEGORY:
+                seed_elections_explicitly = True
+            elif cat in _CATEGORY_MAP:
+                category_filters.add(_CATEGORY_MAP[cat])
+            else:
                 typer.echo(
                     f"Error: Invalid category '{cat}'. Valid options: {_VALID_CATEGORIES}",
                     err=True,
                 )
                 raise typer.Exit(code=1)
-            category_filters.add(_CATEGORY_MAP[cat])
 
     asyncio.run(
         _run_seed(
@@ -257,6 +267,7 @@ def rebuild(
             max_voters=max_voters,
             election_source=election_source,
             skip_elections=skip_elections,
+            seed_elections_explicitly=seed_elections_explicitly,
         )
     )
 

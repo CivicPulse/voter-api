@@ -28,7 +28,10 @@ _CATEGORY_MAP: dict[str, FileCategory] = {
     "voter-history": FileCategory.VOTER_HISTORY,
 }
 
-_VALID_CATEGORIES = ", ".join(sorted(_CATEGORY_MAP.keys()))
+# Elections are API-fetched (not manifest-file-based) so they live outside _CATEGORY_MAP.
+_ELECTION_CATEGORY = "elections"
+
+_VALID_CATEGORIES = ", ".join(sorted([*_CATEGORY_MAP.keys(), _ELECTION_CATEGORY]))
 
 _DEFAULT_ELECTION_SOURCE = "https://voteapi.civpulse.org"
 
@@ -105,18 +108,24 @@ def seed(
     cached files with matching checksums), then imports in dependency
     order: county-districts → boundaries → elections (from API) → voters → voter-history.
     """
-    # Validate categories
+    # Validate categories — "elections" is handled separately (API-fetched, not manifest-based)
     category_filters: set[FileCategory] | None = None
+    seed_elections_explicitly = False
     if category:
         category_filters = set()
         for cat in category:
-            if cat not in _CATEGORY_MAP:
+            if cat == _ELECTION_CATEGORY:
+                seed_elections_explicitly = True
+            elif cat in _CATEGORY_MAP:
+                category_filters.add(_CATEGORY_MAP[cat])
+            else:
                 typer.echo(
                     f"Error: Invalid category '{cat}'. Valid options: {_VALID_CATEGORIES}",
                     err=True,
                 )
                 raise typer.Exit(code=1)
-            category_filters.add(_CATEGORY_MAP[cat])
+        # If only "elections" was given, keep category_filters as an empty set
+        # so manifest downloads are skipped but elections still seed.
 
     asyncio.run(
         _run_seed(
@@ -129,6 +138,7 @@ def seed(
             max_voters=max_voters,
             election_source=election_source,
             skip_elections=skip_elections,
+            seed_elections_explicitly=seed_elections_explicitly,
         )
     )
 
@@ -144,6 +154,7 @@ async def _run_seed(
     max_voters: int | None = None,
     election_source: str | None = _DEFAULT_ELECTION_SOURCE,
     skip_elections: bool = False,
+    seed_elections_explicitly: bool = False,
 ) -> None:
     """Async implementation of the seed workflow.
 
@@ -157,6 +168,8 @@ async def _run_seed(
         max_voters: If set, limit total voter records imported.
         election_source: Base URL of the source API for election seeding.
         skip_elections: If True, skip the election seeding step.
+        seed_elections_explicitly: If True, seed elections even when no file
+            categories match (e.g. ``--category elections``).
     """
     from voter_api.core.config import get_settings
 
@@ -175,58 +188,64 @@ async def _run_seed(
 
     # Filter by category
     entries = list(manifest.files)
-    if category_filters:
+    if category_filters is not None:
         entries = [e for e in entries if e.category in category_filters]
-        cats = ", ".join(c.value for c in category_filters)
-        typer.echo(f"Filtered to {len(entries)} files matching categories: {cats}")
+        if category_filters:
+            cats = ", ".join(c.value for c in category_filters)
+            typer.echo(f"Filtered to {len(entries)} files matching categories: {cats}")
 
-    if not entries:
+    if not entries and not seed_elections_explicitly:
         typer.echo("No files to process.")
         raise typer.Exit(code=0)
 
-    # --- Phase 2: Download files ---
-    typer.echo(f"\nDownloading {len(entries)} file(s) to {data_dir.resolve()}")
     seed_result = SeedResult()
 
-    for i, entry in enumerate(entries, 1):
-        dest = resolve_download_path(entry, data_dir)
-        url = f"{root_url.rstrip('/')}/{entry.filename}"
+    # --- Phase 2: Download files (skipped when only "elections" was requested) ---
+    if entries:
+        typer.echo(f"\nDownloading {len(entries)} file(s) to {data_dir.resolve()}")
 
-        typer.echo(f"\n[{i}/{len(entries)}] {entry.filename} ({entry.size_bytes:,} bytes)")
+        for i, entry in enumerate(entries, 1):
+            dest = resolve_download_path(entry, data_dir)
+            url = f"{root_url.rstrip('/')}/{entry.filename}"
 
-        result = await download_file(
-            url=url,
-            dest=dest,
-            expected_sha512=entry.sha512,
-            size_bytes=entry.size_bytes,
-            skip_checksum=skip_checksum,
-            entry=entry,
-        )
-        seed_result.downloads.append(result)
+            typer.echo(f"\n[{i}/{len(entries)}] {entry.filename} ({entry.size_bytes:,} bytes)")
 
-        if result.success:
-            if result.downloaded:
-                seed_result.total_downloaded_bytes += entry.size_bytes
-                typer.echo(f"  Downloaded: {dest}")
+            result = await download_file(
+                url=url,
+                dest=dest,
+                expected_sha512=entry.sha512,
+                size_bytes=entry.size_bytes,
+                skip_checksum=skip_checksum,
+                entry=entry,
+            )
+            seed_result.downloads.append(result)
+
+            if result.success:
+                if result.downloaded:
+                    seed_result.total_downloaded_bytes += entry.size_bytes
+                    typer.echo(f"  Downloaded: {dest}")
+                else:
+                    seed_result.total_skipped += 1
+                    typer.echo(f"  Cached: {dest}")
             else:
-                seed_result.total_skipped += 1
-                typer.echo(f"  Cached: {dest}")
-        else:
-            typer.echo(f"  FAILED: {result.error}", err=True)
-            seed_result.success = False
-            if fail_fast:
-                typer.echo("Stopping (--fail-fast).", err=True)
-                raise typer.Exit(code=1)
+                typer.echo(f"  FAILED: {result.error}", err=True)
+                seed_result.success = False
+                if fail_fast:
+                    typer.echo("Stopping (--fail-fast).", err=True)
+                    raise typer.Exit(code=1)
 
-    # --- Download summary ---
-    downloaded_count = sum(1 for r in seed_result.downloads if r.downloaded)
-    failed_count = sum(1 for r in seed_result.downloads if not r.success)
-    typer.echo(
-        f"\nDownload complete: {downloaded_count} downloaded, {seed_result.total_skipped} cached, {failed_count} failed"
-    )
+        # --- Download summary ---
+        downloaded_count = sum(1 for r in seed_result.downloads if r.downloaded)
+        failed_count = sum(1 for r in seed_result.downloads if not r.success)
+        typer.echo(
+            f"\nDownload complete: {downloaded_count} downloaded, "
+            f"{seed_result.total_skipped} cached, {failed_count} failed"
+        )
 
-    if failed_count > 0 and fail_fast:
-        raise typer.Exit(code=1)
+        if failed_count > 0 and fail_fast:
+            raise typer.Exit(code=1)
+    else:
+        typer.echo("\nNo manifest files to download (seeding elections from API only).")
 
     # --- Phase 3: Import (unless --download-only) ---
     if download_only:
@@ -248,6 +267,7 @@ async def _run_seed(
         max_voters=max_voters,
         election_source=election_source,
         skip_elections=skip_elections,
+        seed_elections_explicitly=seed_elections_explicitly,
     )
 
     if not seed_result.success:
@@ -268,6 +288,7 @@ async def _run_imports(
     max_voters: int | None = None,
     election_source: str | None = _DEFAULT_ELECTION_SOURCE,
     skip_elections: bool = False,
+    seed_elections_explicitly: bool = False,
 ) -> None:
     """Run database imports in dependency order.
 
@@ -284,6 +305,8 @@ async def _run_imports(
         max_voters: If set, limit total voter records imported.
         election_source: Base URL of the source API for election seeding.
         skip_elections: If True, skip the election seeding step.
+        seed_elections_explicitly: If True, seed elections regardless of
+            category_filters (set when ``--category elections`` is used).
     """
     from voter_api.core.config import get_settings
     from voter_api.core.database import dispose_engine, init_engine
@@ -327,7 +350,8 @@ async def _run_imports(
             not skip_elections
             and bool(election_source)
             and (
-                category_filters is None
+                seed_elections_explicitly
+                or category_filters is None
                 or FileCategory.VOTER in category_filters
                 or FileCategory.VOTER_HISTORY in category_filters
             )
