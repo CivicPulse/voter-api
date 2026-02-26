@@ -29,6 +29,7 @@ from voter_api.schemas.election import (
     CountyResultSummary,
     ElectionCreateRequest,
     ElectionDetailResponse,
+    ElectionLinkRequest,
     ElectionResultFeature,
     ElectionResultFeatureCollection,
     ElectionResultsResponse,
@@ -88,7 +89,7 @@ async def create_election(
     Raises:
         DuplicateElectionError: If a duplicate election exists (by name+date or feed+ballot_item).
     """
-    if request.ballot_item_id is not None:
+    if request.ballot_item_id is not None and request.data_source_url is not None:
         existing = await session.execute(
             select(Election).where(
                 Election.data_source_url == str(request.data_source_url),
@@ -101,7 +102,7 @@ async def create_election(
                 f"from '{request.data_source_url}' already exists."
             )
             raise DuplicateElectionError(msg)
-    else:
+    elif request.source != "manual":
         existing = await session.execute(
             select(Election).where(
                 Election.name == request.name,
@@ -112,21 +113,36 @@ async def create_election(
             msg = f"An election with name '{request.name}' and date '{request.election_date}' already exists."
             raise DuplicateElectionError(msg)
 
+    data_source_url = str(request.data_source_url) if request.data_source_url is not None else None
+
     election = Election(
         name=request.name,
         election_date=request.election_date,
         election_type=request.election_type,
         district=request.district,
         status=request.status,
-        data_source_url=str(request.data_source_url),
+        source=request.source,
+        data_source_url=data_source_url,
         refresh_interval_seconds=request.refresh_interval_seconds,
         ballot_item_id=request.ballot_item_id,
     )
 
-    # Auto-parse district text and link to boundary
-    from voter_api.services.election_resolution_service import link_election_to_boundary
+    if request.source == "manual":
+        from voter_api.models.boundary import Boundary
 
-    await link_election_to_boundary(session, election)
+        if request.boundary_id is None:
+            msg = "boundary_id is required for manual elections."
+            raise ValueError(msg)
+        boundary = await session.get(Boundary, request.boundary_id)
+        if boundary is None:
+            msg = f"Boundary '{request.boundary_id}' does not exist."
+            raise ValueError(msg)
+        election.boundary_id = request.boundary_id
+    else:
+        # Auto-parse district text and link to boundary
+        from voter_api.services.election_resolution_service import link_election_to_boundary
+
+        await link_election_to_boundary(session, election)
 
     session.add(election)
     await session.commit()
@@ -155,7 +171,9 @@ async def get_election_by_id(
         Election instance or None if not found.
     """
     result = await session.execute(
-        select(Election).options(selectinload(Election.result)).where(Election.id == election_id)
+        select(Election)
+        .options(selectinload(Election.result))
+        .where(Election.id == election_id, Election.deleted_at.is_(None))
     )
     return result.scalar_one_or_none()
 
@@ -190,6 +208,83 @@ async def update_election(
     return election
 
 
+async def soft_delete_election(
+    session: AsyncSession,
+    election_id: uuid.UUID,
+) -> bool:
+    """Soft-delete an election by setting deleted_at to now.
+
+    Args:
+        session: Async database session.
+        election_id: The election UUID.
+
+    Returns:
+        True if deleted, False if not found.
+    """
+    election = await get_election_by_id(session, election_id)
+    if election is None:
+        return False
+    election.deleted_at = datetime.now(UTC)
+    await session.commit()
+    return True
+
+
+async def link_election(
+    session: AsyncSession,
+    election_id: uuid.UUID,
+    request: ElectionLinkRequest,
+) -> Election | None:
+    """Link a manual election to an SOS feed URL.
+
+    Transitions the election source from "manual" to "linked" and stores
+    the provided feed URL. Only manual elections can be linked.
+
+    Args:
+        session: Async database session.
+        election_id: The election UUID.
+        request: Link request with data_source_url and optional ballot_item_id.
+
+    Returns:
+        Updated Election instance, or None if not found.
+
+    Raises:
+        ValueError: If the election is not a manual election.
+        DuplicateElectionError: If a feed+ballot_item conflict exists.
+    """
+    election = await get_election_by_id(session, election_id)
+    if election is None:
+        return None
+
+    if election.source != "manual":
+        msg = f"Only manual elections can be linked. Election source is '{election.source}'."
+        raise ValueError(msg)
+
+    data_source_url_str = str(request.data_source_url)
+    ballot_item_id = request.ballot_item_id
+
+    if ballot_item_id is not None:
+        conflict = await session.execute(
+            select(Election).where(
+                Election.data_source_url == data_source_url_str,
+                Election.ballot_item_id == ballot_item_id,
+                Election.id != election_id,
+                Election.deleted_at.is_(None),
+            )
+        )
+        if conflict.scalar_one_or_none() is not None:
+            msg = f"An election for ballot item '{ballot_item_id}' from '{data_source_url_str}' already exists."
+            raise DuplicateElectionError(msg)
+
+    election.source = "linked"
+    election.data_source_url = data_source_url_str
+    if ballot_item_id is not None:
+        election.ballot_item_id = ballot_item_id
+
+    await session.commit()
+    await session.refresh(election, ["result"])
+    return election
+
+
 def build_detail_response(election: Election) -> ElectionDetailResponse:
     """Build an ElectionDetailResponse from an Election model instance."""
     precincts_reporting = None
@@ -205,6 +300,7 @@ def build_detail_response(election: Election) -> ElectionDetailResponse:
         election_type=election.election_type,
         district=election.district,
         status=election.status,
+        source=election.source,
         last_refreshed_at=election.last_refreshed_at,
         precincts_reporting=precincts_reporting,
         precincts_participating=precincts_participating,
@@ -439,6 +535,10 @@ async def refresh_single_election(
         msg = "Election not found."
         raise ValueError(msg)
 
+    if election.data_source_url is None:
+        msg = "Election has no data source URL — cannot refresh a manual election."
+        raise ValueError(msg)
+
     settings = get_settings()
     feed = await fetch_election_results(
         election.data_source_url,
@@ -483,6 +583,7 @@ async def list_elections(
     early_voting_active: bool | None = None,
     district_type: str | None = None,
     district_identifier: str | None = None,
+    source: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[ElectionSummary], int]:
@@ -508,7 +609,7 @@ async def list_elections(
     query = select(Election).options(selectinload(Election.result))
     count_query = select(func.count(Election.id))
 
-    filters = []
+    filters = [Election.deleted_at.is_(None)]
     if status:
         filters.append(Election.status == status)
     if election_type:
@@ -532,6 +633,8 @@ async def list_elections(
         filters.append(Election.district_type == district_type)
     if district_identifier:
         filters.append(Election.district_identifier == district_identifier)
+    if source:
+        filters.append(Election.source == source)
 
     if filters:
         query = query.where(and_(*filters))
@@ -561,6 +664,7 @@ async def list_elections(
                 election_type=election.election_type,
                 district=election.district,
                 status=election.status,
+                source=election.source,
                 last_refreshed_at=election.last_refreshed_at,
                 precincts_reporting=precincts_reporting,
                 precincts_participating=precincts_participating,
@@ -846,7 +950,7 @@ async def refresh_all_active_elections(session: AsyncSession) -> int:
     Returns:
         Number of elections successfully refreshed.
     """
-    result = await session.execute(select(Election).where(Election.status == "active"))
+    result = await session.execute(select(Election).where(Election.status == "active", Election.deleted_at.is_(None)))
     elections = result.scalars().all()
 
     refreshed = 0
@@ -1000,6 +1104,7 @@ async def import_feed(
             election_date=election_date,
             election_type=election_type,
             district=district,
+            source="sos_feed",
             data_source_url=request.data_source_url,
             refresh_interval_seconds=request.refresh_interval_seconds,
             ballot_item_id=ballot_item.id,
