@@ -19,6 +19,7 @@ from voter_api.schemas.geocoding import (
     GeocodeMetadata,
     ValidationDetail,
 )
+from voter_api.services.geocoding_service import GeocodingJobTerminalStateError
 
 
 @pytest.fixture
@@ -183,7 +184,7 @@ class TestVerifyContractResponse:
 
 
 @pytest.fixture
-def admin_user():
+def admin_user() -> MagicMock:
     """Create a mock admin user for authenticated endpoints."""
     user = MagicMock()
     user.role = "admin"
@@ -192,7 +193,7 @@ def admin_user():
 
 
 @pytest.fixture
-def admin_app(mock_session, admin_user):
+def admin_app(mock_session: AsyncMock, admin_user: MagicMock) -> FastAPI:
     """Create a FastAPI app with admin auth overrides."""
     app = FastAPI()
     app.include_router(geocoding_router, prefix="/api/v1")
@@ -264,7 +265,7 @@ class TestCancelJobContractResponse:
         with patch(
             "voter_api.api.v1.geocoding.cancel_geocoding_job",
             new_callable=AsyncMock,
-            side_effect=ValueError("terminal:completed"),
+            side_effect=GeocodingJobTerminalStateError("completed"),
         ):
             resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/cancel")
 
@@ -326,7 +327,7 @@ class TestMarkFailedContractResponse:
         with patch(
             "voter_api.api.v1.geocoding.mark_geocoding_job_failed",
             new_callable=AsyncMock,
-            side_effect=ValueError("terminal:completed"),
+            side_effect=GeocodingJobTerminalStateError("completed"),
         ):
             resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/fail")
 

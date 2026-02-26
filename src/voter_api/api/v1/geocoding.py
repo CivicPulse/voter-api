@@ -33,6 +33,8 @@ from voter_api.schemas.geocoding import (
 )
 from voter_api.services.boundary_service import find_boundaries_at_point
 from voter_api.services.geocoding_service import (
+    GeocodingJobNotFoundError,
+    GeocodingJobTerminalStateError,
     cancel_geocoding_job,
     create_geocoding_job,
     geocode_single_address,
@@ -362,18 +364,15 @@ async def cancel_job(
     """
     try:
         job = await cancel_geocoding_job(session, job_id)
-    except ValueError as e:
-        err = str(e)
-        if err == "not_found":
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Geocoding job not found",
-            ) from e
-        # terminal:<status>
-        terminal_status = err.split(":", 1)[1] if ":" in err else "unknown"
+    except GeocodingJobNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Geocoding job not found",
+        ) from e
+    except GeocodingJobTerminalStateError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Job is already in terminal state '{terminal_status}' and cannot be cancelled",
+            detail=f"Job is already in terminal state '{e.current_status}' and cannot be cancelled",
         ) from e
 
     return CancelJobResponse(
@@ -416,17 +415,15 @@ async def mark_job_failed(
     reason = body.reason if body else None
     try:
         job = await mark_geocoding_job_failed(session, job_id, reason=reason)
-    except ValueError as e:
-        err = str(e)
-        if err == "not_found":
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Geocoding job not found",
-            ) from e
-        terminal_status = err.split(":", 1)[1] if ":" in err else "unknown"
+    except GeocodingJobNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Geocoding job not found",
+        ) from e
+    except GeocodingJobTerminalStateError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Job is already in terminal state '{terminal_status}' and cannot be marked as failed",
+            detail=f"Job is already in terminal state '{e.current_status}' and cannot be marked as failed",
         ) from e
 
     return CancelJobResponse(

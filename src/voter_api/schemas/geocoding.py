@@ -184,7 +184,7 @@ class CancelJobResponse(BaseModel):
     """Response schema for cancel/fail job endpoints."""
 
     id: uuid.UUID = Field(description="Geocoding job UUID.")
-    status: str = Field(description="Final terminal status for the job.")
+    status: Literal["cancelled", "failed"] = Field(description="Final terminal status for the job.")
     completed_at: datetime = Field(description="UTC timestamp when the job reached terminal state.")
     message: str = Field(description="Human-readable outcome message for the operation.")
 

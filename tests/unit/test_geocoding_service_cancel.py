@@ -160,7 +160,11 @@ class TestCooperativeCancellation:
         batch_result = MagicMock()
         batch_result.scalars.return_value.all.return_value = []
 
-        mock_session.execute = AsyncMock(side_effect=[count_result, status_result, batch_result])
+        # 4th execute: final pre-completion status re-check (still "running", so job completes normally)
+        final_status_result = MagicMock()
+        final_status_result.scalar_one.return_value = "running"
+
+        mock_session.execute = AsyncMock(side_effect=[count_result, status_result, batch_result, final_status_result])
 
         with (
             patch(
@@ -178,7 +182,8 @@ class TestCooperativeCancellation:
         assert result.status == "completed"
         assert result.completed_at is not None
         # The batch query was executed (meaning we got past the cancellation check)
-        assert mock_session.execute.await_count == 3
+        # 4 executes: count, loop status check, batch query, final pre-completion status check
+        assert mock_session.execute.await_count == 4
 
 
 class TestTerminalStatuses:

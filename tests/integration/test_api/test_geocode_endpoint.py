@@ -13,6 +13,7 @@ from voter_api.api.v1.geocoding import geocoding_router
 from voter_api.lib.geocoder.base import GeocodingProviderError
 from voter_api.models.geocoding_job import GeocodingJob
 from voter_api.schemas.geocoding import AddressGeocodeResponse, CacheProviderStats, GeocodeMetadata
+from voter_api.services.geocoding_service import GeocodingJobNotFoundError, GeocodingJobTerminalStateError
 
 from .conftest import make_test_app
 
@@ -388,7 +389,7 @@ class TestCancelJobEndpoint:
         with patch(
             "voter_api.api.v1.geocoding.cancel_geocoding_job",
             new_callable=AsyncMock,
-            side_effect=ValueError("terminal:completed"),
+            side_effect=GeocodingJobTerminalStateError("completed"),
         ):
             resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/cancel")
 
@@ -401,7 +402,7 @@ class TestCancelJobEndpoint:
         with patch(
             "voter_api.api.v1.geocoding.cancel_geocoding_job",
             new_callable=AsyncMock,
-            side_effect=ValueError("terminal:failed"),
+            side_effect=GeocodingJobTerminalStateError("failed"),
         ):
             resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/cancel")
 
@@ -424,7 +425,7 @@ class TestCancelJobEndpoint:
         with patch(
             "voter_api.api.v1.geocoding.cancel_geocoding_job",
             new_callable=AsyncMock,
-            side_effect=ValueError("not_found"),
+            side_effect=GeocodingJobNotFoundError(str(job_id)),
         ):
             resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/cancel")
 
@@ -482,7 +483,7 @@ class TestMarkJobFailedEndpoint:
         with patch(
             "voter_api.api.v1.geocoding.mark_geocoding_job_failed",
             new_callable=AsyncMock,
-            side_effect=ValueError("terminal:completed"),
+            side_effect=GeocodingJobTerminalStateError("completed"),
         ):
             resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/fail")
 
@@ -505,7 +506,7 @@ class TestMarkJobFailedEndpoint:
         with patch(
             "voter_api.api.v1.geocoding.mark_geocoding_job_failed",
             new_callable=AsyncMock,
-            side_effect=ValueError("not_found"),
+            side_effect=GeocodingJobNotFoundError(str(job_id)),
         ):
             resp = await admin_client.patch(f"/api/v1/geocoding/jobs/{job_id}/fail")
 
