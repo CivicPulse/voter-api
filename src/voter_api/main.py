@@ -25,7 +25,7 @@ async def _recover_stale_analysis_runs() -> None:
     In-process background tasks don't survive server restarts, so any runs
     still in these statuses at boot time are orphaned.
     """
-    from sqlalchemy import update
+    from sqlalchemy import case, func, update
 
     from voter_api.models.analysis_run import AnalysisRun
 
@@ -36,12 +36,20 @@ async def _recover_stale_analysis_runs() -> None:
             .where(AnalysisRun.status.in_(["running", "pending"]))
             .values(
                 status="failed",
-                notes="Server restarted while task was in progress",
+                notes=case(
+                    (
+                        AnalysisRun.notes.isnot(None),
+                        AnalysisRun.notes + "; Server restarted while task was in progress",
+                    ),
+                    else_="Server restarted while task was in progress",
+                ),
+                completed_at=func.now(),
             )
         )
         await session.commit()
-        if result.rowcount:  # type: ignore[union-attr]
-            logger.warning(f"Recovered {result.rowcount} stale analysis run(s) on startup")
+        row_count = result.rowcount  # type: ignore[attr-defined]
+        if row_count is not None and row_count > 0:
+            logger.warning("Recovered {} stale analysis run(s) on startup", row_count)
 
 
 @asynccontextmanager

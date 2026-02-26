@@ -44,53 +44,57 @@ class TestCreateApp:
 class TestRecoverStaleAnalysisRuns:
     """Tests for _recover_stale_analysis_runs."""
 
-    @pytest.mark.asyncio
-    async def test_marks_running_runs_as_failed(self) -> None:
-        """Running analysis runs are marked as failed on startup."""
+    @pytest.fixture
+    def mock_session_factory(self):
+        """Create a mock session factory with configurable rowcount."""
         from unittest.mock import MagicMock
 
+        mock_result = MagicMock()
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.commit = AsyncMock()
+
+        mock_factory = MagicMock()
+        mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_factory.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        return mock_factory, mock_session, mock_result
+
+    @pytest.mark.asyncio
+    async def test_marks_running_runs_as_failed(self, mock_session_factory) -> None:
+        """Running analysis runs are marked as failed and warning is logged."""
         from voter_api.main import _recover_stale_analysis_runs
 
-        mock_result = MagicMock()
+        mock_factory, mock_session, mock_result = mock_session_factory
         mock_result.rowcount = 2
 
-        mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
-        mock_session.commit = AsyncMock()
-
-        mock_factory = MagicMock()
-        mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_factory.return_value.__aexit__ = AsyncMock(return_value=False)
-
-        with patch("voter_api.main.get_session_factory", return_value=mock_factory):
+        with (
+            patch("voter_api.main.get_session_factory", return_value=mock_factory),
+            patch("voter_api.main.logger") as mock_logger,
+        ):
             await _recover_stale_analysis_runs()
 
         mock_session.execute.assert_awaited_once()
         mock_session.commit.assert_awaited_once()
+        mock_logger.warning.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_no_op_when_no_stale_runs(self) -> None:
+    async def test_no_op_when_no_stale_runs(self, mock_session_factory) -> None:
         """No warnings logged when there are no stale runs."""
-        from unittest.mock import MagicMock
-
         from voter_api.main import _recover_stale_analysis_runs
 
-        mock_result = MagicMock()
+        mock_factory, mock_session, mock_result = mock_session_factory
         mock_result.rowcount = 0
 
-        mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
-        mock_session.commit = AsyncMock()
-
-        mock_factory = MagicMock()
-        mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_factory.return_value.__aexit__ = AsyncMock(return_value=False)
-
-        with patch("voter_api.main.get_session_factory", return_value=mock_factory):
+        with (
+            patch("voter_api.main.get_session_factory", return_value=mock_factory),
+            patch("voter_api.main.logger") as mock_logger,
+        ):
             await _recover_stale_analysis_runs()
 
         mock_session.execute.assert_awaited_once()
         mock_session.commit.assert_awaited_once()
+        mock_logger.warning.assert_not_called()
 
 
 class TestAppLifespan:
