@@ -36,6 +36,7 @@ class TestElectionCreateRequest:
             election_date=date(2024, 11, 5),
             election_type="general",
             district="Georgia Statewide",
+            source="sos_feed",
             data_source_url="https://sos.ga.gov/results.json",
         )
         data = req.model_dump()
@@ -49,6 +50,7 @@ class TestElectionCreateRequest:
             election_date=date(2024, 11, 5),
             election_type="special",
             district="District 18",
+            source="sos_feed",
             data_source_url="https://example.com/feed.json",
             refresh_interval_seconds=300,
         )
@@ -82,6 +84,7 @@ class TestElectionSummary:
             election_type="general",
             district="Statewide",
             status="active",
+            source="sos_feed",
             last_refreshed_at=None,
             precincts_reporting=None,
             precincts_participating=None,
@@ -104,6 +107,7 @@ class TestElectionSummary:
             election_type="general",
             district="Statewide",
             status="active",
+            source="sos_feed",
             last_refreshed_at=datetime(2024, 11, 5, 18, 30, tzinfo=UTC),
             precincts_reporting=2450,
             precincts_participating=2600,
@@ -122,6 +126,7 @@ class TestElectionDetailResponse:
             election_type="general",
             district="Statewide",
             status="active",
+            source="sos_feed",
             last_refreshed_at=None,
             data_source_url="https://example.com/feed.json",
             refresh_interval_seconds=120,
@@ -146,6 +151,7 @@ class TestPaginatedElectionListResponse:
                     election_type="general",
                     district="Statewide",
                     status="active",
+                    source="sos_feed",
                     last_refreshed_at=None,
                 ),
             ],

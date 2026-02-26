@@ -6,12 +6,15 @@ Orchestrates election CRUD, result fetching, and data assembly.
 import asyncio
 import uuid
 from datetime import UTC, date, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
+if TYPE_CHECKING:
+    from sqlalchemy.sql.elements import ColumnElement
 
 from voter_api.core.config import get_settings
 from voter_api.lib.election_tracker import (
@@ -609,7 +612,7 @@ async def list_elections(
     query = select(Election).options(selectinload(Election.result))
     count_query = select(func.count(Election.id))
 
-    filters = [Election.deleted_at.is_(None)]
+    filters: list[ColumnElement[bool]] = [Election.deleted_at.is_(None)]
     if status:
         filters.append(Election.status == status)
     if election_type:
