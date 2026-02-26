@@ -307,6 +307,7 @@ async def clear_voter_official_location_override(
 async def check_voter_batch_boundaries(
     voter_id: uuid.UUID,
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    _current_user: Annotated[User, Depends(get_current_user)],
 ) -> BatchBoundaryCheckResponse:
     """Check all geocoded provider locations against all registered district boundaries."""
     from voter_api.services.voter_service import check_batch_boundaries_for_voter

@@ -16,6 +16,7 @@ from voter_api.models.voter import Voter
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import Sequence
 
     from sqlalchemy.engine import Row
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,7 +64,7 @@ class BatchBoundaryCheckResult:
 
 
 def _build_provider_summary(
-    locations: Any,
+    locations: Sequence[GeocodedLocation],
     cross_rows: list[Row[Any]],
 ) -> list[_ProviderSummary]:
     """Build per-provider summary from geocoded locations and cross-join rows."""
@@ -96,8 +97,8 @@ def _build_provider_summary(
 
 def _build_district_results(
     registered: dict[str, str],
-    boundary_lookup: dict[tuple[str, str], Any],
-    district_providers: dict[tuple, list[_ProviderResult]],
+    boundary_lookup: dict[tuple[str, str], Boundary],
+    district_providers: dict[tuple[uuid.UUID, str, str], list[_ProviderResult]],
 ) -> list[_DistrictBoundaryResult]:
     """Build district boundary results from registered assignments."""
     districts: list[_DistrictBoundaryResult] = []
@@ -201,21 +202,21 @@ async def check_batch_boundaries(
     # US2 edge case: no geocoded locations
     if not locations:
         # Populate districts with has_geometry status, empty providers
-        districts = []
+        districts_no_locs: list[_DistrictBoundaryResult] = []
         for btype, bident in registered.items():
-            b = boundary_lookup.get((btype, bident))
-            districts.append(
+            boundary_match = boundary_lookup.get((btype, bident))
+            districts_no_locs.append(
                 _DistrictBoundaryResult(
-                    boundary_id=b.id if b else None,
+                    boundary_id=boundary_match.id if boundary_match else None,
                     boundary_type=btype,
                     boundary_identifier=bident,
-                    has_geometry=b is not None,
+                    has_geometry=boundary_match is not None,
                     providers=[],
                 )
             )
         return BatchBoundaryCheckResult(
             voter_id=voter_id,
-            districts=districts,
+            districts=districts_no_locs,
             provider_summary=[],
             total_locations=0,
             total_districts=len(registered),
@@ -245,10 +246,10 @@ async def check_batch_boundaries(
 
     # Aggregate cross-join rows into district results
     # Group by (boundary_id, boundary_type, boundary_identifier)
-    district_providers: dict[tuple, list[_ProviderResult]] = defaultdict(list)
+    district_providers: dict[tuple[uuid.UUID, str, str], list[_ProviderResult]] = defaultdict(list)
     for row in cross_rows:
-        key = (row.boundary_id, row.boundary_type, row.boundary_identifier)
-        district_providers[key].append(
+        district_key = (row.boundary_id, row.boundary_type, row.boundary_identifier)
+        district_providers[district_key].append(
             _ProviderResult(source_type=row.source_type, is_contained=bool(row.is_contained))
         )
 

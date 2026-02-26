@@ -625,7 +625,6 @@ class TestGeocodeVoterAllProviders:
 class TestSetOfficialLocationOverrideGeorgiaValidation:
     """Unit tests for Georgia bounds validation in set_official_location_override()."""
 
-    @pytest.mark.asyncio
     async def test_raises_value_error_for_coordinates_outside_georgia(self) -> None:
         """Coordinates outside Georgia bounds (e.g., London) raise ValueError."""
         from voter_api.models.voter import Voter
@@ -647,17 +646,16 @@ class TestSetOfficialLocationOverrideGeorgiaValidation:
         session.commit.assert_not_awaited()
         session.refresh.assert_not_awaited()
 
-    @pytest.mark.asyncio
     async def test_proceeds_normally_for_valid_georgia_coordinates(self) -> None:
         """Valid Georgia coordinates (Atlanta) succeed without error."""
         from voter_api.models.voter import Voter
         from voter_api.services.geocoding_service import set_official_location_override
 
         mock_voter = MagicMock(spec=Voter)
-        mock_voter.official_latitude = 33.749
-        mock_voter.official_longitude = -84.388
-        mock_voter.official_source = "admin"
-        mock_voter.official_is_override = True
+        mock_voter.official_latitude = None
+        mock_voter.official_longitude = None
+        mock_voter.official_source = None
+        mock_voter.official_is_override = False
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_voter
@@ -674,3 +672,7 @@ class TestSetOfficialLocationOverrideGeorgiaValidation:
         session.commit.assert_awaited_once()
         session.refresh.assert_awaited_once_with(mock_voter)
         assert result is mock_voter
+        assert mock_voter.official_latitude == 33.749
+        assert mock_voter.official_longitude == -84.388
+        assert mock_voter.official_source == "admin"
+        assert mock_voter.official_is_override is True
