@@ -34,6 +34,15 @@ def _make_election(**overrides) -> Election:
         "district_party": None,
         "result": None,
         "county_results": [],
+        "description": None,
+        "purpose": None,
+        "eligibility_description": None,
+        "registration_deadline": None,
+        "early_voting_start": None,
+        "early_voting_end": None,
+        "absentee_request_deadline": None,
+        "qualifying_start": None,
+        "qualifying_end": None,
     }
     defaults.update(overrides)
     election = MagicMock(spec=Election)

@@ -1,0 +1,852 @@
+openapi: "3.1.0"
+info:
+  title: voter-api Election Information Endpoints
+  version: 0.1.0
+  description: |
+    Public and admin endpoints for managing election candidate information
+    and election metadata enrichment. Includes candidate CRUD, election metadata
+    updates, and filtering by milestone dates.
+    Part of feature 010-election-info.
+
+servers:
+  - url: /api/v1
+    description: API v1 prefix
+
+paths:
+  /elections/{election_id}/candidates:
+    get:
+      operationId: listCandidates
+      summary: List candidates for an election
+      description: |
+        Returns a paginated list of candidates for the specified election.
+        No authentication required. All filing statuses are included by default;
+        use the `status` filter to narrow results.
+      tags:
+        - candidates
+      security: []
+      parameters:
+        - name: election_id
+          in: path
+          required: true
+          description: Election UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        - name: status
+          in: query
+          required: false
+          description: Filter by filing status
+          schema:
+            type: string
+            enum: ["qualified", "withdrawn", "disqualified", "write_in"]
+          example: "qualified"
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-indexed, default 1)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: page_size
+          in: query
+          required: false
+          description: Results per page (min 1, max 100, default 20)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
+      responses:
+        "200":
+          description: Paginated list of candidates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedCandidateResponse"
+        "404":
+          description: Election not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      operationId: createCandidate
+      summary: Create a candidate for an election
+      description: |
+        Admin-only operation to create a new candidate record.
+        Returns 404 if the election does not exist.
+        Returns 409 if a candidate with the same full_name already exists
+        for this election.
+      tags:
+        - candidates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: election_id
+          in: path
+          required: true
+          description: Election UUID
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateCreateRequest"
+      responses:
+        "201":
+          description: Candidate created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateDetailResponse"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Election not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Candidate with same name already exists for this election
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error in request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /candidates/{candidate_id}:
+    get:
+      operationId: getCandidate
+      summary: Get candidate detail
+      description: |
+        Returns full details of a candidate by ID, including all profile
+        fields and external links. No authentication required.
+      tags:
+        - candidates
+      security: []
+      parameters:
+        - name: candidate_id
+          in: path
+          required: true
+          description: Candidate UUID
+          schema:
+            type: string
+            format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      responses:
+        "200":
+          description: Candidate details with links
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateDetailResponse"
+        "404":
+          description: Candidate not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: updateCandidate
+      summary: Update a candidate record
+      description: |
+        Admin-only operation to update candidate fields.
+        Partial updates are supported (only provided fields are updated).
+        To update links, use the links sub-resource endpoints.
+      tags:
+        - candidates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: candidate_id
+          in: path
+          required: true
+          description: Candidate UUID
+          schema:
+            type: string
+            format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateUpdateRequest"
+      responses:
+        "200":
+          description: Candidate updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateDetailResponse"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Candidate not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Duplicate name conflict after update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: deleteCandidate
+      summary: Delete a candidate and all linked data
+      description: |
+        Admin-only operation to delete a candidate record and all
+        associated links (cascade).
+      tags:
+        - candidates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: candidate_id
+          in: path
+          required: true
+          description: Candidate UUID
+          schema:
+            type: string
+            format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      responses:
+        "204":
+          description: Candidate deleted successfully
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Candidate not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /candidates/{candidate_id}/links:
+    post:
+      operationId: addCandidateLink
+      summary: Add a link to a candidate
+      description: |
+        Admin-only operation to add an external link to a candidate's profile.
+      tags:
+        - candidates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: candidate_id
+          in: path
+          required: true
+          description: Candidate UUID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateLinkCreateRequest"
+      responses:
+        "201":
+          description: Link added successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateLinkResponse"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Candidate not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /candidates/{candidate_id}/links/{link_id}:
+    delete:
+      operationId: deleteCandidateLink
+      summary: Remove a link from a candidate
+      description: |
+        Admin-only operation to delete a specific link from a candidate's profile.
+      tags:
+        - candidates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: candidate_id
+          in: path
+          required: true
+          description: Candidate UUID
+          schema:
+            type: string
+            format: uuid
+        - name: link_id
+          in: path
+          required: true
+          description: Link UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Link deleted successfully
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient permissions (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Candidate or link not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # Election metadata is updated via the existing PATCH /elections/{id} endpoint.
+  # The ElectionUpdateRequest schema is extended with the new metadata fields.
+  # No new election endpoints are needed — see the election list endpoint for
+  # milestone date filtering parameters below.
+
+  /elections:
+    get:
+      operationId: listElections
+      summary: List elections with optional filters (extended)
+      description: |
+        Extends the existing election list endpoint with new milestone date
+        filters. All existing filters remain unchanged. New filters:
+        - `registration_open`: boolean — only elections with registration_deadline in the future
+        - `early_voting_active`: boolean — only elections currently in their early voting period
+        - `district_type`: string — filter by parsed district type
+        - `district_identifier`: string — filter by parsed district identifier
+      tags:
+        - elections
+      security: []
+      parameters:
+        - name: registration_open
+          in: query
+          required: false
+          description: |
+            Filter to elections with registration deadline in the future.
+            When true, only elections with registration_deadline >= today are returned.
+            When false or omitted, no registration deadline filter is applied.
+          schema:
+            type: boolean
+          example: true
+        - name: early_voting_active
+          in: query
+          required: false
+          description: |
+            Filter to elections currently in their early voting period.
+            When true, only elections where early_voting_start <= today <= early_voting_end are returned.
+            When false or omitted, no early voting filter is applied.
+          schema:
+            type: boolean
+          example: true
+        - name: district_type
+          in: query
+          required: false
+          description: Filter by district type (e.g. congress, state_senate)
+          schema:
+            type: string
+          example: "county_commission"
+        - name: district_identifier
+          in: query
+          required: false
+          description: Filter by district identifier (e.g. "5", "18")
+          schema:
+            type: string
+          example: "5"
+      responses:
+        "200":
+          description: Paginated list of elections (existing response shape extended with new fields)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT Bearer token with role claim. Roles: admin, analyst, viewer.
+        Admin role required for POST/PATCH/DELETE candidate operations.
+
+  schemas:
+    # Candidate link response
+
+    CandidateLinkResponse:
+      type: object
+      required:
+        - id
+        - link_type
+        - url
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Link UUID
+          example: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+        link_type:
+          type: string
+          enum: ["website", "campaign", "facebook", "twitter", "instagram", "youtube", "linkedin", "other"]
+          description: Type of link
+          example: "campaign"
+        url:
+          type: string
+          description: The URL
+          example: "https://www.candidate2026.com"
+        label:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Optional display label
+          example: "Campaign Website"
+
+    # Candidate summary (list endpoints)
+
+    CandidateSummaryResponse:
+      type: object
+      required:
+        - id
+        - election_id
+        - full_name
+        - filing_status
+        - is_incumbent
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Candidate UUID
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        election_id:
+          type: string
+          format: uuid
+          description: Election this candidate is running in
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        full_name:
+          type: string
+          description: Candidate's full name
+          example: "Andrea C. Cooke"
+        party:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Party affiliation (null for nonpartisan races)
+          example: null
+        photo_url:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: URL to candidate's photo
+          example: "https://example.com/photos/cooke.jpg"
+        ballot_order:
+          oneOf:
+            - type: integer
+            - type: "null"
+          description: Display order on the ballot
+          example: 1
+        filing_status:
+          type: string
+          enum: ["qualified", "withdrawn", "disqualified", "write_in"]
+          description: Current filing status
+          example: "qualified"
+        is_incumbent:
+          type: boolean
+          description: Whether candidate currently holds this office
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: Record creation timestamp
+          example: "2026-02-25T12:00:00Z"
+
+    # Candidate detail (includes links and bio)
+
+    CandidateDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/CandidateSummaryResponse"
+        - type: object
+          required:
+            - updated_at
+            - links
+          properties:
+            bio:
+              oneOf:
+                - type: string
+                - type: "null"
+              description: Plain-text biographical summary
+              example: "Andrea C. Cooke is a community advocate and small business owner in Macon-Bibb County."
+            sos_ballot_option_id:
+              oneOf:
+                - type: string
+                - type: "null"
+              description: SOS ballot option ID for cross-referencing results
+              example: "opt-12345"
+            updated_at:
+              type: string
+              format: date-time
+              description: Record last modified timestamp
+              example: "2026-02-25T12:00:00Z"
+            links:
+              type: array
+              description: External links (website, social media, etc.)
+              items:
+                $ref: "#/components/schemas/CandidateLinkResponse"
+            result_vote_count:
+              oneOf:
+                - type: integer
+                - type: "null"
+              description: Vote count from SOS results (populated when sos_ballot_option_id matches a result entry)
+              example: 1234
+            result_political_party:
+              oneOf:
+                - type: string
+                - type: "null"
+              description: Political party from SOS results (populated when sos_ballot_option_id matches a result entry)
+              example: "Republican"
+
+    # Paginated candidate list
+
+    PaginatedCandidateResponse:
+      type: object
+      required:
+        - items
+        - pagination
+      properties:
+        items:
+          type: array
+          description: List of candidates on this page
+          items:
+            $ref: "#/components/schemas/CandidateSummaryResponse"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    # Candidate create request
+
+    CandidateCreateRequest:
+      type: object
+      required:
+        - full_name
+      properties:
+        full_name:
+          type: string
+          description: Candidate's full name
+          minLength: 1
+          maxLength: 200
+          example: "Andrea C. Cooke"
+        party:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Party affiliation (null for nonpartisan)
+          maxLength: 50
+          example: null
+        bio:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Plain-text biographical summary
+          example: "Community advocate and small business owner."
+        photo_url:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: URL to candidate's photo
+          example: "https://example.com/photos/cooke.jpg"
+        ballot_order:
+          oneOf:
+            - type: integer
+            - type: "null"
+          description: Display order on ballot
+          example: 1
+        filing_status:
+          type: string
+          enum: ["qualified", "withdrawn", "disqualified", "write_in"]
+          description: Filing status (default qualified)
+          default: "qualified"
+          example: "qualified"
+        is_incumbent:
+          type: boolean
+          description: Whether candidate currently holds this office
+          default: false
+          example: false
+        sos_ballot_option_id:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: SOS ballot option ID for cross-referencing results
+          maxLength: 50
+          example: null
+        links:
+          type: array
+          description: Optional initial links to create with the candidate
+          items:
+            $ref: "#/components/schemas/CandidateLinkCreateRequest"
+          default: []
+
+    # Candidate update request (partial PATCH)
+
+    CandidateUpdateRequest:
+      type: object
+      description: Partial update — only provided fields are modified. Links are managed via sub-resource endpoints.
+      properties:
+        full_name:
+          type: string
+          description: Updated full name (cannot be set to null)
+          minLength: 1
+          maxLength: 200
+        party:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated party affiliation
+          maxLength: 50
+        bio:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated biographical text
+        photo_url:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated photo URL
+        ballot_order:
+          oneOf:
+            - type: integer
+            - type: "null"
+          description: Updated ballot order
+        filing_status:
+          type: string
+          enum: ["qualified", "withdrawn", "disqualified", "write_in"]
+          description: Updated filing status
+        is_incumbent:
+          type: boolean
+          description: Updated incumbency flag
+        sos_ballot_option_id:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Updated SOS ballot option ID
+
+    # Candidate link create request
+
+    CandidateLinkCreateRequest:
+      type: object
+      required:
+        - link_type
+        - url
+      properties:
+        link_type:
+          type: string
+          enum: ["website", "campaign", "facebook", "twitter", "instagram", "youtube", "linkedin", "other"]
+          description: Type of link
+          example: "campaign"
+        url:
+          type: string
+          description: The URL (must be a valid URL)
+          example: "https://www.candidate2026.com"
+        label:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Optional display label
+          maxLength: 200
+          example: "Campaign Website"
+
+    # Election metadata fields (added to existing ElectionUpdateRequest)
+    # These fields are documented here for reference; they extend the
+    # existing PATCH /elections/{id} endpoint.
+
+    ElectionMetadataFields:
+      type: object
+      description: |
+        New optional fields added to the existing ElectionUpdateRequest schema.
+        All fields are nullable and default to null for backward compatibility.
+      properties:
+        description:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Detailed description of the election
+          example: "Special election to fill the unexpired term of Seth Clark, resigned."
+        purpose:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Short statement of what this election decides
+          example: "Fill vacant Macon-Bibb County Commission District 5 seat"
+        eligibility_description:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Human-readable voter eligibility information
+          example: "Registered voters in Macon-Bibb County Commission District 5"
+        registration_deadline:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: Voter registration deadline
+          example: "2026-02-16"
+        early_voting_start:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: First day of early voting
+          example: "2026-02-25"
+        early_voting_end:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: Last day of early voting
+          example: "2026-03-13"
+        absentee_request_deadline:
+          oneOf:
+            - type: string
+              format: date
+            - type: "null"
+          description: Deadline to request an absentee ballot
+          example: "2026-03-06"
+        qualifying_start:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: "null"
+          description: Candidate qualifying period opens
+          example: "2026-02-11T12:00:00-05:00"
+        qualifying_end:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: "null"
+          description: Candidate qualifying period closes
+          example: "2026-02-13T17:30:00-05:00"
+
+    # Shared schemas (reused from existing API)
+
+    PaginationMeta:
+      type: object
+      required:
+        - total
+        - page
+        - page_size
+        - total_pages
+      properties:
+        total:
+          type: integer
+          minimum: 0
+          description: Total number of results across all pages
+          example: 6
+        page:
+          type: integer
+          minimum: 1
+          description: Current page number (1-indexed)
+          example: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Results per page
+          example: 20
+        total_pages:
+          type: integer
+          minimum: 0
+          description: Total number of pages
+          example: 1
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+          example: "Resource not found."

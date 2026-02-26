@@ -20,6 +20,7 @@ def create_router(settings: Settings) -> APIRouter:
     from voter_api.api.v1.attachments import attachments_router
     from voter_api.api.v1.auth import router as auth_router
     from voter_api.api.v1.boundaries import boundaries_router
+    from voter_api.api.v1.candidates import candidates_router
     from voter_api.api.v1.datasets import datasets_router
     from voter_api.api.v1.elected_officials import elected_officials_router
     from voter_api.api.v1.elections import elections_router
@@ -46,6 +47,7 @@ def create_router(settings: Settings) -> APIRouter:
     root_router.include_router(analysis_router)
     root_router.include_router(exports_router)
     root_router.include_router(elections_router)
+    root_router.include_router(candidates_router)
     root_router.include_router(voter_history_router)
     root_router.include_router(meetings_router)
     root_router.include_router(agenda_items_router)

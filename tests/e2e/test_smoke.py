@@ -18,6 +18,7 @@ from tests.e2e.conftest import (
     ADMIN_USER_ID,
     ADMIN_USERNAME,
     BOUNDARY_ID,
+    CANDIDATE_ID,
     ELECTION_ID,
     INVITE_ID,
     OFFICIAL_ID,
@@ -618,6 +619,21 @@ class TestElections:
         assert "district_identifier" in body
         assert "district_party" in body
 
+    async def test_election_detail_includes_metadata_fields(self, client: httpx.AsyncClient) -> None:
+        resp = await client.get(_url(f"/elections/{ELECTION_ID}"))
+        assert resp.status_code == 200
+        body = resp.json()
+        # Metadata fields should be present (null for unset)
+        assert "description" in body
+        assert "purpose" in body
+        assert "eligibility_description" in body
+        assert "registration_deadline" in body
+        assert "early_voting_start" in body
+        assert "early_voting_end" in body
+        assert "absentee_request_deadline" in body
+        assert "qualifying_start" in body
+        assert "qualifying_end" in body
+
     async def test_get_election_not_found(self, client: httpx.AsyncClient) -> None:
         resp = await client.get(_url(f"/elections/{uuid.uuid4()}"))
         assert resp.status_code == 404
@@ -694,6 +710,98 @@ class TestElections:
         assert resp.status_code == 200
         body = resp.json()
         assert isinstance(body, dict)
+
+
+# ── Candidates ────────────────────────────────────────────────────────────
+
+
+class TestCandidates:
+    """Candidate endpoints: list, detail, CRUD, links, RBAC."""
+
+    async def test_list_candidates_public(self, client: httpx.AsyncClient) -> None:
+        resp = await client.get(_url(f"/elections/{ELECTION_ID}/candidates"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
+        assert "pagination" in body
+        assert body["pagination"]["total"] >= 1
+
+    async def test_candidate_detail_public(self, client: httpx.AsyncClient) -> None:
+        resp = await client.get(_url(f"/candidates/{CANDIDATE_ID}"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["full_name"] == "E2E Test Candidate"
+        assert body["party"] == "Independent"
+        assert len(body["links"]) >= 1
+
+    async def test_candidate_detail_404(self, client: httpx.AsyncClient) -> None:
+        fake_id = "00000000-0000-0000-0000-999999999999"
+        resp = await client.get(_url(f"/candidates/{fake_id}"))
+        assert resp.status_code == 404
+
+    async def test_create_candidate_admin(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.post(
+            _url(f"/elections/{ELECTION_ID}/candidates"),
+            json={"full_name": "E2E Created Candidate", "filing_status": "qualified"},
+        )
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["full_name"] == "E2E Created Candidate"
+        # Clean up
+        candidate_id = body["id"]
+        await admin_client.delete(_url(f"/candidates/{candidate_id}"))
+
+    async def test_update_candidate_admin(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.patch(
+            _url(f"/candidates/{CANDIDATE_ID}"),
+            json={"party": "Updated Party"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["party"] == "Updated Party"
+        # Restore original
+        await admin_client.patch(
+            _url(f"/candidates/{CANDIDATE_ID}"),
+            json={"party": "Independent"},
+        )
+
+    async def test_delete_candidate_admin(self, admin_client: httpx.AsyncClient) -> None:
+        # Create a throwaway candidate to delete
+        create_resp = await admin_client.post(
+            _url(f"/elections/{ELECTION_ID}/candidates"),
+            json={"full_name": "E2E Deletable Candidate"},
+        )
+        assert create_resp.status_code == 201
+        cid = create_resp.json()["id"]
+        resp = await admin_client.delete(_url(f"/candidates/{cid}"))
+        assert resp.status_code == 204
+
+    async def test_add_link_admin(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.post(
+            _url(f"/candidates/{CANDIDATE_ID}/links"),
+            json={"link_type": "website", "url": "https://e2e-website.com"},
+        )
+        assert resp.status_code == 201
+        link_id = resp.json()["id"]
+        # Clean up
+        await admin_client.delete(_url(f"/candidates/{CANDIDATE_ID}/links/{link_id}"))
+
+    async def test_delete_link_admin(self, admin_client: httpx.AsyncClient) -> None:
+        # Create then delete
+        create_resp = await admin_client.post(
+            _url(f"/candidates/{CANDIDATE_ID}/links"),
+            json={"link_type": "twitter", "url": "https://twitter.com/test"},
+        )
+        assert create_resp.status_code == 201
+        link_id = create_resp.json()["id"]
+        resp = await admin_client.delete(_url(f"/candidates/{CANDIDATE_ID}/links/{link_id}"))
+        assert resp.status_code == 204
+
+    async def test_viewer_cannot_create_candidate(self, viewer_client: httpx.AsyncClient) -> None:
+        resp = await viewer_client.post(
+            _url(f"/elections/{ELECTION_ID}/candidates"),
+            json={"full_name": "Forbidden Candidate"},
+        )
+        assert resp.status_code == 403
 
 
 # ── Elected Officials ─────────────────────────────────────────────────────

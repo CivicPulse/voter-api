@@ -27,6 +27,7 @@ from voter_api.core.security import create_access_token, hash_password
 from voter_api.main import create_app, lifespan
 from voter_api.models.auth_tokens import UserInvite
 from voter_api.models.boundary import Boundary
+from voter_api.models.candidate import Candidate, CandidateLink
 from voter_api.models.elected_official import ElectedOfficial
 from voter_api.models.election import Election
 from voter_api.models.import_job import ImportJob
@@ -179,6 +180,8 @@ INVITE_ID = uuid.UUID("00000000-0000-0000-0000-000000000040")
 TOTP_CREDENTIAL_ID = uuid.UUID("00000000-0000-0000-0000-000000000041")
 IMPORT_JOB_ID = uuid.UUID("00000000-0000-0000-0000-000000000060")
 VOTER_HISTORY_ID = uuid.UUID("00000000-0000-0000-0000-000000000061")
+CANDIDATE_ID = uuid.UUID("00000000-0000-0000-0000-000000000070")
+CANDIDATE_LINK_ID = uuid.UUID("00000000-0000-0000-0000-000000000071")
 
 TOTP_USERNAME = "e2e_totp_user"
 INVITE_EMAIL = "e2e_invite@test.com"
@@ -351,6 +354,52 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         )
         await session.execute(stmt)
 
+        # --- Candidate (for seeded election) --------------------------------
+        candidate_data = {
+            "id": CANDIDATE_ID,
+            "election_id": ELECTION_ID,
+            "full_name": "E2E Test Candidate",
+            "party": "Independent",
+            "bio": "E2E test biographical info.",
+            "filing_status": "qualified",
+            "is_incumbent": False,
+            "ballot_order": 1,
+        }
+        stmt = pg_insert(Candidate).values(**candidate_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "election_id": stmt.excluded.election_id,
+                "full_name": stmt.excluded.full_name,
+                "party": stmt.excluded.party,
+                "bio": stmt.excluded.bio,
+                "filing_status": stmt.excluded.filing_status,
+                "is_incumbent": stmt.excluded.is_incumbent,
+                "ballot_order": stmt.excluded.ballot_order,
+            },
+        )
+        await session.execute(stmt)
+
+        # --- Candidate Link -------------------------------------------------
+        candidate_link_data = {
+            "id": CANDIDATE_LINK_ID,
+            "candidate_id": CANDIDATE_ID,
+            "link_type": "campaign",
+            "url": "https://e2e-test-campaign.com",
+            "label": "Campaign Website",
+        }
+        stmt = pg_insert(CandidateLink).values(**candidate_link_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "candidate_id": stmt.excluded.candidate_id,
+                "link_type": stmt.excluded.link_type,
+                "url": stmt.excluded.url,
+                "label": stmt.excluded.label,
+            },
+        )
+        await session.execute(stmt)
+
         # --- Boundary (simple polygon in Georgia) -------------------------
         boundary_data = {
             "id": BOUNDARY_ID,
@@ -518,6 +567,8 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         await session.execute(delete(Voter).where(Voter.id == VOTER_ID))
         await session.execute(delete(Boundary).where(Boundary.id == BOUNDARY_ID))
         await session.execute(delete(ImportJob).where(ImportJob.id == IMPORT_JOB_ID))
+        await session.execute(delete(CandidateLink).where(CandidateLink.id == CANDIDATE_LINK_ID))
+        await session.execute(delete(Candidate).where(Candidate.id == CANDIDATE_ID))
         await session.execute(delete(Election).where(Election.id == ELECTION_ID))
         await session.execute(
             delete(User).where(User.id.in_([ADMIN_USER_ID, ANALYST_USER_ID, VIEWER_USER_ID, TOTP_USER_ID]))

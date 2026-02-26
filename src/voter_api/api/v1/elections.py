@@ -54,6 +54,12 @@ async def list_elections(
     district: str | None = Query(default=None, description="Filter by district (partial match)"),
     date_from: date | None = Query(default=None, description="Filter elections on or after this date"),
     date_to: date | None = Query(default=None, description="Filter elections on or before this date"),
+    registration_open: bool | None = Query(
+        default=None, description="Filter to elections with registration still open"
+    ),
+    early_voting_active: bool | None = Query(default=None, description="Filter to elections currently in early voting"),
+    district_type: str | None = Query(default=None, description="Filter by parsed district type"),
+    district_identifier: str | None = Query(default=None, description="Filter by parsed district identifier"),
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Results per page"),
 ) -> PaginatedElectionListResponse:
@@ -65,6 +71,10 @@ async def list_elections(
         district=district,
         date_from=date_from,
         date_to=date_to,
+        registration_open=registration_open,
+        early_voting_active=early_voting_active,
+        district_type=district_type,
+        district_identifier=district_identifier,
         page=page,
         page_size=page_size,
     )

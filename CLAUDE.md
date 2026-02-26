@@ -332,6 +332,7 @@ uv run voter-api deploy-check                                            # prod 
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes
+- 010-election-info: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Alembic
 - 009-enhanced-auth: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x async, Pydantic v2, httpx (existing); pyotp, segno, cryptography, py-webauthn (new)
 - 008-auto-data-import: Added Python 3.13 + httpx (async HTTP downloads), typer (CLI), loguru (logging), tqdm (progress bars) — all already in pyproject.toml
 
@@ -346,15 +347,6 @@ New models: `PasswordResetToken`, `UserInvite` (auth_tokens.py), `TOTPCredential
 21 new/modified endpoints. **Breaking change**: POST /auth/login migrated from OAuth2 form-data to JSON body with optional `totp_code` field. Passkey login bypasses TOTP enforcement per spec (Option A).
 
 Key files:
-- `src/voter_api/lib/mailer/` — Mailgun email delivery + Jinja2 templates
-- `src/voter_api/lib/totp/` — TOTP secret management and code verification
-- `src/voter_api/lib/passkey/` — WebAuthn registration and authentication
-- `src/voter_api/models/auth_tokens.py` — PasswordResetToken, UserInvite
-- `src/voter_api/models/totp.py` — TOTPCredential, TOTPRecoveryCode
-- `src/voter_api/models/passkey.py` — Passkey
-- `src/voter_api/services/auth_service.py` — all 14 new service functions
-- `src/voter_api/api/v1/auth.py` — all 21 new/modified endpoints
-- 008-auto-data-import: Voter import performance optimization — replaced row-by-row SELECT+INSERT/UPDATE with bulk PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` (via `sqlalchemy.dialects.postgresql.insert`), ~10-20x faster for large imports
 
 ### 008-auto-data-import
 
@@ -377,5 +369,5 @@ Key files:
 
 
 ## Active Technologies
-- Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x async, Pydantic v2, httpx (existing); pyotp, segno, cryptography, py-webauthn (new) (009-enhanced-auth)
-- PostgreSQL 15+ / PostGIS — 4 new tables across 4 Alembic migrations (025–028) (009-enhanced-auth)
+- Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Alembic (010-election-info)
+- PostgreSQL 15+ / PostGIS 3.x (existing) (010-election-info)
