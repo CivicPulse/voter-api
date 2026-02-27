@@ -901,6 +901,13 @@ async def _build_election_match_conditions(
     Returns:
         List of SQLAlchemy WHERE clause conditions.
     """
+
+    def _build_district_filter() -> ColumnElement[bool] | None:
+        """Return a county filter if election is county-scoped, else None."""
+        if election.district_type == "county" and election.district_identifier:
+            return VoterHistory.county == election.district_identifier
+        return None
+
     # Check if any voter_history records have been resolved for this election
     has_resolved = await session.execute(select(exists().where(VoterHistory.election_id == election.id)))
     if has_resolved.scalar_one():
@@ -918,17 +925,25 @@ async def _build_election_match_conditions(
 
         if election_count == 1:
             # Single-election date: unresolved rows must belong to this election
-            fallback = and_(
+            fallback_conditions: list[ColumnElement[bool]] = [
                 VoterHistory.election_id.is_(None),
                 VoterHistory.election_date == election.election_date,
-            )
+            ]
+            district_filter = _build_district_filter()
+            if district_filter is not None:
+                fallback_conditions.append(district_filter)
+            fallback = and_(*fallback_conditions)
         else:
-            # Multi-election date: use type heuristic for unresolved rows
-            fallback = and_(
+            # Multi-election date: use type heuristic + district filter for unresolved rows
+            fallback_conditions = [
                 VoterHistory.election_id.is_(None),
                 VoterHistory.election_date == election.election_date,
                 VoterHistory.normalized_election_type == election.election_type,
-            )
+            ]
+            district_filter = _build_district_filter()
+            if district_filter is not None:
+                fallback_conditions.append(district_filter)
+            fallback = and_(*fallback_conditions)
         return [or_(VoterHistory.election_id == election.id, fallback)]
 
     # Fallback to date-based heuristic for fully-unresolved records
@@ -940,12 +955,20 @@ async def _build_election_match_conditions(
     election_count = count_result.scalar_one()
 
     if election_count == 1:
-        return [VoterHistory.election_date == election.election_date]
+        conditions: list[ColumnElement[bool]] = [VoterHistory.election_date == election.election_date]
+        district_filter = _build_district_filter()
+        if district_filter is not None:
+            conditions.append(district_filter)
+        return conditions
 
-    return [
+    conditions = [
         VoterHistory.election_date == election.election_date,
         VoterHistory.normalized_election_type == election.election_type,
     ]
+    district_filter = _build_district_filter()
+    if district_filter is not None:
+        conditions.append(district_filter)
+    return conditions
 
 
 async def _get_election_or_raise(
