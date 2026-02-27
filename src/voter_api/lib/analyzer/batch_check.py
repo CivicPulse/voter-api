@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import and_, func, or_, select, tuple_
+from sqlalchemy import ColumnElement, and_, func, or_, select, tuple_
 
 from voter_api.lib.analyzer.comparator import (
     NUMERIC_DISTRICT_TYPES,
@@ -204,7 +204,10 @@ async def check_batch_boundaries(
     for btype, bident in registered.items():
         if btype in NUMERIC_DISTRICT_TYPES:
             try:
-                numeric_pairs.append((btype, str(int(bident)).zfill(3)))
+                n = int(bident)
+                # Try all common storage widths so we match regardless of zero-padding in DB
+                for candidate in {str(n), str(n).zfill(2), str(n).zfill(3)}:
+                    numeric_pairs.append((btype, candidate))
             except ValueError:
                 numeric_pairs.append((btype, bident))
         elif btype in PRECINCT_TYPES:
@@ -212,11 +215,16 @@ async def check_batch_boundaries(
         else:
             numeric_pairs.append((btype, bident))
 
-    conditions = []
+    conditions: list[ColumnElement[bool]] = []
     if numeric_pairs:
         conditions.append(tuple_(Boundary.boundary_type, Boundary.boundary_identifier).in_(numeric_pairs))
     for btype, bident in precinct_pairs:
-        conditions.append(and_(Boundary.boundary_type == btype, Boundary.boundary_identifier.like(f"%{bident}")))
+        precinct_cond: ColumnElement[bool] = and_(
+            Boundary.boundary_type == btype, Boundary.boundary_identifier.like(f"%{bident}")
+        )
+        if voter.county:
+            precinct_cond = and_(precinct_cond, Boundary.county == voter.county)
+        conditions.append(precinct_cond)
 
     boundaries: list[Boundary] = []
     if conditions:
