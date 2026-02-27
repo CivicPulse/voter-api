@@ -894,6 +894,15 @@ async def _build_election_match_conditions(
     matches by date alone. When multiple elections share the same date,
     matches by (date, normalized_election_type) for disambiguation.
 
+    County scoping: when the election is county-scoped (district_type ==
+    "county", or district_type is None but boundary is a county boundary),
+    an additional county-name predicate is appended to whichever branch
+    applies (both unresolved and the fallback clause inside the resolved OR).
+    The predicate compares ``UPPER(VoterHistory.county)`` to the county name
+    derived from ``election.boundary.name`` (stripping the " County" suffix).
+    This prevents cross-county leakage when county elections share a date
+    with other county elections.
+
     Args:
         session: Database session.
         election: The Election model instance.
@@ -901,6 +910,19 @@ async def _build_election_match_conditions(
     Returns:
         List of SQLAlchemy WHERE clause conditions.
     """
+
+    def _build_district_filter() -> ColumnElement[bool] | None:
+        """Return a county filter if election is county-scoped, else None."""
+        is_county_scoped = election.district_type == "county" or (
+            election.district_type is None
+            and election.boundary is not None
+            and getattr(election.boundary, "boundary_type", None) == "county"
+        )
+        if not is_county_scoped or election.boundary is None or not election.boundary.name:
+            return None
+        county_name = election.boundary.name.removesuffix(" County")
+        return func.upper(VoterHistory.county) == county_name.upper()
+
     # Check if any voter_history records have been resolved for this election
     has_resolved = await session.execute(select(exists().where(VoterHistory.election_id == election.id)))
     if has_resolved.scalar_one():
@@ -918,17 +940,25 @@ async def _build_election_match_conditions(
 
         if election_count == 1:
             # Single-election date: unresolved rows must belong to this election
-            fallback = and_(
+            fallback_conditions: list[ColumnElement[bool]] = [
                 VoterHistory.election_id.is_(None),
                 VoterHistory.election_date == election.election_date,
-            )
+            ]
+            district_filter = _build_district_filter()
+            if district_filter is not None:
+                fallback_conditions.append(district_filter)
+            fallback = and_(*fallback_conditions)
         else:
-            # Multi-election date: use type heuristic for unresolved rows
-            fallback = and_(
+            # Multi-election date: use type heuristic + district filter for unresolved rows
+            fallback_conditions = [
                 VoterHistory.election_id.is_(None),
                 VoterHistory.election_date == election.election_date,
                 VoterHistory.normalized_election_type == election.election_type,
-            )
+            ]
+            district_filter = _build_district_filter()
+            if district_filter is not None:
+                fallback_conditions.append(district_filter)
+            fallback = and_(*fallback_conditions)
         return [or_(VoterHistory.election_id == election.id, fallback)]
 
     # Fallback to date-based heuristic for fully-unresolved records
@@ -940,12 +970,20 @@ async def _build_election_match_conditions(
     election_count = count_result.scalar_one()
 
     if election_count == 1:
-        return [VoterHistory.election_date == election.election_date]
+        conditions: list[ColumnElement[bool]] = [VoterHistory.election_date == election.election_date]
+        district_filter = _build_district_filter()
+        if district_filter is not None:
+            conditions.append(district_filter)
+        return conditions
 
-    return [
+    conditions = [
         VoterHistory.election_date == election.election_date,
         VoterHistory.normalized_election_type == election.election_type,
     ]
+    district_filter = _build_district_filter()
+    if district_filter is not None:
+        conditions.append(district_filter)
+    return conditions
 
 
 async def _get_election_or_raise(
