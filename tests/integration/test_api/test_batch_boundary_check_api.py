@@ -80,15 +80,31 @@ def _make_response(
     *,
     total_locations: int = 1,
     total_districts: int = 1,
+    districts: list | None = None,
 ) -> dict:
     """Build a BatchBoundaryCheckResponse-shaped dict for mock returns."""
     return {
         "voter_id": str(_VOTER_ID),
-        "districts": [],
+        "districts": districts if districts is not None else [],
         "provider_summary": [],
         "total_locations": total_locations,
         "total_districts": total_districts,
         "checked_at": datetime.now(UTC).isoformat(),
+    }
+
+
+def _make_district_with_providers(
+    boundary_type: str = "congressional",
+    boundary_identifier: str = "5",
+    providers: list | None = None,
+) -> dict:
+    """Build a DistrictBoundaryResult-shaped dict."""
+    return {
+        "boundary_id": str(uuid.uuid4()),
+        "boundary_type": boundary_type,
+        "boundary_identifier": boundary_identifier,
+        "has_geometry": True,
+        "providers": providers if providers is not None else [],
     }
 
 
@@ -177,3 +193,36 @@ class TestBatchBoundaryCheck:
         body = resp.json()
         assert body["total_districts"] == 0
         assert body["total_locations"] == 2
+
+    async def test_provider_result_includes_determined_identifier_field(self, admin_client) -> None:
+        """ProviderResult objects include determined_identifier key in response JSON."""
+        providers = [
+            {"source_type": "census", "is_contained": True, "determined_identifier": None},
+            {"source_type": "google", "is_contained": False, "determined_identifier": "007"},
+        ]
+        mock_result = _make_response(
+            total_locations=2,
+            total_districts=1,
+            districts=[_make_district_with_providers(providers=providers)],
+        )
+
+        with patch(
+            "voter_api.api.v1.voters.check_batch_boundaries_for_voter",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            resp = await admin_client.post(_ENDPOINT)
+
+        assert resp.status_code == 200
+        body = resp.json()
+        district = body["districts"][0]
+        assert len(district["providers"]) == 2
+
+        by_source = {p["source_type"]: p for p in district["providers"]}
+
+        # Contained provider: determined_identifier is None (absent or null)
+        assert "determined_identifier" in by_source["census"]
+        assert by_source["census"]["determined_identifier"] is None
+
+        # Mismatch provider: determined_identifier populated
+        assert by_source["google"]["determined_identifier"] == "007"

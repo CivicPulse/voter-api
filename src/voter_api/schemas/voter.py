@@ -230,6 +230,7 @@ class ProviderResult(BaseModel):
 
     source_type: str
     is_contained: bool
+    determined_identifier: str | None = None
 
 
 class DistrictBoundaryResult(BaseModel):
