@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import func, select, tuple_
+from sqlalchemy import and_, func, or_, select, tuple_
 
-from voter_api.lib.analyzer.comparator import extract_registered_boundaries
+from voter_api.lib.analyzer.comparator import (
+    NUMERIC_DISTRICT_TYPES,
+    PRECINCT_TYPES,
+    extract_registered_boundaries,
+)
 from voter_api.models.boundary import Boundary
 from voter_api.models.geocoded_location import GeocodedLocation
 from voter_api.models.voter import Voter
@@ -129,6 +134,18 @@ def _build_district_results(
     return districts
 
 
+def _voter_ident(boundary_type: str, db_identifier: str, registered: dict[str, str]) -> str:
+    """Map a DB boundary identifier back to the voter's raw registered format."""
+    if boundary_type in NUMERIC_DISTRICT_TYPES:
+        with contextlib.suppress(ValueError):
+            return str(int(db_identifier))  # '008' → '8'
+    if boundary_type in PRECINCT_TYPES:
+        voter_val = registered.get(boundary_type, "")
+        if voter_val and db_identifier.endswith(voter_val):
+            return voter_val  # '021HO7' → 'HO7'
+    return db_identifier
+
+
 async def check_batch_boundaries(
     session: AsyncSession,
     voter_id: uuid.UUID,
@@ -178,20 +195,43 @@ async def check_batch_boundaries(
             total_districts=0,
         )
 
-    # Query boundaries matching voter's registered districts
-    boundary_pairs = list(registered.items())
-    boundary_result = await session.execute(
-        select(Boundary).where(tuple_(Boundary.boundary_type, Boundary.boundary_identifier).in_(boundary_pairs))
-    )
-    boundaries = boundary_result.scalars().all()
+    # Normalize voter identifiers to match boundary DB storage format:
+    #   Numeric types: voter stores '8', DB stores '008' → zero-pad to 3 digits
+    #   Precinct types: voter stores 'HO7', DB stores '021HO7' → suffix-match
+    numeric_pairs: list[tuple[str, str]] = []
+    precinct_pairs: list[tuple[str, str]] = []
 
-    # Build a lookup: (boundary_type, boundary_identifier) -> Boundary
+    for btype, bident in registered.items():
+        if btype in NUMERIC_DISTRICT_TYPES:
+            try:
+                numeric_pairs.append((btype, str(int(bident)).zfill(3)))
+            except ValueError:
+                numeric_pairs.append((btype, bident))
+        elif btype in PRECINCT_TYPES:
+            precinct_pairs.append((btype, bident))
+        else:
+            numeric_pairs.append((btype, bident))
+
+    conditions = []
+    if numeric_pairs:
+        conditions.append(tuple_(Boundary.boundary_type, Boundary.boundary_identifier).in_(numeric_pairs))
+    for btype, bident in precinct_pairs:
+        conditions.append(and_(Boundary.boundary_type == btype, Boundary.boundary_identifier.like(f"%{bident}")))
+
+    boundaries: list[Boundary] = []
+    if conditions:
+        boundary_result = await session.execute(select(Boundary).where(or_(*conditions)))
+        boundaries = list(boundary_result.scalars().all())
+
+    # Build a lookup: (boundary_type, voter_identifier) -> Boundary
     # The DB unique constraint is on (type, identifier, county), so multiple rows can share
     # the same (type, identifier) across counties. Disambiguate by voter county; if still
     # ambiguous, omit the key so downstream treats it as has_geometry=False.
+    # Use the voter's raw identifier as the key so boundary_lookup matches registered.items().
     grouped_boundaries: dict[tuple[str, str], list[Boundary]] = defaultdict(list)
     for boundary in boundaries:
-        grouped_boundaries[(boundary.boundary_type, boundary.boundary_identifier)].append(boundary)
+        vident = _voter_ident(boundary.boundary_type, boundary.boundary_identifier, registered)
+        grouped_boundaries[(boundary.boundary_type, vident)].append(boundary)
 
     boundary_lookup: dict[tuple[str, str], Boundary] = {}
     for bkey, bgroup in grouped_boundaries.items():
