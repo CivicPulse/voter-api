@@ -304,6 +304,38 @@ async def trigger_batch_geocoding(
 
 
 @geocoding_router.get(
+    "/batch",
+    response_model=PaginatedGeocodingJobResponse,
+    dependencies=[Depends(require_role("admin", "analyst"))],
+)
+async def list_batch_jobs(
+    session: AsyncSession = Depends(get_async_session),  # noqa: B008
+    pagination: PaginationParams = Depends(),  # noqa: B008
+    status: str | None = Query(None, alias="status"),
+    provider: str | None = None,
+    county: str | None = None,
+) -> PaginatedGeocodingJobResponse:
+    """List batch geocoding jobs with optional filters (admin/analyst only)."""
+    jobs, total = await list_geocoding_jobs(
+        session,
+        status=status,
+        provider=provider,
+        county=county,
+        page=pagination.page,
+        page_size=pagination.page_size,
+    )
+    return PaginatedGeocodingJobResponse(
+        items=[GeocodingJobResponse.model_validate(j) for j in jobs],
+        pagination=PaginationMeta(
+            total=total,
+            page=pagination.page,
+            page_size=pagination.page_size,
+            total_pages=(total + pagination.page_size - 1) // pagination.page_size,
+        ),
+    )
+
+
+@geocoding_router.get(
     "/jobs",
     response_model=PaginatedGeocodingJobResponse,
     dependencies=[Depends(require_role("admin", "analyst"))],
