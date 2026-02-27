@@ -895,11 +895,13 @@ async def _build_election_match_conditions(
     matches by (date, normalized_election_type) for disambiguation.
 
     County scoping: when the election is county-scoped (district_type ==
-    "county" and district_identifier is set), an additional predicate
-    ``VoterHistory.county == district_identifier`` is appended to whichever
-    branch applies (both unresolved and the fallback clause inside the
-    resolved OR). This prevents cross-county leakage when county elections
-    share a date with other county elections.
+    "county", or district_type is None but boundary is a county boundary),
+    an additional county-name predicate is appended to whichever branch
+    applies (both unresolved and the fallback clause inside the resolved OR).
+    The predicate compares ``UPPER(VoterHistory.county)`` to the county name
+    derived from ``election.boundary.name`` (stripping the " County" suffix).
+    This prevents cross-county leakage when county elections share a date
+    with other county elections.
 
     Args:
         session: Database session.
@@ -911,9 +913,15 @@ async def _build_election_match_conditions(
 
     def _build_district_filter() -> ColumnElement[bool] | None:
         """Return a county filter if election is county-scoped, else None."""
-        if election.district_type == "county" and election.district_identifier:
-            return VoterHistory.county == election.district_identifier
-        return None
+        is_county_scoped = election.district_type == "county" or (
+            election.district_type is None
+            and election.boundary is not None
+            and getattr(election.boundary, "boundary_type", None) == "county"
+        )
+        if not is_county_scoped or election.boundary is None or not election.boundary.name:
+            return None
+        county_name = election.boundary.name.removesuffix(" County")
+        return func.upper(VoterHistory.county) == county_name.upper()
 
     # Check if any voter_history records have been resolved for this election
     has_resolved = await session.execute(select(exists().where(VoterHistory.election_id == election.id)))
