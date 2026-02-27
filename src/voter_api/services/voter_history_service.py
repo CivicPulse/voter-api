@@ -894,6 +894,13 @@ async def _build_election_match_conditions(
     matches by date alone. When multiple elections share the same date,
     matches by (date, normalized_election_type) for disambiguation.
 
+    County scoping: when the election is county-scoped (district_type ==
+    "county" and district_identifier is set), an additional predicate
+    ``VoterHistory.county == district_identifier`` is appended to whichever
+    branch applies (both unresolved and the fallback clause inside the
+    resolved OR). This prevents cross-county leakage when county elections
+    share a date with other county elections.
+
     Args:
         session: Database session.
         election: The Election model instance.

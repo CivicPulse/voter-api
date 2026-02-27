@@ -684,6 +684,82 @@ class TestBuildElectionMatchConditions:
         # Single OR condition: resolved rows + unresolved fallback
         assert len(conditions) == 1
 
+    async def test_county_election_unresolved_single_date_adds_county_predicate(self) -> None:
+        """County-scoped election appends county predicate (unresolved path, single election on date)."""
+        election = _mock_election(
+            district_type="county",
+            district_identifier="FULTON",
+        )
+        session = AsyncMock()
+        resolved_count_result = MagicMock()
+        resolved_count_result.scalar_one.return_value = 0
+        date_count_result = MagicMock()
+        date_count_result.scalar_one.return_value = 1
+        session.execute = AsyncMock(side_effect=[resolved_count_result, date_count_result])
+
+        conditions = await _build_election_match_conditions(session, election)
+
+        # date condition + county condition (no type condition since single election)
+        assert len(conditions) == 2
+
+    async def test_county_election_unresolved_multi_date_adds_county_predicate(self) -> None:
+        """County-scoped election appends county predicate (unresolved path, multiple elections on date)."""
+        election = _mock_election(
+            district_type="county",
+            district_identifier="FULTON",
+            election_type="primary",
+        )
+        session = AsyncMock()
+        resolved_count_result = MagicMock()
+        resolved_count_result.scalar_one.return_value = 0
+        date_count_result = MagicMock()
+        date_count_result.scalar_one.return_value = 3
+        session.execute = AsyncMock(side_effect=[resolved_count_result, date_count_result])
+
+        conditions = await _build_election_match_conditions(session, election)
+
+        # date + type + county conditions
+        assert len(conditions) == 3
+
+    async def test_county_election_resolved_single_date_includes_county_in_fallback(self) -> None:
+        """County predicate is inside the unresolved fallback OR clause (resolved path, single date)."""
+        election = _mock_election(
+            district_type="county",
+            district_identifier="FULTON",
+        )
+        session = AsyncMock()
+        resolved_count_result = MagicMock()
+        resolved_count_result.scalar_one.return_value = 5
+        date_count_result = MagicMock()
+        date_count_result.scalar_one.return_value = 1
+        session.execute = AsyncMock(side_effect=[resolved_count_result, date_count_result])
+
+        conditions = await _build_election_match_conditions(session, election)
+
+        # Single OR condition wrapping (election_id match OR fallback-with-county)
+        assert len(conditions) == 1
+        # County predicate must appear in the compiled SQL
+        assert "county" in str(conditions[0]).lower()
+
+    async def test_county_election_resolved_multi_date_includes_county_in_fallback(self) -> None:
+        """County predicate is inside the unresolved fallback OR clause (resolved path, multi date)."""
+        election = _mock_election(
+            district_type="county",
+            district_identifier="FULTON",
+            election_type="primary",
+        )
+        session = AsyncMock()
+        resolved_count_result = MagicMock()
+        resolved_count_result.scalar_one.return_value = 5
+        date_count_result = MagicMock()
+        date_count_result.scalar_one.return_value = 3
+        session.execute = AsyncMock(side_effect=[resolved_count_result, date_count_result])
+
+        conditions = await _build_election_match_conditions(session, election)
+
+        assert len(conditions) == 1
+        assert "county" in str(conditions[0]).lower()
+
     async def test_participants_with_type_mismatch_single_election(self) -> None:
         """Type="special" election finds voter_history with normalized_type="runoff" via date-only match."""
         election = _mock_election(
