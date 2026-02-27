@@ -311,14 +311,14 @@ async def trigger_batch_geocoding(
 async def list_batch_jobs(
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
     pagination: PaginationParams = Depends(),  # noqa: B008
-    status: str | None = Query(None, alias="status"),
+    job_status: str | None = Query(None, alias="status"),
     provider: str | None = None,
     county: str | None = None,
 ) -> PaginatedGeocodingJobResponse:
     """List batch geocoding jobs with optional filters (admin/analyst only)."""
     jobs, total = await list_geocoding_jobs(
         session,
-        status=status,
+        status=job_status,
         provider=provider,
         county=county,
         page=pagination.page,

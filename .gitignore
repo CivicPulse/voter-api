@@ -3,7 +3,7 @@
 *.pdf
 logs/
 
-scipts/
+scripts/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
