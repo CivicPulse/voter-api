@@ -315,7 +315,18 @@ async def list_batch_jobs(
     provider: str | None = None,
     county: str | None = None,
 ) -> PaginatedGeocodingJobResponse:
-    """List batch geocoding jobs with optional filters (admin/analyst only)."""
+    """List batch geocoding jobs.
+
+    Args:
+        session: Async database session (injected).
+        pagination: Pagination parameters.
+        job_status: Optional job status filter (query param alias: ``status``).
+        provider: Optional provider filter.
+        county: Optional county filter.
+
+    Returns:
+        Paginated geocoding jobs response with items and pagination metadata.
+    """
     jobs, total = await list_geocoding_jobs(
         session,
         status=job_status,
