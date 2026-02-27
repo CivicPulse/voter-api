@@ -1202,6 +1202,14 @@ class TestGeocoding:
         resp = await viewer_client.get(_url("/geocoding/batch"))
         assert resp.status_code == 403
 
+    async def test_batch_list_status_filter(self, admin_client: httpx.AsyncClient) -> None:
+        """status= query param is accepted and does not cause a 422."""
+        resp = await admin_client.get(_url("/geocoding/batch"), params={"status": "pending"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
+        assert "pagination" in body
+
     async def test_jobs_list_requires_auth(self, client: httpx.AsyncClient) -> None:
         """Jobs list endpoint requires authentication."""
         resp = await client.get(_url("/geocoding/jobs"))
