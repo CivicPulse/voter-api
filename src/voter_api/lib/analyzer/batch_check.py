@@ -137,11 +137,17 @@ def _build_district_results(
 def _voter_ident(boundary_type: str, db_identifier: str, registered: dict[str, str]) -> str:
     """Map a DB boundary identifier back to the voter's raw registered format."""
     if boundary_type in NUMERIC_DISTRICT_TYPES:
+        voter_val = registered.get(boundary_type)
         with contextlib.suppress(ValueError):
-            return str(int(db_identifier))  # '008' → '8'
+            db_num = int(db_identifier)
+            if voter_val is not None:
+                with contextlib.suppress(ValueError):
+                    if int(voter_val) == db_num:
+                        return voter_val  # preserve voter's raw format, e.g. '08' not '8'
+            return str(db_num)  # fallback canonical form
     if boundary_type in PRECINCT_TYPES:
         voter_val = registered.get(boundary_type, "")
-        if voter_val and db_identifier.endswith(voter_val):
+        if voter_val and len(db_identifier) > 3 and db_identifier.endswith(voter_val):
             return voter_val  # '021HO7' → 'HO7'
     return db_identifier
 
@@ -220,7 +226,8 @@ async def check_batch_boundaries(
         conditions.append(tuple_(Boundary.boundary_type, Boundary.boundary_identifier).in_(numeric_pairs))
     for btype, bident in precinct_pairs:
         precinct_cond: ColumnElement[bool] = and_(
-            Boundary.boundary_type == btype, Boundary.boundary_identifier.like(f"%{bident}")
+            Boundary.boundary_type == btype,
+            Boundary.boundary_identifier.endswith(bident, autoescape=True),
         )
         if voter.county:
             precinct_cond = and_(precinct_cond, Boundary.county == voter.county)

@@ -600,3 +600,66 @@ class TestIdentifierNormalization:
         assert by_type["state_senate"].boundary_identifier == "1"
         assert by_type["state_house"].boundary_identifier == "142"
         assert by_type["county_precinct"].boundary_identifier == "HO7"
+
+    async def test_padded_voter_numeric_id_matches_db_padded_boundary(self) -> None:
+        """Voter with congressional='08' matches boundary '008'; raw format '08' is preserved.
+
+        Regression for PR #98 Thread 1: str(int(db_identifier)) was '8', causing a miss
+        when the voter's registered value was '08'.
+        """
+        voter = _make_voter()
+
+        # Voter CSV stores '08' (two-digit zero-padded), DB stores '008' (three-digit)
+        registered = {"congressional": "08"}
+        boundaries = [_make_boundary(B_ID_1, "congressional", "008")]
+        locations = [_make_location("census")]
+        cross_rows = [_make_cross_row("census", B_ID_1, "congressional", "008", True)]
+
+        session = _make_session(
+            _scalar_one_or_none_result(voter),
+            _scalars_all_result(boundaries),
+            _scalars_all_result(locations),
+            _all_result(cross_rows),
+        )
+
+        with patch(
+            "voter_api.lib.analyzer.batch_check.extract_registered_boundaries",
+            return_value=registered,
+        ):
+            result = await check_batch_boundaries(session, VOTER_ID)
+
+        assert len(result.districts) == 1
+        district = result.districts[0]
+        assert district.has_geometry is True
+        assert district.boundary_identifier == "08"  # voter's raw format preserved
+        assert len(district.providers) == 1
+
+    async def test_short_voter_precinct_does_not_false_match_shorter_db_identifier(
+        self,
+    ) -> None:
+        """Voter with county_precinct='7' does NOT match boundary 'HO7' (len ≤ 3).
+
+        Regression for PR #98 Thread 3: missing len(db_identifier) > 3 guard caused
+        '7'.endswith('7') → True against short non-FIPS-prefixed boundary identifiers.
+        """
+        voter = _make_voter()
+
+        # Voter has precinct '7'; DB has 'HO7' (not a FIPS-prefixed identifier, len=3)
+        registered = {"county_precinct": "7"}
+        boundaries = [_make_boundary(B_ID_1, "county_precinct", "HO7")]
+
+        session = _make_session(
+            _scalar_one_or_none_result(voter),
+            _scalars_all_result(boundaries),
+            _scalars_all_result([]),  # no locations needed — testing lookup only
+        )
+
+        with patch(
+            "voter_api.lib.analyzer.batch_check.extract_registered_boundaries",
+            return_value=registered,
+        ):
+            result = await check_batch_boundaries(session, VOTER_ID)
+
+        assert len(result.districts) == 1
+        district = result.districts[0]
+        assert district.has_geometry is False  # short DB identifier must not match
