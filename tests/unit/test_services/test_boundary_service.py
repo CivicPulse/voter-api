@@ -138,6 +138,72 @@ class TestListBoundariesHybridCountyFilter:
         assert any("county_districts" in q.lower() and "congressional" in q.lower() for q in queries)
 
 
+class TestListBoundariesSearchParam:
+    """Tests for list_boundaries search parameter SQL wildcard escaping."""
+
+    @pytest.mark.asyncio
+    async def test_search_produces_ilike_filter(self) -> None:
+        """When search is provided, the query uses ILIKE."""
+        session = _mock_session()
+
+        await list_boundaries(session, search="congressional")
+
+        calls = session.execute.call_args_list
+        queries = [_compile_query(call[0][0]) for call in calls]
+        assert any("ILIKE" in q for q in queries)
+
+    @pytest.mark.asyncio
+    async def test_search_escapes_percent_wildcard(self) -> None:
+        """Percent sign in search is escaped so it is treated as a literal character."""
+        session = _mock_session()
+
+        await list_boundaries(session, search="district%5")
+
+        calls = session.execute.call_args_list
+        queries = [_compile_query(call[0][0]) for call in calls]
+        combined = " ".join(queries)
+        assert "ILIKE" in combined
+        assert r"\%" in combined  # escaped percent sign present
+        assert "district%5%" not in combined  # raw % must not appear as wildcard
+
+    @pytest.mark.asyncio
+    async def test_search_escapes_underscore_wildcard(self) -> None:
+        """Underscore in search is escaped so it matches a literal underscore."""
+        session = _mock_session()
+
+        await list_boundaries(session, search="_district")
+
+        calls = session.execute.call_args_list
+        queries = [_compile_query(call[0][0]) for call in calls]
+        combined = " ".join(queries)
+        assert "ILIKE" in combined
+        assert r"\_" in combined  # escaped underscore present
+
+    @pytest.mark.asyncio
+    async def test_search_escapes_backslash(self) -> None:
+        """Backslash in search is doubled so the escape character itself is treated literally."""
+        session = _mock_session()
+
+        await list_boundaries(session, search="path\\to")
+
+        calls = session.execute.call_args_list
+        queries = [_compile_query(call[0][0]) for call in calls]
+        combined = " ".join(queries)
+        assert "ILIKE" in combined
+        assert "\\\\" in combined  # doubled backslash in compiled query
+
+    @pytest.mark.asyncio
+    async def test_no_search_no_ilike(self) -> None:
+        """Without search param, no ILIKE filter is applied."""
+        session = _mock_session()
+
+        await list_boundaries(session)
+
+        calls = session.execute.call_args_list
+        queries = [_compile_query(call[0][0]) for call in calls]
+        assert not any("ILIKE" in q for q in queries)
+
+
 class TestFindContainingBoundariesHybridCountyFilter:
     """Tests for find_containing_boundaries with hybrid county filter."""
 
