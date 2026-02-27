@@ -19,6 +19,21 @@ B_ID_2 = uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")
 B_ID_3 = uuid.UUID("dddddddd-dddd-dddd-dddd-dddddddddddd")
 
 
+@pytest.fixture(autouse=True)
+def patch_find_boundaries_for_point():
+    """Patch find_boundaries_for_point to return {} by default for all tests.
+
+    Individual tests that want to assert on determined_identifier should override
+    this via their own patch context manager.
+    """
+    with patch(
+        "voter_api.lib.analyzer.batch_check.find_boundaries_for_point",
+        new_callable=AsyncMock,
+        return_value={},
+    ):
+        yield
+
+
 def _make_voter() -> MagicMock:
     voter = MagicMock()
     voter.id = VOTER_ID
@@ -26,7 +41,11 @@ def _make_voter() -> MagicMock:
 
 
 def _make_location(
-    source_type: str, lat: float = 33.5, lng: float = -84.3, confidence: float | None = 0.95
+    source_type: str,
+    lat: float = 33.5,
+    lng: float = -84.3,
+    confidence: float | None = 0.95,
+    point: object = None,
 ) -> MagicMock:
     loc = MagicMock()
     loc.source_type = source_type
@@ -34,6 +53,7 @@ def _make_location(
     loc.longitude = lng
     loc.confidence_score = confidence
     loc.voter_id = VOTER_ID
+    loc.point = point or MagicMock(name=f"point_{source_type}")
     return loc
 
 
@@ -663,3 +683,151 @@ class TestIdentifierNormalization:
         assert len(result.districts) == 1
         district = result.districts[0]
         assert district.has_geometry is False  # short DB identifier must not match
+
+
+# ---------------------------------------------------------------------------
+# determined_identifier populated on mismatch (issue #99)
+# ---------------------------------------------------------------------------
+
+
+class TestDeterminedIdentifier:
+    """determined_identifier is populated when is_contained=False, None when True."""
+
+    async def test_mismatch_populates_determined_identifier(self) -> None:
+        """When a provider misses a boundary, determined_identifier reflects the actual containing district."""
+        voter = _make_voter()
+        registered = {"congressional": "5", "state_senate": "34"}
+
+        boundaries = [
+            _make_boundary(B_ID_1, "congressional", "005"),
+            _make_boundary(B_ID_2, "state_senate", "034"),
+        ]
+
+        google_point = MagicMock(name="google_point")
+        locations = [_make_location("google", lat=33.5, lng=-84.3, point=google_point)]
+
+        # google is NOT contained in state_senate but IS in congressional
+        cross_rows = [
+            _make_cross_row("google", B_ID_1, "congressional", "005", True),
+            _make_cross_row("google", B_ID_2, "state_senate", "034", False),
+        ]
+
+        session = _make_session(
+            _scalar_one_or_none_result(voter),
+            _scalars_all_result(boundaries),
+            _scalars_all_result(locations),
+            _all_result(cross_rows),
+        )
+
+        # find_boundaries_for_point returns: google point is actually in district "007"
+        fake_determined = {"state_senate": "007", "congressional": "005"}
+
+        with (
+            patch(
+                "voter_api.lib.analyzer.batch_check.extract_registered_boundaries",
+                return_value=registered,
+            ),
+            patch(
+                "voter_api.lib.analyzer.batch_check.find_boundaries_for_point",
+                new_callable=AsyncMock,
+                return_value=fake_determined,
+            ) as mock_fbfp,
+        ):
+            result = await check_batch_boundaries(session, VOTER_ID)
+
+        # find_boundaries_for_point called once for google (first miss)
+        mock_fbfp.assert_awaited_once_with(session, google_point)
+
+        by_type = {d.boundary_type: d for d in result.districts}
+
+        # congressional: contained → determined_identifier is None
+        cong_providers = {p.source_type: p for p in by_type["congressional"].providers}
+        assert cong_providers["google"].is_contained is True
+        assert cong_providers["google"].determined_identifier is None
+
+        # state_senate: not contained → determined_identifier = "007"
+        senate_providers = {p.source_type: p for p in by_type["state_senate"].providers}
+        assert senate_providers["google"].is_contained is False
+        assert senate_providers["google"].determined_identifier == "007"
+
+    async def test_contained_provider_leaves_determined_identifier_none(self) -> None:
+        """When a provider is contained in all boundaries, determined_identifier stays None."""
+        voter = _make_voter()
+        registered = {"congressional": "5"}
+        boundaries = [_make_boundary(B_ID_1, "congressional", "005")]
+        locations = [_make_location("google")]
+        cross_rows = [_make_cross_row("google", B_ID_1, "congressional", "005", True)]
+
+        session = _make_session(
+            _scalar_one_or_none_result(voter),
+            _scalars_all_result(boundaries),
+            _scalars_all_result(locations),
+            _all_result(cross_rows),
+        )
+
+        with (
+            patch(
+                "voter_api.lib.analyzer.batch_check.extract_registered_boundaries",
+                return_value=registered,
+            ),
+            patch(
+                "voter_api.lib.analyzer.batch_check.find_boundaries_for_point",
+                new_callable=AsyncMock,
+            ) as mock_fbfp,
+        ):
+            result = await check_batch_boundaries(session, VOTER_ID)
+
+        # No misses → find_boundaries_for_point never called
+        mock_fbfp.assert_not_awaited()
+
+        district = result.districts[0]
+        assert district.providers[0].is_contained is True
+        assert district.providers[0].determined_identifier is None
+
+    async def test_multiple_providers_find_boundaries_called_once_per_provider(self) -> None:
+        """find_boundaries_for_point is called at most once per provider, not per row."""
+        voter = _make_voter()
+        registered = {"congressional": "5", "state_senate": "34"}
+
+        boundaries = [
+            _make_boundary(B_ID_1, "congressional", "005"),
+            _make_boundary(B_ID_2, "state_senate", "034"),
+        ]
+
+        google_point = MagicMock(name="google_point")
+        census_point = MagicMock(name="census_point")
+        locations = [
+            _make_location("google", point=google_point),
+            _make_location("census", point=census_point),
+        ]
+
+        # Both providers miss both districts
+        cross_rows = [
+            _make_cross_row("google", B_ID_1, "congressional", "005", False),
+            _make_cross_row("google", B_ID_2, "state_senate", "034", False),
+            _make_cross_row("census", B_ID_1, "congressional", "005", False),
+            _make_cross_row("census", B_ID_2, "state_senate", "034", False),
+        ]
+
+        session = _make_session(
+            _scalar_one_or_none_result(voter),
+            _scalars_all_result(boundaries),
+            _scalars_all_result(locations),
+            _all_result(cross_rows),
+        )
+
+        with (
+            patch(
+                "voter_api.lib.analyzer.batch_check.extract_registered_boundaries",
+                return_value=registered,
+            ),
+            patch(
+                "voter_api.lib.analyzer.batch_check.find_boundaries_for_point",
+                new_callable=AsyncMock,
+                return_value={},
+            ) as mock_fbfp,
+        ):
+            await check_batch_boundaries(session, VOTER_ID)
+
+        # Exactly 2 calls: one per provider (not 4 for each row)
+        assert mock_fbfp.await_count == 2

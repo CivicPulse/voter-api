@@ -15,6 +15,7 @@ from voter_api.lib.analyzer.comparator import (
     PRECINCT_TYPES,
     extract_registered_boundaries,
 )
+from voter_api.lib.analyzer.spatial import find_boundaries_for_point
 from voter_api.models.boundary import Boundary
 from voter_api.models.geocoded_location import GeocodedLocation
 from voter_api.models.voter import Voter
@@ -35,6 +36,7 @@ class VoterNotFoundError(Exception):
 class _ProviderResult:
     source_type: str
     is_contained: bool
+    determined_identifier: str | None = None
 
 
 @dataclass
@@ -315,11 +317,28 @@ async def check_batch_boundaries(
 
     # Aggregate cross-join rows into district results
     # Group by (boundary_id, boundary_type, boundary_identifier)
+    # For providers that miss at least one district, run a follow-up spatial query to
+    # find the actual containing boundary identifier (determined_identifier).
+    provider_points: dict[str, Any] = {loc.source_type: loc.point for loc in locations}
+    provider_determined: dict[str, dict[str, str]] = {}
+    for row in cross_rows:
+        if not row.is_contained and row.source_type not in provider_determined:
+            pt = provider_points.get(row.source_type)
+            if pt is not None:
+                provider_determined[row.source_type] = await find_boundaries_for_point(session, pt)
+
     district_providers: dict[tuple[uuid.UUID, str, str], list[_ProviderResult]] = defaultdict(list)
     for row in cross_rows:
         district_key = (row.boundary_id, row.boundary_type, row.boundary_identifier)
+        det_ident: str | None = None
+        if not row.is_contained:
+            det_ident = provider_determined.get(row.source_type, {}).get(row.boundary_type)
         district_providers[district_key].append(
-            _ProviderResult(source_type=row.source_type, is_contained=bool(row.is_contained))
+            _ProviderResult(
+                source_type=row.source_type,
+                is_contained=bool(row.is_contained),
+                determined_identifier=det_ident,
+            )
         )
 
     provider_summary = _build_provider_summary(locations, cross_rows)

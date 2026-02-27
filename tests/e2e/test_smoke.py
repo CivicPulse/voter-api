@@ -1129,6 +1129,10 @@ class TestVoters:
         assert "total_locations" in body
         assert "total_districts" in body
         assert "checked_at" in body
+        # Each provider entry must include the determined_identifier key (may be None)
+        for district in body["districts"]:
+            for provider in district["providers"]:
+                assert "determined_identifier" in provider
 
     async def test_batch_boundary_check_viewer_403(self, viewer_client: httpx.AsyncClient) -> None:
         """POST /voters/{id}/geocode/check-boundaries returns 403 for viewer role."""
