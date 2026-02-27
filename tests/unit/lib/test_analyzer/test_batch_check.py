@@ -104,16 +104,17 @@ class TestHappyPath:
         """2 providers × 3 districts → 3 DistrictBoundaryResult entries, each with 2 providers."""
         voter = _make_voter()
 
+        # Voter CSV uses unpadded identifiers; boundary DB uses 3-digit zero-padded identifiers.
         registered = {
-            "congressional": "05",
+            "congressional": "5",
             "state_senate": "34",
             "state_house": "42",
         }
 
         boundaries = [
-            _make_boundary(B_ID_1, "congressional", "05"),
-            _make_boundary(B_ID_2, "state_senate", "34"),
-            _make_boundary(B_ID_3, "state_house", "42"),
+            _make_boundary(B_ID_1, "congressional", "005"),
+            _make_boundary(B_ID_2, "state_senate", "034"),
+            _make_boundary(B_ID_3, "state_house", "042"),
         ]
 
         locations = [
@@ -122,12 +123,12 @@ class TestHappyPath:
         ]
 
         cross_rows = [
-            _make_cross_row("census", B_ID_1, "congressional", "05", True),
-            _make_cross_row("census", B_ID_2, "state_senate", "34", True),
-            _make_cross_row("census", B_ID_3, "state_house", "42", False),
-            _make_cross_row("google", B_ID_1, "congressional", "05", True),
-            _make_cross_row("google", B_ID_2, "state_senate", "34", False),
-            _make_cross_row("google", B_ID_3, "state_house", "42", True),
+            _make_cross_row("census", B_ID_1, "congressional", "005", True),
+            _make_cross_row("census", B_ID_2, "state_senate", "034", True),
+            _make_cross_row("census", B_ID_3, "state_house", "042", False),
+            _make_cross_row("google", B_ID_1, "congressional", "005", True),
+            _make_cross_row("google", B_ID_2, "state_senate", "034", False),
+            _make_cross_row("google", B_ID_3, "state_house", "042", True),
         ]
 
         session = _make_session(
@@ -158,11 +159,11 @@ class TestHappyPath:
         """provider_summary correctly counts districts_matched (True rows) vs districts_checked."""
         voter = _make_voter()
 
-        registered = {"congressional": "05", "state_senate": "34"}
+        registered = {"congressional": "5", "state_senate": "34"}
 
         boundaries = [
-            _make_boundary(B_ID_1, "congressional", "05"),
-            _make_boundary(B_ID_2, "state_senate", "34"),
+            _make_boundary(B_ID_1, "congressional", "005"),
+            _make_boundary(B_ID_2, "state_senate", "034"),
         ]
 
         locations = [
@@ -173,10 +174,10 @@ class TestHappyPath:
         # google: contained in congressional (True), not in state_senate (False) → matched=1, checked=2
         # census: contained in both (True, True) → matched=2, checked=2
         cross_rows = [
-            _make_cross_row("census", B_ID_1, "congressional", "05", True, confidence=None),
-            _make_cross_row("census", B_ID_2, "state_senate", "34", True, confidence=None),
-            _make_cross_row("google", B_ID_1, "congressional", "05", True, confidence=0.9),
-            _make_cross_row("google", B_ID_2, "state_senate", "34", False, confidence=0.9),
+            _make_cross_row("census", B_ID_1, "congressional", "005", True, confidence=None),
+            _make_cross_row("census", B_ID_2, "state_senate", "034", True, confidence=None),
+            _make_cross_row("google", B_ID_1, "congressional", "005", True, confidence=0.9),
+            _make_cross_row("google", B_ID_2, "state_senate", "034", False, confidence=0.9),
         ]
 
         session = _make_session(
@@ -211,17 +212,17 @@ class TestHappyPath:
         voter = _make_voter()
 
         registered = {
-            "congressional": "05",
+            "congressional": "5",
             "state_senate": "99",  # this one has no boundary in DB
         }
 
         # Only congressional boundary exists in DB
-        boundaries = [_make_boundary(B_ID_1, "congressional", "05")]
+        boundaries = [_make_boundary(B_ID_1, "congressional", "005")]
 
         locations = [_make_location("google")]
 
         cross_rows = [
-            _make_cross_row("google", B_ID_1, "congressional", "05", True),
+            _make_cross_row("google", B_ID_1, "congressional", "005", True),
         ]
 
         session = _make_session(
@@ -272,11 +273,11 @@ class TestNoGeocodedLocations:
         """total_locations=0, provider_summary=[], districts have correct has_geometry status."""
         voter = _make_voter()
 
-        registered = {"congressional": "05", "state_senate": "34"}
+        registered = {"congressional": "5", "state_senate": "34"}
 
         boundaries = [
-            _make_boundary(B_ID_1, "congressional", "05"),
-            _make_boundary(B_ID_2, "state_senate", "34"),
+            _make_boundary(B_ID_1, "congressional", "005"),
+            _make_boundary(B_ID_2, "state_senate", "034"),
         ]
 
         session = _make_session(
@@ -305,11 +306,11 @@ class TestNoGeocodedLocations:
         voter = _make_voter()
 
         registered = {
-            "congressional": "05",
+            "congressional": "5",
             "state_senate": "99",  # no boundary in DB
         }
 
-        boundaries = [_make_boundary(B_ID_1, "congressional", "05")]
+        boundaries = [_make_boundary(B_ID_1, "congressional", "005")]
 
         session = _make_session(
             _scalar_one_or_none_result(voter),
@@ -330,8 +331,8 @@ class TestNoGeocodedLocations:
     async def test_no_locations_no_cross_join_executed(self) -> None:
         """Cross-join query is skipped entirely when there are no geocoded locations."""
         voter = _make_voter()
-        registered = {"congressional": "05"}
-        boundaries = [_make_boundary(B_ID_1, "congressional", "05")]
+        registered = {"congressional": "5"}
+        boundaries = [_make_boundary(B_ID_1, "congressional", "005")]
 
         session = _make_session(
             _scalar_one_or_none_result(voter),
@@ -453,3 +454,212 @@ class TestNoRegisteredDistricts:
         assert result.total_locations == 0
         assert result.districts == []
         assert result.provider_summary == []
+
+
+# ---------------------------------------------------------------------------
+# Regression: identifier format mismatch between voter CSV and boundary DB
+# ---------------------------------------------------------------------------
+
+
+class TestIdentifierNormalization:
+    """Regression tests for #97 — voter CSV vs boundary DB identifier format mismatch.
+
+    Numeric district types: voter CSV stores '8', boundary DB stores '008'.
+    Precinct types: voter CSV stores 'HO7', boundary DB stores '021HO7'.
+    """
+
+    async def test_zero_padded_numeric_boundary_matched_by_unpadded_voter_identifier(
+        self,
+    ) -> None:
+        """Voter with congressional='8' matches boundary with identifier '008' (providers populated)."""
+        voter = _make_voter()
+
+        # Voter CSV format: no leading zeros
+        registered = {"congressional": "8"}
+
+        # Boundary DB format: zero-padded to 3 digits
+        boundaries = [_make_boundary(B_ID_1, "congressional", "008")]
+
+        locations = [_make_location("census")]
+
+        cross_rows = [
+            _make_cross_row("census", B_ID_1, "congressional", "008", True),
+        ]
+
+        session = _make_session(
+            _scalar_one_or_none_result(voter),
+            _scalars_all_result(boundaries),
+            _scalars_all_result(locations),
+            _all_result(cross_rows),
+        )
+
+        with patch(
+            "voter_api.lib.analyzer.batch_check.extract_registered_boundaries",
+            return_value=registered,
+        ):
+            result = await check_batch_boundaries(session, VOTER_ID)
+
+        assert len(result.districts) == 1
+        district = result.districts[0]
+        assert district.has_geometry is True
+        assert district.boundary_identifier == "8"  # response uses voter's raw format
+        assert len(district.providers) == 1
+        assert district.providers[0].source_type == "census"
+        assert district.providers[0].is_contained is True
+
+    async def test_precinct_suffix_matched_against_fips_prefixed_db_identifier(
+        self,
+    ) -> None:
+        """Voter with county_precinct='HO7' matches boundary with identifier '021HO7'."""
+        voter = _make_voter()
+
+        # Voter CSV format: precinct code without county FIPS prefix
+        registered = {"county_precinct": "HO7"}
+
+        # Boundary DB format: 3-digit county FIPS prefix + precinct code
+        boundaries = [_make_boundary(B_ID_1, "county_precinct", "021HO7")]
+
+        locations = [_make_location("google")]
+
+        cross_rows = [
+            _make_cross_row("google", B_ID_1, "county_precinct", "021HO7", True),
+        ]
+
+        session = _make_session(
+            _scalar_one_or_none_result(voter),
+            _scalars_all_result(boundaries),
+            _scalars_all_result(locations),
+            _all_result(cross_rows),
+        )
+
+        with patch(
+            "voter_api.lib.analyzer.batch_check.extract_registered_boundaries",
+            return_value=registered,
+        ):
+            result = await check_batch_boundaries(session, VOTER_ID)
+
+        assert len(result.districts) == 1
+        district = result.districts[0]
+        assert district.has_geometry is True
+        assert district.boundary_identifier == "HO7"  # response uses voter's raw format
+        assert len(district.providers) == 1
+        assert district.providers[0].source_type == "google"
+        assert district.providers[0].is_contained is True
+
+    async def test_mixed_numeric_and_precinct_districts_all_populated(self) -> None:
+        """Multiple district types with mismatched formats all resolve correctly."""
+        voter = _make_voter()
+
+        registered = {
+            "congressional": "8",
+            "state_senate": "1",
+            "state_house": "142",  # already 3 digits — no padding needed
+            "county_precinct": "HO7",
+        }
+
+        b_id_4 = uuid.UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+        boundaries = [
+            _make_boundary(B_ID_1, "congressional", "008"),
+            _make_boundary(B_ID_2, "state_senate", "001"),
+            _make_boundary(B_ID_3, "state_house", "142"),
+            _make_boundary(b_id_4, "county_precinct", "021HO7"),
+        ]
+
+        locations = [_make_location("census")]
+
+        cross_rows = [
+            _make_cross_row("census", B_ID_1, "congressional", "008", True),
+            _make_cross_row("census", B_ID_2, "state_senate", "001", True),
+            _make_cross_row("census", B_ID_3, "state_house", "142", True),
+            _make_cross_row("census", b_id_4, "county_precinct", "021HO7", True),
+        ]
+
+        session = _make_session(
+            _scalar_one_or_none_result(voter),
+            _scalars_all_result(boundaries),
+            _scalars_all_result(locations),
+            _all_result(cross_rows),
+        )
+
+        with patch(
+            "voter_api.lib.analyzer.batch_check.extract_registered_boundaries",
+            return_value=registered,
+        ):
+            result = await check_batch_boundaries(session, VOTER_ID)
+
+        assert result.total_districts == 4
+        by_type = {d.boundary_type: d for d in result.districts}
+
+        # All districts found and populated
+        for btype in ("congressional", "state_senate", "state_house", "county_precinct"):
+            assert by_type[btype].has_geometry is True, f"{btype} should have geometry"
+            assert len(by_type[btype].providers) == 1, f"{btype} should have 1 provider"
+
+        # Response uses voter identifiers, not DB identifiers
+        assert by_type["congressional"].boundary_identifier == "8"
+        assert by_type["state_senate"].boundary_identifier == "1"
+        assert by_type["state_house"].boundary_identifier == "142"
+        assert by_type["county_precinct"].boundary_identifier == "HO7"
+
+    async def test_padded_voter_numeric_id_matches_db_padded_boundary(self) -> None:
+        """Voter with congressional='08' matches boundary '008'; raw format '08' is preserved.
+
+        Regression for PR #98 Thread 1: str(int(db_identifier)) was '8', causing a miss
+        when the voter's registered value was '08'.
+        """
+        voter = _make_voter()
+
+        # Voter CSV stores '08' (two-digit zero-padded), DB stores '008' (three-digit)
+        registered = {"congressional": "08"}
+        boundaries = [_make_boundary(B_ID_1, "congressional", "008")]
+        locations = [_make_location("census")]
+        cross_rows = [_make_cross_row("census", B_ID_1, "congressional", "008", True)]
+
+        session = _make_session(
+            _scalar_one_or_none_result(voter),
+            _scalars_all_result(boundaries),
+            _scalars_all_result(locations),
+            _all_result(cross_rows),
+        )
+
+        with patch(
+            "voter_api.lib.analyzer.batch_check.extract_registered_boundaries",
+            return_value=registered,
+        ):
+            result = await check_batch_boundaries(session, VOTER_ID)
+
+        assert len(result.districts) == 1
+        district = result.districts[0]
+        assert district.has_geometry is True
+        assert district.boundary_identifier == "08"  # voter's raw format preserved
+        assert len(district.providers) == 1
+
+    async def test_short_voter_precinct_does_not_false_match_shorter_db_identifier(
+        self,
+    ) -> None:
+        """Voter with county_precinct='7' does NOT match boundary 'HO7' (len ≤ 3).
+
+        Regression for PR #98 Thread 3: missing len(db_identifier) > 3 guard caused
+        '7'.endswith('7') → True against short non-FIPS-prefixed boundary identifiers.
+        """
+        voter = _make_voter()
+
+        # Voter has precinct '7'; DB has 'HO7' (not a FIPS-prefixed identifier, len=3)
+        registered = {"county_precinct": "7"}
+        boundaries = [_make_boundary(B_ID_1, "county_precinct", "HO7")]
+
+        session = _make_session(
+            _scalar_one_or_none_result(voter),
+            _scalars_all_result(boundaries),
+            _scalars_all_result([]),  # no locations needed — testing lookup only
+        )
+
+        with patch(
+            "voter_api.lib.analyzer.batch_check.extract_registered_boundaries",
+            return_value=registered,
+        ):
+            result = await check_batch_boundaries(session, VOTER_ID)
+
+        assert len(result.districts) == 1
+        district = result.districts[0]
+        assert district.has_geometry is False  # short DB identifier must not match
