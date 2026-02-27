@@ -185,6 +185,7 @@ async def list_boundaries(
     boundary_type: str | None = None,
     county: str | None = None,
     source: str | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[Boundary], int]:
@@ -195,6 +196,7 @@ async def list_boundaries(
         boundary_type: Filter by boundary type.
         county: Filter by county using hybrid approach (relation table + spatial).
         source: Filter by source.
+        search: Case-insensitive partial match on boundary name or identifier.
         page: Page number.
         page_size: Items per page.
 
@@ -214,6 +216,15 @@ async def list_boundaries(
     if source:
         query = query.where(Boundary.source == source)
         count_query = count_query.where(Boundary.source == source)
+    if search:
+        search_escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{search_escaped}%"
+        search_filter = or_(
+            Boundary.name.ilike(pattern, escape="\\"),
+            Boundary.boundary_identifier.ilike(pattern, escape="\\"),
+        )
+        query = query.where(search_filter)
+        count_query = count_query.where(search_filter)
 
     total = (await session.execute(count_query)).scalar_one()
     offset = (page - 1) * page_size

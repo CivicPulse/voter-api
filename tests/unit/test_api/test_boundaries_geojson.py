@@ -344,6 +344,51 @@ class TestListAllBoundariesNoAuth:
 
         assert resp.status_code == 200
 
+    @pytest.mark.asyncio
+    async def test_search_param_forwarded_to_service(self, client: AsyncClient) -> None:
+        """?search=bibb is forwarded to list_boundaries as search='bibb'."""
+        with patch(
+            "voter_api.api.v1.boundaries.list_boundaries",
+            new_callable=AsyncMock,
+            return_value=([], 0),
+        ) as mock_list:
+            await client.get("/api/v1/boundaries?search=bibb")
+
+        mock_list.assert_called_once()
+        _, kwargs = mock_list.call_args
+        assert kwargs["search"] == "bibb"
+
+    @pytest.mark.asyncio
+    async def test_search_returns_filtered_results(self, client: AsyncClient) -> None:
+        """Service mock returns one boundary; only that boundary appears in response items."""
+        mock_boundary = _make_mock_boundary(name="Bibb County", boundary_identifier="021")
+        with patch(
+            "voter_api.api.v1.boundaries.list_boundaries",
+            new_callable=AsyncMock,
+            return_value=([mock_boundary], 1),
+        ):
+            resp = await client.get("/api/v1/boundaries?search=bibb")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["pagination"]["total"] == 1
+        assert len(data["items"]) == 1
+        assert data["items"][0]["name"] == "Bibb County"
+
+    @pytest.mark.asyncio
+    async def test_search_empty_string_treated_as_no_filter(self, client: AsyncClient) -> None:
+        """?search= (empty string) is normalised to None before reaching the service."""
+        with patch(
+            "voter_api.api.v1.boundaries.list_boundaries",
+            new_callable=AsyncMock,
+            return_value=([], 0),
+        ) as mock_list:
+            await client.get("/api/v1/boundaries?search=")
+
+        mock_list.assert_called_once()
+        _, kwargs = mock_list.call_args
+        assert kwargs["search"] is None
+
 
 class TestContainingPointNoAuth:
     """Tests for GET /api/v1/boundaries/containing-point (no auth required)."""

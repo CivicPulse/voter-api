@@ -129,6 +129,7 @@ async def list_all_boundaries(
     boundary_type: str | None = Query(None),
     county: str | None = Query(None),
     source: str | None = Query(None),
+    search: str | None = Query(None, description="Case-insensitive partial match on boundary name or identifier"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     session: AsyncSession = Depends(get_async_session),
@@ -142,6 +143,7 @@ async def list_all_boundaries(
         boundary_type=boundary_type,
         county=county,
         source=source,
+        search=search or None,
         page=page,
         page_size=page_size,
     )
