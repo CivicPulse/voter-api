@@ -147,7 +147,7 @@ def _voter_ident(boundary_type: str, db_identifier: str, registered: dict[str, s
             return str(db_num)  # fallback canonical form
     if boundary_type in PRECINCT_TYPES:
         voter_val = registered.get(boundary_type, "")
-        if voter_val and len(db_identifier) > 3 and db_identifier.endswith(voter_val):
+        if voter_val and len(db_identifier) == len(voter_val) + 3 and db_identifier.endswith(voter_val):
             return voter_val  # '021HO7' → 'HO7'
     return db_identifier
 
@@ -227,6 +227,7 @@ async def check_batch_boundaries(
     for btype, bident in precinct_pairs:
         precinct_cond: ColumnElement[bool] = and_(
             Boundary.boundary_type == btype,
+            func.length(Boundary.boundary_identifier) == len(bident) + 3,
             Boundary.boundary_identifier.endswith(bident, autoescape=True),
         )
         if voter.county:
