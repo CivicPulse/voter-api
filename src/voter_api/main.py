@@ -52,6 +52,38 @@ async def _recover_stale_analysis_runs() -> None:
             logger.warning("Recovered {} stale analysis run(s) on startup", row_count)
 
 
+async def _recover_stale_geocoding_jobs() -> None:
+    """Mark any 'running' or 'pending' geocoding jobs as 'failed' on startup.
+
+    In-process background tasks don't survive server restarts, so any jobs
+    still in these statuses at boot time are orphaned. Appends a recovery
+    note to the JSONB error_log array.
+    """
+    from sqlalchemy import func, type_coerce, update
+    from sqlalchemy.dialects.postgresql import JSONB as JSONB_TYPE
+
+    from voter_api.models.geocoding_job import GeocodingJob
+
+    recovery_note = [{"error": "Server restarted while task was in progress"}]
+
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            update(GeocodingJob)
+            .where(GeocodingJob.status.in_(["running", "pending"]))
+            .values(
+                status="failed",
+                error_log=func.coalesce(GeocodingJob.error_log, type_coerce([], JSONB_TYPE))
+                + type_coerce(recovery_note, JSONB_TYPE),
+                completed_at=func.now(),
+            )
+        )
+        await session.commit()
+        row_count = result.rowcount  # type: ignore[attr-defined]
+        if row_count is not None and row_count > 0:
+            logger.warning("Recovered {} stale geocoding job(s) on startup", row_count)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Manage application lifecycle: init engine on startup, dispose on shutdown."""
@@ -64,6 +96,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         await _recover_stale_analysis_runs()
     except Exception:
         logger.warning("Could not recover stale analysis runs on startup (table may not exist yet)")
+
+    # Recover geocoding jobs orphaned by a previous server restart
+    try:
+        await _recover_stale_geocoding_jobs()
+    except Exception:
+        logger.warning("Could not recover stale geocoding jobs on startup (table may not exist yet)")
 
     # Start election auto-refresh background task
     refresh_task = None

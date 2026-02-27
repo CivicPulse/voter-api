@@ -43,6 +43,7 @@ class TestValidateRecord:
         }
         is_valid, errors = validate_record(record)
         assert not is_valid
+        assert any("county" in e for e in errors)
 
     def test_valid_birth_year(self) -> None:
         """Valid birth year passes."""
@@ -54,7 +55,7 @@ class TestValidateRecord:
             "first_name": "JOHN",
             "birth_year": "1990",
         }
-        is_valid, errors = validate_record(record)
+        is_valid, _ = validate_record(record)
         assert is_valid
 
     def test_invalid_birth_year(self) -> None:

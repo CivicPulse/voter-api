@@ -332,9 +332,9 @@ uv run voter-api deploy-check                                            # prod 
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes
-- 010-election-info: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Alembic
-- 009-enhanced-auth: Added Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x async, Pydantic v2, httpx (existing); pyotp, segno, cryptography, py-webauthn (new)
-- 008-auto-data-import: Added Python 3.13 + httpx (async HTTP downloads), typer (CLI), loguru (logging), tqdm (progress bars) — all already in pyproject.toml
+- 013-batch-boundary-check: Added Python 3.13 + FastAPI, SQLAlchemy 2.x async, GeoAlchemy2, PostGIS `ST_Contains`, Pydantic v2
+- 012-election-lifecycle: Added Python 3.13 + FastAPI, SQLAlchemy 2.x (async), Alembic, Pydantic v2, GeoAlchemy2
+- 011-stale-geocoding-jobs: Added Python 3.13 + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Loguru
 
 ### 009-enhanced-auth
 
@@ -369,5 +369,5 @@ Key files:
 
 
 ## Active Technologies
-- Python 3.13 (see `.python-version`) + FastAPI, SQLAlchemy 2.x (async), Pydantic v2, Alembic (010-election-info)
-- PostgreSQL 15+ / PostGIS 3.x (existing) (010-election-info)
+- Python 3.13 + FastAPI, SQLAlchemy 2.x async, GeoAlchemy2, PostGIS `ST_Contains`, Pydantic v2 (013-batch-boundary-check)
+- PostgreSQL + PostGIS (existing tables only — no migrations) (013-batch-boundary-check)

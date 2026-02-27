@@ -88,13 +88,13 @@ class BaseOfficialsProvider(ABC):
             List of normalized official records from this provider.
         """
 
-    async def close(self) -> None:
+    async def close(self) -> None:  # noqa: B027
         """Close any resources held by this provider.
 
         Default implementation is a no-op. Providers with HTTP clients
         or other closeable resources should override this.
         """
-        return  # noqa: B027
+        pass
 
     async def fetch_by_point(
         self,

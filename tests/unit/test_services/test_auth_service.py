@@ -37,7 +37,7 @@ def _mock_user(**overrides: object) -> MagicMock:
     user.id = uuid.uuid4()
     user.username = "testuser"
     user.email = "test@example.com"
-    user.hashed_password = "$2b$12$hashed"
+    user.hashed_password = "$2b$12$hashed"  # NOSONAR
     user.role = "admin"
     user.is_active = True
     user.last_login_at = None

@@ -2,6 +2,8 @@
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from voter_api.schemas.county_metadata import CountyMetadataResponse
 
 
@@ -60,7 +62,7 @@ class TestCountyMetadataResponse:
             name_lsad="Fulton County",
             land_area_m2=1364558845,
         )
-        assert response.land_area_km2 == 1364.56
+        assert response.land_area_km2 == pytest.approx(1364.56)
 
     def test_computed_water_area_km2(self) -> None:
         """water_area_km2 computed field converts m2 to km2."""
@@ -72,7 +74,7 @@ class TestCountyMetadataResponse:
             name_lsad="Fulton County",
             water_area_m2=20564942,
         )
-        assert response.water_area_km2 == 20.56
+        assert response.water_area_km2 == pytest.approx(20.56)
 
     def test_computed_fields_none_when_area_missing(self) -> None:
         """Computed km2 fields return None when m2 values are not set."""
@@ -114,5 +116,5 @@ class TestCountyMetadataResponse:
         data = response.model_dump()
         assert "land_area_km2" in data
         assert "water_area_km2" in data
-        assert data["land_area_km2"] == 1.0
-        assert data["water_area_km2"] == 0.5
+        assert data["land_area_km2"] == pytest.approx(1.0)
+        assert data["water_area_km2"] == pytest.approx(0.5)

@@ -7,7 +7,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, HttpUrl, computed_field
+from pydantic import BaseModel, Field, HttpUrl, computed_field, model_validator
 
 from voter_api.lib.election_tracker import ElectionType
 from voter_api.schemas.common import PaginationMeta
@@ -25,7 +25,9 @@ class ElectionCreateRequest(BaseModel):
     election_date: date
     election_type: ElectionType
     district: str = Field(min_length=1, max_length=200)
-    data_source_url: HttpUrl
+    source: Literal["sos_feed", "manual"]
+    data_source_url: HttpUrl | None = None
+    boundary_id: uuid.UUID | None = None
     refresh_interval_seconds: int = Field(default=120, ge=60)
     ballot_item_id: str | None = Field(
         default=None,
@@ -34,6 +36,18 @@ class ElectionCreateRequest(BaseModel):
         description="SoS ballot item ID for multi-race feeds. Defaults to first race if null.",
     )
     status: ElectionStatus = "active"
+
+    @model_validator(mode="after")
+    def validate_source_fields(self) -> "ElectionCreateRequest":
+        """Enforce source-specific field requirements."""
+        if self.source == "sos_feed" and self.data_source_url is None:
+            raise ValueError("data_source_url is required for sos_feed elections")
+        if self.source == "manual":
+            if self.data_source_url is not None:
+                raise ValueError("data_source_url must not be set for manual elections")
+            if self.boundary_id is None:
+                raise ValueError("boundary_id is required for manual elections")
+        return self
 
 
 class ElectionUpdateRequest(BaseModel):
@@ -61,6 +75,13 @@ class ElectionUpdateRequest(BaseModel):
     qualifying_end: datetime | None = None
 
 
+class ElectionLinkRequest(BaseModel):
+    """Request body for linking a manual election to a SOS feed URL."""
+
+    data_source_url: HttpUrl
+    ballot_item_id: str | None = Field(default=None, min_length=1, max_length=50)
+
+
 # --- Response schemas ---
 
 
@@ -75,7 +96,8 @@ class ElectionSummary(BaseModel):
     election_type: ElectionType
     district: str
     status: ElectionStatus
-    last_refreshed_at: datetime | None
+    source: str
+    last_refreshed_at: datetime | None = None
     precincts_reporting: int | None = None
     precincts_participating: int | None = None
     ballot_item_id: str | None = None
@@ -98,7 +120,7 @@ class ElectionSummary(BaseModel):
 class ElectionDetailResponse(ElectionSummary):
     """Full election detail response."""
 
-    data_source_url: str
+    data_source_url: str | None = None
     refresh_interval_seconds: int
     created_at: datetime
     updated_at: datetime
@@ -145,7 +167,7 @@ class ElectionResultsResponse(BaseModel):
     election_name: str
     election_date: date
     status: ElectionStatus
-    last_refreshed_at: datetime | None
+    last_refreshed_at: datetime | None = None
     precincts_participating: int | None = None
     precincts_reporting: int | None = None
     candidates: list[CandidateResult] = Field(default_factory=list)
@@ -168,7 +190,7 @@ class RawElectionResultsResponse(BaseModel):
     election_name: str
     election_date: date
     status: ElectionStatus
-    last_refreshed_at: datetime | None
+    last_refreshed_at: datetime | None = None
     source_created_at: datetime | None = None
     precincts_participating: int | None = None
     precincts_reporting: int | None = None
@@ -192,7 +214,7 @@ class ElectionResultFeatureCollection(BaseModel):
     election_name: str
     election_date: date
     status: ElectionStatus
-    last_refreshed_at: datetime | None
+    last_refreshed_at: datetime | None = None
     features: list[ElectionResultFeature] = Field(default_factory=list)
 
 
@@ -237,7 +259,7 @@ class PrecinctElectionResultFeatureCollection(BaseModel):
     election_name: str
     election_date: date
     status: ElectionStatus
-    last_refreshed_at: datetime | None
+    last_refreshed_at: datetime | None = None
     features: list[PrecinctElectionResultFeature] = Field(default_factory=list)
 
 

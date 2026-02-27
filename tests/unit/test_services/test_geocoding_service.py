@@ -62,7 +62,7 @@ class TestGeocodeSingleAddress:
 
         assert result is not None
         assert result.metadata.cached is True
-        assert result.latitude == 33.749
+        assert result.latitude == pytest.approx(33.749)
 
     @pytest.mark.asyncio
     async def test_cache_miss_calls_provider(self, mock_session) -> None:
@@ -185,7 +185,7 @@ class TestGeocodeWithRetry:
         result = await _geocode_with_retry(mock_geocoder, "123 MAIN ST", semaphore)
 
         assert result is not None
-        assert result.latitude == 33.749
+        assert result.latitude == pytest.approx(33.749)
         mock_geocoder.geocode.assert_awaited_once()
 
     @pytest.mark.asyncio

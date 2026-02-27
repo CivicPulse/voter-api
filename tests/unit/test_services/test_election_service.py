@@ -55,6 +55,7 @@ def _mock_election(**overrides: object) -> MagicMock:
     election.district = "State Senate - District 18"
     election.status = "active"
     election.data_source_url = "https://results.enr.clarityelections.com/feed.json"
+    election.source = "sos_feed"
     election.refresh_interval_seconds = 120
     election.ballot_item_id = None
     election.last_refreshed_at = None
@@ -244,6 +245,7 @@ class TestCreateElection:
             election_date=date(2026, 2, 17),
             election_type="special",
             district="State Senate - District 18",
+            source="sos_feed",
             data_source_url="https://results.enr.clarityelections.com/feed.json",
             refresh_interval_seconds=120,
         )
@@ -265,6 +267,7 @@ class TestCreateElection:
             election_date=date(2026, 2, 17),
             election_type="special",
             district="State Senate - District 18",
+            source="sos_feed",
             data_source_url="https://results.enr.clarityelections.com/feed.json",
         )
 
@@ -286,6 +289,7 @@ class TestCreateElection:
             election_date=date(2026, 2, 17),
             election_type="special",
             district="PSC - District 2",
+            source="sos_feed",
             data_source_url="https://results.sos.ga.gov/feed.json",
             ballot_item_id="S10",
         )
@@ -306,6 +310,7 @@ class TestCreateElection:
             election_date=date(2026, 2, 17),
             election_type="special",
             district="PSC - District 2",
+            source="sos_feed",
             data_source_url="https://results.sos.ga.gov/feed.json",
             ballot_item_id="S10",
         )
@@ -328,6 +333,7 @@ class TestCreateElection:
             election_date=date(2025, 1, 1),
             election_type="special",
             district="State Senate - District 18",
+            source="sos_feed",
             data_source_url="https://results.sos.ga.gov/feed.json",
             status="finalized",
         )
@@ -827,7 +833,7 @@ class TestListElections:
         select_result.scalars.return_value.all.return_value = [election]
         session.execute = AsyncMock(side_effect=[count_result, select_result])
 
-        items, total = await list_elections(session)
+        items, _ = await list_elections(session)
         assert items[0].precincts_reporting == 95
         assert items[0].precincts_participating == 100
 
@@ -914,7 +920,8 @@ class TestElectionRefreshLoop:
             mock_sleep.side_effect = [None, asyncio.CancelledError()]
 
             task = asyncio.create_task(election_refresh_loop(interval=60))
-            await task  # should complete due to CancelledError
+            with pytest.raises(asyncio.CancelledError):
+                await task  # CancelledError propagates since we re-raise it
 
     @pytest.mark.asyncio
     async def test_loop_recovers_from_errors(self):
@@ -948,7 +955,8 @@ class TestElectionRefreshLoop:
             mock_sleep.side_effect = [None, None, asyncio.CancelledError()]
 
             task = asyncio.create_task(election_refresh_loop(interval=10))
-            await task
+            with pytest.raises(asyncio.CancelledError):
+                await task  # CancelledError propagates since we re-raise it
 
         assert call_count == 2  # called twice before cancel
 
@@ -1148,6 +1156,19 @@ class TestTransposePrecinctResults:
 # --- Tests for get_election_precinct_results_geojson ---
 
 
+def _make_geojson_session(election, county_result, meta_results=None):
+    """Build a mock async session for get_election_precinct_results_geojson tests."""
+    session = AsyncMock()
+    election_query = MagicMock()
+    election_query.scalar_one_or_none.return_value = election
+    county_query = MagicMock()
+    county_query.scalars.return_value.all.return_value = [county_result]
+    meta_query = MagicMock()
+    meta_query.scalars.return_value.all.return_value = meta_results if meta_results is not None else []
+    session.execute = AsyncMock(side_effect=[election_query, county_query, meta_query])
+    return session
+
+
 class TestGetElectionPrecinctResultsGeoJSON:
     """Tests for get_election_precinct_results_geojson()."""
 
@@ -1246,16 +1267,7 @@ class TestGetElectionPrecinctResultsGeoJSON:
             },
         ]
 
-        session = AsyncMock()
-        election_query = MagicMock()
-        election_query.scalar_one_or_none.return_value = election
-        county_query = MagicMock()
-        county_query.scalars.return_value.all.return_value = [county_result]
-        # metadata query returns empty (no match)
-        meta_query = MagicMock()
-        meta_query.scalars.return_value.all.return_value = []
-
-        session.execute = AsyncMock(side_effect=[election_query, county_query, meta_query])
+        session = _make_geojson_session(election, county_result)
 
         result = await get_election_precinct_results_geojson(session, election.id)
         assert result is not None
@@ -1276,15 +1288,7 @@ class TestGetElectionPrecinctResultsGeoJSON:
             },
         ]
 
-        session = AsyncMock()
-        election_query = MagicMock()
-        election_query.scalar_one_or_none.return_value = election
-        county_query = MagicMock()
-        county_query.scalars.return_value.all.return_value = [county_result]
-        meta_query = MagicMock()
-        meta_query.scalars.return_value.all.return_value = []
-
-        session.execute = AsyncMock(side_effect=[election_query, county_query, meta_query])
+        session = _make_geojson_session(election, county_result)
 
         result = await get_election_precinct_results_geojson(session, election.id, county="Houston")
         assert result is not None
@@ -1307,15 +1311,7 @@ class TestGetElectionPrecinctResultsGeoJSON:
             },
         ]
 
-        session = AsyncMock()
-        election_query = MagicMock()
-        election_query.scalar_one_or_none.return_value = election
-        county_query = MagicMock()
-        county_query.scalars.return_value.all.return_value = [county_result]
-        meta_query = MagicMock()
-        meta_query.scalars.return_value.all.return_value = []
-
-        session.execute = AsyncMock(side_effect=[election_query, county_query, meta_query])
+        session = _make_geojson_session(election, county_result)
 
         with patch(
             "voter_api.services.precinct_metadata_service.get_precinct_metadata_by_county_multi_strategy",

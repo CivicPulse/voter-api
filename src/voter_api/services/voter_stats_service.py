@@ -59,7 +59,7 @@ async def get_voter_stats_for_boundary(
         # PostgreSQL use the existing B-tree index on each equality check.
         if boundary_identifier.isdigit():
             num_val = int(boundary_identifier)
-            normalized_ids = list(
+            normalized_ids = list(  # NOSONAR - set literal used for deduplication
                 {
                     boundary_identifier,
                     str(num_val),

@@ -221,3 +221,50 @@ class VoterFilterOptions(BaseModel):
     county_precincts: list[str] | None = None
     county_commission_districts: list[str] | None = None
     school_board_districts: list[str] | None = None
+
+
+class ProviderResult(BaseModel):
+    """Per-provider inside/outside result for a single district boundary."""
+
+    model_config = {"from_attributes": True}
+
+    source_type: str
+    is_contained: bool
+
+
+class DistrictBoundaryResult(BaseModel):
+    """Result for one registered district boundary across all providers."""
+
+    model_config = {"from_attributes": True}
+
+    boundary_id: UUID | None = None
+    boundary_type: str
+    boundary_identifier: str
+    has_geometry: bool
+    providers: list[ProviderResult]
+
+
+class ProviderSummary(BaseModel):
+    """Per-provider summary of district match counts."""
+
+    model_config = {"from_attributes": True}
+
+    source_type: str
+    latitude: float
+    longitude: float
+    confidence_score: float | None = None
+    districts_matched: int
+    districts_checked: int
+
+
+class BatchBoundaryCheckResponse(BaseModel):
+    """Response for POST /voters/{voter_id}/geocode/check-boundaries."""
+
+    model_config = {"from_attributes": True}
+
+    voter_id: UUID
+    districts: list[DistrictBoundaryResult]
+    provider_summary: list[ProviderSummary]
+    total_locations: int
+    total_districts: int
+    checked_at: datetime

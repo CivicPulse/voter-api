@@ -338,7 +338,7 @@ async def _update_vh_by_district(
     # Same strategy as voter_stats_service.get_voter_stats_for_boundary.
     if district_identifier.isdigit():
         num_val = int(district_identifier)
-        district_ids = list(
+        district_ids = list(  # NOSONAR - set literal used for deduplication
             {
                 district_identifier,
                 str(num_val),

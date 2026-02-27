@@ -1,0 +1,129 @@
+# OpenAPI 3.1 Patch — Stale Geocoding Job Detection & Cancellation
+# New endpoints added to the existing /api/v1/geocoding router
+
+paths:
+  /api/v1/geocoding/jobs/{job_id}/cancel:
+    patch:
+      operationId: cancelGeocodingJob
+      summary: Cancel a geocoding job
+      description: |
+        Cancel a running or pending geocoding job. Sets status to "cancelled"
+        and records the completion timestamp. Rejects requests for jobs already
+        in a terminal state (completed, failed, cancelled).
+      tags:
+        - geocoding
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Job cancelled successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancelJobResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Insufficient role (admin required)
+        "404":
+          description: Job not found
+        "409":
+          description: Job is already in a terminal state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/geocoding/jobs/{job_id}/fail:
+    patch:
+      operationId: markGeocodingJobFailed
+      summary: Mark a geocoding job as failed
+      description: |
+        Mark a running or pending geocoding job as failed, optionally providing
+        a reason. Sets status to "failed", records the reason in the error log,
+        and sets the completion timestamp. Rejects requests for jobs already
+        in a terminal state.
+      tags:
+        - geocoding
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkFailedRequest"
+      responses:
+        "200":
+          description: Job marked as failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancelJobResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Insufficient role (admin required)
+        "404":
+          description: Job not found
+        "409":
+          description: Job is already in a terminal state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    CancelJobResponse:
+      type: object
+      required:
+        - id
+        - status
+        - completed_at
+        - message
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [cancelled, failed]
+        completed_at:
+          type: string
+          format: date-time
+        message:
+          type: string
+          example: Job cancelled successfully
+
+    MarkFailedRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+          description: Optional reason for marking the job as failed
+          example: Produced incorrect geocode results for Fulton County
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          example: "Job is already in terminal state 'completed' and cannot be cancelled"

@@ -34,6 +34,7 @@ def _make_election(**overrides) -> MagicMock:
         "result": None,
         "ballot_item_id": None,
         "boundary_id": None,
+        "source": "sos_feed",
         "district_type": None,
         "district_identifier": None,
         "district_party": None,

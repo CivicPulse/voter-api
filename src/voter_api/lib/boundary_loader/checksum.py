@@ -45,4 +45,4 @@ def verify_sha512(file_path: Path) -> bool:
         raise ValueError(msg)
 
     logger.debug(f"SHA512 verified for {file_path.name}")
-    return True
+    return True  # NOSONAR - by design: raises on mismatch, True on success

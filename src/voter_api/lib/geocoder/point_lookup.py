@@ -9,6 +9,10 @@ GA_MIN_LNG = -85.606
 GA_MAX_LNG = -80.840
 
 
+class OutOfBoundsError(ValueError):
+    """Raised when coordinates fall outside the Georgia service area."""
+
+
 def validate_georgia_coordinates(lat: float, lng: float) -> None:
     """Validate that coordinates fall within the Georgia service area.
 
@@ -17,11 +21,11 @@ def validate_georgia_coordinates(lat: float, lng: float) -> None:
         lng: WGS84 longitude.
 
     Raises:
-        ValueError: If coordinates are outside Georgia's bounding box.
+        OutOfBoundsError: If coordinates are outside Georgia's bounding box.
     """
     if not (GA_MIN_LAT <= lat <= GA_MAX_LAT and GA_MIN_LNG <= lng <= GA_MAX_LNG):
         msg = "Coordinates are outside the Georgia service area."
-        raise ValueError(msg)
+        raise OutOfBoundsError(msg)
 
 
 def meters_to_degrees(meters: float, latitude: float) -> float:

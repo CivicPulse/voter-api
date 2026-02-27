@@ -77,7 +77,7 @@ def require_role(*roles: str) -> Callable[..., Any]:
         A FastAPI dependency function that validates the user's role.
     """
 
-    async def role_checker(
+    async def role_checker(  # NOSONAR - FastAPI requires async for dependency chain
         current_user: Annotated[User, Depends(get_current_user)],
     ) -> User:
         if current_user.role not in roles:

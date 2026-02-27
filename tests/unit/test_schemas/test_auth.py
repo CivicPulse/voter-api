@@ -22,7 +22,7 @@ class TestLoginRequest:
     def test_short_password_rejected(self) -> None:
         """Password under 8 chars is rejected."""
         with pytest.raises(ValidationError):
-            LoginRequest(username="testuser", password="short")
+            LoginRequest(username="testuser", password="short")  # NOSONAR
 
 
 class TestUserCreateRequest:

@@ -24,6 +24,7 @@ from tests.e2e.conftest import (
     OFFICIAL_ID,
     TOTP_USER_ID,
     TOTP_USERNAME,
+    VOTER_ID,
 )
 from voter_api.models.auth_tokens import UserInvite
 from voter_api.models.election import Election
@@ -655,6 +656,7 @@ class TestElections:
             "election_date": "2025-06-15",
             "election_type": "runoff",
             "district": "Statewide",
+            "source": "sos_feed",
             "data_source_url": "https://results.enr.clarityelections.com/GA/temp/json",
             "refresh_interval_seconds": 120,
         }
@@ -671,7 +673,7 @@ class TestElections:
             assert detail_resp.status_code == 200
             assert detail_resp.json()["name"] == payload["name"]
         finally:
-            # Cleanup: no DELETE /elections endpoint, so remove via DB directly.
+            # Cleanup: hard-delete from DB.
             # Runs even if assertions fail to keep the DB idempotent.
             if election_id is not None:
                 await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))
@@ -686,6 +688,7 @@ class TestElections:
             "election_date": "2025-06-15",
             "election_type": "special",
             "district": "US House of Representatives - District 99",
+            "source": "sos_feed",
             "data_source_url": "https://results.enr.clarityelections.com/GA/autoparse/json",
             "refresh_interval_seconds": 120,
         }
@@ -802,6 +805,100 @@ class TestCandidates:
             json={"full_name": "Forbidden Candidate"},
         )
         assert resp.status_code == 403
+
+    async def test_election_soft_delete_admin(self, admin_client: httpx.AsyncClient, db_session: AsyncSession) -> None:
+        """Admin soft-deletes an election; subsequent GET returns 404."""
+        # Create a temporary election to delete
+        payload = {
+            "name": f"E2E Soft-Delete {uuid.uuid4().hex[:8]}",
+            "election_date": "2025-08-01",
+            "election_type": "special",
+            "district": "Statewide",
+            "source": "sos_feed",
+            "data_source_url": "https://results.enr.clarityelections.com/GA/softdelete/json",
+            "refresh_interval_seconds": 120,
+        }
+        create_resp = await admin_client.post(_url("/elections"), json=payload)
+        assert create_resp.status_code == 201
+        election_id = create_resp.json()["id"]
+
+        try:
+            # Soft-delete
+            del_resp = await admin_client.delete(_url(f"/elections/{election_id}"))
+            assert del_resp.status_code == 204
+
+            # Deleted election should return 404
+            get_resp = await admin_client.get(_url(f"/elections/{election_id}"))
+            assert get_resp.status_code == 404
+        finally:
+            # Hard-delete from DB to fully clean up
+            await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))
+            await db_session.commit()
+
+    async def test_election_source_filter(self, client: httpx.AsyncClient) -> None:
+        """GET /elections?source=sos_feed returns seeded sos_feed elections."""
+        resp = await client.get(_url("/elections"), params={"source": "sos_feed"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["items"], "Expected at least one sos_feed election in seeded E2E data"
+        assert all(item["source"] == "sos_feed" for item in data["items"])
+
+    async def test_election_create_manual(self, admin_client: httpx.AsyncClient, db_session: AsyncSession) -> None:
+        """Admin creates a manual election with boundary_id; response has source='manual'."""
+        payload = {
+            "name": f"E2E Manual Election {uuid.uuid4().hex[:8]}",
+            "election_date": "2026-03-01",
+            "election_type": "special",
+            "district": "Commission District 5",
+            "source": "manual",
+            "boundary_id": str(BOUNDARY_ID),
+        }
+        create_resp = await admin_client.post(_url("/elections"), json=payload)
+        election_id: str | None = create_resp.json().get("id") if create_resp.status_code == 201 else None
+        try:
+            assert create_resp.status_code == 201
+            body = create_resp.json()
+            assert body["source"] == "manual"
+            assert body["data_source_url"] is None
+            assert body["boundary_id"] == str(BOUNDARY_ID)
+        finally:
+            if election_id is not None:
+                await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))
+                await db_session.commit()
+
+    async def test_election_link_admin(self, admin_client: httpx.AsyncClient, db_session: AsyncSession) -> None:
+        """Admin links a manual election to a SoS feed URL; response has source='linked'."""
+        create_payload = {
+            "name": f"E2E Link Test {uuid.uuid4().hex[:8]}",
+            "election_date": "2026-04-01",
+            "election_type": "special",
+            "district": "Statewide",
+            "source": "manual",
+            "boundary_id": str(BOUNDARY_ID),
+        }
+        create_resp = await admin_client.post(_url("/elections"), json=create_payload)
+        election_id: str | None = create_resp.json().get("id") if create_resp.status_code == 201 else None
+        try:
+            assert create_resp.status_code == 201
+            link_payload = {
+                "data_source_url": "https://results.enr.clarityelections.com/GA/e2e-link/json",
+            }
+            link_resp = await admin_client.post(_url(f"/elections/{election_id}/link"), json=link_payload)
+            assert link_resp.status_code == 200
+            body = link_resp.json()
+            assert body["source"] == "linked"
+            assert body["data_source_url"] is not None
+        finally:
+            if election_id is not None:
+                await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))
+                await db_session.commit()
+
+    async def test_election_link_unauthenticated_returns_401(self, client: httpx.AsyncClient) -> None:
+        """Unauthenticated POST /elections/{id}/link returns 401."""
+        resp = await client.post(
+            _url(f"/elections/{ELECTION_ID}/link"), json={"data_source_url": "https://example.com/feed.json"}
+        )
+        assert resp.status_code == 401
 
 
 # ── Elected Officials ─────────────────────────────────────────────────────
@@ -1021,6 +1118,23 @@ class TestVoters:
         clear_body = clear_resp.json()
         assert clear_body["is_override"] is False
 
+    async def test_batch_boundary_check_admin_200(self, admin_client: httpx.AsyncClient) -> None:
+        """POST /voters/{id}/geocode/check-boundaries returns 200 with expected structure for admin."""
+        resp = await admin_client.post(_url(f"/voters/{VOTER_ID}/geocode/check-boundaries"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "voter_id" in body
+        assert "districts" in body
+        assert "provider_summary" in body
+        assert "total_locations" in body
+        assert "total_districts" in body
+        assert "checked_at" in body
+
+    async def test_batch_boundary_check_viewer_403(self, viewer_client: httpx.AsyncClient) -> None:
+        """POST /voters/{id}/geocode/check-boundaries returns 403 for viewer role."""
+        resp = await viewer_client.post(_url(f"/voters/{VOTER_ID}/geocode/check-boundaries"))
+        assert resp.status_code == 403
+
 
 # ── Geocoding ──────────────────────────────────────────────────────────────
 
@@ -1172,6 +1286,66 @@ class TestGeocoding:
         """Voter geocode-all returns 404 for an unknown voter ID."""
         resp = await admin_client.post(_url(f"/geocoding/voter/{uuid.uuid4()}/geocode-all"))
         assert resp.status_code == 404
+
+    async def test_cancel_job_requires_admin(self, viewer_client: httpx.AsyncClient) -> None:
+        """Cancel job endpoint requires admin role — viewer gets 403."""
+        resp = await viewer_client.patch(_url(f"/geocoding/jobs/{uuid.uuid4()}/cancel"))
+        assert resp.status_code == 403
+
+    async def test_cancel_nonexistent_job(self, admin_client: httpx.AsyncClient) -> None:
+        """Cancel job returns 404 for a nonexistent job ID."""
+        resp = await admin_client.patch(_url(f"/geocoding/jobs/{uuid.uuid4()}/cancel"))
+        assert resp.status_code == 404
+
+    async def test_fail_job_requires_admin(self, viewer_client: httpx.AsyncClient) -> None:
+        """Fail job endpoint requires admin role — viewer gets 403."""
+        resp = await viewer_client.patch(_url(f"/geocoding/jobs/{uuid.uuid4()}/fail"))
+        assert resp.status_code == 403
+
+    async def test_fail_nonexistent_job(self, admin_client: httpx.AsyncClient) -> None:
+        """Fail job returns 404 for a nonexistent job ID."""
+        resp = await admin_client.patch(
+            _url(f"/geocoding/jobs/{uuid.uuid4()}/fail"),
+            json={"reason": "test failure reason"},
+        )
+        assert resp.status_code == 404
+
+    async def test_cancel_job_happy_path(self, admin_client: httpx.AsyncClient) -> None:
+        """Admin can create a batch job and cancel it successfully."""
+        create_resp = await admin_client.post(
+            _url("/geocoding/batch"),
+            json={"provider": "census", "fallback": False},
+        )
+        assert create_resp.status_code == 202
+        job_id = create_resp.json()["id"]
+
+        cancel_resp = await admin_client.patch(_url(f"/geocoding/jobs/{job_id}/cancel"))
+        assert cancel_resp.status_code == 200
+        body = cancel_resp.json()
+        assert body["id"] == job_id
+        assert body["status"] == "cancelled"
+        assert body["completed_at"] is not None
+        assert body["message"] == "Job cancelled successfully"
+
+    async def test_fail_job_happy_path(self, admin_client: httpx.AsyncClient) -> None:
+        """Admin can create a batch job and mark it as failed with a reason."""
+        create_resp = await admin_client.post(
+            _url("/geocoding/batch"),
+            json={"provider": "census", "fallback": False},
+        )
+        assert create_resp.status_code == 202
+        job_id = create_resp.json()["id"]
+
+        fail_resp = await admin_client.patch(
+            _url(f"/geocoding/jobs/{job_id}/fail"),
+            json={"reason": "E2E test failure reason"},
+        )
+        assert fail_resp.status_code == 200
+        body = fail_resp.json()
+        assert body["id"] == job_id
+        assert body["status"] == "failed"
+        assert body["completed_at"] is not None
+        assert body["message"] == "Job marked as failed"
 
 
 # ── Imports ────────────────────────────────────────────────────────────────
