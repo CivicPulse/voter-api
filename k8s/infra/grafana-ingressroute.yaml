@@ -1,0 +1,16 @@
+# Grafana IngressRoute — Tailscale-only access via MagicDNS hostname
+# Accessible at http://thor.tailb56d83.ts.net/grafana (not public via Cloudflare)
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+  namespace: civpulse-infra
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`thor.tailb56d83.ts.net`) && PathPrefix(`/grafana`)
+      kind: Rule
+      services:
+        - name: grafana
+          port: 80
