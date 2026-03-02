@@ -1,0 +1,98 @@
+# Dozzle real-time log viewer (k8s mode)
+# Access via port-forward: kubectl -n civpulse-infra port-forward svc/dozzle 9090:8080
+#
+# Dozzle uses the Kubernetes API (not Docker socket) since k3s runs containerd.
+# Requires a ServiceAccount with read access to pods and their logs.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dozzle
+  namespace: civpulse-infra
+  labels:
+    app: dozzle
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dozzle
+  labels:
+    app: dozzle
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets", "statefulsets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dozzle
+  labels:
+    app: dozzle
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dozzle
+subjects:
+  - kind: ServiceAccount
+    name: dozzle
+    namespace: civpulse-infra
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dozzle
+  namespace: civpulse-infra
+  labels:
+    app: dozzle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dozzle
+  template:
+    metadata:
+      labels:
+        app: dozzle
+    spec:
+      serviceAccountName: dozzle
+      containers:
+        - name: dozzle
+          image: amir20/dozzle:v8
+          args:
+            - --mode
+            - k8s
+            - --no-analytics
+          ports:
+            - name: http
+              containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "25m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dozzle
+  namespace: civpulse-infra
+  labels:
+    app: dozzle
+spec:
+  selector:
+    app: dozzle
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
