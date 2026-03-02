@@ -1,0 +1,24 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: zitadel
+  namespace: civpulse-infra
+spec:
+  entryPoints:
+    - web
+  routes:
+    # Login UI (v4+ separate container) — must be matched before the catch-all
+    - match: Host(`auth.civpulse.org`) && PathPrefix(`/ui/v2/login`)
+      kind: Rule
+      priority: 20
+      services:
+        - name: zitadel-login
+          port: 3000
+    # Everything else (API, Console, OIDC endpoints)
+    - match: Host(`auth.civpulse.org`)
+      kind: Rule
+      priority: 10
+      services:
+        - name: zitadel
+          port: 8080
+          scheme: h2c
