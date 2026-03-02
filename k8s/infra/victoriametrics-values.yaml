@@ -1,0 +1,91 @@
+# VictoriaMetrics single-node Helm values for CivPulse k3s cluster
+# Chart: vm/victoria-metrics-single
+# Resource budget: 1 GB RAM, 0.5 core (from architecture doc)
+#
+# Install:
+#   helm repo add vm https://victoriametrics.github.io/helm-charts/
+#   helm repo update
+#   helm install victoria-metrics vm/victoria-metrics-single \
+#     --namespace civpulse-infra \
+#     --values k8s/infra/victoriametrics-values.yaml
+
+server:
+  retentionPeriod: 90d
+  persistentVolume:
+    enabled: true
+    size: 50Gi
+    storageClass: local-path
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+  scrape:
+    enabled: true
+    config:
+      scrape_configs:
+        # k3s node metrics (kubelet)
+        - job_name: kubernetes-nodes
+          kubernetes_sd_configs:
+            - role: node
+          scheme: https
+          tls_config:
+            ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            insecure_skip_verify: true
+          bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          relabel_configs:
+            - action: labelmap
+              regex: __meta_kubernetes_node_label_(.+)
+
+        # k3s cadvisor (container metrics)
+        - job_name: kubernetes-cadvisor
+          kubernetes_sd_configs:
+            - role: node
+          scheme: https
+          tls_config:
+            ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            insecure_skip_verify: true
+          bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          metrics_path: /metrics/cadvisor
+
+        # Traefik metrics (already running in civpulse-infra)
+        - job_name: traefik
+          static_configs:
+            - targets:
+                - traefik.civpulse-infra.svc.cluster.local:9000
+          metrics_path: /metrics
+
+        # cloudflared metrics (requires cloudflared-service.yaml)
+        - job_name: cloudflared
+          static_configs:
+            - targets:
+                - cloudflared.civpulse-infra.svc.cluster.local:2000
+          metrics_path: /metrics
+
+        # postgres_exporter (deployed alongside this chart)
+        - job_name: postgres-exporter
+          static_configs:
+            - targets:
+                - postgres-exporter.civpulse-infra.svc.cluster.local:9187
+
+        # PLACEHOLDER — uncomment when Zitadel is deployed (Step 3)
+        # - job_name: zitadel
+        #   static_configs:
+        #     - targets:
+        #         - zitadel.civpulse-infra.svc.cluster.local:8080
+        #   metrics_path: /debug/metrics
+
+        # PLACEHOLDER — uncomment when voter-api is deployed (Step 4)
+        # - job_name: voter-api-prod
+        #   static_configs:
+        #     - targets:
+        #         - voter-api.civpulse-prod.svc.cluster.local:8000
+        #   metrics_path: /metrics
+        # - job_name: voter-api-dev
+        #   static_configs:
+        #     - targets:
+        #         - voter-api.civpulse-dev.svc.cluster.local:8000
+        #   metrics_path: /metrics
