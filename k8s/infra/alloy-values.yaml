@@ -75,13 +75,26 @@ alloy:
         }
       }
 
-controller:
-  type: DaemonSet
+  # OTLP components require public-preview stability level
+  stabilityLevel: "public-preview"
 
-resources:
-  requests:
-    memory: "128Mi"
-    cpu: "50m"
-  limits:
-    memory: "512Mi"
-    cpu: "250m"
+  extraPorts:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+
+controller:
+  type: daemonset
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "512Mi"
+      cpu: "250m"

@@ -55,7 +55,7 @@ server:
         - job_name: traefik
           static_configs:
             - targets:
-                - traefik.civpulse-infra.svc.cluster.local:9000
+                - traefik.civpulse-infra.svc.cluster.local:9100
           metrics_path: /metrics
 
         # cloudflared metrics (requires cloudflared-service.yaml)
@@ -71,12 +71,12 @@ server:
             - targets:
                 - postgres-exporter.civpulse-infra.svc.cluster.local:9187
 
-        # PLACEHOLDER — uncomment when Zitadel is deployed (Step 3)
-        # - job_name: zitadel
-        #   static_configs:
-        #     - targets:
-        #         - zitadel.civpulse-infra.svc.cluster.local:8080
-        #   metrics_path: /debug/metrics
+        # Zitadel identity platform (deployed in civpulse-infra)
+        - job_name: zitadel
+          static_configs:
+            - targets:
+                - zitadel.civpulse-infra.svc.cluster.local:8080
+          metrics_path: /debug/metrics
 
         # PLACEHOLDER — uncomment when voter-api is deployed (Step 4)
         # - job_name: voter-api-prod

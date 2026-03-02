@@ -6,14 +6,20 @@ ports:
     port: 8080
     expose:
       default: true
+    hostPort: 80    # Bind to node IP for Tailscale access
   websecure:
     port: 8443
     expose:
       default: true
+    hostPort: 443   # Bind to node IP for Tailscale access
   traefik:
     port: 9000
     expose:
-      default: false
+      default: false  # Dashboard — internal only
+  metrics:
+    port: 9100
+    expose:
+      default: true   # Expose metrics port for VictoriaMetrics scraping
 
 providers:
   kubernetesCRD:
