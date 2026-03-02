@@ -6,12 +6,12 @@ ports:
     port: 8080
     expose:
       default: true
-    hostPort: 80    # Bind to node IP for Tailscale access
+    hostPort: 80    # Binds to all interfaces; restrict via host firewall if needed
   websecure:
     port: 8443
     expose:
       default: true
-    hostPort: 443   # Bind to node IP for Tailscale access
+    hostPort: 443   # Binds to all interfaces; restrict via host firewall if needed
   traefik:
     port: 9000
     expose:
