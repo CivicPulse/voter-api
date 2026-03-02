@@ -1,0 +1,48 @@
+# Traefik Helm values for CivPulse k3s cluster
+# Resource budget: 200 MB RAM, 0.25 core (from architecture doc)
+
+ports:
+  web:
+    port: 8080
+    expose:
+      default: true
+  websecure:
+    port: 8443
+    expose:
+      default: true
+  traefik:
+    port: 9000
+    expose:
+      default: false
+
+providers:
+  kubernetesCRD:
+    enabled: true
+    allowCrossNamespace: true
+  kubernetesIngress:
+    enabled: false  # IngressRoute CRDs only
+
+ingressRoute:
+  dashboard:
+    enabled: true
+
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "200Mi"
+    cpu: "250m"
+
+# No LoadBalancer — cloudflared reaches Traefik via cluster DNS
+service:
+  type: ClusterIP
+
+deployment:
+  replicas: 1
+
+logs:
+  general:
+    level: INFO
+  access:
+    enabled: true

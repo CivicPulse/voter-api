@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: civpulse-dev
+  labels:
+    env: development
+    managed-by: kubectl

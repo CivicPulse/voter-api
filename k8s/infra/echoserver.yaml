@@ -1,0 +1,41 @@
+# Temporary echoserver for verifying the Cloudflare Tunnel → Traefik path.
+# Remove after verification is complete.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echoserver
+  namespace: civpulse-infra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echoserver
+  template:
+    metadata:
+      labels:
+        app: echoserver
+    spec:
+      containers:
+        - name: echoserver
+          image: ealen/echo-server:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "25m"
+            limits:
+              memory: "64Mi"
+              cpu: "50m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echoserver
+  namespace: civpulse-infra
+spec:
+  selector:
+    app: echoserver
+  ports:
+    - port: 80
+      targetPort: 80
