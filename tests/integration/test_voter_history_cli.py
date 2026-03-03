@@ -74,12 +74,13 @@ class TestImportVoterHistoryCLI:
         mock_job = _make_completed_job()
         patches = _patch_cli_deps(mock_job)
 
-        with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6]:
+        with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6] as mock_resolve:
             result = runner.invoke(app, ["import", "voter-history", str(csv_file)])
 
         assert result.exit_code == 0
         assert "completed" in result.output.lower()
         assert "10" in result.output  # total records
+        mock_resolve.assert_awaited_once()
 
     def test_file_not_found(self) -> None:
         """CLI shows error for non-existent file."""
@@ -105,11 +106,12 @@ class TestImportVoterHistoryCLI:
             patches[3],
             patches[4],
             patches[5] as mock_process,
-            patches[6],
+            patches[6] as mock_resolve,
         ):
             result = runner.invoke(app, ["import", "voter-history", str(csv_file), "--batch-size", "500"])
 
         assert result.exit_code == 0
         mock_process.assert_awaited_once()
+        mock_resolve.assert_awaited_once()
         call_args = mock_process.call_args
         assert call_args[0][3] == 500  # batch_size positional arg

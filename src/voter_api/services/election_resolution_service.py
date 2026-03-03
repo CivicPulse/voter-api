@@ -106,7 +106,8 @@ async def link_election_to_boundary(session: AsyncSession, election: Election) -
                 Boundary.boundary_identifier == padded,
             )
             if parsed.county:
-                stmt = stmt.where(Boundary.county == parsed.county)
+                county = parsed.county.strip()
+                stmt = stmt.where(func.upper(Boundary.county) == county.upper())
             result = await session.execute(stmt)
             boundary_row = result.first()
             if boundary_row:
