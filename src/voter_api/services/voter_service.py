@@ -492,7 +492,14 @@ async def check_batch_boundaries_for_voter(
                 boundary_type=d.boundary_type,
                 boundary_identifier=d.boundary_identifier,
                 has_geometry=d.has_geometry,
-                providers=[ProviderResult(source_type=p.source_type, is_contained=p.is_contained) for p in d.providers],
+                providers=[
+                    ProviderResult(
+                        source_type=p.source_type,
+                        is_contained=p.is_contained,
+                        determined_identifier=p.determined_identifier,
+                    )
+                    for p in d.providers
+                ],
             )
             for d in result.districts
         ],
