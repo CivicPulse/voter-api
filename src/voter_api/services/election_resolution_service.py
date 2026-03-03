@@ -179,6 +179,11 @@ async def _resolve_tier1_single_election(
 ) -> int:
     """Tier 1: Assign all voter_history records on a single-election date.
 
+    When the election is linked to a boundary with a county field (sub-county
+    types like county_commission), only assigns records from that county.
+    This prevents cross-county leakage when other counties have untracked
+    elections on the same date.
+
     Args:
         session: Database session.
         election_date: The date with exactly one election.
@@ -187,12 +192,20 @@ async def _resolve_tier1_single_election(
     Returns:
         Number of voter_history records updated.
     """
-    election_result = await session.execute(select(Election.id).where(Election.election_date == election_date))
-    election_id = election_result.scalar_one()
+    from sqlalchemy.orm import selectinload
 
-    stmt = update(VoterHistory).where(VoterHistory.election_date == election_date).values(election_id=election_id)
+    election_result = await session.execute(
+        select(Election).options(selectinload(Election.boundary)).where(Election.election_date == election_date)
+    )
+    election = election_result.scalar_one()
+
+    stmt = update(VoterHistory).where(VoterHistory.election_date == election_date).values(election_id=election.id)
     if not force:
         stmt = stmt.where(VoterHistory.election_id.is_(None))
+
+    # Scope to county when the election's boundary has an explicit county field
+    if election.boundary is not None and election.boundary.county:
+        stmt = stmt.where(func.upper(VoterHistory.county) == election.boundary.county.upper())
 
     cursor = await session.execute(stmt)
     updated: int = cursor.rowcount  # type: ignore[attr-defined]
@@ -200,7 +213,7 @@ async def _resolve_tier1_single_election(
         logger.debug(
             "Tier 1: assigned {} records to election {} on {}",
             updated,
-            election_id,
+            election.id,
             election_date,
         )
     return updated

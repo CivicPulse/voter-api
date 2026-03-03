@@ -14,6 +14,7 @@ DISTRICT_TYPE_TO_VOTER_COLUMN: dict[str, str] = {
     "state_senate": "state_senate_district",
     "state_house": "state_house_district",
     "congressional": "congressional_district",
+    "county_commission": "county_commission_district",
 }
 
 # Mapping from parsed district_type to the boundary_type value in the
@@ -23,6 +24,7 @@ DISTRICT_TYPE_TO_BOUNDARY_TYPE: dict[str, str] = {
     "state_house": "state_house",
     "congressional": "congressional",
     "psc": "psc",
+    "county_commission": "county_commission",
 }
 
 # Ordered list of (prefix, district_type) for matching.
@@ -36,6 +38,7 @@ _PREFIX_MAP: list[tuple[str, str]] = [
 
 _DISTRICT_NUMBER_RE = re.compile(r"District\s+(\d+)", re.IGNORECASE)
 _PARTY_SUFFIX_RE = re.compile(r"-\s*(Dem|Rep)\s*$", re.IGNORECASE)
+_COUNTY_COMMISSION_RE = re.compile(r"^(.+?)\s+County\s+Commission", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -66,6 +69,7 @@ def parse_election_district(district: str) -> ParsedDistrict:
     - "PSC - District 3"
     - "PSC - District 3 - Dem" (party suffix)
     - "Special State Senate - District 21" (special prefix)
+    - "Bibb County Commission District 5" (county commission)
     - ".../ Para la Cámara..." (Spanish translation suffix)
 
     Args:
@@ -92,6 +96,12 @@ def parse_election_district(district: str) -> ParsedDistrict:
         if lower.startswith(prefix):
             district_type = dtype
             break
+
+    # 3b. Try county commission pattern: "<County> County Commission District <N>"
+    if district_type is None:
+        cc_match = _COUNTY_COMMISSION_RE.match(district)
+        if cc_match:
+            district_type = "county_commission"
 
     if district_type is None:
         return ParsedDistrict(

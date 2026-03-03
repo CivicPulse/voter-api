@@ -66,6 +66,15 @@ class TestParseElectionDistrict:
             ("PSC - District 2 - Rep", "psc", "2", "Rep"),
             ("PSC - District 2 - Dem", "psc", "2", "Dem"),
             ("PSC - District 3 - Rep", "psc", "3", "Rep"),
+            # County Commission
+            ("Bibb County Commission District 5", "county_commission", "5", None),
+            ("Clayton County Commission District 3", "county_commission", "3", None),
+            (
+                "Fulton County Commission District 12",
+                "county_commission",
+                "12",
+                None,
+            ),
             # Special prefix stripped
             ("Special State Senate - District 21", "state_senate", "21", None),
             # Spanish translation stripped
@@ -100,6 +109,9 @@ class TestParseElectionDistrict:
             "psc-2-rep",
             "psc-2-dem",
             "psc-3-rep",
+            "county-commission-bibb-5",
+            "county-commission-clayton-3",
+            "county-commission-fulton-12",
             "special-senate-21",
             "spanish-house-94",
             "spanish-house-106",
