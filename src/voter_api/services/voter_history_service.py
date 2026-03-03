@@ -913,15 +913,25 @@ async def _build_election_match_conditions(
 
     def _build_district_filter() -> ColumnElement[bool] | None:
         """Return a county filter if election is county-scoped, else None."""
-        is_county_scoped = election.district_type == "county" or (
-            election.district_type is None
-            and election.boundary is not None
-            and getattr(election.boundary, "boundary_type", None) == "county"
-        )
-        if not is_county_scoped or election.boundary is None or not election.boundary.name:
+        boundary = election.boundary
+        if boundary is None:
             return None
-        county_name = election.boundary.name.removesuffix(" County")
-        return func.upper(VoterHistory.county) == county_name.upper()
+
+        # Sub-county boundaries (county_commission, school_board, etc.) have an
+        # explicit county field — use it when available.
+        if boundary.county:
+            return func.upper(VoterHistory.county) == boundary.county.upper()
+
+        # County-type boundaries derive county name from boundary name.
+        is_county_scoped = election.district_type == "county" or (
+            election.district_type is None and boundary.boundary_type == "county"
+        )
+        if is_county_scoped and boundary.name:
+            name = boundary.name
+            county_name = name[:-7] if name.lower().endswith(" county") else name
+            return func.upper(VoterHistory.county) == county_name.upper()
+
+        return None
 
     # Check if any voter_history records have been resolved for this election
     has_resolved = await session.execute(select(exists().where(VoterHistory.election_id == election.id)))

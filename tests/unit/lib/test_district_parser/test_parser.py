@@ -13,18 +13,19 @@ class TestParseElectionDistrict:
     """Tests for parse_election_district covering all observed GA SoS patterns."""
 
     @pytest.mark.parametrize(
-        ("district_text", "expected_type", "expected_id", "expected_party"),
+        ("district_text", "expected_type", "expected_id", "expected_party", "expected_county"),
         [
             # State Senate variants
-            ("State Senate - District 18", "state_senate", "18", None),
-            ("State Senate District 18", "state_senate", "18", None),
-            ("State Senate - District 53", "state_senate", "53", None),
-            ("State Senate - District 35", "state_senate", "35", None),
+            ("State Senate - District 18", "state_senate", "18", None, None),
+            ("State Senate District 18", "state_senate", "18", None, None),
+            ("State Senate - District 53", "state_senate", "53", None, None),
+            ("State Senate - District 35", "state_senate", "35", None, None),
             # State House variants
             (
                 "State House of Representatives - District 94",
                 "state_house",
                 "94",
+                None,
                 None,
             ),
             (
@@ -32,11 +33,13 @@ class TestParseElectionDistrict:
                 "state_house",
                 "130",
                 None,
+                None,
             ),
             (
                 "State House of Representatives - District 23",
                 "state_house",
                 "23",
+                None,
                 None,
             ),
             (
@@ -44,11 +47,13 @@ class TestParseElectionDistrict:
                 "state_house",
                 "106",
                 None,
+                None,
             ),
             (
                 "State House of Representatives - District 121",
                 "state_house",
                 "121",
+                None,
                 None,
             ),
             # Congressional
@@ -57,22 +62,34 @@ class TestParseElectionDistrict:
                 "congressional",
                 "14",
                 None,
+                None,
             ),
             # PSC without party
-            ("PSC - District 2", "psc", "2", None),
-            ("PSC - District 3", "psc", "3", None),
+            ("PSC - District 2", "psc", "2", None, None),
+            ("PSC - District 3", "psc", "3", None, None),
             # PSC with party
-            ("PSC - District 3 - Dem", "psc", "3", "Dem"),
-            ("PSC - District 2 - Rep", "psc", "2", "Rep"),
-            ("PSC - District 2 - Dem", "psc", "2", "Dem"),
-            ("PSC - District 3 - Rep", "psc", "3", "Rep"),
+            ("PSC - District 3 - Dem", "psc", "3", "Dem", None),
+            ("PSC - District 2 - Rep", "psc", "2", "Rep", None),
+            ("PSC - District 2 - Dem", "psc", "2", "Dem", None),
+            ("PSC - District 3 - Rep", "psc", "3", "Rep", None),
+            # County Commission — county field must be populated
+            ("Bibb County Commission District 5", "county_commission", "5", None, "Bibb"),
+            ("Clayton County Commission District 3", "county_commission", "3", None, "Clayton"),
+            (
+                "Fulton County Commission District 12",
+                "county_commission",
+                "12",
+                None,
+                "Fulton",
+            ),
             # Special prefix stripped
-            ("Special State Senate - District 21", "state_senate", "21", None),
+            ("Special State Senate - District 21", "state_senate", "21", None, None),
             # Spanish translation stripped
             (
                 "State House of Representatives - District 94/ Para la Cámara de Representantes del Estado Distrito 94",
                 "state_house",
                 "94",
+                None,
                 None,
             ),
             (
@@ -80,6 +97,7 @@ class TestParseElectionDistrict:
                 "Estatal ante la Asamblea General, Distrito 106",
                 "state_house",
                 "106",
+                None,
                 None,
             ),
         ],
@@ -100,6 +118,9 @@ class TestParseElectionDistrict:
             "psc-2-rep",
             "psc-2-dem",
             "psc-3-rep",
+            "county-commission-bibb-5",
+            "county-commission-clayton-3",
+            "county-commission-fulton-12",
             "special-senate-21",
             "spanish-house-94",
             "spanish-house-106",
@@ -111,11 +132,13 @@ class TestParseElectionDistrict:
         expected_type: str,
         expected_id: str,
         expected_party: str | None,
+        expected_county: str | None,
     ) -> None:
         result = parse_election_district(district_text)
         assert result.district_type == expected_type
         assert result.district_identifier == expected_id
         assert result.party == expected_party
+        assert result.county == expected_county
         assert result.raw == district_text
 
     @pytest.mark.parametrize(
@@ -132,6 +155,7 @@ class TestParseElectionDistrict:
         assert result.district_type is None
         assert result.district_identifier is None
         assert result.party is None
+        assert result.county is None
         assert result.raw == district_text
 
     def test_returns_frozen_dataclass(self) -> None:
