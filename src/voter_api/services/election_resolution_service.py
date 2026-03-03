@@ -194,31 +194,40 @@ async def _resolve_tier1_single_election(
     Returns:
         Number of voter_history records updated.
     """
-    from sqlalchemy.orm import selectinload
+    # Fetch only the fields needed to compute county_name in a single query
+    # via outer join — avoids the extra SELECT that selectinload would issue.
+    row = (
+        await session.execute(
+            select(
+                Election.id,
+                Election.district_type,
+                Boundary.county,
+                Boundary.boundary_type,
+                Boundary.name,
+            )
+            .outerjoin(Boundary, Election.boundary_id == Boundary.id)
+            .where(Election.election_date == election_date)
+        )
+    ).one()
 
-    election_result = await session.execute(
-        select(Election).options(selectinload(Election.boundary)).where(Election.election_date == election_date)
-    )
-    election = election_result.scalar_one()
+    election_id, district_type, b_county, b_boundary_type, b_name = row
 
-    stmt = update(VoterHistory).where(VoterHistory.election_date == election_date).values(election_id=election.id)
+    stmt = update(VoterHistory).where(VoterHistory.election_date == election_date).values(election_id=election_id)
     if not force:
         stmt = stmt.where(VoterHistory.election_id.is_(None))
 
     # Scope to county to prevent cross-county assignment.
     # Sub-county boundaries carry county in boundary.county;
     # county-type boundaries carry it in boundary.name (e.g. "Bibb County").
+    # Strip whitespace from boundary strings to guard against incidental spaces.
     county_name: str | None = None
-    if election.boundary is not None:
-        if election.boundary.county:
-            county_name = election.boundary.county
-        elif (
-            election.boundary.boundary_type == "county" or election.district_type == "county"
-        ) and election.boundary.name:
-            name = election.boundary.name
-            county_name = name[:-7] if name.lower().endswith(" county") else name
+    if b_county:
+        county_name = b_county.strip()
+    elif (b_boundary_type == "county" or district_type == "county") and b_name:
+        name = b_name.strip()
+        county_name = name[:-7] if name.lower().endswith(" county") else name
     if county_name:
-        stmt = stmt.where(func.upper(VoterHistory.county) == county_name.upper())
+        stmt = stmt.where(func.upper(func.trim(VoterHistory.county)) == county_name.upper())
 
     cursor = await session.execute(stmt)
     updated: int = cursor.rowcount  # type: ignore[attr-defined]
@@ -226,7 +235,7 @@ async def _resolve_tier1_single_election(
         logger.debug(
             "Tier 1: assigned {} records to election {} on {}",
             updated,
-            election.id,
+            election_id,
             election_date,
         )
     return updated
