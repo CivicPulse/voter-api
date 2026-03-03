@@ -38,7 +38,7 @@ _PREFIX_MAP: list[tuple[str, str]] = [
 
 _DISTRICT_NUMBER_RE = re.compile(r"District\s+(\d+)", re.IGNORECASE)
 _PARTY_SUFFIX_RE = re.compile(r"-\s*(Dem|Rep)\s*$", re.IGNORECASE)
-_COUNTY_COMMISSION_RE = re.compile(r"^(.+?)\s+County\s+Commission", re.IGNORECASE)
+_COUNTY_COMMISSION_RE = re.compile(r"^([A-Za-z]+(?:\s+[A-Za-z]+)*?)\s+County\s+Commission", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
