@@ -51,6 +51,11 @@ def _patch_cli_deps(mock_job: MagicMock):
             new_callable=AsyncMock,
             return_value=mock_job,
         ),
+        patch(
+            "voter_api.services.election_resolution_service.resolve_voter_history_elections",
+            new_callable=AsyncMock,
+            return_value=MagicMock(tier1_updated=5, tier2_updated=2, unresolvable=0, elections_backfilled=0),
+        ),
     )
 
 
@@ -69,7 +74,7 @@ class TestImportVoterHistoryCLI:
         mock_job = _make_completed_job()
         patches = _patch_cli_deps(mock_job)
 
-        with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
+        with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6]:
             result = runner.invoke(app, ["import", "voter-history", str(csv_file)])
 
         assert result.exit_code == 0
@@ -100,6 +105,7 @@ class TestImportVoterHistoryCLI:
             patches[3],
             patches[4],
             patches[5] as mock_process,
+            patches[6],
         ):
             result = runner.invoke(app, ["import", "voter-history", str(csv_file), "--batch-size", "500"])
 

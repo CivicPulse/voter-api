@@ -920,7 +920,8 @@ async def _build_election_match_conditions(
         # explicit county field — use it when available.
         boundary_county = getattr(election.boundary, "county", None)
         if boundary_county:
-            return func.upper(VoterHistory.county) == boundary_county.upper()
+            county_filter: ColumnElement[bool] = func.upper(VoterHistory.county) == boundary_county.upper()
+            return county_filter
 
         # County-type boundaries derive county name from boundary name.
         is_county_scoped = election.district_type == "county" or (
