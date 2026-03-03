@@ -913,22 +913,21 @@ async def _build_election_match_conditions(
 
     def _build_district_filter() -> ColumnElement[bool] | None:
         """Return a county filter if election is county-scoped, else None."""
-        if election.boundary is None:
+        boundary = election.boundary
+        if boundary is None:
             return None
 
         # Sub-county boundaries (county_commission, school_board, etc.) have an
         # explicit county field — use it when available.
-        boundary_county = getattr(election.boundary, "county", None)
-        if boundary_county:
-            county_filter: ColumnElement[bool] = func.upper(VoterHistory.county) == boundary_county.upper()
-            return county_filter
+        if boundary.county:
+            return func.upper(VoterHistory.county) == boundary.county.upper()
 
         # County-type boundaries derive county name from boundary name.
         is_county_scoped = election.district_type == "county" or (
-            election.district_type is None and getattr(election.boundary, "boundary_type", None) == "county"
+            election.district_type is None and boundary.boundary_type == "county"
         )
-        if is_county_scoped and election.boundary.name:
-            county_name = election.boundary.name.removesuffix(" County")
+        if is_county_scoped and boundary.name:
+            county_name = boundary.name.removesuffix(" County")
             return func.upper(VoterHistory.county) == county_name.upper()
 
         return None

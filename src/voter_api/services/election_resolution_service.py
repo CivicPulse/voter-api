@@ -96,17 +96,18 @@ async def link_election_to_boundary(session: AsyncSession, election: Election) -
     election.district_identifier = parsed.district_identifier
     election.district_party = parsed.party
 
-    # Look up boundary by (type, zero-padded identifier)
+    # Look up boundary by (type, zero-padded identifier), scoped by county when known
     if parsed.district_identifier is not None:
         boundary_type = DISTRICT_TYPE_TO_BOUNDARY_TYPE.get(parsed.district_type)
         if boundary_type:
             padded = pad_district_identifier(parsed.district_identifier)
-            result = await session.execute(
-                select(Boundary.id).where(
-                    Boundary.boundary_type == boundary_type,
-                    Boundary.boundary_identifier == padded,
-                )
+            stmt = select(Boundary.id).where(
+                Boundary.boundary_type == boundary_type,
+                Boundary.boundary_identifier == padded,
             )
+            if parsed.county:
+                stmt = stmt.where(Boundary.county == parsed.county)
+            result = await session.execute(stmt)
             boundary_row = result.first()
             if boundary_row:
                 election.boundary_id = boundary_row[0]
@@ -203,9 +204,19 @@ async def _resolve_tier1_single_election(
     if not force:
         stmt = stmt.where(VoterHistory.election_id.is_(None))
 
-    # Scope to county when the election's boundary has an explicit county field
-    if election.boundary is not None and election.boundary.county:
-        stmt = stmt.where(func.upper(VoterHistory.county) == election.boundary.county.upper())
+    # Scope to county to prevent cross-county assignment.
+    # Sub-county boundaries carry county in boundary.county;
+    # county-type boundaries carry it in boundary.name (e.g. "Bibb County").
+    county_name: str | None = None
+    if election.boundary is not None:
+        if election.boundary.county:
+            county_name = election.boundary.county
+        elif (
+            election.boundary.boundary_type == "county" or election.district_type == "county"
+        ) and election.boundary.name:
+            county_name = election.boundary.name.removesuffix(" County")
+    if county_name:
+        stmt = stmt.where(func.upper(VoterHistory.county) == county_name.upper())
 
     cursor = await session.execute(stmt)
     updated: int = cursor.rowcount  # type: ignore[attr-defined]

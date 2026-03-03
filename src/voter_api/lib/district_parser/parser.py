@@ -49,12 +49,14 @@ class ParsedDistrict:
         district_type: Normalized type (e.g. "state_senate", "congressional").
         district_identifier: Unpadded district number as extracted (e.g. "18").
         party: Party suffix for PSC primaries (e.g. "Dem", "Rep").
+        county: County name for county_commission districts (e.g. "Bibb").
         raw: The original unparsed district string.
     """
 
     district_type: str | None
     district_identifier: str | None
     party: str | None
+    county: str | None
     raw: str
 
 
@@ -98,16 +100,19 @@ def parse_election_district(district: str) -> ParsedDistrict:
             break
 
     # 3b. Try county commission pattern: "<County> County Commission District <N>"
+    county: str | None = None
     if district_type is None:
         cc_match = _COUNTY_COMMISSION_RE.match(district)
         if cc_match:
             district_type = "county_commission"
+            county = cc_match.group(1)
 
     if district_type is None:
         return ParsedDistrict(
             district_type=None,
             district_identifier=None,
             party=None,
+            county=None,
             raw=raw,
         )
 
@@ -127,6 +132,7 @@ def parse_election_district(district: str) -> ParsedDistrict:
         district_type=district_type,
         district_identifier=district_identifier,
         party=party,
+        county=county,
         raw=raw,
     )
 
