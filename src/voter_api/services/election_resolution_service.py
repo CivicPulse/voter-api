@@ -215,7 +215,8 @@ async def _resolve_tier1_single_election(
         elif (
             election.boundary.boundary_type == "county" or election.district_type == "county"
         ) and election.boundary.name:
-            county_name = election.boundary.name.removesuffix(" County")
+            name = election.boundary.name
+            county_name = name[:-7] if name.lower().endswith(" county") else name
     if county_name:
         stmt = stmt.where(func.upper(VoterHistory.county) == county_name.upper())
 

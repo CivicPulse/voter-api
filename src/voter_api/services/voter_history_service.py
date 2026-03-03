@@ -927,7 +927,8 @@ async def _build_election_match_conditions(
             election.district_type is None and boundary.boundary_type == "county"
         )
         if is_county_scoped and boundary.name:
-            county_name = boundary.name.removesuffix(" County")
+            name = boundary.name
+            county_name = name[:-7] if name.lower().endswith(" county") else name
             return func.upper(VoterHistory.county) == county_name.upper()
 
         return None

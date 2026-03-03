@@ -155,6 +155,7 @@ class TestParseElectionDistrict:
         assert result.district_type is None
         assert result.district_identifier is None
         assert result.party is None
+        assert result.county is None
         assert result.raw == district_text
 
     def test_returns_frozen_dataclass(self) -> None:
