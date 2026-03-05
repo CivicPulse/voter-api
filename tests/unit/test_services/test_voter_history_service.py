@@ -786,6 +786,62 @@ class TestBuildElectionMatchConditions:
         assert "upper(voter_history.county)" in or_sql.lower()
         assert "13121" not in or_sql
 
+    async def test_county_commission_election_resolved_single_date_applies_county_to_resolved_branch(
+        self,
+    ) -> None:
+        """Sub-county boundary with county field scopes both resolved and fallback clauses (single date)."""
+        boundary = MagicMock()
+        boundary.county = "Bibb"
+        boundary.boundary_type = "county_commission"
+        boundary.name = "Bibb County Commission District 5"
+        election = _mock_election(
+            district_type="county_commission",
+            district_identifier="13021-5",
+            boundary=boundary,
+        )
+        session = AsyncMock()
+        resolved_count_result = MagicMock()
+        resolved_count_result.scalar_one.return_value = 5
+        date_count_result = MagicMock()
+        date_count_result.scalar_one.return_value = 1
+        session.execute = AsyncMock(side_effect=[resolved_count_result, date_count_result])
+
+        conditions = await _build_election_match_conditions(session, election)
+
+        # Single OR condition wrapping (election_id+county AND OR fallback+county)
+        assert len(conditions) == 1
+        or_sql = str(conditions[0]).lower()
+        # County predicate must appear in both resolved and fallback branches
+        assert or_sql.count("upper(voter_history.county)") >= 2
+
+    async def test_county_commission_election_resolved_multi_date_applies_county_to_resolved_branch(
+        self,
+    ) -> None:
+        """Sub-county boundary with county field scopes both resolved and fallback clauses (multi date)."""
+        boundary = MagicMock()
+        boundary.county = "Bibb"
+        boundary.boundary_type = "county_commission"
+        boundary.name = "Bibb County Commission District 5"
+        election = _mock_election(
+            district_type="county_commission",
+            district_identifier="13021-5",
+            boundary=boundary,
+            election_type="special",
+        )
+        session = AsyncMock()
+        resolved_count_result = MagicMock()
+        resolved_count_result.scalar_one.return_value = 5
+        date_count_result = MagicMock()
+        date_count_result.scalar_one.return_value = 3
+        session.execute = AsyncMock(side_effect=[resolved_count_result, date_count_result])
+
+        conditions = await _build_election_match_conditions(session, election)
+
+        assert len(conditions) == 1
+        or_sql = str(conditions[0]).lower()
+        # County predicate must appear in both resolved and fallback branches
+        assert or_sql.count("upper(voter_history.county)") >= 2
+
     async def test_manual_county_election_unresolved_single_date_adds_county_predicate(self) -> None:
         """Manual county election (null district fields, county boundary) appends county predicate."""
         boundary = MagicMock()
