@@ -810,8 +810,9 @@ class TestBuildElectionMatchConditions:
 
         # Single OR condition wrapping (election_id+county AND OR fallback+county)
         assert len(conditions) == 1
-        or_sql = str(conditions[0])
-        assert "upper(voter_history.county)" in or_sql.lower()
+        or_sql = str(conditions[0]).lower()
+        # County predicate must appear in both resolved and fallback branches
+        assert or_sql.count("upper(voter_history.county)") >= 2
 
     async def test_county_commission_election_resolved_multi_date_applies_county_to_resolved_branch(
         self,
@@ -837,8 +838,9 @@ class TestBuildElectionMatchConditions:
         conditions = await _build_election_match_conditions(session, election)
 
         assert len(conditions) == 1
-        or_sql = str(conditions[0])
-        assert "upper(voter_history.county)" in or_sql.lower()
+        or_sql = str(conditions[0]).lower()
+        # County predicate must appear in both resolved and fallback branches
+        assert or_sql.count("upper(voter_history.county)") >= 2
 
     async def test_manual_county_election_unresolved_single_date_adds_county_predicate(self) -> None:
         """Manual county election (null district fields, county boundary) appends county predicate."""
