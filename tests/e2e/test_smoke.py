@@ -1180,6 +1180,40 @@ class TestGeocoding:
         assert "districts" in body
         assert isinstance(body["districts"], list)
 
+    async def test_batch_list_requires_auth(self, client: httpx.AsyncClient) -> None:
+        """Batch list endpoint requires authentication."""
+        resp = await client.get(_url("/geocoding/batch"))
+        assert resp.status_code == 401
+
+    async def test_batch_list_as_admin(self, admin_client: httpx.AsyncClient) -> None:
+        """Admin can list batch geocoding jobs."""
+        resp = await admin_client.get(_url("/geocoding/batch"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
+        assert "pagination" in body
+
+    async def test_batch_list_as_analyst(self, analyst_client: httpx.AsyncClient) -> None:
+        """Analyst can list batch geocoding jobs."""
+        resp = await analyst_client.get(_url("/geocoding/batch"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
+        assert "pagination" in body
+
+    async def test_batch_list_viewer_forbidden(self, viewer_client: httpx.AsyncClient) -> None:
+        """Viewer cannot list batch geocoding jobs."""
+        resp = await viewer_client.get(_url("/geocoding/batch"))
+        assert resp.status_code == 403
+
+    async def test_batch_list_status_filter(self, admin_client: httpx.AsyncClient) -> None:
+        """status= query param is accepted and does not cause a 422."""
+        resp = await admin_client.get(_url("/geocoding/batch"), params={"status": "pending"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
+        assert "pagination" in body
+
     async def test_jobs_list_requires_auth(self, client: httpx.AsyncClient) -> None:
         """Jobs list endpoint requires authentication."""
         resp = await client.get(_url("/geocoding/jobs"))

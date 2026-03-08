@@ -3,6 +3,8 @@
 *.pdf
 logs/
 
+scripts/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -233,3 +235,4 @@ data/sos-feeds-research/
 
 # One-shot seed scripts (may contain credentials)
 scripts/seed_*.py
+scripts/district5_*.md
