@@ -62,9 +62,19 @@ spec:
     spec:
       serviceAccountName: dozzle
       enableServiceLinks: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: dozzle
           image: amir20/dozzle:v8
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
           args:
             - --mode
             - k8s
@@ -80,6 +90,12 @@ spec:
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /dozzle/
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 10
           resources:
             requests:
               memory: "32Mi"

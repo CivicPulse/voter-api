@@ -16,11 +16,24 @@ spec:
         app: voter-api
     spec:
       automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: migrate
           image: ghcr.io/civicpulse/voter-api:latest
           imagePullPolicy: Always
           command: ["voter-api", "db", "upgrade"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # Alembic may write temp files
+            capabilities:
+              drop:
+                - ALL
           envFrom:
             - secretRef:
                 name: voter-api-secret
@@ -36,6 +49,12 @@ spec:
         - name: voter-api
           image: ghcr.io/civicpulse/voter-api:latest
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 8000
           envFrom:

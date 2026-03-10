@@ -44,17 +44,20 @@ datasources:
     datasources:
       - name: VictoriaMetrics
         type: prometheus
+        uid: victoriametrics
         url: http://victoria-metrics-victoria-metrics-single-server.civpulse-infra.svc.cluster.local:8428
         access: proxy
         isDefault: true
         editable: false
       - name: Loki
         type: loki
+        uid: loki
         url: http://loki.civpulse-infra.svc.cluster.local:3100
         access: proxy
         editable: false
       - name: Tempo
         type: tempo
+        uid: tempo
         url: http://tempo.civpulse-infra.svc.cluster.local:3100
         access: proxy
         editable: false
@@ -65,7 +68,7 @@ datasources:
           nodeGraph:
             enabled: true
           serviceMap:
-            datasourceUid: VictoriaMetrics
+            datasourceUid: victoriametrics
 
 # Dashboard provisioning
 dashboardProviders:

@@ -50,7 +50,9 @@ alloy:
         }
       }
 
-      // OTLP receiver for future trace/metric collection from FastAPI
+      // OTLP receiver for trace collection from FastAPI
+      // NOTE: metrics output is not wired yet; will be added when voter-api is
+      // instrumented with OpenTelemetry metrics and routed to VictoriaMetrics.
       // Applications send traces to alloy.civpulse-infra.svc.cluster.local:4317 (gRPC)
       // or alloy.civpulse-infra.svc.cluster.local:4318 (HTTP)
       otelcol.receiver.otlp "default" {

@@ -1,5 +1,5 @@
 # Temporary echoserver for verifying the Cloudflare Tunnel → Traefik path.
-# Remove after verification is complete.
+# TODO(@kerryhatcher): Remove after verification is complete.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,9 +16,21 @@ spec:
         app: echoserver
     spec:
       automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: echoserver
           image: ealen/echo-server:0.9.2
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 80
           resources:

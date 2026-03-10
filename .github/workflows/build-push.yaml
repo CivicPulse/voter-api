@@ -6,6 +6,10 @@ on:
     paths-ignore:
       - 'k8s/**'
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -53,6 +57,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Update image tag in manifests
         run: |
@@ -66,6 +71,7 @@ jobs:
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main
           git add k8s/apps/voter-api-dev/deployment.yaml
           git diff --staged --quiet || git commit -m "chore: update voter-api image to sha-${SHORT_SHA} [skip ci]"
           git push

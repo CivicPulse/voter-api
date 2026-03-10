@@ -16,9 +16,22 @@ spec:
         app: postgres-exporter
     spec:
       automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgres-exporter
           image: quay.io/prometheuscommunity/postgres-exporter:v0.16.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: DATA_SOURCE_NAME
               valueFrom:
