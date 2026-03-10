@@ -67,13 +67,14 @@ jobs:
           REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           IMAGE="ghcr.io/${REPO}:sha-${SHORT_SHA}"
           sed -i "s|image: ghcr.io/${REPO}:.*|image: ${IMAGE}|g" k8s/apps/voter-api-dev/deployment.yaml
+          sed -i "s|image: ghcr.io/${REPO}:.*|image: ${IMAGE}|g" k8s/apps/voter-api-prod/deployment.yaml
 
       - name: Commit and push
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add k8s/apps/voter-api-dev/deployment.yaml
+          git add k8s/apps/voter-api-dev/deployment.yaml k8s/apps/voter-api-prod/deployment.yaml
           git diff --staged --quiet || git commit -m "chore: update voter-api image to sha-${SHORT_SHA} [skip ci]"
           git pull --rebase origin main
           git push
