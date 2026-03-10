@@ -239,3 +239,4 @@ k8s/**/*-secret.yaml
 
 # Architecture doc (contains sensitive infrastructure details)
 docs/architecture.md
+scripts/district5_candidates_research.md

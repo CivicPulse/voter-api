@@ -1,5 +1,5 @@
 # Dozzle real-time log viewer (k8s mode)
-# Access via port-forward: kubectl -n civpulse-infra port-forward svc/dozzle 9090:8080
+# Access via Tailscale: http://thor.tailb56d83.ts.net/dozzle
 #
 # Dozzle uses the Kubernetes API (not Docker socket) since k3s runs containerd.
 # Requires a ServiceAccount with read access to pods and their logs.
@@ -23,6 +23,9 @@ rules:
     verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments", "daemonsets", "statefulsets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
     verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -58,6 +61,7 @@ spec:
         app: dozzle
     spec:
       serviceAccountName: dozzle
+      enableServiceLinks: false
       containers:
         - name: dozzle
           image: amir20/dozzle:v8
@@ -65,12 +69,14 @@ spec:
             - --mode
             - k8s
             - --no-analytics
+            - --base
+            - /dozzle
           ports:
             - name: http
               containerPort: 8080
           livenessProbe:
             httpGet:
-              path: /
+              path: /dozzle/
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 15
