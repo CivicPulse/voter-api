@@ -25,7 +25,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: migrate
-          image: ghcr.io/civicpulse/voter-api:sha-00adfd3
+          image: ghcr.io/civicpulse/voter-api:sha-89870c5
           imagePullPolicy: Always
           command: ["voter-api", "db", "upgrade"]
           securityContext:
@@ -47,7 +47,7 @@ spec:
               cpu: "500m"
       containers:
         - name: voter-api
-          image: ghcr.io/civicpulse/voter-api:sha-00adfd3
+          image: ghcr.io/civicpulse/voter-api:sha-89870c5
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
