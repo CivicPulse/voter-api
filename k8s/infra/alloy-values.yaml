@@ -1,0 +1,102 @@
+# Grafana Alloy Helm values for CivPulse k3s cluster
+# Chart: grafana/alloy
+# Purpose: DaemonSet collecting container logs → Loki, with OTLP receiver for future traces → Tempo
+#
+# Install:
+#   helm install alloy grafana/alloy \
+#     --namespace civpulse-infra \
+#     --values k8s/infra/alloy-values.yaml
+
+alloy:
+  configMap:
+    content: |
+      // Discover all Kubernetes pods for log collection
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      // Relabel discovered pods to extract useful labels
+      discovery.relabel "pods" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app"]
+          target_label  = "app"
+        }
+      }
+
+      // Collect logs from Kubernetes containers via the k8s API
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pods.output
+        forward_to = [loki.write.default.receiver]
+      }
+
+      // Ship logs to Loki
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.civpulse-infra.svc.cluster.local:3100/loki/api/v1/push"
+        }
+      }
+
+      // OTLP receiver for trace collection from FastAPI
+      // NOTE: metrics output is not wired yet; will be added when voter-api is
+      // instrumented with OpenTelemetry metrics and routed to VictoriaMetrics.
+      // Applications send traces to alloy.civpulse-infra.svc.cluster.local:4317 (gRPC)
+      // or alloy.civpulse-infra.svc.cluster.local:4318 (HTTP)
+      otelcol.receiver.otlp "default" {
+        grpc {
+          endpoint = "0.0.0.0:4317"
+        }
+        http {
+          endpoint = "0.0.0.0:4318"
+        }
+        output {
+          traces  = [otelcol.exporter.otlp.tempo.input]
+        }
+      }
+
+      // Forward traces to Tempo
+      otelcol.exporter.otlp "tempo" {
+        client {
+          endpoint = "tempo.civpulse-infra.svc.cluster.local:4317"
+          tls {
+            insecure = true
+          }
+        }
+      }
+
+  # OTLP components require public-preview stability level
+  stabilityLevel: "public-preview"
+
+  extraPorts:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+
+controller:
+  type: daemonset
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "512Mi"
+      cpu: "250m"

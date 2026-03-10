@@ -1,0 +1,36 @@
+# Tempo Helm values for CivPulse k3s cluster
+# Chart: grafana/tempo
+# Resource budget: 512 MB RAM, 0.25 core (from architecture doc)
+#
+# Install:
+#   helm install tempo grafana/tempo \
+#     --namespace civpulse-infra \
+#     --values k8s/infra/tempo-values.yaml
+
+tempo:
+  retention: 72h  # 3 days — traces are high-volume, short-term debugging value
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+
+persistence:
+  enabled: true
+  size: 20Gi
+  storageClassName: local-path
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "125m"
+  limits:
+    memory: "512Mi"
+    cpu: "250m"

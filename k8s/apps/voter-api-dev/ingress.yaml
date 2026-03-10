@@ -1,0 +1,16 @@
+# Traefik IngressRoute for voter-api-dev
+# Traffic path: Cloudflare → cloudflared → Traefik → voter-api
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: voter-api
+  namespace: civpulse-dev
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`voteapi-dev.civpulse.org`)
+      kind: Rule
+      services:
+        - name: voter-api
+          port: 8000

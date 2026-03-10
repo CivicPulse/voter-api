@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voter-api
+  namespace: civpulse-dev
+  labels:
+    app: voter-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: voter-api
+  template:
+    metadata:
+      labels:
+        app: voter-api
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: migrate
+          image: ghcr.io/civicpulse/voter-api:latest
+          imagePullPolicy: Always
+          command: ["voter-api", "db", "upgrade"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # Alembic may write temp files
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - secretRef:
+                name: voter-api-secret
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+              ephemeral-storage: "50Mi"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      containers:
+        - name: voter-api
+          image: ghcr.io/civicpulse/voter-api:latest
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: voter-api-secret
+          env:
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: ELECTION_REFRESH_ENABLED
+              value: "false"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+              ephemeral-storage: "50Mi"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10

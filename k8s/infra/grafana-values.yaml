@@ -1,0 +1,110 @@
+# Grafana Helm values for CivPulse k3s cluster
+# Chart: grafana/grafana
+# Resource budget: 512 MB RAM, 0.5 core (from architecture doc)
+#
+# Prerequisites:
+#   kubectl -n civpulse-infra create secret generic grafana-admin-credentials \
+#     --from-literal=admin-user=admin \
+#     --from-literal=admin-password="$(openssl rand -base64 24)"
+#
+# Install:
+#   helm install grafana grafana/grafana \
+#     --namespace civpulse-infra \
+#     --values k8s/infra/grafana-values.yaml
+
+replicas: 1
+
+persistence:
+  enabled: true
+  size: 5Gi
+  storageClassName: local-path
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "250m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+# Admin credentials from a k8s secret (see grafana-secret.yaml.example)
+admin:
+  existingSecret: grafana-admin-credentials
+  userKey: admin-user
+  passwordKey: admin-password
+
+# Disable built-in ingress — we use Traefik IngressRoute
+ingress:
+  enabled: false
+
+# Data source provisioning — all three observability backends
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: VictoriaMetrics
+        type: prometheus
+        uid: victoriametrics
+        url: http://victoria-metrics-victoria-metrics-single-server.civpulse-infra.svc.cluster.local:8428
+        access: proxy
+        isDefault: true
+        editable: false
+      - name: Loki
+        type: loki
+        uid: loki
+        url: http://loki.civpulse-infra.svc.cluster.local:3100
+        access: proxy
+        editable: false
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        url: http://tempo.civpulse-infra.svc.cluster.local:3100
+        access: proxy
+        editable: false
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            filterByTraceID: true
+          nodeGraph:
+            enabled: true
+          serviceMap:
+            datasourceUid: victoriametrics
+
+# Dashboard provisioning
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: default
+        orgId: 1
+        folder: ""
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+dashboards:
+  default:
+    # Node Exporter / k3s node metrics
+    node-exporter:
+      gnetId: 1860
+      revision: 37
+      datasource: VictoriaMetrics
+    # Traefik dashboard
+    traefik:
+      gnetId: 17346
+      revision: 9
+      datasource: VictoriaMetrics
+
+# Grafana configuration — served from /grafana sub-path via Traefik
+# Replace TAILSCALE_HOSTNAME with your node's MagicDNS hostname
+# (see tailscale-hostname.env.example)
+grafana.ini:
+  server:
+    root_url: "http://TAILSCALE_HOSTNAME/grafana"
+    serve_from_sub_path: true
+  security:
+    allow_embedding: true
+  auth.anonymous:
+    enabled: false

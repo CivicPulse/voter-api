@@ -1,0 +1,16 @@
+# IngressRoute for verifying the full traffic path:
+#   Cloudflare → cloudflared → Traefik → echoserver
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: healthcheck
+  namespace: civpulse-infra
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`healthz.civpulse.org`)
+      kind: Rule
+      services:
+        - name: echoserver
+          port: 80

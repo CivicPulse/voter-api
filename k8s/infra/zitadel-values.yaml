@@ -1,0 +1,45 @@
+replicaCount: 1
+
+zitadel:
+  masterkeySecretName: zitadel-masterkey
+  configSecretName: zitadel-db-credentials
+  configmapConfig:
+    ExternalDomain: auth.civpulse.org
+    ExternalSecure: true
+    ExternalPort: 443
+    TLS:
+      Enabled: false
+    Database:
+      Postgres:
+        Host: postgresql.civpulse-infra.svc.cluster.local
+        Port: 5432
+        Database: zitadel
+        User:
+          Username: zitadel
+          SSL:
+            Mode: disable
+        Admin:
+          Username: postgres
+          SSL:
+            Mode: disable
+    FirstInstance:
+      Org:
+        Name: CivPulse Platform
+
+# Disable the chart's built-in ingress — we use a Traefik IngressRoute CRD instead
+ingress:
+  enabled: false
+
+# Disable built-in database sub-charts — using external bare-metal PostgreSQL
+cockroachdb:
+  enabled: false
+postgresql:
+  enabled: false
+
+resources:
+  requests:
+    memory: 384Mi
+    cpu: 250m
+  limits:
+    memory: 768Mi
+    cpu: "1"

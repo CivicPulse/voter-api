@@ -1,0 +1,17 @@
+# Dozzle IngressRoute — Tailscale-only access via MagicDNS hostname
+# Set your hostname in tailscale-hostname.env (see tailscale-hostname.env.example)
+# Replace TAILSCALE_HOSTNAME below with your node's MagicDNS hostname
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: dozzle
+  namespace: civpulse-infra
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`TAILSCALE_HOSTNAME`) && PathPrefix(`/dozzle`)
+      kind: Rule
+      services:
+        - name: dozzle
+          port: 8080

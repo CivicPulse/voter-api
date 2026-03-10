@@ -1,0 +1,121 @@
+# Dozzle real-time log viewer (k8s mode)
+# Access via Tailscale — see tailscale-hostname.env for your node's MagicDNS hostname
+#
+# Dozzle uses the Kubernetes API (not Docker socket) since k3s runs containerd.
+# Requires a ServiceAccount with read access to pods and their logs.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dozzle
+  namespace: civpulse-infra
+  labels:
+    app: dozzle
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dozzle
+  labels:
+    app: dozzle
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets", "statefulsets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dozzle
+  labels:
+    app: dozzle
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dozzle
+subjects:
+  - kind: ServiceAccount
+    name: dozzle
+    namespace: civpulse-infra
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dozzle
+  namespace: civpulse-infra
+  labels:
+    app: dozzle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dozzle
+  template:
+    metadata:
+      labels:
+        app: dozzle
+    spec:
+      serviceAccountName: dozzle
+      enableServiceLinks: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: dozzle
+          image: amir20/dozzle:v8
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          args:
+            - --mode
+            - k8s
+            - --no-analytics
+            - --base
+            - /dozzle
+          ports:
+            - name: http
+              containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /dozzle/
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /dozzle/
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "25m"
+              ephemeral-storage: "50Mi"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dozzle
+  namespace: civpulse-infra
+  labels:
+    app: dozzle
+spec:
+  selector:
+    app: dozzle
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
