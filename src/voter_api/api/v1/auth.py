@@ -8,6 +8,7 @@ password reset, user invites, TOTP, and passkey endpoints.
 """
 
 import math
+import os
 import subprocess
 import uuid
 from pathlib import Path
@@ -59,7 +60,10 @@ from voter_api.services.auth_service import MFARequiredException, TOTPLockedExce
 
 
 def _get_git_commit() -> str:
-    """Resolve the current git short SHA once at import time."""
+    """Resolve the current git short SHA from env var or git CLI."""
+    commit = os.environ.get("GIT_COMMIT")
+    if commit and commit != "unknown":
+        return commit
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],  # noqa: S603, S607
