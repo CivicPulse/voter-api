@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voter-api
+  namespace: civpulse-dev
+  labels:
+    app: voter-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: voter-api
+  template:
+    metadata:
+      labels:
+        app: voter-api
+    spec:
+      initContainers:
+        - name: migrate
+          image: ghcr.io/civicpulse/voter-api:latest
+          imagePullPolicy: Always
+          command: ["voter-api", "db", "upgrade"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: voter-api-secret
+                  key: DATABASE_URL
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: voter-api-secret
+                  key: JWT_SECRET_KEY
+            - name: TOTP_SECRET_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: voter-api-secret
+                  key: TOTP_SECRET_ENCRYPTION_KEY
+      containers:
+        - name: voter-api
+          image: ghcr.io/civicpulse/voter-api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: voter-api-secret
+                  key: DATABASE_URL
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: voter-api-secret
+                  key: JWT_SECRET_KEY
+            - name: TOTP_SECRET_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: voter-api-secret
+                  key: TOTP_SECRET_ENCRYPTION_KEY
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: ELECTION_REFRESH_ENABLED
+              value: "false"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
