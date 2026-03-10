@@ -61,6 +61,8 @@ spec:
             - secretRef:
                 name: voter-api-secret
           env:
+            - name: CORS_ORIGIN_REGEX
+              value: "^(?:https://(?:(?:.*\\.)?voter-web\\.pages\\.dev|(?:.*\\.)?civpulse\\.org|(?:.*\\.)?kerryhatcher\\.com|(?:.*\\.)?hatchtech\\.dev)|http://localhost(?::\\d+)?)$"
             - name: LOG_LEVEL
               value: "INFO"
             - name: ELECTION_REFRESH_ENABLED
