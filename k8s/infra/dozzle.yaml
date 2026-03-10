@@ -1,5 +1,5 @@
 # Dozzle real-time log viewer (k8s mode)
-# Access via Tailscale: http://thor.tailb56d83.ts.net/dozzle
+# Access via Tailscale — see tailscale-hostname.env for your node's MagicDNS hostname
 #
 # Dozzle uses the Kubernetes API (not Docker socket) since k3s runs containerd.
 # Requires a ServiceAccount with read access to pods and their logs.
@@ -84,6 +84,7 @@ spec:
             requests:
               memory: "32Mi"
               cpu: "25m"
+              ephemeral-storage: "50Mi"
             limits:
               memory: "64Mi"
               cpu: "100m"

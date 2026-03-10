@@ -15,15 +15,17 @@ spec:
       labels:
         app: echoserver
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: echoserver
-          image: ealen/echo-server:latest
+          image: ealen/echo-server:0.9.2
           ports:
             - containerPort: 80
           resources:
             requests:
               memory: "32Mi"
               cpu: "25m"
+              ephemeral-storage: "50Mi"
             limits:
               memory: "64Mi"
               cpu: "50m"

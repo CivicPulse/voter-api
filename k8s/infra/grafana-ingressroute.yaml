@@ -1,5 +1,6 @@
 # Grafana IngressRoute — Tailscale-only access via MagicDNS hostname
-# Accessible at http://thor.tailb56d83.ts.net/grafana (not public via Cloudflare)
+# Set your hostname in tailscale-hostname.env (see tailscale-hostname.env.example)
+# Replace TAILSCALE_HOSTNAME below with your node's MagicDNS hostname
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -9,7 +10,7 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: Host(`thor.tailb56d83.ts.net`) && PathPrefix(`/grafana`)
+    - match: Host(`TAILSCALE_HOSTNAME`) && PathPrefix(`/grafana`)
       kind: Rule
       services:
         - name: grafana

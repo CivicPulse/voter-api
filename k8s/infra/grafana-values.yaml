@@ -95,9 +95,11 @@ dashboards:
       datasource: VictoriaMetrics
 
 # Grafana configuration — served from /grafana sub-path via Traefik
+# Replace TAILSCALE_HOSTNAME with your node's MagicDNS hostname
+# (see tailscale-hostname.env.example)
 grafana.ini:
   server:
-    root_url: "http://thor.tailb56d83.ts.net/grafana"
+    root_url: "http://TAILSCALE_HOSTNAME/grafana"
     serve_from_sub_path: true
   security:
     allow_embedding: true

@@ -15,6 +15,7 @@ spec:
       labels:
         app: cloudflared
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: cloudflared
           image: cloudflare/cloudflared:2026.2.0
@@ -51,6 +52,7 @@ spec:
             requests:
               memory: "64Mi"
               cpu: "50m"
+              ephemeral-storage: "50Mi"
             limits:
               memory: "128Mi"
               cpu: "100m"

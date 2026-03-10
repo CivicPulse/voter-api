@@ -15,49 +15,33 @@ spec:
       labels:
         app: voter-api
     spec:
+      automountServiceAccountToken: false
       initContainers:
         - name: migrate
           image: ghcr.io/civicpulse/voter-api:latest
           imagePullPolicy: Always
           command: ["voter-api", "db", "upgrade"]
-          env:
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: voter-api-secret
-                  key: DATABASE_URL
-            - name: JWT_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: voter-api-secret
-                  key: JWT_SECRET_KEY
-            - name: TOTP_SECRET_ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: voter-api-secret
-                  key: TOTP_SECRET_ENCRYPTION_KEY
+          envFrom:
+            - secretRef:
+                name: voter-api-secret
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+              ephemeral-storage: "50Mi"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
       containers:
         - name: voter-api
           image: ghcr.io/civicpulse/voter-api:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: voter-api-secret
           env:
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: voter-api-secret
-                  key: DATABASE_URL
-            - name: JWT_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: voter-api-secret
-                  key: JWT_SECRET_KEY
-            - name: TOTP_SECRET_ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: voter-api-secret
-                  key: TOTP_SECRET_ENCRYPTION_KEY
             - name: LOG_LEVEL
               value: "INFO"
             - name: ELECTION_REFRESH_ENABLED
@@ -66,6 +50,7 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "100m"
+              ephemeral-storage: "50Mi"
             limits:
               memory: "512Mi"
               cpu: "500m"

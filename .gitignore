@@ -237,6 +237,9 @@ scripts/seed_*.py
 # Kubernetes secrets (credentials never committed)
 k8s/**/*-secret.yaml
 
+# Kubernetes environment files (contain infrastructure-specific values)
+k8s/**/*.env
+
 # Architecture doc (contains sensitive infrastructure details)
 docs/architecture.md
 scripts/district5_candidates_research.md
