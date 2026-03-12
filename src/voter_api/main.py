@@ -84,6 +84,39 @@ async def _recover_stale_geocoding_jobs() -> None:
             logger.warning("Recovered {} stale geocoding job(s) on startup", row_count)
 
 
+async def _verify_import_db_state() -> None:
+    """Check and repair database state that may be inconsistent after a bulk import crash.
+
+    Specifically checks for:
+    1. Autovacuum disabled on the voters table (left disabled if import crashed mid-way)
+    2. Missing indexes that were dropped for bulk import but never rebuilt
+    """
+    from sqlalchemy import text as sa_text
+
+    from voter_api.services.import_service import _DROPPABLE_INDEXES
+
+    factory = get_session_factory()
+    async with factory() as session:
+        # Check if autovacuum is disabled on voters table
+        result = await session.execute(sa_text("SELECT reloptions FROM pg_class WHERE relname = 'voters'"))
+        row = result.first()
+        if row and row[0] and "autovacuum_enabled=false" in str(row[0]):
+            logger.warning("Autovacuum is disabled on voters table — re-enabling after crash recovery")
+            await session.execute(sa_text("ALTER TABLE voters SET (autovacuum_enabled = true)"))
+            await session.commit()
+
+        # Check for missing indexes and rebuild them
+        for idx in _DROPPABLE_INDEXES:
+            result = await session.execute(
+                sa_text("SELECT 1 FROM pg_indexes WHERE indexname = :name"),
+                {"name": idx["name"]},
+            )
+            if result.first() is None:
+                logger.warning("Missing index {} — rebuilding after crash recovery", idx["name"])
+                await session.execute(sa_text(idx["create"]))
+                await session.commit()
+
+
 async def _recover_stale_import_jobs() -> None:
     """Mark any 'running' or 'pending' import jobs as 'failed' on startup.
 
@@ -134,6 +167,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         await _recover_stale_geocoding_jobs()
     except Exception:
         logger.warning("Could not recover stale geocoding jobs on startup (table may not exist yet)")
+
+    # Verify DB state consistency after potential bulk import crash
+    try:
+        await _verify_import_db_state()
+    except Exception:
+        logger.warning("Could not verify import DB state on startup (table may not exist yet)")
 
     # Recover import jobs orphaned by a previous server restart
     try:
