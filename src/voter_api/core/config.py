@@ -235,6 +235,12 @@ class Settings(BaseSettings):
         description="Congress.gov API key for federal representative data",
     )
 
+    # AI contest name resolution
+    anthropic_api_key: str | None = Field(
+        default=None,
+        description="Anthropic API key for AI-assisted contest name resolution during candidate import",
+    )
+
     # Meeting Records
     meeting_upload_dir: str = Field(
         default="./uploads/meetings",

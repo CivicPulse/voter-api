@@ -1,5 +1,6 @@
 """ORM model registry — import all models so Alembic autogenerate discovers them."""
 
+from voter_api.models.absentee_ballot import AbsenteeBallotApplication
 from voter_api.models.address import Address
 from voter_api.models.agenda_item import AgendaItem
 from voter_api.models.analysis_result import AnalysisResult
@@ -29,6 +30,7 @@ from voter_api.models.voter import Voter
 from voter_api.models.voter_history import VoterHistory
 
 __all__ = [
+    "AbsenteeBallotApplication",
     "Address",
     "AgendaItem",
     "Passkey",

@@ -5,10 +5,21 @@ Candidates are admin-managed records that exist independently of SOS results.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -42,6 +53,19 @@ class Candidate(Base, UUIDMixin, TimestampMixin):
     is_incumbent: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     sos_ballot_option_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
+    # Import fields (populated by candidate importer)
+    contest_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    qualified_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    occupation: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    home_county: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    municipality: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    import_job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("import_jobs.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # Relationships
     election: Mapped["Election"] = relationship(back_populates="candidates")
     links: Mapped[list["CandidateLink"]] = relationship(
@@ -58,6 +82,7 @@ class Candidate(Base, UUIDMixin, TimestampMixin):
         ),
         Index("ix_candidates_election_id", "election_id"),
         Index("ix_candidates_filing_status", "filing_status"),
+        Index("ix_candidates_home_county", "home_county"),
     )
 
 

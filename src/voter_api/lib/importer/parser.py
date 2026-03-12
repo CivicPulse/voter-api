@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
+from voter_api.lib.csv_utils import detect_delimiter, detect_encoding
 from voter_api.lib.normalize import normalize_registration_number
 
 # GA SoS 53-column voter file mapping: expected header → model field name
@@ -85,67 +86,6 @@ _GA_SOS_COLUMN_MAP_LOWER: dict[str, str] = {k.lower(): v for k, v in GA_SOS_COLU
 assert all(GA_SOS_COLUMN_MAP[k] == _GA_SOS_COLUMN_MAP_LOWER[k.lower()] for k in GA_SOS_COLUMN_MAP), (
     "GA_SOS_COLUMN_MAP contains keys that lowercase to the same string but map to different values."
 )
-
-
-def detect_delimiter(file_path: Path) -> str:
-    """Detect the CSV delimiter by reading the first line.
-
-    Args:
-        file_path: Path to the CSV file.
-
-    Returns:
-        The detected delimiter character.
-
-    Raises:
-        ValueError: If the delimiter cannot be detected.
-    """
-    for encoding in ("utf-8", "latin-1"):
-        try:
-            with file_path.open("r", encoding=encoding) as f:
-                first_line = f.readline()
-            break
-        except UnicodeDecodeError:
-            continue
-    else:
-        msg = f"Cannot detect encoding for {file_path}"
-        raise ValueError(msg)
-
-    # Count delimiter candidates
-    counts = {
-        ",": first_line.count(","),
-        "|": first_line.count("|"),
-        "\t": first_line.count("\t"),
-    }
-    delimiter = max(counts, key=counts.get)  # type: ignore[arg-type]
-    if counts[delimiter] == 0:
-        msg = f"Cannot detect delimiter in {file_path}"
-        raise ValueError(msg)
-
-    logger.debug(f"Detected delimiter: {delimiter!r} for {file_path}")
-    return delimiter
-
-
-def detect_encoding(file_path: Path) -> str:
-    """Detect file encoding by attempting to read with common encodings.
-
-    Args:
-        file_path: Path to the CSV file.
-
-    Returns:
-        The detected encoding string.
-
-    Raises:
-        ValueError: If encoding cannot be detected.
-    """
-    for encoding in ("utf-8", "latin-1"):
-        try:
-            with file_path.open("r", encoding=encoding) as f:
-                f.read(8192)
-            return encoding
-        except UnicodeDecodeError:
-            continue
-    msg = f"Cannot detect encoding for {file_path}"
-    raise ValueError(msg)
 
 
 def _format_unknown_column_bug_report(
