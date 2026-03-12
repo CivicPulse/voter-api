@@ -57,8 +57,8 @@ def init_engine(database_url: str, *, schema: str | None = None, **kwargs: objec
     # Only set pool defaults for connection-pooled engines (not SQLite/StaticPool)
     uses_static_pool = kwargs.get("poolclass") is StaticPool or "sqlite" in database_url
     if not uses_static_pool:
-        kwargs.setdefault("pool_size", 10)
-        kwargs.setdefault("max_overflow", 5)
+        kwargs.setdefault("pool_size", 20)
+        kwargs.setdefault("max_overflow", 10)
     _engine = create_async_engine(database_url, **kwargs)
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine

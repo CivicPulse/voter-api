@@ -59,6 +59,7 @@ class InProcessTaskRunner:
     def __init__(self) -> None:
         self._jobs: dict[str, JobStatus] = {}
         self._tasks: dict[str, asyncio.Task[Any]] = {}
+        self._semaphore = asyncio.Semaphore(2)
 
     def submit_task(self, coro: Coroutine[Any, Any, Any]) -> str:
         """Submit an async task for background execution.
@@ -73,14 +74,15 @@ class InProcessTaskRunner:
         self._jobs[job_id] = JobStatus.PENDING
 
         async def _run() -> None:
-            self._jobs[job_id] = JobStatus.RUNNING
-            try:
-                await coro
-                self._jobs[job_id] = JobStatus.COMPLETED
-            except Exception:
-                self._jobs[job_id] = JobStatus.FAILED
-                logger.exception(f"Background task {job_id} failed")
-                raise
+            async with self._semaphore:
+                self._jobs[job_id] = JobStatus.RUNNING
+                try:
+                    await coro
+                    self._jobs[job_id] = JobStatus.COMPLETED
+                except Exception:
+                    self._jobs[job_id] = JobStatus.FAILED
+                    logger.exception(f"Background task {job_id} failed")
+                    raise
 
         task = asyncio.create_task(_run())
         self._tasks[job_id] = task
