@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, func
+from sqlalchemy import DateTime, Integer, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -30,6 +30,7 @@ class ImportJob(Base, UUIDMixin):
     records_soft_deleted: Mapped[int | None] = mapped_column(Integer, nullable=True)
     records_skipped: Mapped[int | None] = mapped_column(Integer, nullable=True)
     records_unmatched: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    records_needs_review: Mapped[int | None] = mapped_column(Integer, nullable=True, server_default=text("0"))
 
     # Error tracking
     error_log: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
