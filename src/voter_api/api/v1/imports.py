@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.background import task_runner
@@ -101,7 +102,15 @@ async def import_voters(
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    task_runner.submit_task(_run_import())
+    try:
+        task_runner.submit_task(_run_import())
+    except Exception:
+        logger.exception("Failed to submit voter import task for job {}", job.id)
+        tmp_path.unlink(missing_ok=True)
+        job.status = "failed"
+        job.error_log = [{"error": "Background task submission failed"}]
+        await session.commit()
+        raise
     return ImportJobResponse.model_validate(job)
 
 
@@ -150,7 +159,15 @@ async def import_voter_history(
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    task_runner.submit_task(_run_import())
+    try:
+        task_runner.submit_task(_run_import())
+    except Exception:
+        logger.exception("Failed to submit voter-history import task for job {}", job.id)
+        tmp_path.unlink(missing_ok=True)
+        job.status = "failed"
+        job.error_log = [{"error": "Background task submission failed"}]
+        await session.commit()
+        raise
     return ImportJobResponse.model_validate(job)
 
 
@@ -205,7 +222,15 @@ async def import_candidates(
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    task_runner.submit_task(_run_import())
+    try:
+        task_runner.submit_task(_run_import())
+    except Exception:
+        logger.exception("Failed to submit candidate import task for job {}", job.id)
+        tmp_path.unlink(missing_ok=True)
+        job.status = "failed"
+        job.error_log = [{"error": "Background task submission failed"}]
+        await session.commit()
+        raise
     return ImportJobResponse.model_validate(job)
 
 
@@ -255,7 +280,15 @@ async def import_absentee(
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    task_runner.submit_task(_run_import())
+    try:
+        task_runner.submit_task(_run_import())
+    except Exception:
+        logger.exception("Failed to submit absentee import task for job {}", job.id)
+        tmp_path.unlink(missing_ok=True)
+        job.status = "failed"
+        job.error_log = [{"error": "Background task submission failed"}]
+        await session.commit()
+        raise
     return ImportJobResponse.model_validate(job)
 
 
