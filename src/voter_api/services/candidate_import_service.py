@@ -1,5 +1,6 @@
 """Candidate import service — orchestrates candidate JSONL import with upsert and election resolution."""
 
+import re
 import uuid
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -67,6 +68,7 @@ async def _resolve_election(
     Returns:
         The election UUID.
     """
+    election_name = re.sub(r"\s+", " ", election_name).strip()
     cache_key = (election_name, election_date)
     if cache_key in cache:
         return cache[cache_key]
@@ -337,6 +339,12 @@ async def process_candidate_import(
                             "url": website,
                         }
                     )
+
+            # Deduplicate by (election_id, full_name) — keep last occurrence
+            seen: dict[tuple, int] = {}
+            for idx, rec in enumerate(valid_records):
+                seen[(rec["election_id"], rec["full_name"])] = idx
+            valid_records = [valid_records[i] for i in sorted(seen.values())]
 
             # Upsert candidates
             chunk_inserted, chunk_updated = await _upsert_candidate_batch(session, valid_records)

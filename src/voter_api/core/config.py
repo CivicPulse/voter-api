@@ -236,7 +236,7 @@ class Settings(BaseSettings):
     )
 
     # AI contest name resolution
-    anthropic_api_key: str | None = Field(
+    anthropic_api_key: SecretStr | None = Field(
         default=None,
         description="Anthropic API key for AI-assisted contest name resolution during candidate import",
     )

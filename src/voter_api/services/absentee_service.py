@@ -111,7 +111,11 @@ async def _upsert_absentee_batch(
 
         stmt = pg_insert(AbsenteeBallotApplication.__table__).values(batch)
         stmt = stmt.on_conflict_do_update(
-            constraint="uq_aba_voter_appdate_ballotstyle",
+            index_elements=[
+                AbsenteeBallotApplication.__table__.c.voter_registration_number,
+                AbsenteeBallotApplication.__table__.c.application_date,
+                func.coalesce(AbsenteeBallotApplication.__table__.c.ballot_style, ""),
+            ],
             set_={col: stmt.excluded[col] for col in _UPDATE_COLUMNS},
         )
         # xmax = 0 identifies genuinely new rows (not updated via ON CONFLICT)

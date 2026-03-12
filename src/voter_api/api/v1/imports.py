@@ -31,6 +31,31 @@ MAX_BOUNDARY_FILE_SIZE = 200 * 1024 * 1024  # 200 MB
 MAX_VOTER_HISTORY_FILE_SIZE = 100 * 1024 * 1024  # 100 MB (FR-005)
 _NO_FILE_DETAIL = "No file provided"
 
+# Allowed content types for CSV uploads
+_ALLOWED_CSV_TYPES = {"text/csv", "application/csv", "text/plain", "application/octet-stream"}
+# Allowed content types for JSONL uploads
+_ALLOWED_JSONL_TYPES = {"application/jsonl", "application/x-ndjson", "text/plain", "application/octet-stream"}
+
+
+def _validate_upload(file: UploadFile, max_size: int, allowed_types: set[str]) -> None:
+    """Validate upload file size hint and content type.
+
+    Args:
+        file: The uploaded file.
+        max_size: Maximum file size in bytes.
+        allowed_types: Set of allowed MIME content types.
+    """
+    if file.size and file.size > max_size:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File exceeds maximum size of {max_size // (1024 * 1024)} MB",
+        )
+    if file.content_type and file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Unsupported content type: {file.content_type}",
+        )
+
 
 @router.post("/voters", response_model=ImportJobResponse, status_code=202)
 async def import_voters(
@@ -42,6 +67,8 @@ async def import_voters(
     """Upload and import a voter CSV file (admin only)."""
     if not file.filename:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_NO_FILE_DETAIL)
+
+    _validate_upload(file, MAX_VOTER_FILE_SIZE, _ALLOWED_CSV_TYPES)
 
     # Save uploaded file to temp location with size limit
     with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
@@ -90,6 +117,8 @@ async def import_voter_history(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=_NO_FILE_DETAIL,
         )
+
+    _validate_upload(file, MAX_VOTER_HISTORY_FILE_SIZE, _ALLOWED_CSV_TYPES)
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
         content = await file.read()
@@ -141,6 +170,8 @@ async def import_candidates(
             detail=_NO_FILE_DETAIL,
         )
 
+    _validate_upload(file, MAX_CANDIDATE_FILE_SIZE, _ALLOWED_JSONL_TYPES)
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=".jsonl") as tmp:
         content = await file.read()
         if len(content) > MAX_CANDIDATE_FILE_SIZE:
@@ -190,6 +221,8 @@ async def import_absentee(
     """Upload and import absentee ballot application CSV (admin only)."""
     if not file.filename:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_NO_FILE_DETAIL)
+
+    _validate_upload(file, MAX_ABSENTEE_FILE_SIZE, _ALLOWED_CSV_TYPES)
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
         content = await file.read()

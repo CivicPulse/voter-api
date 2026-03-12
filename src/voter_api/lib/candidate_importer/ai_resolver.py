@@ -141,7 +141,7 @@ def _call_api(contest_names: list[str], api_key: str) -> list[dict] | None:
         return None
 
     except Exception:
-        logger.exception("AI resolver API call failed")
+        logger.opt(exception=True).error("AI resolver API call failed")
         return None
 
 

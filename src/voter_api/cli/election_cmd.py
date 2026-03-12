@@ -67,12 +67,16 @@ async def _create_impl(
             election = await election_service.create_election(session, request)
             typer.echo(f"Created election {election.id}: {election.name} ({election.election_date})")
 
-            logger.info("Fetching initial results...")
-            result = await election_service.refresh_single_election(session, election.id)
-            typer.echo(
-                f"Initial refresh: {result.counties_updated} counties, "
-                f"{result.precincts_reporting}/{result.precincts_participating} precincts reporting"
-            )
+            try:
+                logger.info("Fetching initial results...")
+                result = await election_service.refresh_single_election(session, election.id)
+                typer.echo(
+                    f"Initial refresh: {result.counties_updated} counties, "
+                    f"{result.precincts_reporting}/{result.precincts_participating} precincts reporting"
+                )
+            except Exception as e:
+                logger.warning(f"Could not fetch initial results: {e}")
+                typer.echo("Election created successfully (initial results fetch skipped)")
     finally:
         await dispose_engine()
 

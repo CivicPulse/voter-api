@@ -37,6 +37,13 @@ ELECTION_TYPE_MAP: dict[str, str] = {
     "SPECIAL PRIMARY": "primary",
     "SPECIAL PRIMARY RUNOFF": "runoff",
     "PRESIDENTIAL PREFERENCE PRIMARY": "primary",
+    # Additional variants found in real GA SoS data
+    "PRIMARY": "primary",
+    "PRIMARY ELECTION": "primary",
+    "PRIMARY RUNOFF": "runoff",
+    "RUNOFF": "runoff",
+    "RUNOFF ELECTION": "runoff",
+    "SPECIAL": "special",
 }
 
 # Default normalized type for unknown election types

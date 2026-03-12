@@ -3,7 +3,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, String, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,7 +31,7 @@ class AbsenteeBallotApplication(Base, UUIDMixin):
     suffix: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Residence address
-    street_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    street_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
     street_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     apt_unit: Mapped[str | None] = mapped_column(String(50), nullable=True)
     city: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -39,7 +39,7 @@ class AbsenteeBallotApplication(Base, UUIDMixin):
     zip_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Mailing address
-    mailing_street_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    mailing_street_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
     mailing_street_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     mailing_apt_unit: Mapped[str | None] = mapped_column(String(50), nullable=True)
     mailing_city: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -63,8 +63,8 @@ class AbsenteeBallotApplication(Base, UUIDMixin):
     id_required: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
     # Precinct / district fields
-    municipal_precinct: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    county_precinct: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    municipal_precinct: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    county_precinct: Mapped[str | None] = mapped_column(String(100), nullable=True)
     congressional_district: Mapped[str | None] = mapped_column(String(10), nullable=True)
     state_senate_district: Mapped[str | None] = mapped_column(String(10), nullable=True)
     state_house_district: Mapped[str | None] = mapped_column(String(10), nullable=True)
@@ -92,11 +92,12 @@ class AbsenteeBallotApplication(Base, UUIDMixin):
     import_job = relationship("ImportJob", lazy="selectin")
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_aba_voter_appdate_ballotstyle",
             "voter_registration_number",
             "application_date",
-            "ballot_style",
-            name="uq_aba_voter_appdate_ballotstyle",
+            text("COALESCE(ballot_style, '')"),
+            unique=True,
         ),
         Index("ix_aba_voter_reg_num", "voter_registration_number"),
         Index("ix_aba_county", "county"),

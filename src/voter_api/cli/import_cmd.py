@@ -656,7 +656,7 @@ def preprocess_candidates(
         raise typer.Exit(code=1) from None
 
     settings = get_settings()
-    api_key = settings.anthropic_api_key
+    api_key = settings.anthropic_api_key.get_secret_value() if settings.anthropic_api_key else None
 
     typer.echo(f"Preprocessing candidates CSV: {raw_csv}")
     result = preprocess_candidates_csv(
