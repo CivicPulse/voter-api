@@ -73,6 +73,8 @@ async def _resolve_election(
     election_date: date,
     election_type: str | None,
     cache: dict[tuple[str, date], uuid.UUID],
+    county: str | None = None,
+    municipality: str | None = None,
 ) -> uuid.UUID:
     """Resolve or create an election for a candidate record.
 
@@ -81,12 +83,17 @@ async def _resolve_election(
     name. Caches lookups by normalized name to prevent duplicates caused by
     trailing party markers like ``(R)`` or ``(D)``.
 
+    When county or municipality is provided, backfills eligible_county /
+    eligible_municipality on existing elections that lack these fields.
+
     Args:
         session: Database session.
         election_name: Election/contest name (original, non-normalized).
         election_date: Election date.
         election_type: Election type (e.g. primary, general).
         cache: Mutable lookup cache mapping (normalized_name, date) to election_id.
+        county: County name from the candidate CSV (for geographic scoping).
+        municipality: Municipality name from the candidate CSV.
 
     Returns:
         The election UUID.
@@ -100,16 +107,21 @@ async def _resolve_election(
     # Query for existing election using normalized name for comparison
     normalized_name = normalize_election_name(original_name)
     result = await session.execute(
-        select(Election.id).where(
+        select(Election).where(
             Election.name == normalized_name,
             Election.election_date == election_date,
             Election.deleted_at.is_(None),
         )
     )
-    existing_id = result.scalar_one_or_none()
-    if existing_id is not None:
-        cache[cache_key] = existing_id
-        return existing_id
+    existing = result.scalar_one_or_none()
+    if existing is not None:
+        # Backfill eligible_county/eligible_municipality if not yet set
+        if county and not existing.eligible_county:
+            existing.eligible_county = county.upper()
+        if municipality and not existing.eligible_municipality:
+            existing.eligible_municipality = municipality
+        cache[cache_key] = existing.id
+        return existing.id
 
     # Create new election — preserve original as source_name
     new_id = uuid.uuid4()
@@ -123,6 +135,8 @@ async def _resolve_election(
         source="manual",
         creation_method="manual",
         status="active",
+        eligible_county=county.upper() if county else None,
+        eligible_municipality=municipality,
     )
     await session.execute(stmt)
     await session.flush()
@@ -315,6 +329,8 @@ async def process_candidate_import(
                         election_date_val,
                         election_type,
                         election_cache,
+                        county=record.get("county"),
+                        municipality=record.get("municipality"),
                     )
                 except Exception as e:
                     errors.append(

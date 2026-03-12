@@ -72,6 +72,10 @@ class Election(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     district_identifier: Mapped[str | None] = mapped_column(String(50), nullable=True)
     district_party: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
+    # Geographic eligibility scoping (from candidate CSV COUNTY/MUNICIPALITY columns)
+    eligible_county: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    eligible_municipality: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
     # FK to election_events (parent "election day" grouping)
     election_event_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
@@ -105,6 +109,8 @@ class Election(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         Index("idx_elections_district_type", "district_type"),
         Index("idx_elections_source", "source"),
         Index("idx_elections_election_event_id", "election_event_id"),
+        Index("idx_elections_eligible_county", "eligible_county"),
+        Index("idx_elections_eligible_municipality", "eligible_municipality"),
         Index(
             "uq_election_feed_ballot_item",
             "data_source_url",

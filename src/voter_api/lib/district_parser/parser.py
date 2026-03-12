@@ -15,6 +15,10 @@ DISTRICT_TYPE_TO_VOTER_COLUMN: dict[str, str] = {
     "state_house": "state_house_district",
     "congressional": "congressional_district",
     "county_commission": "county_commission_district",
+    "school_board": "school_board_district",
+    "board_of_education": "school_board_district",
+    "city_council": "city_council_district",
+    "judicial": "judicial_district",
 }
 
 # Mapping from parsed district_type to the boundary_type value in the
@@ -25,6 +29,9 @@ DISTRICT_TYPE_TO_BOUNDARY_TYPE: dict[str, str] = {
     "congressional": "congressional",
     "psc": "psc",
     "county_commission": "county_commission",
+    "school_board": "school_board",
+    "board_of_education": "school_board",
+    "county_office": "county",
 }
 
 # Georgia Public Service Commission district-to-county mapping.

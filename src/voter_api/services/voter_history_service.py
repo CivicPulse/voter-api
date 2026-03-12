@@ -928,7 +928,19 @@ async def _build_election_match_conditions(
     """
 
     def _build_district_filter() -> ColumnElement[bool] | None:
-        """Return a county filter if election is county-scoped, else None."""
+        """Return a county/municipality filter if election is geographically scoped, else None."""
+        # Priority 1: Use eligible_county/eligible_municipality from the election itself
+        # (set during candidate import — the most authoritative source).
+        if election.eligible_county:
+            county_filter: ColumnElement[bool] = (
+                func.upper(func.trim(VoterHistory.county)) == election.eligible_county.strip().upper()
+            )
+            # For municipal elections, also require municipality match on voter
+            # (handled at query-time only when participation stats need it;
+            # for listing participants, the county filter is sufficient)
+            return county_filter
+
+        # Priority 2: Fall back to boundary-based scoping
         boundary = election.boundary
         if boundary is None:
             return None

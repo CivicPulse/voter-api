@@ -85,6 +85,8 @@ def _mock_election(**overrides) -> MagicMock:
         "district_type": None,
         "district_identifier": None,
         "boundary": None,
+        "eligible_county": None,
+        "eligible_municipality": None,
     }
     defaults.update(overrides)
     election = MagicMock(spec=Election)
