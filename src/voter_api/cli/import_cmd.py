@@ -675,6 +675,146 @@ def preprocess_candidates(
     typer.echo(f"  Output:           {result.output_path}")
 
 
+@import_app.command("preprocess-all-candidates")
+def preprocess_all_candidates(
+    input_dir: Path = typer.Option("data/new", "--input-dir", help="Directory containing raw candidate CSVs"),  # noqa: B008
+    output_dir: Path = typer.Option("data/results", "--output-dir", help="Directory for JSONL output files"),  # noqa: B008
+) -> None:
+    """Preprocess all Qualified Candidates CSVs in a directory into JSONL templates."""
+    from voter_api.core.config import get_settings
+    from voter_api.lib.candidate_importer import parse_candidate_filename, preprocess_candidates_csv
+
+    settings = get_settings()
+    api_key = settings.anthropic_api_key.get_secret_value() if settings.anthropic_api_key else None
+
+    csv_files = sorted(input_dir.glob("*_Qualified_Candidates.csv"))
+    if not csv_files:
+        typer.echo(f"No *_Qualified_Candidates.csv files found in {input_dir}")
+        raise typer.Exit(code=1)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    summary: list[tuple[str, str, str, int, int, int, int]] = []
+
+    for csv_path in csv_files:
+        try:
+            info = parse_candidate_filename(csv_path.name)
+        except ValueError as e:
+            typer.echo(f"WARNING: Skipping {csv_path.name}: {e}")
+            continue
+
+        output_path = output_dir / f"{csv_path.stem}.jsonl"
+        typer.echo(f"Preprocessing {csv_path.name}...")
+
+        result = preprocess_candidates_csv(
+            csv_path,
+            output_path,
+            info.election_date,
+            info.election_type,
+            api_key=api_key,
+        )
+
+        summary.append(
+            (
+                csv_path.name,
+                str(info.election_date),
+                info.election_type,
+                result.total_records,
+                result.resolved_regex,
+                result.resolved_ai,
+                result.needs_review,
+            )
+        )
+
+    if not summary:
+        typer.echo("No files were successfully preprocessed.")
+        raise typer.Exit(code=1)
+
+    typer.echo("\n" + "=" * 100)
+    typer.echo("PREPROCESSING SUMMARY")
+    typer.echo("=" * 100)
+    typer.echo(f"  {'Filename':<55s} {'Date':<12s} {'Type':<10s} {'Total':>6s} {'Regex':>6s} {'AI':>4s} {'Review':>7s}")
+    typer.echo("-" * 100)
+    for name, edate, etype, total, regex, ai, review in summary:
+        typer.echo(f"  {name:<55s} {edate:<12s} {etype:<10s} {total:>6d} {regex:>6d} {ai:>4d} {review:>7d}")
+    typer.echo("=" * 100)
+
+
+@import_app.command("import-all-candidates")
+def import_all_candidates_cmd(
+    input_dir: Path = typer.Option("data/results", "--input-dir", help="Directory containing preprocessed JSONL files"),  # noqa: B008
+    batch_size: int = typer.Option(500, "--batch-size", help="Records per batch"),  # noqa: B008
+) -> None:
+    """Import all preprocessed candidate JSONL files from a directory."""
+    asyncio.run(_import_all_candidates(input_dir, batch_size))
+
+
+async def _import_all_candidates(input_dir: Path, batch_size: int) -> None:
+    """Async implementation of import-all-candidates."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.candidate_import_service import (
+        create_candidate_import_job,
+        process_candidate_import,
+    )
+
+    jsonl_files = sorted(input_dir.glob("*.jsonl"))
+    if not jsonl_files:
+        typer.echo(f"No *.jsonl files found in {input_dir}")
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    summary: list[tuple[str, str, int, int, int, int, int]] = []
+
+    try:
+        factory = get_session_factory()
+        for jsonl_path in jsonl_files:
+            typer.echo(f"\nImporting {jsonl_path.name}...")
+            async with factory() as session:
+                job = await create_candidate_import_job(session, file_name=jsonl_path.name)
+                typer.echo(f"  Import job created: {job.id}")
+
+                job = await process_candidate_import(session, job, jsonl_path, batch_size)
+
+                status = "completed" if job.status == "completed" else "failed"
+                typer.echo(f"  Import {status}:")
+                typer.echo(f"    Total records:  {job.total_records or 0}")
+                typer.echo(f"    Succeeded:      {job.records_succeeded or 0}")
+                typer.echo(f"    Failed:         {job.records_failed or 0}")
+                typer.echo(f"    Inserted:       {job.records_inserted or 0}")
+                typer.echo(f"    Updated:        {job.records_updated or 0}")
+
+                summary.append(
+                    (
+                        jsonl_path.name,
+                        status,
+                        job.total_records or 0,
+                        job.records_succeeded or 0,
+                        job.records_failed or 0,
+                        job.records_inserted or 0,
+                        job.records_updated or 0,
+                    )
+                )
+    finally:
+        await dispose_engine()
+
+    typer.echo("\n" + "=" * 100)
+    typer.echo("IMPORT SUMMARY")
+    typer.echo("=" * 100)
+    typer.echo(
+        f"  {'Filename':<45s} {'Status':<10s} {'Total':>6s} {'OK':>6s} {'Fail':>6s} {'Insert':>7s} {'Update':>7s}"
+    )
+    typer.echo("-" * 100)
+    for name, status, total, ok, fail, ins, upd in summary:
+        typer.echo(f"  {name:<45s} {status:<10s} {total:>6d} {ok:>6d} {fail:>6d} {ins:>7d} {upd:>7d}")
+    typer.echo("=" * 100)
+
+    if any(s[1] != "completed" for s in summary):
+        raise typer.Exit(code=1)
+
+
 @import_app.command("candidates")
 def import_candidates_cmd(
     file: Path = typer.Argument(..., help="Path to preprocessed candidates JSONL template", exists=True),  # noqa: B008
