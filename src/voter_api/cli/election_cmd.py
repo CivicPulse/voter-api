@@ -1,11 +1,13 @@
 """CLI commands for election tracking.
 
-Provides creation, import, and manual refresh of election results from GA SoS feeds.
+Provides creation, import, and manual refresh of election results from GA SoS feeds,
+plus election calendar preprocessing and import from GA SoS source files.
 """
 
 import asyncio
 import uuid
 from datetime import date
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -193,5 +195,69 @@ async def _import_feed_impl(
     except ValueError as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=1) from e
+    finally:
+        await dispose_engine()
+
+
+@election_app.command("preprocess-calendar")
+def preprocess_calendar(
+    source_file: Annotated[Path, typer.Argument(help="Source calendar file (XLSX, PDF, or HTML)", exists=True)],
+    output: Annotated[Path, typer.Option("--output", help="Output path for JSONL template")],
+    merge: Annotated[
+        list[Path] | None,
+        typer.Option("--merge", help="Additional source files to merge", exists=True),
+    ] = None,
+) -> None:
+    """Preprocess election calendar source(s) into importable JSONL template."""
+    from voter_api.lib.election_calendar.preprocessor import preprocess_calendar as _preprocess
+
+    try:
+        count = _preprocess(source_file, output, merge_paths=merge)
+        typer.echo(f"Wrote {count} calendar entries to {output}")
+    except ValueError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=1) from e
+
+
+@election_app.command("import-calendar")
+def import_calendar(
+    template: Annotated[Path, typer.Argument(help="Path to calendar JSONL template", exists=True)],
+) -> None:
+    """Import election calendar dates from a JSONL template."""
+    asyncio.run(_import_calendar_impl(template))
+
+
+async def _import_calendar_impl(template: Path) -> None:
+    """Async implementation of the import-calendar command."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.core.logging import setup_logging
+    from voter_api.lib.election_calendar.parser import parse_calendar_jsonl
+    from voter_api.services.election_calendar_service import process_calendar_import
+
+    settings = get_settings()
+    setup_logging(settings.log_level)
+    init_engine(settings.database_url, echo=False)
+
+    try:
+        entries = parse_calendar_jsonl(template)
+        if not entries:
+            typer.echo("No calendar entries found in template.")
+            return
+
+        typer.echo(f"Parsed {len(entries)} calendar entries from {template}")
+
+        factory = get_session_factory()
+        async with factory() as session:
+            result = await process_calendar_import(session, entries)
+
+        typer.echo("\nCalendar import complete:")
+        typer.echo(f"  Matched:   {result.matched}")
+        typer.echo(f"  Updated:   {result.updated}")
+        typer.echo(f"  Unmatched: {result.unmatched}")
+        if result.unmatched_names:
+            typer.echo("\nUnmatched elections:")
+            for name in result.unmatched_names:
+                typer.echo(f"  - {name}")
     finally:
         await dispose_engine()
