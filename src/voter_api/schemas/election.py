@@ -102,6 +102,7 @@ class ElectionSummary(BaseModel):
     precincts_participating: int | None = None
     ballot_item_id: str | None = None
     boundary_id: uuid.UUID | None = None
+    election_event_id: uuid.UUID | None = None
     district_type: str | None = None
     district_identifier: str | None = None
     district_party: str | None = None

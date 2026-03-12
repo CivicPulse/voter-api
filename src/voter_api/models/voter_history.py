@@ -35,6 +35,11 @@ class VoterHistory(Base, UUIDMixin):
         ForeignKey("elections.id", ondelete="SET NULL"),
         nullable=True,
     )
+    election_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("election_events.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     import_job_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("import_jobs.id", ondelete="CASCADE"),
@@ -60,4 +65,5 @@ class VoterHistory(Base, UUIDMixin):
         Index("idx_voter_history_import_job_id", "import_job_id"),
         Index("idx_voter_history_date_type", "election_date", "normalized_election_type"),
         Index("idx_voter_history_election_id", "election_id"),
+        Index("idx_voter_history_election_event_id", "election_event_id"),
     )
