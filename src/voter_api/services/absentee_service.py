@@ -9,6 +9,7 @@ from sqlalchemy import func, literal_column, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from voter_api.core.utils import _mask_vrn
 from voter_api.lib.absentee import parse_absentee_csv_chunks
 from voter_api.models.absentee_ballot import AbsenteeBallotApplication
 from voter_api.models.import_job import ImportJob
@@ -176,7 +177,7 @@ async def process_absentee_import(
                 if parse_error:
                     errors.append(
                         {
-                            "voter_registration_number": record.get("voter_registration_number", "unknown"),
+                            "voter_registration_number": _mask_vrn(record.get("voter_registration_number", "unknown")),
                             "error": parse_error,
                         }
                     )

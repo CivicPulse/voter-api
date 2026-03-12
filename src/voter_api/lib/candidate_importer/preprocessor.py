@@ -9,6 +9,7 @@ import json
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pandas as pd
 from loguru import logger
@@ -191,12 +192,22 @@ def _normalize_row(row: pd.Series, election_date: date, election_type: str) -> d
     # Normalize email
     email = email_raw.lower() if email_raw else None
 
-    # Normalize website (ensure https:// prefix)
+    # Normalize website (ensure https:// prefix, validate length and hostname)
     website: str | None = None
     if website_raw:
         website = website_raw
         if not website.lower().startswith(("http://", "https://")):
             website = f"https://{website}"
+        # Validate URL: must be <= 2048 chars and hostname must contain at least one dot
+        if len(website) > 2048:
+            logger.warning(f"Website URL exceeds 2048 characters, discarding: {website[:80]}...")
+            website = None
+        else:
+            parsed_url = urlparse(website)
+            hostname = parsed_url.hostname or ""
+            if "." not in hostname:
+                logger.warning(f"Website URL has invalid hostname (no dot): {website}")
+                website = None
 
     return {
         "election_name": contest_name,

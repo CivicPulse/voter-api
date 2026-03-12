@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from voter_api.core.database import get_engine
+from voter_api.core.utils import _mask_vrn
 from voter_api.lib.voter_history import (
     parse_voter_history_chunks,
 )
@@ -252,7 +253,7 @@ async def process_voter_history_import(
                     chunk_failed += 1
                     errors.append(
                         {
-                            "voter_registration_number": record.get("voter_registration_number", "unknown"),
+                            "voter_registration_number": _mask_vrn(record.get("voter_registration_number", "unknown")),
                             "error": parse_error,
                         }
                     )
