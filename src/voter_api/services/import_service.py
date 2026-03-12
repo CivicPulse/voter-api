@@ -15,6 +15,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.database import get_engine
+from voter_api.lib.district_parser import pad_district_identifier
 from voter_api.lib.importer import parse_csv_chunks, validate_batch
 from voter_api.models.import_job import ImportJob
 from voter_api.models.voter import Voter
@@ -287,6 +288,12 @@ def _prepare_records_for_db(
 
         reg_numbers.add(reg_num)
         _coerce_record_types(record)
+
+        # Zero-pad district fields to match Census GEOID format (e.g. "2" -> "002")
+        for field in ("congressional_district", "state_senate_district", "state_house_district"):
+            val = record.get(field)
+            if val and isinstance(val, str) and val.strip():
+                record[field] = pad_district_identifier(val.strip())
 
         record["present_in_latest_import"] = True
         record["soft_deleted_at"] = None
