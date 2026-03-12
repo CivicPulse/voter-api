@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.district_parser.parser import parse_election_district
+from voter_api.lib.election_name_normalizer import normalize_election_name
 from voter_api.lib.results_importer import (
     BallotItemContext,
     iter_ballot_items,
@@ -19,6 +20,7 @@ from voter_api.lib.results_importer import (
 from voter_api.models.candidate import Candidate
 from voter_api.models.election import Election
 from voter_api.models.import_job import ImportJob
+from voter_api.services.election_resolution_service import find_or_create_election_event
 from voter_api.services.election_service import persist_ingestion_result
 
 _CANDIDATE_UPSERT_BATCH = 500
@@ -124,12 +126,25 @@ async def _match_election(
         clean_name = ctx.ballot_item_name.split("/", 1)[0].strip()
         election_name = f"{ctx.election_event_name} - {clean_name}"
 
+    # Preserve original name and normalize for storage
+    source_name = election_name
+    normalized_name = normalize_election_name(election_name)
+
+    # Find or create the parent ElectionEvent for this election day
+    event_id = await find_or_create_election_event(
+        session,
+        event_date=ctx.election_date,
+        event_type=ctx.election_type,
+        event_name=ctx.election_event_name,
+    )
+
     new_id = uuid.uuid4()
     stmt_insert = (
         pg_insert(Election.__table__)
         .values(
             id=new_id,
-            name=election_name,
+            name=normalized_name,
+            source_name=source_name,
             election_date=ctx.election_date,
             election_type=ctx.election_type,
             district=ctx.ballot_item_name,
@@ -140,6 +155,7 @@ async def _match_election(
             district_type=parsed.district_type if parsed.district_type else None,
             district_identifier=(parsed.district_identifier if parsed.district_identifier else None),
             district_party=parsed.party if parsed.party else None,
+            election_event_id=event_id,
         )
         .on_conflict_do_nothing()
     )
@@ -149,7 +165,7 @@ async def _match_election(
         # Election already exists with this name+date, fetch it
         existing = await session.execute(
             select(Election.id).where(
-                Election.name == election_name,
+                Election.name == normalized_name,
                 Election.election_date == ctx.election_date,
                 Election.deleted_at.is_(None),
             )
@@ -161,7 +177,7 @@ async def _match_election(
 
     await session.flush()
     election_cache[cache_key] = new_id
-    logger.info("Tier 3: created election '{}' -> {}", election_name, new_id)
+    logger.info("Tier 3: created election '{}' -> {}", normalized_name, new_id)
     return new_id
 
 

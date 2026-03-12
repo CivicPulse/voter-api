@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.candidate_importer import parse_candidate_import_jsonl
+from voter_api.lib.election_name_normalizer import normalize_election_name
 from voter_api.models.candidate import Candidate, CandidateLink
 from voter_api.models.election import Election
 from voter_api.models.import_job import ImportJob
@@ -97,9 +98,10 @@ async def _resolve_election(
         return cache[cache_key]
 
     # Query for existing election using normalized name for comparison
+    normalized_name = normalize_election_name(original_name)
     result = await session.execute(
         select(Election.id).where(
-            Election.name == original_name,
+            Election.name == normalized_name,
             Election.election_date == election_date,
             Election.deleted_at.is_(None),
         )
@@ -109,11 +111,12 @@ async def _resolve_election(
         cache[cache_key] = existing_id
         return existing_id
 
-    # Create new election — store the original (non-normalized) name
+    # Create new election — preserve original as source_name
     new_id = uuid.uuid4()
     stmt = pg_insert(Election.__table__).values(
         id=new_id,
-        name=original_name,
+        name=normalized_name,
+        source_name=original_name,
         election_date=election_date,
         election_type=election_type or "general",
         district=original_name,
