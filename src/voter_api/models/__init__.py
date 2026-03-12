@@ -12,6 +12,7 @@ from voter_api.models.candidate import Candidate, CandidateLink
 from voter_api.models.county_district import CountyDistrict
 from voter_api.models.county_metadata import CountyMetadata
 from voter_api.models.election import Election, ElectionCountyResult, ElectionResult
+from voter_api.models.election_event import ElectionEvent
 from voter_api.models.export_job import ExportJob
 from voter_api.models.geocoded_location import GeocodedLocation
 from voter_api.models.geocoder_cache import GeocoderCache
@@ -23,6 +24,7 @@ from voter_api.models.meeting import Meeting
 from voter_api.models.meeting_attachment import MeetingAttachment
 from voter_api.models.meeting_video_embed import MeetingVideoEmbed
 from voter_api.models.passkey import Passkey
+from voter_api.models.precinct_crosswalk import PrecinctCrosswalk
 from voter_api.models.precinct_metadata import PrecinctMetadata
 from voter_api.models.totp import TOTPCredential, TOTPRecoveryCode
 from voter_api.models.user import User
@@ -48,6 +50,7 @@ __all__ = [
     "CountyMetadata",
     "Election",
     "ElectionCountyResult",
+    "ElectionEvent",
     "ElectionResult",
     "ExportJob",
     "GeocodedLocation",
@@ -59,6 +62,7 @@ __all__ = [
     "Meeting",
     "MeetingAttachment",
     "MeetingVideoEmbed",
+    "PrecinctCrosswalk",
     "PrecinctMetadata",
     "User",
     "Voter",

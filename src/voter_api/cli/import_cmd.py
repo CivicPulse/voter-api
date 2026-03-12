@@ -989,3 +989,46 @@ async def _import_election_results(path: Path, dry_run: bool) -> None:
 
     if any(s[1] != "completed" for s in summary):
         raise typer.Exit(code=1)
+
+
+@import_app.command("build-crosswalk")
+def build_crosswalk_cmd() -> None:
+    """Build or display the precinct crosswalk table.
+
+    Shows current crosswalk statistics. The actual spatial join builder
+    (build_crosswalk_from_spatial_join) is deferred to a future task
+    since it requires geocoded voter data.
+    """
+    asyncio.run(_build_crosswalk())
+
+
+async def _build_crosswalk() -> None:
+    """Async implementation of build-crosswalk command."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.precinct_crosswalk_service import get_crosswalk_stats
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            stats = await get_crosswalk_stats(session)
+            typer.echo("Precinct Crosswalk Status:")
+            typer.echo(f"  Total entries:    {stats['total_entries']}")
+            typer.echo(f"  Counties covered: {stats['counties_covered']}")
+            typer.echo(f"  Avg confidence:   {stats['avg_confidence']}")
+
+            if stats["total_entries"] == 0:
+                typer.echo(
+                    "\nNo crosswalk entries found. The spatial join builder "
+                    "is not yet implemented — it requires geocoded voter data."
+                )
+            else:
+                typer.echo(
+                    "\nNote: The spatial join builder is a placeholder. "
+                    "Entries were loaded via upsert_crosswalk_entries()."
+                )
+    finally:
+        await dispose_engine()
