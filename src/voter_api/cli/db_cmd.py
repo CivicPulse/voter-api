@@ -4,9 +4,11 @@ import typer
 from loguru import logger
 
 from voter_api.cli.rebuild_cmd import rebuild
+from voter_api.cli.seed_dev_cmd import seed_dev
 
 db_app = typer.Typer()
 db_app.command()(rebuild)
+db_app.command("seed-dev")(seed_dev)
 
 
 @db_app.command()

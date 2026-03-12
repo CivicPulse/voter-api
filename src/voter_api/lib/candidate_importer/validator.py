@@ -54,10 +54,15 @@ def validate_candidate_record(record: dict) -> list[str]:
     if not candidate_name or not isinstance(candidate_name, str) or not candidate_name.strip():
         errors.append("candidate_name is required and must be a non-empty string")
 
-    # Optional: filing_status (must be in allowed set if present)
+    # Optional: filing_status — normalize subtypes (e.g. "qualified - signatures accepted" → "qualified")
     filing_status = record.get("filing_status")
     if filing_status is not None and filing_status != "" and filing_status not in _ALLOWED_FILING_STATUSES:
-        errors.append(f"filing_status '{filing_status}' is not valid; allowed: {sorted(_ALLOWED_FILING_STATUSES)}")
+        # Check if it's a subtype of an allowed status (e.g. "qualified - ...")
+        normalized = filing_status.split(" - ")[0].strip().lower()
+        if normalized in _ALLOWED_FILING_STATUSES:
+            record["filing_status"] = normalized
+        else:
+            errors.append(f"filing_status '{filing_status}' is not valid; allowed: {sorted(_ALLOWED_FILING_STATUSES)}")
 
     # Optional: email (basic format check if present)
     email = record.get("email")
