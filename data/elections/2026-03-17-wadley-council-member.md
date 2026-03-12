@@ -14,6 +14,7 @@
 | Municipality | Wadley                                                                       |
 | District     | [Jefferson County](https://voteapi.civpulse.org/api/v1/boundaries/02d360ac-005f-4d00-9d57-17ac97a91007) (county-level; no municipal boundary available) |
 | Candidates   | 2                                                                            |
+| Eligibility  | Registered voters in City of Wadley                                          |
 
 ## Candidates
 
@@ -22,6 +23,15 @@
 | Ezee Zeke Carter       | No        | Retired    | 01/29/2026     | (none) | (none)  |
 | Kendrick Muke McBride  | No        | Technician | 01/28/2026     | (none) | (none)  |
 
+### Candidate Bios
+
+**Ezee "Zeke" Carter** — Sitting council member (elected November 2023). Military veteran and former Wadley Public Works employee. Chairs the Streets, Lanes & Sanitation Committee.
+
+**Kendrick "Muke" McBride** — Sitting council member (elected November 2021). Affiliated with Kingdom Life Fellowship Ministries. Advocates for recreation and infrastructure improvements.
+
+> **Note:** Both candidates are sitting council members running for a different seat (the unexpired term of Albert Samples, Jr.).
+
 ## Data Source
 
-`data/new/MARCH_17_2026-SPECIAL_ELECTION_Qualified_Candidates.csv`
+- `data/new/MARCH_17_2026-SPECIAL_ELECTION_Qualified_Candidates.csv`
+- Candidate bios from City of Wadley website
