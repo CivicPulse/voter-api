@@ -134,14 +134,21 @@ async def _enable_vh_autovacuum_and_vacuum(session: AsyncSession) -> None:
     await session.commit()
     logger.info("Re-enabled autovacuum on voter_history table")
 
-    logger.info("Running VACUUM ANALYZE on voter_history table...")
-    start = time.monotonic()
-    engine = get_engine()
-    async with engine.connect() as vacuum_conn:
-        autocommit_conn = await vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
-        await autocommit_conn.execute(text("VACUUM ANALYZE voter_history"))
-    elapsed = time.monotonic() - start
-    logger.info(f"VACUUM ANALYZE completed in {elapsed:.1f}s")
+    # VACUUM is best-effort — autovacuum will handle it if this fails
+    try:
+        logger.info("Running VACUUM ANALYZE on voter_history table...")
+        start = time.monotonic()
+        engine = get_engine()
+        async with engine.connect() as vacuum_conn:
+            autocommit_conn = await vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
+            await autocommit_conn.execute(text("VACUUM ANALYZE voter_history"))
+        elapsed = time.monotonic() - start
+        logger.info(f"VACUUM ANALYZE completed in {elapsed:.1f}s")
+    except Exception:
+        logger.warning(
+            "VACUUM ANALYZE failed (non-fatal) — autovacuum will handle it",
+            exc_info=True,
+        )
 
 
 @asynccontextmanager
