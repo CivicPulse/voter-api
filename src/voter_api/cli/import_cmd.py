@@ -15,6 +15,33 @@ import_app = typer.Typer()
 import_app.command("voter-history")(import_voter_history)
 
 
+@import_app.command("cleanup-jobs")
+def cleanup_jobs_cmd() -> None:
+    """Mark abandoned import jobs (failed + no record counts) as 'abandoned'."""
+    asyncio.run(_cleanup_jobs())
+
+
+async def _cleanup_jobs() -> None:
+    """Async implementation of cleanup-jobs command."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.import_service import cleanup_abandoned_jobs
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            count = await cleanup_abandoned_jobs(session)
+            if count:
+                typer.echo(f"Marked {count} abandoned import job(s) as 'abandoned'.")
+            else:
+                typer.echo("No abandoned import jobs found.")
+    finally:
+        await dispose_engine()
+
+
 @import_app.command("voters")
 def import_voters(
     file: Path = typer.Argument(..., help="Path to voter CSV file", exists=True),  # noqa: B008

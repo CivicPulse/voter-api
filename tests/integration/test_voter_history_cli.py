@@ -1,6 +1,7 @@
 """Integration tests for voter history CLI command.
 
 Covers T019: test `import voter-history` command with sample file.
+Also covers the `import cleanup-jobs` CLI command.
 """
 
 from pathlib import Path
@@ -11,6 +12,59 @@ from typer.testing import CliRunner
 from voter_api.cli.app import app
 
 runner = CliRunner()
+
+
+class TestCleanupJobsCLI:
+    """Tests for the `import cleanup-jobs` CLI command."""
+
+    def test_cleanup_with_abandoned_jobs(self) -> None:
+        """CLI reports count of cleaned-up jobs."""
+        with (
+            patch("voter_api.core.config.get_settings"),
+            patch("voter_api.core.database.init_engine"),
+            patch("voter_api.core.database.dispose_engine", new_callable=AsyncMock),
+            patch("voter_api.core.database.get_session_factory") as mock_factory,
+            patch(
+                "voter_api.services.import_service.cleanup_abandoned_jobs",
+                new_callable=AsyncMock,
+                return_value=5,
+            ),
+        ):
+            mock_session = AsyncMock()
+            mock_factory.return_value = MagicMock(
+                __aenter__=AsyncMock(return_value=mock_session),
+                __aexit__=AsyncMock(return_value=False),
+            )
+
+            result = runner.invoke(app, ["import", "cleanup-jobs"])
+
+        assert result.exit_code == 0
+        assert "5" in result.output
+        assert "abandoned" in result.output.lower()
+
+    def test_cleanup_with_no_abandoned_jobs(self) -> None:
+        """CLI reports no abandoned jobs found."""
+        with (
+            patch("voter_api.core.config.get_settings"),
+            patch("voter_api.core.database.init_engine"),
+            patch("voter_api.core.database.dispose_engine", new_callable=AsyncMock),
+            patch("voter_api.core.database.get_session_factory") as mock_factory,
+            patch(
+                "voter_api.services.import_service.cleanup_abandoned_jobs",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+        ):
+            mock_session = AsyncMock()
+            mock_factory.return_value = MagicMock(
+                __aenter__=AsyncMock(return_value=mock_session),
+                __aexit__=AsyncMock(return_value=False),
+            )
+
+            result = runner.invoke(app, ["import", "cleanup-jobs"])
+
+        assert result.exit_code == 0
+        assert "no abandoned" in result.output.lower()
 
 
 def _make_completed_job() -> MagicMock:

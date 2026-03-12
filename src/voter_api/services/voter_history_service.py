@@ -423,7 +423,7 @@ async def _replace_previous_import(
             ImportJob.file_name == job.file_name,
             ImportJob.file_type == "voter_history",
             ImportJob.id != job.id,
-            ImportJob.status.in_(["completed", "superseded"]),
+            ImportJob.status.in_(["completed", "superseded", "abandoned"]),
         )
     )
     previous_jobs = list(result.scalars().all())

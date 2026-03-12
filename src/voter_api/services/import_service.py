@@ -589,6 +589,34 @@ async def process_voter_import(
     return job
 
 
+async def cleanup_abandoned_jobs(session: AsyncSession) -> int:
+    """Mark abandoned import jobs (failed with no record counts) as 'abandoned'.
+
+    Jobs that end up in a ``failed`` state with ``total_records IS NULL``
+    are considered abandoned — they were started but never completed
+    processing.  Marking them as ``abandoned`` keeps them from cluttering
+    import history and interfering with the "replace previous import"
+    logic.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        The number of jobs updated.
+    """
+    stmt = (
+        update(ImportJob)
+        .where(
+            ImportJob.status == "failed",
+            ImportJob.total_records.is_(None),
+        )
+        .values(status="abandoned")
+    )
+    result = await session.execute(stmt)
+    await session.commit()
+    return result.rowcount
+
+
 async def get_import_job(session: AsyncSession, job_id: uuid.UUID) -> ImportJob | None:
     """Get an import job by ID.
 

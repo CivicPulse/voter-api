@@ -8,6 +8,7 @@ import pytest
 
 from voter_api.services.import_service import (
     _prepare_records_for_db,
+    cleanup_abandoned_jobs,
     create_import_job,
     get_import_diff,
     get_import_job,
@@ -268,3 +269,33 @@ class TestPrepareRecordsDistrictPadding:
         assert prepared[0]["congressional_district"] is None
         assert prepared[0]["state_senate_district"] == ""
         assert prepared[0]["state_house_district"] == "   "
+
+
+class TestCleanupAbandonedJobs:
+    """Tests for cleanup_abandoned_jobs."""
+
+    @pytest.mark.asyncio
+    async def test_updates_failed_null_jobs(self) -> None:
+        """Jobs with status=failed and total_records=NULL are marked abandoned."""
+        session = AsyncMock()
+        result_mock = MagicMock()
+        result_mock.rowcount = 3
+        session.execute.return_value = result_mock
+
+        count = await cleanup_abandoned_jobs(session)
+
+        assert count == 3
+        session.execute.assert_awaited_once()
+        session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_returns_zero_when_no_abandoned(self) -> None:
+        """Returns 0 when no abandoned jobs exist."""
+        session = AsyncMock()
+        result_mock = MagicMock()
+        result_mock.rowcount = 0
+        session.execute.return_value = result_mock
+
+        count = await cleanup_abandoned_jobs(session)
+
+        assert count == 0
