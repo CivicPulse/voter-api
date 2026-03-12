@@ -59,7 +59,16 @@ def map_election_type(raw_type: str) -> str:
     Returns:
         Normalized election type (e.g., "general", "primary", "special", "runoff").
     """
-    return ELECTION_TYPE_MAP.get(raw_type.strip().upper(), DEFAULT_ELECTION_TYPE)
+    normalized = raw_type.strip().upper()
+    result = ELECTION_TYPE_MAP.get(normalized)
+    if result is None:
+        logger.warning(
+            "Unknown election type '{}' — defaulting to '{}'",
+            raw_type.strip(),
+            DEFAULT_ELECTION_TYPE,
+        )
+        return DEFAULT_ELECTION_TYPE
+    return result
 
 
 def parse_voter_history_chunks(

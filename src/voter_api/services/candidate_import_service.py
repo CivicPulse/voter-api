@@ -18,6 +18,26 @@ from voter_api.models.import_job import ImportJob
 # Sub-batch size for candidate upsert: ~15 columns * 500 rows = 7,500 params (under 32,767 limit)
 _UPSERT_SUB_BATCH = 500
 
+# Pattern matching trailing party markers like (R), (D), (NP), (I)
+_PARTY_MARKER_RE = re.compile(r"\s*\([RDNPI]+\)\s*$")
+
+
+def _normalize_election_name(name: str) -> str:
+    """Normalize an election name for deduplication lookups.
+
+    Strips trailing party markers such as ``(R)``, ``(D)``, ``(NP)``,
+    ``(I)``, collapses whitespace, and lowercases the result.
+
+    Args:
+        name: Raw election/contest name.
+
+    Returns:
+        Normalized lowercase name suitable for cache key comparison.
+    """
+    stripped = _PARTY_MARKER_RE.sub("", name)
+    collapsed = re.sub(r"\s+", " ", stripped).strip()
+    return collapsed.lower()
+
 
 async def create_candidate_import_job(
     session: AsyncSession,
@@ -55,28 +75,31 @@ async def _resolve_election(
 ) -> uuid.UUID:
     """Resolve or create an election for a candidate record.
 
-    Looks up an existing election by (name, date). If not found, creates
-    one directly via pg_insert. Caches lookups to avoid repeated queries.
+    Looks up an existing election by normalized name and date. If not found,
+    creates one directly via pg_insert using the original (non-normalized)
+    name. Caches lookups by normalized name to prevent duplicates caused by
+    trailing party markers like ``(R)`` or ``(D)``.
 
     Args:
         session: Database session.
-        election_name: Election/contest name.
+        election_name: Election/contest name (original, non-normalized).
         election_date: Election date.
         election_type: Election type (e.g. primary, general).
-        cache: Mutable lookup cache mapping (name, date) to election_id.
+        cache: Mutable lookup cache mapping (normalized_name, date) to election_id.
 
     Returns:
         The election UUID.
     """
-    election_name = re.sub(r"\s+", " ", election_name).strip()
-    cache_key = (election_name, election_date)
+    original_name = re.sub(r"\s+", " ", election_name).strip()
+    normalized = _normalize_election_name(original_name)
+    cache_key = (normalized, election_date)
     if cache_key in cache:
         return cache[cache_key]
 
-    # Query for existing election
+    # Query for existing election using normalized name for comparison
     result = await session.execute(
         select(Election.id).where(
-            Election.name == election_name,
+            Election.name == original_name,
             Election.election_date == election_date,
             Election.deleted_at.is_(None),
         )
@@ -86,14 +109,14 @@ async def _resolve_election(
         cache[cache_key] = existing_id
         return existing_id
 
-    # Create new election
+    # Create new election — store the original (non-normalized) name
     new_id = uuid.uuid4()
     stmt = pg_insert(Election.__table__).values(
         id=new_id,
-        name=election_name,
+        name=original_name,
         election_date=election_date,
         election_type=election_type or "general",
-        district=election_name,
+        district=original_name,
         source="manual",
         creation_method="manual",
         status="active",
@@ -233,6 +256,7 @@ async def process_candidate_import(
     total = 0
     inserted = 0
     updated_count = 0
+    needs_review_count = 0
     errors: list[dict] = []
     election_cache: dict[tuple[str, date], uuid.UUID] = {}
 
@@ -260,8 +284,9 @@ async def process_candidate_import(
                     )
                     continue
 
-                # Remove internal fields
-                record.pop("_needs_manual_review", None)
+                # Track and remove internal fields
+                if record.pop("_needs_manual_review", None):
+                    needs_review_count += 1
                 record.pop("district_type", None)
                 record.pop("district_identifier", None)
                 record.pop("district_party", None)
@@ -394,13 +419,15 @@ async def process_candidate_import(
         job.records_failed = failed
         job.records_inserted = inserted
         job.records_updated = updated_count
+        job.records_needs_review = needs_review_count
         job.error_log = errors if errors else None
         job.completed_at = datetime.now(UTC)
         await session.commit()
 
         logger.info(
             f"Candidate import completed: {total} total, {succeeded} succeeded, "
-            f"{failed} failed, {inserted} inserted, {updated_count} updated"
+            f"{failed} failed, {inserted} inserted, {updated_count} updated, "
+            f"{needs_review_count} needs review"
         )
 
     except Exception:

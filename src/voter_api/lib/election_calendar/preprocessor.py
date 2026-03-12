@@ -132,6 +132,13 @@ def preprocess_calendar(
 
     merged = _merge_entries(all_entries)
 
+    if len(merged) == 0:
+        logger.warning(
+            "Calendar preprocessing produced 0 entries after merging {} source file(s). "
+            "Check that source files contain valid calendar data.",
+            len(all_sources),
+        )
+
     # Write merged output
     with output_path.open("w", encoding="utf-8") as f:
         for entry in merged:
