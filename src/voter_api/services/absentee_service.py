@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from loguru import logger
-from sqlalchemy import func, literal_column, select
+from sqlalchemy import func, literal_column, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -112,7 +112,11 @@ async def _upsert_absentee_batch(
 
         stmt = pg_insert(AbsenteeBallotApplication.__table__).values(batch)
         stmt = stmt.on_conflict_do_update(
-            constraint="uq_aba_voter_appdate_ballotstyle",
+            index_elements=[
+                AbsenteeBallotApplication.__table__.c.voter_registration_number,
+                AbsenteeBallotApplication.__table__.c.application_date,
+                text("COALESCE(ballot_style, '')"),
+            ],
             set_={col: stmt.excluded[col] for col in _UPDATE_COLUMNS},
         )
         # xmax = 0 identifies genuinely new rows (not updated via ON CONFLICT)

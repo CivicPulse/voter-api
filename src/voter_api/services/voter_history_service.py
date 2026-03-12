@@ -352,6 +352,21 @@ async def _upsert_voter_history_batch(
         records: List of validated record dicts.
         import_job_id: The current import job ID.
     """
+    # Deduplicate records within the batch to prevent PostgreSQL
+    # "ON CONFLICT DO UPDATE command cannot affect row a second time" errors.
+    # Keep the last occurrence (latest data wins) for each unique key.
+    seen: dict[tuple, int] = {}
+    deduped: list[dict] = []
+    for r in records:
+        key = (r["voter_registration_number"], r["election_date"], r["election_type"])
+        if key in seen:
+            # Replace the earlier record with this one
+            deduped[seen[key]] = r
+        else:
+            seen[key] = len(deduped)
+            deduped.append(r)
+    records = deduped
+
     for i in range(0, len(records), _UPSERT_SUB_BATCH):
         batch = records[i : i + _UPSERT_SUB_BATCH]
         values = [
