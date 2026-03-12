@@ -21,6 +21,7 @@ from sqlalchemy import func, select, text, update
 from voter_api.lib.district_parser import (
     DISTRICT_TYPE_TO_BOUNDARY_TYPE,
     DISTRICT_TYPE_TO_VOTER_COLUMN,
+    PSC_DISTRICT_COUNTIES,
     pad_district_identifier,
     parse_election_district,
 )
@@ -300,6 +301,37 @@ async def _resolve_tier2_district_matching(
             continue
 
         voter_column = DISTRICT_TYPE_TO_VOTER_COLUMN.get(election.district_type)
+
+        if voter_column is None and election.district_type == "psc":
+            # PSC districts have no voter column — resolve via county membership.
+            counties = PSC_DISTRICT_COUNTIES.get(election.district_identifier, [])
+            if not counties:
+                logger.debug(
+                    "Unresolvable: PSC election '{}' has unknown district '{}'",
+                    election.name,
+                    election.district_identifier,
+                )
+                unresolvable += 1
+                continue
+
+            updated = await _update_vh_by_psc_county(
+                session,
+                election_id=election.id,
+                election_date=election_date,
+                counties=counties,
+                force=force,
+            )
+            total_updated += updated
+            if updated > 0:
+                logger.debug(
+                    "Tier 2 (PSC): assigned {} records to '{}' on {} via county membership ({} counties)",
+                    updated,
+                    election.name,
+                    election_date,
+                    len(counties),
+                )
+            continue
+
         if voter_column is None:
             logger.debug(
                 "Unresolvable: election '{}' ({}) has no voter column mapping",
@@ -403,4 +435,47 @@ async def _update_vh_by_district(
             "district_ids": district_ids,
         },
     )
+    return cursor.rowcount  # type: ignore[attr-defined, no-any-return]
+
+
+async def _update_vh_by_psc_county(
+    session: AsyncSession,
+    *,
+    election_id: uuid.UUID,
+    election_date: date,
+    counties: list[str],
+    force: bool,
+) -> int:
+    """Update voter_history records for a PSC election via county membership.
+
+    PSC districts don't have a voter table column. Instead, we match
+    voter_history records whose county falls within the PSC district's
+    county list.
+
+    Args:
+        session: Database session.
+        election_id: Election UUID to assign.
+        election_date: Election date filter.
+        counties: List of county names in the PSC district.
+        force: If True, overwrite existing election_id values.
+
+    Returns:
+        Number of voter_history records updated.
+    """
+    # Upper-case county names for case-insensitive matching against
+    # voter_history.county (which may have varying case).
+    upper_counties = [c.upper() for c in counties]
+
+    stmt = (
+        update(VoterHistory)
+        .where(
+            VoterHistory.election_date == election_date,
+            func.upper(func.trim(VoterHistory.county)).in_(upper_counties),
+        )
+        .values(election_id=election_id)
+    )
+    if not force:
+        stmt = stmt.where(VoterHistory.election_id.is_(None))
+
+    cursor = await session.execute(stmt)
     return cursor.rowcount  # type: ignore[attr-defined, no-any-return]
