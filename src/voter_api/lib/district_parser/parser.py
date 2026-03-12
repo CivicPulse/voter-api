@@ -40,6 +40,32 @@ _DISTRICT_NUMBER_RE = re.compile(r"District\s+(\d+)", re.IGNORECASE)
 _PARTY_SUFFIX_RE = re.compile(r"-\s*(Dem|Rep)\s*$", re.IGNORECASE)
 _COUNTY_COMMISSION_RE = re.compile(r"^([A-Za-z]+(?:\s+[A-Za-z]+)*?)\s+County\s+Commission", re.IGNORECASE)
 
+# --- Contest name parsing (Qualified Candidates CSV) ---
+
+_PAREN_PARTY_RE = re.compile(r"\(([A-Za-z]+)\)\s*$")
+_CONTEST_DISTRICT_RE = re.compile(r"(?:District|Seat|Post|Ward|Division)\s+(\d+)", re.IGNORECASE)
+
+_PARTY_ABBREV_MAP: dict[str, str] = {
+    "R": "Republican",
+    "D": "Democrat",
+    "NP": "Nonpartisan",
+    "L": "Libertarian",
+    "I": "Independent",
+}
+
+_STATEWIDE_OFFICES: frozenset[str] = frozenset(
+    {
+        "governor",
+        "lieutenant governor",
+        "secretary of state",
+        "attorney general",
+        "commissioner of agriculture",
+        "commissioner of insurance",
+        "commissioner of labor",
+        "state school superintendent",
+    }
+)
+
 
 @dataclass(frozen=True)
 class ParsedDistrict:
@@ -135,6 +161,126 @@ def parse_election_district(district: str) -> ParsedDistrict:
         county=county,
         raw=raw,
     )
+
+
+def parse_contest_name(
+    text: str,
+    county: str | None = None,
+    municipality: str | None = None,
+) -> ParsedDistrict:
+    """Parse a contest name from the GA SoS Qualified Candidates CSV.
+
+    Handles contest name patterns like "U.S House of Representatives, District 11 (R)",
+    "Governor (D)", "Superior Court Judge, Blue Ridge Judicial Circuit (NP)", etc.
+
+    Args:
+        text: Raw contest name string from the Qualified Candidates CSV.
+        county: County name to attach to county-level district types.
+        municipality: Municipality name to attach to municipal district types.
+
+    Returns:
+        ParsedDistrict with extracted components. ``district_type`` is None
+        if the contest name format is unrecognized.
+    """
+    raw = text
+
+    # 1. Extract party from parenthetical suffix, e.g. "(R)"
+    party: str | None = None
+    party_match = _PAREN_PARTY_RE.search(text)
+    if party_match:
+        abbrev = party_match.group(1)
+        party = _PARTY_ABBREV_MAP.get(abbrev, abbrev)
+        text = text[: party_match.start()].strip()
+
+    # 2. Extract district/seat/post/ward number
+    district_identifier: str | None = None
+    id_match = _CONTEST_DISTRICT_RE.search(text)
+    if id_match:
+        district_identifier = id_match.group(1)
+
+    # 3. Classify district_type (check in priority order)
+    lower = text.lower()
+
+    district_type: str | None = None
+    result_county: str | None = None
+
+    if "u.s house" in lower or "u.s. house" in lower:
+        district_type = "congressional"
+    elif "u.s senate" in lower or "u.s. senate" in lower:
+        district_type = "us_senate"
+    elif lower.startswith("state senate"):
+        district_type = "state_senate"
+    elif lower.startswith("state house"):
+        district_type = "state_house"
+    elif lower.startswith("public service commission") or lower.startswith("psc"):
+        district_type = "psc"
+    elif _is_statewide(lower):
+        district_type = "statewide"
+    elif "board of education" in lower or "school board" in lower:
+        district_type = "board_of_education"
+        result_county = county
+    elif "county commiss" in lower or "board of commissioners" in lower:
+        district_type = "county_commission"
+        result_county = county
+    elif _is_county_office(lower):
+        # Must be checked before judicial — "Clerk of Superior Court" and
+        # "Probate Judge" contain judicial keywords but are county offices.
+        district_type = "county_office"
+        result_county = county
+    elif _is_judicial(lower):
+        district_type = "judicial"
+    elif _is_municipal(lower):
+        district_type = "municipal"
+        result_county = municipality
+
+    return ParsedDistrict(
+        district_type=district_type,
+        district_identifier=district_identifier,
+        party=party,
+        county=result_county,
+        raw=raw,
+    )
+
+
+def _is_statewide(lower: str) -> bool:
+    """Check if the lowercased contest name matches a statewide office."""
+    # Strip trailing commas/content after comma for matching
+    name = lower.split(",")[0].strip()
+    return name in _STATEWIDE_OFFICES
+
+
+def _is_judicial(lower: str) -> bool:
+    """Check if the lowercased contest name contains judicial keywords."""
+    judicial_keywords = (
+        "supreme court",
+        "court of appeals",
+        "superior court",
+        "district attorney",
+        "solicitor",
+        "judge",
+        "magistrate",
+        "juvenile court",
+    )
+    return any(kw in lower for kw in judicial_keywords)
+
+
+def _is_county_office(lower: str) -> bool:
+    """Check if the lowercased contest name matches a county office."""
+    county_offices = (
+        "clerk of superior court",
+        "sheriff",
+        "tax commissioner",
+        "coroner",
+        "probate judge",
+        "surveyor",
+    )
+    return any(lower.startswith(office) for office in county_offices)
+
+
+def _is_municipal(lower: str) -> bool:
+    """Check if the lowercased contest name matches a municipal office."""
+    municipal_keywords = ("mayor", "city council", "council member", "alderman")
+    return any(lower.startswith(kw) for kw in municipal_keywords)
 
 
 def pad_district_identifier(identifier: str, width: int = 3) -> str:
