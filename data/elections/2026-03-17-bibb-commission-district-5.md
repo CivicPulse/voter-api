@@ -15,25 +15,25 @@
 | Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|-----------|------------|---------------|-------|---------|
 | Albert Chester Gibbs | No | Kitchen Designer | 02/11/2026 | achestergibbs2026@gmail.com | (none) |
-| Andrea Carrima Cooke | No | Therapist | 02/11/2026 | cooke4commission@gmail.com | [cookeforcommission.org](https://www.cookeforcommission.org/) |
-| Edward Charles Foster | No | Extruder Operator | 02/13/2026 | (none) | (none) |
-| Landon Alan Justice | No | Attorney | 02/13/2026 | lajustice3@gmail.com | (none) |
-| Stephanie Stephens-Lanham | No | Clinical Laboratory Scientist | 02/11/2026 | stephanieformacon@gmail.com | (none) |
+| Andrea Carrima Cooke | No | Therapist | 02/11/2026 | cooke4commission@gmail.com | [cookeforcommission.org](https://www.cookeforcommission.org/), [Facebook](https://www.facebook.com/cookeforcommission) |
+| Edward Charles Foster | No | Extruder Operator | 02/13/2026 | (none) | [Facebook](https://www.facebook.com/profile.php?id=61586974592854) |
+| Landon Alan Justice | No | Attorney | 02/13/2026 | lajustice3@gmail.com | [childressjustice.com](https://childressjustice.com/our-team/landon-justice/) |
+| Stephanie Stephens-Lanham | No | Clinical Laboratory Scientist | 02/11/2026 | stephanieformacon@gmail.com | [stephanieformacon.com](https://www.stephanieformacon.com/) |
 | Ulisha Khadidra Hill | No | Life and Health Coach | 02/11/2026 | ulisha84@gmail.com | (none) |
 
 ### Candidate Bios
 
-**Albert Chester Gibbs** — Central High School graduate, attended Morris Brown College (business). Kitchen designer at Home Depot with 20 years of experience in Atlanta banking.
+**Albert Chester Gibbs** — Central High School graduate, attended Morris Brown College (business). Kitchen designer at Home Depot with 20 years of experience in Atlanta banking. Emphasizes the diversity of District 5, open dialogue with voters, and practical solutions to urban blight.
 
-**Andrea Carrima Cooke** — Born and raised in Macon, mother of 8. Therapist and project director of Macon Mental Health Matters, which has served over 13,000 individuals.
+**Andrea Carrima Cooke** — 35-year District 5 resident (Vineville, Ingleside, Unionville). Mother of 8. Development Director for the Southern Center for Choice Theory and Executive Director of C-QUL. Worked with Macon Mental Health Matters to provide free counseling and wellness services, serving over 13,000 individuals. Campaign priorities: housing stability, mental wellness, public safety, and transparency.
 
-**Edward Charles Foster** — Lifelong Pleasant Hill resident. Extruder operator at Kumho Tire. Vice president of the Pleasant Hill Neighborhood Organization.
+**Edward Charles Foster** — Lifelong Pleasant Hill resident. Extruder operator at Kumho Tire. Vice president of the Pleasant Hill Neighborhood Organization. Runs on a platform of accountability, public safety, and responsive local government. Pledged to address crime, deteriorating housing, and illegal dumping neighborhood by neighborhood. Believes investing in education and youth is the most sustainable path to a safer district.
 
-**Landon Alan Justice** — Lifelong Macon resident. Valdosta State University graduate (biology). Attorney at Childress & Justice LLC.
+**Landon Alan Justice** — Lifelong Macon resident. Valdosta State University graduate (biology), J.D. from Mercer University School of Law. Personal injury attorney at Childress & Justice LLC. Campaign focuses on public safety, economic growth, and employment opportunities.
 
-**Stephanie Stephens-Lanham** — Pleasant Hill resident, Central High School class of 1987. Clinical laboratory scientist. Husband is a disabled veteran.
+**Stephanie Stephens-Lanham** — Pleasant Hill resident, Central High School class of 1987. Clinical laboratory scientist and licensed Keller Williams real estate agent. Husband is a disabled veteran. Campaign centers on investing in young adults, creating opportunity, and addressing housing and blight challenges.
 
-**Ulisha Khadidra Hill** — Herzing University graduate (2023, IT, honors). Mother of 8. Life and health coach with youth organization experience.
+**Ulisha Khadidra Hill** — Herzing University graduate (2023, IT, honors). Mother of 8. Life and health coach with youth organization experience. Campaign priorities include helping residents navigate online services, expanding youth programs, mental health supports, and conflict resolution training.
 
 ## Data Source
 

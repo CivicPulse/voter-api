@@ -34,4 +34,5 @@
 ## Data Source
 
 - `data/new/MARCH_17_2026-SPECIAL_ELECTION_Qualified_Candidates.csv`
-- [Mayor & City Council](https://www.wadleyga.gov/city-hall/mayor-city-council) — City of Wadley
+- [City Council](https://wadleyga.gov/city-council) — City of Wadley
+- [Call for Special Election — City of Wadley, March 17, 2026](https://www.jeffersoncountyga.gov/DocumentCenter/View/1006/Call-for-Special-Election---City-of-Wadley-March-17-2026) — Jefferson County

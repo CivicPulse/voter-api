@@ -44,7 +44,7 @@ Bibb, Clayton, Elbert, Haralson, Jefferson
 | Andrea Carrima Cooke | No | Therapist | [cookeforcommission.org](https://www.cookeforcommission.org/) |
 | Edward Charles Foster | No | Extruder Operator | — |
 | Landon Alan Justice | No | Attorney | — |
-| Stephanie Stephens-Lanham | No | Clinical Laboratory Scientist | — |
+| Stephanie Stephens-Lanham | No | Clinical Laboratory Scientist | [stephanieformacon.com](https://www.stephanieformacon.com/) |
 | Ulisha Khadidra Hill | No | Life and Health Coach | — |
 
 ### [Haralson County / City of Buchanan — Mayor & Council](2026-03-17-buchanan-mayor.md)
