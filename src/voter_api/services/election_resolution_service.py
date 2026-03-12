@@ -1,8 +1,9 @@
 """Election resolution service — link voter history records to elections.
 
-Provides three-tier matching to populate voter_history.election_id:
+Provides four-tier matching to populate voter_history fields:
 
-1. Single-election dates: bulk assign when only one election on a date.
+0. Event-level matching: assign election_event_id by (date, type).
+1. Single-election dates: bulk assign election_id when only one election on a date.
 2. District-based matching: use voter district registration to disambiguate
    multi-election dates.
 3. Unresolvable: PSC (no voter column), missing voters, or no election for date.
@@ -17,6 +18,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 from sqlalchemy import func, select, text, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from voter_api.lib.district_parser import (
     DISTRICT_TYPE_TO_BOUNDARY_TYPE,
@@ -27,6 +29,7 @@ from voter_api.lib.district_parser import (
 )
 from voter_api.models.boundary import Boundary
 from voter_api.models.election import Election
+from voter_api.models.election_event import ElectionEvent
 from voter_api.models.voter_history import VoterHistory
 
 if TYPE_CHECKING:
@@ -40,6 +43,7 @@ if TYPE_CHECKING:
 class ResolutionResult:
     """Summary of an election resolution run."""
 
+    tier0_updated: int = 0
     tier1_updated: int = 0
     tier2_updated: int = 0
     unresolvable: int = 0
@@ -48,7 +52,54 @@ class ResolutionResult:
 
     @property
     def total_updated(self) -> int:
-        return self.tier1_updated + self.tier2_updated
+        return self.tier0_updated + self.tier1_updated + self.tier2_updated
+
+
+async def find_or_create_election_event(
+    session: AsyncSession,
+    *,
+    event_date: date,
+    event_type: str,
+    event_name: str | None = None,
+) -> uuid.UUID:
+    """Find or create an ElectionEvent by (event_date, event_type).
+
+    Uses INSERT ... ON CONFLICT DO NOTHING + a follow-up SELECT for
+    idempotent upsert without race conditions.
+
+    Args:
+        session: Database session.
+        event_date: The election day date.
+        event_type: Normalized election type (e.g. "general", "primary").
+        event_name: Optional human-readable name. Defaults to
+            "{event_type} {event_date}" if not provided.
+
+    Returns:
+        UUID of the existing or newly created ElectionEvent.
+    """
+    if event_name is None:
+        event_name = f"{event_type.title()} {event_date}"
+
+    stmt = (
+        pg_insert(ElectionEvent.__table__)
+        .values(
+            event_date=event_date,
+            event_type=event_type,
+            event_name=event_name,
+        )
+        .on_conflict_do_nothing(constraint="uq_election_event_date_type")
+    )
+    await session.execute(stmt)
+    await session.flush()
+
+    # Fetch the id (whether just inserted or already existing)
+    result = await session.execute(
+        select(ElectionEvent.id).where(
+            ElectionEvent.event_date == event_date,
+            ElectionEvent.event_type == event_type,
+        )
+    )
+    return result.scalar_one()
 
 
 async def backfill_election_district_fields(session: AsyncSession) -> int:
@@ -124,7 +175,11 @@ async def resolve_voter_history_elections(
     force: bool = False,
     dry_run: bool = False,
 ) -> ResolutionResult:
-    """Resolve voter_history.election_id using three-tier matching.
+    """Resolve voter_history election fields using four-tier matching.
+
+    Tier 0: Assign election_event_id by (date, normalized_election_type).
+    Tier 1: Assign election_id on single-election dates.
+    Tier 2: Assign election_id via voter district matching on multi-election dates.
 
     Args:
         session: Database session.
@@ -141,7 +196,10 @@ async def resolve_voter_history_elections(
     # First, backfill any elections missing structured fields
     result.elections_backfilled = await backfill_election_district_fields(session)
 
-    # Build election date filter
+    # Tier 0: event-level matching (by date + type)
+    result.tier0_updated = await _resolve_tier0_event_matching(session, election_date=election_date, force=force)
+
+    # Build election date filter for Tier 1/2
     election_query = select(
         Election.election_date,
         func.count(Election.id).label("election_count"),
@@ -166,12 +224,116 @@ async def resolve_voter_history_elections(
     else:
         await session.commit()
     logger.info(
-        "Election resolution complete: tier1={}, tier2={}, unresolvable={}",
+        "Election resolution complete: tier0={}, tier1={}, tier2={}, unresolvable={}",
+        result.tier0_updated,
         result.tier1_updated,
         result.tier2_updated,
         result.unresolvable,
     )
     return result
+
+
+async def _resolve_tier0_event_matching(
+    session: AsyncSession,
+    *,
+    election_date: date | None = None,
+    force: bool = False,
+) -> int:
+    """Tier 0: Assign election_event_id to voter_history by (date, type).
+
+    For each unique (election_date, normalized_election_type) combination
+    in voter_history, find or create an ElectionEvent and bulk-assign
+    all matching records.
+
+    Args:
+        session: Database session.
+        election_date: Optional date filter.
+        force: If True, overwrite existing election_event_id values.
+
+    Returns:
+        Total number of voter_history records updated.
+    """
+    # Find distinct (date, type) combinations needing resolution
+    distinct_query = select(
+        VoterHistory.election_date,
+        VoterHistory.normalized_election_type,
+    ).distinct()
+
+    if election_date:
+        distinct_query = distinct_query.where(VoterHistory.election_date == election_date)
+    if not force:
+        distinct_query = distinct_query.where(VoterHistory.election_event_id.is_(None))
+
+    date_types = (await session.execute(distinct_query)).all()
+
+    if not date_types:
+        logger.info("Tier 0: no voter_history records need event-level resolution")
+        return 0
+
+    total_updated = 0
+    for vh_date, vh_type in date_types:
+        # Find or create the event
+        event_id = await find_or_create_election_event(
+            session,
+            event_date=vh_date,
+            event_type=vh_type,
+        )
+
+        # Bulk update voter_history
+        stmt = (
+            update(VoterHistory)
+            .where(
+                VoterHistory.election_date == vh_date,
+                VoterHistory.normalized_election_type == vh_type,
+            )
+            .values(election_event_id=event_id)
+        )
+        if not force:
+            stmt = stmt.where(VoterHistory.election_event_id.is_(None))
+
+        cursor = await session.execute(stmt)
+        updated: int = cursor.rowcount  # type: ignore[attr-defined]
+        total_updated += updated
+
+        if updated > 0:
+            logger.debug(
+                "Tier 0: assigned {} records to event {} ({} {})",
+                updated,
+                event_id,
+                vh_date,
+                vh_type,
+            )
+
+    # Also backfill election_event_id on elections table
+    await _backfill_election_event_ids(session)
+
+    await session.flush()
+    logger.info("Tier 0: assigned {} voter_history records to election events", total_updated)
+    return total_updated
+
+
+async def _backfill_election_event_ids(session: AsyncSession) -> None:
+    """Backfill election_event_id on elections that don't have one yet.
+
+    Matches elections to existing election_events by (election_date, election_type).
+    """
+    elections_result = await session.execute(select(Election).where(Election.election_event_id.is_(None)))
+    elections = list(elections_result.scalars().all())
+
+    for election in elections:
+        # Look up the event by date + type
+        event_result = await session.execute(
+            select(ElectionEvent.id).where(
+                ElectionEvent.event_date == election.election_date,
+                ElectionEvent.event_type == election.election_type,
+            )
+        )
+        event_id = event_result.scalar_one_or_none()
+        if event_id:
+            election.election_event_id = event_id
+
+    if elections:
+        await session.flush()
 
 
 async def _resolve_tier1_single_election(
