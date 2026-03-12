@@ -1372,6 +1372,30 @@ class TestImports:
         resp = await viewer_client.get(_url("/imports"))
         assert resp.status_code == 403
 
+    async def test_import_candidates_requires_auth(self, client: httpx.AsyncClient) -> None:
+        resp = await client.post(_url("/imports/candidates"))
+        assert resp.status_code == 401
+
+    async def test_import_candidates_admin_accepts_upload(self, admin_client: httpx.AsyncClient) -> None:
+        """Admin can upload a candidate JSONL file and gets 202 Accepted."""
+        jsonl_content = b'{"election_name":"Test","election_date":"2026-05-19","candidate_name":"Test Candidate"}\n'
+        resp = await admin_client.post(
+            _url("/imports/candidates"),
+            files={"file": ("candidates.jsonl", jsonl_content, "application/x-ndjson")},
+        )
+        assert resp.status_code == 202
+        body = resp.json()
+        assert body["file_type"] == "candidate_import"
+        assert body["status"] == "pending"
+
+    async def test_import_candidates_forbidden_for_viewer(self, viewer_client: httpx.AsyncClient) -> None:
+        jsonl_content = b'{"election_name":"Test","election_date":"2026-05-19","candidate_name":"Test"}\n'
+        resp = await viewer_client.post(
+            _url("/imports/candidates"),
+            files={"file": ("candidates.jsonl", jsonl_content, "application/x-ndjson")},
+        )
+        assert resp.status_code == 403
+
 
 # ── Exports ────────────────────────────────────────────────────────────────
 

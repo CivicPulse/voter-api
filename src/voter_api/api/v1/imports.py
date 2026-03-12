@@ -125,6 +125,59 @@ async def import_voter_history(
     return ImportJobResponse.model_validate(job)
 
 
+MAX_CANDIDATE_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+
+
+@router.post("/candidates", response_model=ImportJobResponse, status_code=202)
+async def import_candidates(
+    file: UploadFile,
+    current_user: Annotated[User, Depends(require_role("admin"))],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> ImportJobResponse:
+    """Upload and import a candidates JSONL template (admin only)."""
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=_NO_FILE_DETAIL,
+        )
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jsonl") as tmp:
+        content = await file.read()
+        if len(content) > MAX_CANDIDATE_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File exceeds maximum size of {MAX_CANDIDATE_FILE_SIZE // (1024 * 1024)} MB",
+            )
+        tmp.write(content)
+        tmp_path = Path(tmp.name)
+
+    from voter_api.services.candidate_import_service import (
+        create_candidate_import_job,
+    )
+
+    job = await create_candidate_import_job(
+        session,
+        file_name=file.filename,
+        triggered_by=current_user.id,
+    )
+
+    async def _run_import() -> None:
+        from voter_api.core.database import get_session_factory
+        from voter_api.services.candidate_import_service import process_candidate_import
+
+        try:
+            factory = get_session_factory()
+            async with factory() as bg_session:
+                bg_job = await import_service.get_import_job(bg_session, job.id)
+                if bg_job:
+                    await process_candidate_import(bg_session, bg_job, tmp_path)
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    task_runner.submit_task(_run_import())
+    return ImportJobResponse.model_validate(job)
+
+
 @router.post("/boundaries", status_code=202)
 async def import_boundary_file(
     file: UploadFile,

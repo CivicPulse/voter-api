@@ -596,3 +596,80 @@ async def _resolve_elections(election_date: date | None, force: bool, dry_run: b
             typer.echo(f"  Unresolvable elections: {result.unresolvable}")
     finally:
         await dispose_engine()
+
+
+@import_app.command("preprocess-candidates")
+def preprocess_candidates(
+    raw_csv: Path = typer.Argument(..., help="Path to raw GA SoS Qualified Candidates CSV", exists=True),  # noqa: B008
+    output: Path = typer.Option(..., "--output", help="Output path for JSONL template"),  # noqa: B008
+    election_date: str = typer.Option(..., "--election-date", help="Election date (YYYY-MM-DD)"),  # noqa: B008
+    election_type: str = typer.Option(..., "--election-type", help="Election type: primary, general, runoff, special"),  # noqa: B008
+) -> None:
+    """Preprocess raw GA SoS candidates CSV into importable JSONL template."""
+    from voter_api.core.config import get_settings
+    from voter_api.lib.candidate_importer import preprocess_candidates_csv
+
+    try:
+        election_date_parsed = date.fromisoformat(election_date)
+    except ValueError:
+        typer.echo(f"Invalid date format: {election_date}. Use YYYY-MM-DD.", err=True)
+        raise typer.Exit(code=1) from None
+
+    settings = get_settings()
+    api_key = settings.anthropic_api_key
+
+    typer.echo(f"Preprocessing candidates CSV: {raw_csv}")
+    result = preprocess_candidates_csv(
+        raw_csv,
+        output,
+        election_date_parsed,
+        election_type,
+        api_key=api_key,
+    )
+
+    typer.echo("\nPreprocessing complete:")
+    typer.echo(f"  Total records:    {result.total_records}")
+    typer.echo(f"  Resolved (regex): {result.resolved_regex}")
+    typer.echo(f"  Resolved (AI):    {result.resolved_ai}")
+    typer.echo(f"  Needs review:     {result.needs_review}")
+    typer.echo(f"  Output:           {result.output_path}")
+
+
+@import_app.command("candidates")
+def import_candidates_cmd(
+    file: Path = typer.Argument(..., help="Path to preprocessed candidates JSONL template", exists=True),  # noqa: B008
+    batch_size: int = typer.Option(500, "--batch-size", help="Records per batch"),  # noqa: B008
+) -> None:
+    """Import candidates from a preprocessed JSONL template."""
+    asyncio.run(_import_candidates(file, batch_size))
+
+
+async def _import_candidates(file_path: Path, batch_size: int) -> None:
+    """Async implementation of candidate import."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.candidate_import_service import (
+        create_candidate_import_job,
+        process_candidate_import,
+    )
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            job = await create_candidate_import_job(session, file_name=file_path.name)
+            typer.echo(f"Import job created: {job.id}")
+            typer.echo(f"Importing candidates from {file_path.name}...")
+
+            job = await process_candidate_import(session, job, file_path, batch_size)
+
+            typer.echo(f"\nImport {'completed' if job.status == 'completed' else 'failed'}:")
+            typer.echo(f"  Total records:  {job.total_records or 0}")
+            typer.echo(f"  Succeeded:      {job.records_succeeded or 0}")
+            typer.echo(f"  Failed:         {job.records_failed or 0}")
+            typer.echo(f"  Inserted:       {job.records_inserted or 0}")
+            typer.echo(f"  Updated:        {job.records_updated or 0}")
+    finally:
+        await dispose_engine()
