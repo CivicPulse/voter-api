@@ -161,10 +161,9 @@ def _call_api(contest_names: list[str], api_key: str) -> list[dict] | None:
     """
     import anthropic  # noqa: PLC0415
 
-    client = anthropic.Anthropic(api_key=api_key)
-
     for attempt in range(_MAX_RETRIES):
         try:
+            client = anthropic.Anthropic(api_key=api_key)
             message = client.messages.create(
                 model="claude-sonnet-4-20250514",
                 max_tokens=4096,
