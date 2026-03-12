@@ -450,7 +450,7 @@ async def get_raw_election_results(
     )
 
 
-async def _persist_ingestion_result(
+async def persist_ingestion_result(
     session: AsyncSession,
     election_id: uuid.UUID,
     ingestion: IngestionResult,
@@ -552,7 +552,7 @@ async def refresh_single_election(
         allowed_domains=settings.election_allowed_domain_list,
     )
     ingestion = ingest_election_results(feed, ballot_item_id=election.ballot_item_id)
-    counties_updated = await _persist_ingestion_result(session, election.id, ingestion)
+    counties_updated = await persist_ingestion_result(session, election.id, ingestion)
 
     now = datetime.now(UTC)
     election.last_refreshed_at = now
@@ -1157,7 +1157,7 @@ async def import_feed(
         elif request.auto_refresh and status == "finalized":
             try:
                 ingestion = ingest_election_results(feed, ballot_item_id=ballot_item.id)
-                await _persist_ingestion_result(session, election.id, ingestion)
+                await persist_ingestion_result(session, election.id, ingestion)
                 election.last_refreshed_at = datetime.now(UTC)
                 await session.commit()
                 refreshed = True

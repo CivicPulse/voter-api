@@ -679,7 +679,7 @@ class TestImportFeed:
                 new_callable=AsyncMock,
             ) as mock_refresh,
             patch(
-                "voter_api.services.election_service._persist_ingestion_result",
+                "voter_api.services.election_service.persist_ingestion_result",
                 new_callable=AsyncMock,
                 return_value=0,
             ) as mock_persist,

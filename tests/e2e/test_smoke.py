@@ -1397,6 +1397,51 @@ class TestImports:
         )
         assert resp.status_code == 403
 
+    async def test_import_election_results_requires_auth(self, client: httpx.AsyncClient) -> None:
+        resp = await client.post(_url("/imports/election-results"))
+        assert resp.status_code == 401
+
+    async def test_import_election_results_admin_accepts_upload(self, admin_client: httpx.AsyncClient) -> None:
+        """Admin can upload an election results JSON file and gets 202 Accepted."""
+        import json
+
+        results_json = json.dumps(
+            {
+                "electionDate": "2026-05-19",
+                "electionName": "Test Election",
+                "createdAt": "2026-05-20T00:00:00Z",
+                "results": {
+                    "id": "r1",
+                    "name": "Georgia",
+                    "ballotItems": [
+                        {
+                            "id": "TEST1",
+                            "name": "Test Race",
+                            "ballotOptions": [
+                                {
+                                    "id": "1",
+                                    "name": "Test Candidate (Rep)",
+                                    "ballotOrder": 1,
+                                    "voteCount": 100,
+                                    "politicalParty": "Rep",
+                                    "groupResults": [],
+                                }
+                            ],
+                        }
+                    ],
+                },
+                "localResults": [],
+            }
+        ).encode()
+
+        resp = await admin_client.post(
+            _url("/imports/election-results"),
+            files={"file": ("results.json", results_json, "application/json")},
+        )
+        assert resp.status_code == 202
+        body = resp.json()
+        assert body["file_type"] == "election_results"
+
 
 # ── Exports ────────────────────────────────────────────────────────────────
 

@@ -27,7 +27,6 @@ from voter_api.schemas.election import (
 from voter_api.services.election_service import (
     DuplicateElectionError,
     _ballot_option_to_candidate,
-    _persist_ingestion_result,
     _transpose_precinct_results,
     build_detail_response,
     create_election,
@@ -37,6 +36,7 @@ from voter_api.services.election_service import (
     get_election_results,
     get_raw_election_results,
     list_elections,
+    persist_ingestion_result,
     refresh_all_active_elections,
     refresh_single_election,
     update_election,
@@ -540,11 +540,11 @@ class TestGetRawElectionResults:
         assert result.source_created_at == source_ts
 
 
-# --- Tests for _persist_ingestion_result ---
+# --- Tests for persist_ingestion_result ---
 
 
 class TestPersistIngestionResult:
-    """Tests for _persist_ingestion_result()."""
+    """Tests for persist_ingestion_result()."""
 
     @pytest.mark.asyncio
     async def test_creates_new_statewide_result(self):
@@ -563,7 +563,7 @@ class TestPersistIngestionResult:
             counties=[],
         )
 
-        count = await _persist_ingestion_result(session, uuid.uuid4(), ingestion)
+        count = await persist_ingestion_result(session, uuid.uuid4(), ingestion)
         assert count == 0
         session.add.assert_called_once()
         session.flush.assert_awaited_once()
@@ -586,7 +586,7 @@ class TestPersistIngestionResult:
             counties=[],
         )
 
-        await _persist_ingestion_result(session, uuid.uuid4(), ingestion)
+        await persist_ingestion_result(session, uuid.uuid4(), ingestion)
         assert existing.precincts_participating == 100
         assert existing.precincts_reporting == 95
         assert session.add.call_count == 0
@@ -619,7 +619,7 @@ class TestPersistIngestionResult:
             ],
         )
 
-        count = await _persist_ingestion_result(session, uuid.uuid4(), ingestion)
+        count = await persist_ingestion_result(session, uuid.uuid4(), ingestion)
         assert count == 1
         assert session.add.call_count == 2  # statewide + county
 
@@ -651,7 +651,7 @@ class TestPersistIngestionResult:
             ],
         )
 
-        count = await _persist_ingestion_result(session, uuid.uuid4(), ingestion)
+        count = await persist_ingestion_result(session, uuid.uuid4(), ingestion)
         assert count == 1
         assert existing_county.precincts_participating == 10
         assert existing_county.precincts_reporting == 8
@@ -680,7 +680,7 @@ class TestRefreshSingleElection:
         election_query = MagicMock()
         election_query.scalar_one_or_none.return_value = election
 
-        # _persist_ingestion_result calls (statewide + county mocks)
+        # persist_ingestion_result calls (statewide + county mocks)
         statewide_mock = MagicMock()
         statewide_mock.scalar_one_or_none.return_value = None
         county_mock = MagicMock()

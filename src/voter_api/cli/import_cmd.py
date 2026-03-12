@@ -853,3 +853,112 @@ async def _import_candidates(file_path: Path, batch_size: int) -> None:
             typer.echo(f"  Updated:        {job.records_updated or 0}")
     finally:
         await dispose_engine()
+
+
+@import_app.command("election-results")
+def import_election_results_cmd(
+    path: Path = typer.Argument(..., help="Path to JSON file or directory of JSON files", exists=True),  # noqa: B008
+    dry_run: bool = typer.Option(False, "--dry-run", help="Parse and validate without importing"),  # noqa: B008
+) -> None:
+    """Import election results from SoS JSON export file(s)."""
+    asyncio.run(_import_election_results(path, dry_run))
+
+
+async def _import_election_results(path: Path, dry_run: bool) -> None:
+    """Async implementation of election-results import."""
+    from voter_api.lib.results_importer import iter_ballot_items, load_results_file, validate_results_file
+
+    # Collect files
+    if path.is_file():
+        json_files = [path]
+    else:
+        json_files = sorted(path.glob("*.json"))
+        if not json_files:
+            typer.echo(f"No *.json files found in {path}")
+            raise typer.Exit(code=1)
+
+    if dry_run:
+        typer.echo("DRY RUN — validating files without importing\n")
+        all_valid = True
+        for json_path in json_files:
+            try:
+                feed = load_results_file(json_path)
+                errors = validate_results_file(feed)
+                contexts = iter_ballot_items(feed)
+                if errors:
+                    typer.echo(f"  INVALID  {json_path.name}")
+                    for e in errors:
+                        typer.echo(f"           {e}")
+                    all_valid = False
+                else:
+                    candidates_count = sum(len(c.candidates) for c in contexts)
+                    typer.echo(
+                        f"  VALID    {json_path.name} "
+                        f"({len(contexts)} races, {candidates_count} candidates, "
+                        f"date={feed.electionDate})"
+                    )
+            except Exception as e:
+                typer.echo(f"  ERROR    {json_path.name}: {e}")
+                all_valid = False
+
+        if not all_valid:
+            raise typer.Exit(code=1)
+        typer.echo(f"\nAll {len(json_files)} file(s) valid.")
+        return
+
+    # Real import
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.results_import_service import (
+        create_results_import_job,
+        process_results_import,
+    )
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    summary: list[tuple[str, str, int, int, int, int, int]] = []
+
+    try:
+        factory = get_session_factory()
+        for json_path in json_files:
+            typer.echo(f"\nImporting {json_path.name}...")
+            async with factory() as session:
+                job = await create_results_import_job(session, file_name=json_path.name)
+                typer.echo(f"  Import job created: {job.id}")
+
+                job = await process_results_import(session, job, json_path)
+
+                status = "completed" if job.status == "completed" else "failed"
+                typer.echo(f"  Import {status}:")
+                typer.echo(f"    Ballot items:    {job.total_records or 0}")
+                typer.echo(f"    Succeeded:       {job.records_succeeded or 0}")
+                typer.echo(f"    Failed:          {job.records_failed or 0}")
+                typer.echo(f"    Candidates new:  {job.records_inserted or 0}")
+                typer.echo(f"    Candidates upd:  {job.records_updated or 0}")
+
+                summary.append(
+                    (
+                        json_path.name,
+                        status,
+                        job.total_records or 0,
+                        job.records_succeeded or 0,
+                        job.records_failed or 0,
+                        job.records_inserted or 0,
+                        job.records_updated or 0,
+                    )
+                )
+    finally:
+        await dispose_engine()
+
+    typer.echo("\n" + "=" * 100)
+    typer.echo("IMPORT SUMMARY")
+    typer.echo("=" * 100)
+    typer.echo(f"  {'Filename':<55s} {'Status':<10s} {'Items':>6s} {'OK':>6s} {'Fail':>6s} {'New':>6s} {'Upd':>6s}")
+    typer.echo("-" * 100)
+    for name, status, total, ok, fail, ins, upd in summary:
+        typer.echo(f"  {name:<55s} {status:<10s} {total:>6d} {ok:>6d} {fail:>6d} {ins:>6d} {upd:>6d}")
+    typer.echo("=" * 100)
+
+    if any(s[1] != "completed" for s in summary):
+        raise typer.Exit(code=1)
