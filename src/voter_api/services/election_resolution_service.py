@@ -364,6 +364,7 @@ async def _resolve_tier1_single_election(
             select(
                 Election.id,
                 Election.district_type,
+                Election.eligible_county,
                 Boundary.county,
                 Boundary.boundary_type,
                 Boundary.name,
@@ -373,18 +374,21 @@ async def _resolve_tier1_single_election(
         )
     ).one()
 
-    election_id, district_type, b_county, b_boundary_type, b_name = row
+    election_id, district_type, eligible_county, b_county, b_boundary_type, b_name = row
 
     stmt = update(VoterHistory).where(VoterHistory.election_date == election_date).values(election_id=election_id)
     if not force:
         stmt = stmt.where(VoterHistory.election_id.is_(None))
 
     # Scope to county to prevent cross-county assignment.
-    # Sub-county boundaries carry county in boundary.county;
-    # county-type boundaries carry it in boundary.name (e.g. "Bibb County").
+    # Priority 1: eligible_county (from candidate import, most authoritative)
+    # Priority 2: boundary.county (sub-county boundaries)
+    # Priority 3: boundary.name for county-type boundaries (e.g. "Bibb County")
     # Strip whitespace from boundary strings to guard against incidental spaces.
     county_name: str | None = None
-    if b_county:
+    if eligible_county:
+        county_name = eligible_county.strip()
+    elif b_county:
         county_name = b_county.strip()
     elif (b_boundary_type == "county" or district_type == "county") and b_name:
         name = b_name.strip()

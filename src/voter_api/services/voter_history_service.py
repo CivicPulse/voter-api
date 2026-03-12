@@ -983,13 +983,14 @@ async def _build_election_match_conditions(
         )
         election_count = count_result.scalar_one()
 
+        district_filter = _build_district_filter()
+
         if election_count == 1:
             # Single-election date: unresolved rows must belong to this election
             fallback_conditions: list[ColumnElement[bool]] = [
                 VoterHistory.election_id.is_(None),
                 VoterHistory.election_date == election.election_date,
             ]
-            district_filter = _build_district_filter()
             if district_filter is not None:
                 fallback_conditions.append(district_filter)
             fallback = and_(*fallback_conditions)
@@ -1000,11 +1001,18 @@ async def _build_election_match_conditions(
                 VoterHistory.election_date == election.election_date,
                 VoterHistory.normalized_election_type == election.election_type,
             ]
-            district_filter = _build_district_filter()
             if district_filter is not None:
                 fallback_conditions.append(district_filter)
             fallback = and_(*fallback_conditions)
-        return [or_(VoterHistory.election_id == election.id, fallback)]
+
+        # Apply district filter to resolved branch too (defense-in-depth).
+        # If Tier 1 incorrectly assigned records from other counties,
+        # this prevents them from leaking into query results.
+        resolved_condition: ColumnElement[bool] = VoterHistory.election_id == election.id
+        if district_filter is not None:
+            resolved_condition = and_(resolved_condition, district_filter)
+
+        return [or_(resolved_condition, fallback)]
 
     # Fallback to date-based heuristic for fully-unresolved records
     count_result = await session.execute(

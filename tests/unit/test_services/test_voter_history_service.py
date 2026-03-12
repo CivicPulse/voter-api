@@ -789,6 +789,36 @@ class TestBuildElectionMatchConditions:
         assert "upper(voter_history.county)" in or_sql.lower()
         assert "13121" not in or_sql
 
+    async def test_resolved_county_election_applies_district_filter_to_both_branches(self) -> None:
+        """District filter applies to resolved branch too (defense-in-depth against cross-county leakage)."""
+        boundary = MagicMock()
+        boundary.name = "Bibb County"
+        boundary.boundary_type = "county"
+        election = _mock_election(
+            district_type="county",
+            district_identifier="13021",
+            boundary=boundary,
+        )
+        session = AsyncMock()
+        resolved_count_result = MagicMock()
+        resolved_count_result.scalar_one.return_value = 10  # Has resolved records
+        date_count_result = MagicMock()
+        date_count_result.scalar_one.return_value = 1  # Single election on date
+        session.execute = AsyncMock(side_effect=[resolved_count_result, date_count_result])
+
+        conditions = await _build_election_match_conditions(session, election)
+
+        # Single OR condition
+        assert len(conditions) == 1
+        or_sql = str(conditions[0]).lower()
+        # County filter should appear in BOTH branches of the OR:
+        # 1. The resolved branch (election_id = X AND county filter)
+        # 2. The fallback branch (election_id IS NULL AND date AND county filter)
+        assert "upper(voter_history.county)" in or_sql
+        # The election_id match should be AND-ed with the county filter,
+        # not a bare election_id match
+        assert "voter_history.election_id" in or_sql
+
     async def test_manual_county_election_unresolved_single_date_adds_county_predicate(self) -> None:
         """Manual county election (null district fields, county boundary) appends county predicate."""
         boundary = MagicMock()

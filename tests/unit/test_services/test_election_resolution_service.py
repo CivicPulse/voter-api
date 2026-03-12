@@ -9,6 +9,7 @@ import pytest
 from voter_api.services.election_resolution_service import (
     ResolutionResult,
     _resolve_tier0_event_matching,
+    _resolve_tier1_single_election,
     _resolve_tier2_district_matching,
     _update_vh_by_psc_county,
     find_or_create_election_event,
@@ -345,3 +346,129 @@ class TestTier2PscResolution:
 
         assert updated == 80
         assert unresolvable == 0
+
+
+# ---------------------------------------------------------------------------
+# _resolve_tier1_single_election — eligible_county priority
+# ---------------------------------------------------------------------------
+
+
+class TestTier1SingleElection:
+    """Tests for Tier 1 county scoping with eligible_county priority."""
+
+    @pytest.mark.asyncio
+    async def test_eligible_county_takes_priority_over_boundary(self) -> None:
+        """eligible_county is used for county scoping even when boundary.county exists."""
+        election_id = uuid.uuid4()
+        session = AsyncMock()
+
+        # SELECT returns: (id, district_type, eligible_county, b_county, b_boundary_type, b_name)
+        row_result = MagicMock()
+        row_result.one.return_value = (
+            election_id,
+            "county_commission",
+            "BIBB",  # eligible_county — should take priority
+            "DIFFERENT",  # boundary.county — should be ignored
+            "county_commission",
+            "Bibb County Commission District 1",
+        )
+        update_cursor = MagicMock()
+        update_cursor.rowcount = 11
+        session.execute = AsyncMock(side_effect=[row_result, update_cursor])
+
+        updated = await _resolve_tier1_single_election(session, date(2026, 3, 17))
+
+        assert updated == 11
+        # Verify the UPDATE includes a county WHERE clause
+        update_call = session.execute.call_args_list[1]
+        stmt = update_call.args[0]
+        stmt_str = str(stmt)
+        assert "upper(trim(voter_history.county))" in stmt_str.lower()
+        # The bound parameter should be "BIBB" (from eligible_county), not "DIFFERENT"
+        compiled = stmt.compile(compile_kwargs={"literal_binds": False})
+        params = compiled.params
+        county_param = [v for k, v in params.items() if k.startswith("upper")]
+        assert county_param == ["BIBB"]
+
+    @pytest.mark.asyncio
+    async def test_eligible_county_scopes_when_boundary_county_is_null(self) -> None:
+        """eligible_county provides county scoping when boundary has no county field."""
+        election_id = uuid.uuid4()
+        session = AsyncMock()
+
+        row_result = MagicMock()
+        row_result.one.return_value = (
+            election_id,
+            "county_commission",
+            "BIBB",  # eligible_county
+            None,  # boundary.county is NULL
+            "county_commission",
+            "Bibb County Commission District 1",
+        )
+        update_cursor = MagicMock()
+        update_cursor.rowcount = 11
+        session.execute = AsyncMock(side_effect=[row_result, update_cursor])
+
+        updated = await _resolve_tier1_single_election(session, date(2026, 3, 17))
+
+        assert updated == 11
+        update_call = session.execute.call_args_list[1]
+        stmt = update_call.args[0]
+        compiled = stmt.compile(compile_kwargs={"literal_binds": False})
+        county_param = [v for k, v in compiled.params.items() if k.startswith("upper")]
+        assert county_param == ["BIBB"]
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_boundary_county_when_no_eligible_county(self) -> None:
+        """Without eligible_county, boundary.county is used (original behavior)."""
+        election_id = uuid.uuid4()
+        session = AsyncMock()
+
+        row_result = MagicMock()
+        row_result.one.return_value = (
+            election_id,
+            "state_house",
+            None,  # no eligible_county
+            "FULTON",  # boundary.county
+            "state_house",
+            "State House District 55",
+        )
+        update_cursor = MagicMock()
+        update_cursor.rowcount = 200
+        session.execute = AsyncMock(side_effect=[row_result, update_cursor])
+
+        updated = await _resolve_tier1_single_election(session, date(2024, 11, 5))
+
+        assert updated == 200
+        update_call = session.execute.call_args_list[1]
+        stmt = update_call.args[0]
+        compiled = stmt.compile(compile_kwargs={"literal_binds": False})
+        county_param = [v for k, v in compiled.params.items() if k.startswith("upper")]
+        assert county_param == ["FULTON"]
+
+    @pytest.mark.asyncio
+    async def test_no_county_scoping_when_all_sources_null(self) -> None:
+        """When no county source is available, no county filter is applied."""
+        election_id = uuid.uuid4()
+        session = AsyncMock()
+
+        row_result = MagicMock()
+        row_result.one.return_value = (
+            election_id,
+            "state_senate",
+            None,  # no eligible_county
+            None,  # no boundary.county
+            "state_senate",
+            "State Senate District 18",
+        )
+        update_cursor = MagicMock()
+        update_cursor.rowcount = 500
+        session.execute = AsyncMock(side_effect=[row_result, update_cursor])
+
+        updated = await _resolve_tier1_single_election(session, date(2024, 11, 5))
+
+        assert updated == 500
+        # No county filter should be in the statement
+        update_call = session.execute.call_args_list[1]
+        stmt_str = str(update_call.args[0]).lower()
+        assert "upper(trim(voter_history.county))" not in stmt_str
