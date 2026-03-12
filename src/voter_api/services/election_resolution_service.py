@@ -148,6 +148,11 @@ async def link_election_to_boundary(session: AsyncSession, election: Election) -
     election.district_identifier = parsed.district_identifier
     election.district_party = parsed.party
 
+    # Backfill eligible_county from parsed district text if not already set
+    # (candidate import sets this from CSV; this covers manual/API-created elections)
+    if parsed.county and not election.eligible_county:
+        election.eligible_county = parsed.county.upper()
+
     # Look up boundary by (type, zero-padded identifier), scoped by county when known
     if parsed.district_identifier is not None:
         boundary_type = DISTRICT_TYPE_TO_BOUNDARY_TYPE.get(parsed.district_type)

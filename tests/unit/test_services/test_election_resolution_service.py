@@ -13,6 +13,7 @@ from voter_api.services.election_resolution_service import (
     _resolve_tier2_district_matching,
     _update_vh_by_psc_county,
     find_or_create_election_event,
+    link_election_to_boundary,
 )
 
 # ---------------------------------------------------------------------------
@@ -472,3 +473,78 @@ class TestTier1SingleElection:
         update_call = session.execute.call_args_list[1]
         stmt_str = str(update_call.args[0]).lower()
         assert "upper(trim(voter_history.county))" not in stmt_str
+
+
+# ---------------------------------------------------------------------------
+# link_election_to_boundary — eligible_county backfill
+# ---------------------------------------------------------------------------
+
+
+class TestLinkElectionToBoundaryCountyBackfill:
+    """Tests for eligible_county backfill in link_election_to_boundary."""
+
+    @pytest.mark.asyncio
+    async def test_sets_eligible_county_from_parsed_district(self) -> None:
+        """County commission district text backfills eligible_county."""
+        election = _make_election(
+            district="Bibb County Commission District 5",
+            district_type=None,
+            district_identifier=None,
+            district_party=None,
+            eligible_county=None,
+        )
+
+        session = AsyncMock()
+        # Boundary lookup: SELECT Boundary.id WHERE ...
+        boundary_result = MagicMock()
+        boundary_result.first.return_value = None  # no boundary match
+        session.execute.return_value = boundary_result
+
+        result = await link_election_to_boundary(session, election)
+
+        assert result is True
+        assert election.eligible_county == "BIBB"
+        assert election.district_type == "county_commission"
+        assert election.district_identifier == "5"
+
+    @pytest.mark.asyncio
+    async def test_does_not_overwrite_existing_eligible_county(self) -> None:
+        """Preserves eligible_county set by candidate import (more authoritative)."""
+        election = _make_election(
+            district="Bibb County Commission District 5",
+            district_type=None,
+            district_identifier=None,
+            district_party=None,
+            eligible_county="HOUSTON",  # already set by candidate import
+        )
+
+        session = AsyncMock()
+        boundary_result = MagicMock()
+        boundary_result.first.return_value = None
+        session.execute.return_value = boundary_result
+
+        result = await link_election_to_boundary(session, election)
+
+        assert result is True
+        assert election.eligible_county == "HOUSTON"  # preserved, not overwritten
+
+    @pytest.mark.asyncio
+    async def test_no_county_backfill_for_non_county_district(self) -> None:
+        """Non-county districts (e.g. state_senate) don't set eligible_county."""
+        election = _make_election(
+            district="State Senate District 18",
+            district_type=None,
+            district_identifier=None,
+            district_party=None,
+            eligible_county=None,
+        )
+
+        session = AsyncMock()
+        boundary_result = MagicMock()
+        boundary_result.first.return_value = None
+        session.execute.return_value = boundary_result
+
+        result = await link_election_to_boundary(session, election)
+
+        assert result is True
+        assert election.eligible_county is None  # no county to extract
