@@ -53,6 +53,46 @@ async def _import_voters(file_path: Path, batch_size: int) -> None:
         await dispose_engine()
 
 
+@import_app.command("absentee")
+def import_absentee(
+    file: Path = typer.Argument(..., help="Path to absentee ballot application CSV", exists=True),  # noqa: B008
+    batch_size: int = typer.Option(400, "--batch-size", help="Records per batch"),  # noqa: B008
+) -> None:
+    """Import absentee ballot applications from a GA SoS CSV file."""
+    asyncio.run(_import_absentee(file, batch_size))
+
+
+async def _import_absentee(file_path: Path, batch_size: int) -> None:
+    """Async implementation of absentee ballot application import."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.absentee_service import (
+        create_absentee_import_job,
+        process_absentee_import,
+    )
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            job = await create_absentee_import_job(session, file_name=file_path.name)
+            typer.echo(f"Import job created: {job.id}")
+            typer.echo(f"Importing absentee ballot applications from {file_path.name}...")
+
+            job = await process_absentee_import(session, job, file_path, batch_size)
+
+            typer.echo(f"\nImport {'completed' if job.status == 'completed' else 'failed'}:")
+            typer.echo(f"  Total records:  {job.total_records or 0}")
+            typer.echo(f"  Succeeded:      {job.records_succeeded or 0}")
+            typer.echo(f"  Failed:         {job.records_failed or 0}")
+            typer.echo(f"  Inserted:       {job.records_inserted or 0}")
+            typer.echo(f"  Updated:        {job.records_updated or 0}")
+    finally:
+        await dispose_engine()
+
+
 @import_app.command("boundaries")
 def import_boundaries_cmd(
     file: Path = typer.Argument(..., help="Path to shapefile or GeoJSON", exists=True),

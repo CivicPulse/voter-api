@@ -178,6 +178,54 @@ async def import_candidates(
     return ImportJobResponse.model_validate(job)
 
 
+MAX_ABSENTEE_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
+
+
+@router.post("/absentee", response_model=ImportJobResponse, status_code=202)
+async def import_absentee(
+    file: UploadFile,
+    current_user: Annotated[User, Depends(require_role("admin"))],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> ImportJobResponse:
+    """Upload and import absentee ballot application CSV (admin only)."""
+    if not file.filename:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_NO_FILE_DETAIL)
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+        content = await file.read()
+        if len(content) > MAX_ABSENTEE_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File exceeds maximum size of {MAX_ABSENTEE_FILE_SIZE // (1024 * 1024)} MB",
+            )
+        tmp.write(content)
+        tmp_path = Path(tmp.name)
+
+    from voter_api.services.absentee_service import create_absentee_import_job
+
+    job = await create_absentee_import_job(
+        session,
+        file_name=file.filename,
+        triggered_by=current_user.id,
+    )
+
+    async def _run_import() -> None:
+        from voter_api.core.database import get_session_factory
+        from voter_api.services.absentee_service import process_absentee_import
+
+        try:
+            factory = get_session_factory()
+            async with factory() as bg_session:
+                bg_job = await import_service.get_import_job(bg_session, job.id)
+                if bg_job:
+                    await process_absentee_import(bg_session, bg_job, tmp_path)
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    task_runner.submit_task(_run_import())
+    return ImportJobResponse.model_validate(job)
+
+
 @router.post("/boundaries", status_code=202)
 async def import_boundary_file(
     file: UploadFile,
