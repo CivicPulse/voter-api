@@ -27,4 +27,7 @@
 
 ## Data Source
 
-Qualified candidates sourced from `data/new/MARCH_17_2026-SPECIAL_ELECTION_Qualified_Candidates.csv`. Purpose and candidate bios from Clayton News Daily and Ballotpedia.
+- Candidate list: `data/new/MARCH_17_2026-SPECIAL_ELECTION_Qualified_Candidates.csv`
+- [Two qualify for probate judge special election](https://www.news-daily.com/news/two-qualify-for-probate-judge-special-election/article_ff5f78c9-af74-4bd9-b9db-051e0f1c7f6f.html) — Clayton News Daily
+- [Clayton Co. Probate Judge candidates take questions at forum](https://www.news-daily.com/news/clayton-co-probate-judge-candidates-take-questions-at-forum/article_c18dc622-1a7f-402c-9b60-8ce3706cfa45.html) — Clayton News Daily
+- [Clayton County Probate Court, Georgia](https://ballotpedia.org/Clayton_County_Probate_Court,_Georgia) — Ballotpedia

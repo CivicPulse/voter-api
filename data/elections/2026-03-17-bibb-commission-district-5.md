@@ -38,4 +38,9 @@
 ## Data Source
 
 - Candidate list: `data/new/MARCH_17_2026-SPECIAL_ELECTION_Qualified_Candidates.csv`
-- Purpose and candidate bios from 13WMAZ and 41NBC news coverage
+- [Macon-Bibb County commissioner, Mayor Pro Tem Seth Clark resigns](https://www.13wmaz.com/article/news/local/macon-bibb-county-commissioner-mayor-pro-tem-seth-clark-resigns/93-96066c4b-2a5c-476a-a2e3-3c8ad544fef6) — 13WMAZ
+- [Mayor Pro Tem Seth Clark steps down from Macon-Bibb commission](https://www.41nbc.com/seth-clark-resigns-macon-bibb-commission/) — 41NBC
+- [Macon-Bibb Commission calls March special election for District 5](https://www.41nbc.com/macon-bibb-district-5-special-election-date/) — 41NBC
+- [Andrea Cooke to announce run for Macon-Bibb Commission District 5](https://www.41nbc.com/andrea-cooke-macon-bibb-commission-district-5-announcement/) — 41NBC
+- [Edward Foster to announce District 5 commission campaign](https://www.41nbc.com/edward-foster-district-5-macon-bibb-commission-race-friday/) — 41NBC
+- [Early voting opens for District 5 special election in Macon](https://www.13wmaz.com/article/news/local/early-voting-opens-for-district-5-special-election-in-macon/93-9443c3dd-2c29-40fd-902a-311c887227f1) — 13WMAZ

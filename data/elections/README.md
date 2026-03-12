@@ -24,12 +24,12 @@ This directory tracks upcoming Georgia elections with candidate and contest deta
 | Field | Status | Source |
 |-------|--------|--------|
 | `early_voting_end` | **Filled** — 2026-03-13 | O.C.G.A. § 21-2-385 (Friday before Election Day) |
-| `purpose` (Clayton) | **Filled** — Retirement of Chief Probate Judge Pamela P. Ferguson | Clayton News Daily, Ballotpedia |
-| `purpose` (Bibb) | **Filled** — Commissioner Seth Clark resigned to run for Lt. Governor | 13WMAZ, 41NBC |
+| `purpose` (Clayton) | **Filled** — Retirement of Chief Probate Judge Pamela P. Ferguson | [Clayton News Daily](https://www.news-daily.com/news/two-qualify-for-probate-judge-special-election/article_ff5f78c9-af74-4bd9-b9db-051e0f1c7f6f.html), [Ballotpedia](https://ballotpedia.org/Clayton_County_Probate_Court,_Georgia) |
+| `purpose` (Bibb) | **Filled** — Commissioner Seth Clark resigned to run for Lt. Governor | [13WMAZ](https://www.13wmaz.com/article/news/local/macon-bibb-county-commissioner-mayor-pro-tem-seth-clark-resigns/93-96066c4b-2a5c-476a-a2e3-3c8ad544fef6), [41NBC](https://www.41nbc.com/seth-clark-resigns-macon-bibb-commission/) |
 | `eligibility` | **Filled** for all 3 SOS contests | Derived from contest scope |
-| Candidate `bio` | **Filled** — brief bios for all 10 SOS candidates | Local news, campaign websites, City of Wadley |
+| Candidate `bio` | **Filled** — brief bios for all 10 SOS candidates | Local news, campaign websites, [City of Wadley](https://www.wadleyga.gov/city-hall/mayor-city-council) |
 | Candidate websites | **Filled** — Pryor, Sheppard, Cooke | Campaign websites |
-| Haralson County | **Explained** — City of Buchanan mayor/council (municipal qualifying, not SOS) | 11Alive, Atlanta News First |
+| Haralson County | **Explained** — City of Buchanan mayor/council (municipal qualifying, not SOS) | [11Alive](https://www.11alive.com/article/news/local/special-election-march-2026-buchanan-mayor-conviction-deadly-2015-crash/85-085664b5-646a-4d0e-a63d-7e52e059c0e7), [Atlanta News First](https://www.atlantanewsfirst.com/2026/01/30/date-set-special-election-replace-ex-trooper-mayor-convicted-vehicular-homicide/) |
 | Elbert County | **Unresolvable** — likely unopposed candidate declared elected under O.C.G.A. § 21-2-291 | No news coverage found |
 
 ### Remaining gaps requiring additional research

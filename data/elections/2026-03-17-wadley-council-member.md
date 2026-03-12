@@ -34,4 +34,4 @@
 ## Data Source
 
 - `data/new/MARCH_17_2026-SPECIAL_ELECTION_Qualified_Candidates.csv`
-- Candidate bios from City of Wadley website
+- [Mayor & City Council](https://www.wadleyga.gov/city-hall/mayor-city-council) — City of Wadley
