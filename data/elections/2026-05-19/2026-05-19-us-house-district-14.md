@@ -8,6 +8,23 @@
 | Type | Partisan Primary |
 | Candidates | 10 Republican, 1 Democrat |
 
+## Counties
+
+Congressional District 14 includes 10 counties (some counties are split across multiple districts).
+
+| County | County Election |
+|--------|----------------|
+| Catoosa | [Local Races](counties/2026-05-19-catoosa.md) |
+| Chattooga | [Local Races](counties/2026-05-19-chattooga.md) |
+| Cobb | [Local Races](counties/2026-05-19-cobb.md) |
+| Dade | [Local Races](counties/2026-05-19-dade.md) |
+| Floyd | [Local Races](counties/2026-05-19-floyd.md) |
+| Murray | [Local Races](counties/2026-05-19-murray.md) |
+| Paulding | [Local Races](counties/2026-05-19-paulding.md) |
+| Polk | [Local Races](counties/2026-05-19-polk.md) |
+| Walker | [Local Races](counties/2026-05-19-walker.md) |
+| Whitfield | [Local Races](counties/2026-05-19-whitfield.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

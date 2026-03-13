@@ -8,6 +8,28 @@
 | Type | Partisan Primary |
 | Candidates | 6 Republican, 8 Democrat |
 
+## Counties
+
+Congressional District 1 includes 15 counties (some counties are split across multiple districts).
+
+| County | County Election |
+|--------|----------------|
+| Appling | [Local Races](counties/2026-05-19-appling.md) |
+| Bacon | [Local Races](counties/2026-05-19-bacon.md) |
+| Brantley | [Local Races](counties/2026-05-19-brantley.md) |
+| Bryan | [Local Races](counties/2026-05-19-bryan.md) |
+| Camden | [Local Races](counties/2026-05-19-camden.md) |
+| Charlton | [Local Races](counties/2026-05-19-charlton.md) |
+| Chatham | [Local Races](counties/2026-05-19-chatham.md) |
+| Effingham | [Local Races](counties/2026-05-19-effingham.md) |
+| Glynn | [Local Races](counties/2026-05-19-glynn.md) |
+| Liberty | [Local Races](counties/2026-05-19-liberty.md) |
+| Long | [Local Races](counties/2026-05-19-long.md) |
+| McIntosh | [Local Races](counties/2026-05-19-mcintosh.md) |
+| Pierce | [Local Races](counties/2026-05-19-pierce.md) |
+| Ware | [Local Races](counties/2026-05-19-ware.md) |
+| Wayne | [Local Races](counties/2026-05-19-wayne.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

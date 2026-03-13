@@ -8,6 +8,19 @@
 | Type | Partisan Primary |
 | Candidates | 1 Republican, 7 Democrat |
 
+## Counties
+
+Congressional District 13 includes 6 counties (some counties are split across multiple districts).
+
+| County | County Election |
+|--------|----------------|
+| Clayton | [Local Races](counties/2026-05-19-clayton.md) |
+| DeKalb | [Local Races](counties/2026-05-19-dekalb.md) |
+| Gwinnett | [Local Races](counties/2026-05-19-gwinnett.md) |
+| Henry | [Local Races](counties/2026-05-19-henry.md) |
+| Newton | [Local Races](counties/2026-05-19-newton.md) |
+| Rockdale | [Local Races](counties/2026-05-19-rockdale.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

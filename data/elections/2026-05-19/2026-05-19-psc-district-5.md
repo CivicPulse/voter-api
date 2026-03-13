@@ -8,6 +8,36 @@
 | Type | Partisan Primary |
 | Candidates | 3 Republican, 3 Democrat |
 
+## Counties
+
+PSC District 5 includes 23 counties.
+
+| County | County Election |
+|--------|----------------|
+| Bartow | [Local Races](counties/2026-05-19-bartow.md) |
+| Butts | [Local Races](counties/2026-05-19-butts.md) |
+| Carroll | [Local Races](counties/2026-05-19-carroll.md) |
+| Catoosa | [Local Races](counties/2026-05-19-catoosa.md) |
+| Chattooga | [Local Races](counties/2026-05-19-chattooga.md) |
+| Cobb | [Local Races](counties/2026-05-19-cobb.md) |
+| Coweta | [Local Races](counties/2026-05-19-coweta.md) |
+| Dade | [Local Races](counties/2026-05-19-dade.md) |
+| Douglas | [Local Races](counties/2026-05-19-douglas.md) |
+| Fayette | [Local Races](counties/2026-05-19-fayette.md) |
+| Floyd | [Local Races](counties/2026-05-19-floyd.md) |
+| Gordon | [Local Races](counties/2026-05-19-gordon.md) |
+| Haralson | [Local Races](counties/2026-05-19-haralson.md) |
+| Heard | [Local Races](counties/2026-05-19-heard.md) |
+| Lamar | [Local Races](counties/2026-05-19-lamar.md) |
+| Meriwether | [Local Races](counties/2026-05-19-meriwether.md) |
+| Paulding | [Local Races](counties/2026-05-19-paulding.md) |
+| Pike | [Local Races](counties/2026-05-19-pike.md) |
+| Polk | [Local Races](counties/2026-05-19-polk.md) |
+| Spalding | [Local Races](counties/2026-05-19-spalding.md) |
+| Troup | [Local Races](counties/2026-05-19-troup.md) |
+| Upson | [Local Races](counties/2026-05-19-upson.md) |
+| Walker | [Local Races](counties/2026-05-19-walker.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

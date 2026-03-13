@@ -8,6 +8,17 @@
 | Type | Partisan Primary |
 | Candidates | 2 Republican, 1 Democrat |
 
+## Counties
+
+Congressional District 6 includes 4 counties (some counties are split across multiple districts).
+
+| County | County Election |
+|--------|----------------|
+| Cobb | [Local Races](counties/2026-05-19-cobb.md) |
+| Douglas | [Local Races](counties/2026-05-19-douglas.md) |
+| Fayette | [Local Races](counties/2026-05-19-fayette.md) |
+| Fulton | [Local Races](counties/2026-05-19-fulton.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

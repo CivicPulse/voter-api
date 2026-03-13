@@ -8,6 +8,16 @@
 | Type | Partisan Primary |
 | Candidates | 1 Republican, 2 Democrat |
 
+## Counties
+
+Congressional District 5 includes 3 counties (some counties are split across multiple districts).
+
+| County | County Election |
+|--------|----------------|
+| Clayton | [Local Races](counties/2026-05-19-clayton.md) |
+| DeKalb | [Local Races](counties/2026-05-19-dekalb.md) |
+| Fulton | [Local Races](counties/2026-05-19-fulton.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

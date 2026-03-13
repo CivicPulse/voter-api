@@ -8,6 +8,18 @@
 | Type | Partisan Primary |
 | Candidates | 8 Republican, 2 Democrat |
 
+## Counties
+
+Congressional District 11 includes 5 counties (some counties are split across multiple districts).
+
+| County | County Election |
+|--------|----------------|
+| Bartow | [Local Races](counties/2026-05-19-bartow.md) |
+| Cherokee | [Local Races](counties/2026-05-19-cherokee.md) |
+| Cobb | [Local Races](counties/2026-05-19-cobb.md) |
+| Gordon | [Local Races](counties/2026-05-19-gordon.md) |
+| Pickens | [Local Races](counties/2026-05-19-pickens.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

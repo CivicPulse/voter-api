@@ -9,6 +9,23 @@
 | Contests | 5 |
 | Candidates | 8 |
 
+## Statewide & District Races
+
+Voters in Oglethorpe County will also see the following statewide and district races on the ballot.
+
+| Race | Election |
+|------|----------|
+| Governor | [Partisan Primary](../2026-05-19-governor.md) |
+| Lieutenant Governor | [Partisan Primary](../2026-05-19-lieutenant-governor.md) |
+| Secretary of State | [Partisan Primary](../2026-05-19-secretary-of-state.md) |
+| Attorney General | [Partisan Primary](../2026-05-19-attorney-general.md) |
+| State School Superintendent | [Partisan Primary](../2026-05-19-state-school-superintendent.md) |
+| Agriculture Commissioner | [Partisan Primary](../2026-05-19-agriculture-commissioner.md) |
+| Labor Commissioner | [Partisan Primary](../2026-05-19-labor-commissioner.md) |
+| Insurance Commissioner | [Partisan Primary](../2026-05-19-insurance-commissioner.md) |
+| U.S. Senate | [Partisan Primary](../2026-05-19-us-senate.md) |
+| U.S. House — District 10 | [Partisan Primary](../2026-05-19-us-house-district-10.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

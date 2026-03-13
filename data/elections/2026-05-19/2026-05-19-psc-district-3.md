@@ -8,6 +8,17 @@
 | Type | Partisan Primary |
 | Candidates | 2 Republican, 1 Democrat |
 
+## Counties
+
+PSC District 3 includes 4 counties.
+
+| County | County Election |
+|--------|----------------|
+| Clayton | [Local Races](counties/2026-05-19-clayton.md) |
+| DeKalb | [Local Races](counties/2026-05-19-dekalb.md) |
+| Fulton | [Local Races](counties/2026-05-19-fulton.md) |
+| Rockdale | [Local Races](counties/2026-05-19-rockdale.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

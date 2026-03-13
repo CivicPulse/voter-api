@@ -8,6 +8,25 @@
 | Type | Partisan Primary |
 | Candidates | 3 Republican, 2 Democrat |
 
+## Counties
+
+Congressional District 9 includes 12 counties (some counties are split across multiple districts).
+
+| County | County Election |
+|--------|----------------|
+| Banks | [Local Races](counties/2026-05-19-banks.md) |
+| Fannin | [Local Races](counties/2026-05-19-fannin.md) |
+| Gilmer | [Local Races](counties/2026-05-19-gilmer.md) |
+| Gwinnett | [Local Races](counties/2026-05-19-gwinnett.md) |
+| Habersham | [Local Races](counties/2026-05-19-habersham.md) |
+| Hall | [Local Races](counties/2026-05-19-hall.md) |
+| Jackson | [Local Races](counties/2026-05-19-jackson.md) |
+| Rabun | [Local Races](counties/2026-05-19-rabun.md) |
+| Stephens | [Local Races](counties/2026-05-19-stephens.md) |
+| Towns | [Local Races](counties/2026-05-19-towns.md) |
+| Union | [Local Races](counties/2026-05-19-union.md) |
+| White | [Local Races](counties/2026-05-19-white.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

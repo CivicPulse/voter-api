@@ -8,6 +8,15 @@
 | Type | Partisan Primary |
 | Candidates | 1 Republican, 3 Democrat |
 
+## Counties
+
+Congressional District 4 includes 2 counties (some counties are split across multiple districts).
+
+| County | County Election |
+|--------|----------------|
+| DeKalb | [Local Races](counties/2026-05-19-dekalb.md) |
+| Gwinnett | [Local Races](counties/2026-05-19-gwinnett.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

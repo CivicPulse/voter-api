@@ -8,6 +8,19 @@
 | Type | Partisan Primary |
 | Candidates | 1 Republican, 4 Democrat |
 
+## Counties
+
+Congressional District 7 includes 6 counties (some counties are split across multiple districts).
+
+| County | County Election |
+|--------|----------------|
+| Cherokee | [Local Races](counties/2026-05-19-cherokee.md) |
+| Dawson | [Local Races](counties/2026-05-19-dawson.md) |
+| Forsyth | [Local Races](counties/2026-05-19-forsyth.md) |
+| Fulton | [Local Races](counties/2026-05-19-fulton.md) |
+| Hall | [Local Races](counties/2026-05-19-hall.md) |
+| Lumpkin | [Local Races](counties/2026-05-19-lumpkin.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

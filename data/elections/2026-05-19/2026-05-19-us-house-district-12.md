@@ -8,6 +8,37 @@
 | Type | Partisan Primary |
 | Candidates | 2 Republican, 5 Democrat |
 
+## Counties
+
+Congressional District 12 includes 24 counties (some counties are split across multiple districts).
+
+| County | County Election |
+|--------|----------------|
+| Bulloch | [Local Races](counties/2026-05-19-bulloch.md) |
+| Burke | [Local Races](counties/2026-05-19-burke.md) |
+| Candler | [Local Races](counties/2026-05-19-candler.md) |
+| Columbia | [Local Races](counties/2026-05-19-columbia.md) |
+| Effingham | [Local Races](counties/2026-05-19-effingham.md) |
+| Emanuel | [Local Races](counties/2026-05-19-emanuel.md) |
+| Evans | [Local Races](counties/2026-05-19-evans.md) |
+| Glascock | [Local Races](counties/2026-05-19-glascock.md) |
+| Jefferson | [Local Races](counties/2026-05-19-jefferson.md) |
+| Jenkins | [Local Races](counties/2026-05-19-jenkins.md) |
+| Johnson | [Local Races](counties/2026-05-19-johnson.md) |
+| Laurens | [Local Races](counties/2026-05-19-laurens.md) |
+| Lincoln | [Local Races](counties/2026-05-19-lincoln.md) |
+| McDuffie | [Local Races](counties/2026-05-19-mcduffie.md) |
+| Montgomery | [Local Races](counties/2026-05-19-montgomery.md) |
+| Richmond | [Local Races](counties/2026-05-19-richmond.md) |
+| Screven | [Local Races](counties/2026-05-19-screven.md) |
+| Tattnall | [Local Races](counties/2026-05-19-tattnall.md) |
+| Toombs | [Local Races](counties/2026-05-19-toombs.md) |
+| Treutlen | [Local Races](counties/2026-05-19-treutlen.md) |
+| Warren | [Local Races](counties/2026-05-19-warren.md) |
+| Washington | [Local Races](counties/2026-05-19-washington.md) |
+| Wheeler | [Local Races](counties/2026-05-19-wheeler.md) |
+| Wilkes | [Local Races](counties/2026-05-19-wilkes.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

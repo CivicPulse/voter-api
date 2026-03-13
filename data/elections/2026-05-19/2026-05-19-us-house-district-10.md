@@ -8,6 +8,33 @@
 | Type | Partisan Primary |
 | Candidates | 3 Republican, 3 Democrat |
 
+## Counties
+
+Congressional District 10 includes 20 counties (some counties are split across multiple districts).
+
+| County | County Election |
+|--------|----------------|
+| Barrow | [Local Races](counties/2026-05-19-barrow.md) |
+| Butts | [Local Races](counties/2026-05-19-butts.md) |
+| Clarke | [Local Races](counties/2026-05-19-clarke.md) |
+| Elbert | [Local Races](counties/2026-05-19-elbert.md) |
+| Franklin | [Local Races](counties/2026-05-19-franklin.md) |
+| Greene | [Local Races](counties/2026-05-19-greene.md) |
+| Gwinnett | [Local Races](counties/2026-05-19-gwinnett.md) |
+| Hancock | [Local Races](counties/2026-05-19-hancock.md) |
+| Hart | [Local Races](counties/2026-05-19-hart.md) |
+| Henry | [Local Races](counties/2026-05-19-henry.md) |
+| Jasper | [Local Races](counties/2026-05-19-jasper.md) |
+| Madison | [Local Races](counties/2026-05-19-madison.md) |
+| Morgan | [Local Races](counties/2026-05-19-morgan.md) |
+| Newton | [Local Races](counties/2026-05-19-newton.md) |
+| Oconee | [Local Races](counties/2026-05-19-oconee.md) |
+| Oglethorpe | [Local Races](counties/2026-05-19-oglethorpe.md) |
+| Putnam | [Local Races](counties/2026-05-19-putnam.md) |
+| Taliaferro | [Local Races](counties/2026-05-19-taliaferro.md) |
+| Walton | [Local Races](counties/2026-05-19-walton.md) |
+| Wilkes | [Local Races](counties/2026-05-19-wilkes.md) |
+
 ## Election Calendar
 
 | Milestone | Date |

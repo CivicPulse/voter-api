@@ -8,6 +8,28 @@
 | Type | Partisan Primary |
 | Candidates | 1 Republican, 2 Democrat |
 
+## Counties
+
+Congressional District 3 includes 15 counties (some counties are split across multiple districts).
+
+| County | County Election |
+|--------|----------------|
+| Carroll | [Local Races](counties/2026-05-19-carroll.md) |
+| Coweta | [Local Races](counties/2026-05-19-coweta.md) |
+| Douglas | [Local Races](counties/2026-05-19-douglas.md) |
+| Fayette | [Local Races](counties/2026-05-19-fayette.md) |
+| Haralson | [Local Races](counties/2026-05-19-haralson.md) |
+| Harris | [Local Races](counties/2026-05-19-harris.md) |
+| Heard | [Local Races](counties/2026-05-19-heard.md) |
+| Henry | [Local Races](counties/2026-05-19-henry.md) |
+| Lamar | [Local Races](counties/2026-05-19-lamar.md) |
+| Meriwether | [Local Races](counties/2026-05-19-meriwether.md) |
+| Muscogee | [Local Races](counties/2026-05-19-muscogee.md) |
+| Pike | [Local Races](counties/2026-05-19-pike.md) |
+| Spalding | [Local Races](counties/2026-05-19-spalding.md) |
+| Troup | [Local Races](counties/2026-05-19-troup.md) |
+| Upson | [Local Races](counties/2026-05-19-upson.md) |
+
 ## Election Calendar
 
 | Milestone | Date |
