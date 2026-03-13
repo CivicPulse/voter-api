@@ -75,7 +75,7 @@ Every statewide/federal contest file **must** follow this exact markdown structu
 The canonical column set for statewide/federal contests:
 
 1. **Candidate** — Full name as it appears in the SOS CSV (no normalization)
-2. **Status** — `Qualified` or `Withdrawn` (must use these exact values)
+2. **Status** — `Qualified`, `Withdrawn`, `Disqualified`, `Qualified - Signatures Accepted`, or `Qualified - Signatures Required` (must use these exact values from the SOS CSV)
 3. **Incumbent** — `Yes` or `No`
 4. **Occupation** — Title Case, proper acronyms capitalized (see County Format for acronym rules)
 5. **Qualified Date** — Date in MM/DD/YYYY format

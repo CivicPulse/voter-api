@@ -107,7 +107,7 @@ Every county file **must** follow this exact markdown structure. No variations a
 ### Candidate Table Columns
 
 1. **Candidate** — Full name (no normalization)
-2. **Status** — `Qualified` or `Withdrawn` (must use these exact values)
+2. **Status** — `Qualified`, `Withdrawn`, `Disqualified`, `Qualified - Signatures Accepted`, or `Qualified - Signatures Required` (must use these exact values from the SOS CSV)
 3. **Incumbent** — `Yes` or `No`
 4. **Occupation** — Title Case, proper acronyms capitalized
 5. **Qualified** — Date in MM/DD/YYYY format
