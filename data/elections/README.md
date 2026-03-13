@@ -6,8 +6,8 @@ This directory tracks upcoming Georgia elections with candidate and contest deta
 
 | Date | Type | Candidates | Details |
 |------|------|-----------|---------|
-| March 17, 2026 | [Special Election](2026-03-17-special-election.md) | 10 | Clayton Probate Judge, Bibb County Commission Dist. 5, Wadley Council |
-| May 19, 2026 | [General and Primary](2026-05-19-general-primary.md) | 2,319 | Governor, Lt. Governor, Secretary of State, U.S. Senate, all 14 U.S. House districts, 299 State House + 93 State Senate races, local offices |
+| March 17, 2026 | [Special Election](2026-03-17/2026-03-17-special-election.md) | 10 | Clayton Probate Judge, Bibb County Commission Dist. 5, Wadley Council |
+| May 19, 2026 | [General and Primary](2026-05-19/2026-05-19-general-primary.md) | 2,319 | Governor, Lt. Governor, Secretary of State, U.S. Senate, all 14 U.S. House districts, 299 State House + 93 State Senate races, local offices |
 
 ## Known Data Gaps
 

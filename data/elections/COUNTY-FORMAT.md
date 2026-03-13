@@ -5,7 +5,7 @@ This document defines the exact structure and conventions that all 159 Georgia c
 ## File Naming Convention
 
 ```
-data/elections/2026-05-19-{county}.md
+data/elections/2026-05-19/counties/2026-05-19-{county}.md
 ```
 
 All files follow the date-based naming scheme for the May 19, 2026 election cycle. County names are lowercase.
@@ -21,7 +21,7 @@ Every county file **must** follow this exact markdown structure. No variations a
 
 | Field | Value |
 |-------|-------|
-| Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
+| Election | [May 19, 2026 — General and Primary Election](../2026-05-19-general-primary.md) |
 | Type | Local Races |
 | Contests | {number} |
 | Candidates | {number} |
