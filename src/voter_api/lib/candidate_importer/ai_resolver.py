@@ -40,7 +40,7 @@ district type.
 Return a JSON array where each element has:
 - "contest_name": the original contest name (exactly as given)
 - "district_type": one of: congressional, us_senate, state_senate, state_house, psc, \
-statewide, judicial, board_of_education, county_commission, county_office, municipal
+statewide, judicial, board_of_education, county_commission, county_office, municipal, city_council
 - "district_identifier": the district/seat/post number as a string, or null if not applicable
 - "district_party": full party name (e.g. "Republican", "Democrat", "Nonpartisan") or null
 

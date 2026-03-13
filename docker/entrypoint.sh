@@ -18,8 +18,12 @@ if [[ "$migration_ok" = false ]]; then
     exit 1
 fi
 
-echo "==> Seeding dev data..."
-voter-api db seed-dev
+if [[ "${ENABLE_DEV_SEED:-false}" = "true" ]]; then
+    echo "==> Seeding dev data..."
+    voter-api db seed-dev
+else
+    echo "==> Skipping dev seed (set ENABLE_DEV_SEED=true to enable)"
+fi
 
 echo "==> Starting uvicorn..."
 exec uvicorn voter_api.main:create_app --factory --host 0.0.0.0 --port 8000 "$@"

@@ -52,55 +52,59 @@ async def process_calendar_import(
     """
     result = CalendarImportResult()
 
-    for entry in entries:
-        # Find matching election
-        stmt = select(Election).where(
-            Election.name == entry.election_name,
-            Election.election_date == entry.election_date,
-            Election.deleted_at.is_(None),
-        )
-        row = await session.execute(stmt)
-        election = row.scalar_one_or_none()
-
-        if election is None:
-            result.unmatched += 1
-            result.unmatched_names.append(f"{entry.election_name} ({entry.election_date})")
-            logger.warning(
-                "No matching election for calendar entry: {} on {}",
-                entry.election_name,
-                entry.election_date,
+    try:
+        for entry in entries:
+            # Find matching election
+            stmt = select(Election).where(
+                Election.name == entry.election_name,
+                Election.election_date == entry.election_date,
+                Election.deleted_at.is_(None),
             )
-            continue
+            row = await session.execute(stmt)
+            election = row.scalar_one_or_none()
 
-        result.matched += 1
+            if election is None:
+                result.unmatched += 1
+                result.unmatched_names.append(f"{entry.election_name} ({entry.election_date})")
+                logger.warning(
+                    "No matching election for calendar entry: {} on {}",
+                    entry.election_name,
+                    entry.election_date,
+                )
+                continue
 
-        # Build update values (only non-None fields)
-        _calendar_fields = (
-            "registration_deadline",
-            "early_voting_start",
-            "early_voting_end",
-            "absentee_request_deadline",
-            "qualifying_start",
-            "qualifying_end",
-        )
-        update_values = {f: getattr(entry, f) for f in _calendar_fields if getattr(entry, f) is not None}
+            result.matched += 1
 
-        if not update_values:
+            # Build update values (only non-None fields)
+            _calendar_fields = (
+                "registration_deadline",
+                "early_voting_start",
+                "early_voting_end",
+                "absentee_request_deadline",
+                "qualifying_start",
+                "qualifying_end",
+            )
+            update_values = {f: getattr(entry, f) for f in _calendar_fields if getattr(entry, f) is not None}
+
+            if not update_values:
+                logger.info(
+                    "Election {} matched but no calendar fields to update",
+                    election.id,
+                )
+                continue
+
+            stmt_update = update(Election).where(Election.id == election.id).values(**update_values)
+            await session.execute(stmt_update)
+            result.updated += 1
             logger.info(
-                "Election {} matched but no calendar fields to update",
+                "Updated election {} ({}) with {} calendar field(s)",
                 election.id,
+                entry.election_name,
+                len(update_values),
             )
-            continue
 
-        stmt_update = update(Election).where(Election.id == election.id).values(**update_values)
-        await session.execute(stmt_update)
-        result.updated += 1
-        logger.info(
-            "Updated election {} ({}) with {} calendar field(s)",
-            election.id,
-            entry.election_name,
-            len(update_values),
-        )
-
-    await session.commit()
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
     return result

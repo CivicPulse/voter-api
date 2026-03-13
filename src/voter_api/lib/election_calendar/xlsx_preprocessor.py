@@ -120,10 +120,12 @@ def _parse_registration_deadline(text: str) -> date | None:
         parsed = _parse_date_flex(line)
         if parsed is not None:
             return parsed
-    # Fallback: try any date in the text
-    date_patterns = re.findall(r"\d{1,2}/\d{1,2}/\d{2,4}", text)
-    for dp in date_patterns:
-        if not text[max(0, text.index(dp) - 1)].startswith("*"):
+    # Fallback: first date found on a non-starred line
+    for line in lines:
+        line = line.strip()
+        if line.startswith("*"):
+            continue
+        for dp in re.findall(r"\d{1,2}/\d{1,2}/\d{2,4}", line):
             parsed = _parse_date_flex(dp)
             if parsed is not None:
                 return parsed
@@ -302,6 +304,7 @@ def preprocess_xlsx_calendar(
         entries.append(entry)
         logger.debug("Extracted XLSX entry: {} on {}", election_name_raw, election_date)
 
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
         for entry in entries:
             f.write(json.dumps(entry) + "\n")

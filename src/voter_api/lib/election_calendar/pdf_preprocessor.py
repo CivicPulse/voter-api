@@ -25,10 +25,16 @@ def _parse_date_flex(value: str) -> date | None:
     value = value.strip()
     match = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", value)
     if match:
-        return date(int(match.group(3)), int(match.group(1)), int(match.group(2)))
+        try:
+            return date(int(match.group(3)), int(match.group(1)), int(match.group(2)))
+        except ValueError:
+            return None
     match = re.match(r"(\d{1,2})/(\d{1,2})/(\d{2})", value)
     if match:
-        return date(2000 + int(match.group(3)), int(match.group(1)), int(match.group(2)))
+        try:
+            return date(2000 + int(match.group(3)), int(match.group(1)), int(match.group(2)))
+        except ValueError:
+            return None
     return None
 
 
@@ -66,12 +72,15 @@ def _parse_registration_deadline(text: str) -> date | None:
         parsed = _parse_date_flex(line)
         if parsed is not None:
             return parsed
-    # Fallback: first date found
-    date_patterns = re.findall(r"\d{1,2}/\d{1,2}/\d{2,4}", text)
-    for dp in date_patterns:
-        parsed = _parse_date_flex(dp)
-        if parsed is not None:
-            return parsed
+    # Fallback: first date found on a non-starred line
+    for line in lines:
+        line = line.strip()
+        if line.startswith("*"):
+            continue
+        for dp in re.findall(r"\d{1,2}/\d{1,2}/\d{2,4}", line):
+            parsed = _parse_date_flex(dp)
+            if parsed is not None:
+                return parsed
     return None
 
 

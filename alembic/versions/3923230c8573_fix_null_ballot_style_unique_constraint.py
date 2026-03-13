@@ -4,6 +4,10 @@ PostgreSQL treats NULLs as distinct in UNIQUE constraints, causing duplicate
 rows on re-import when ballot_style is NULL.  Replace the plain
 UniqueConstraint with a unique index that uses COALESCE(ballot_style, '').
 
+WARNING: The upgrade step deletes duplicate rows (keeping only the first by id)
+where (voter_registration_number, application_date, COALESCE(ballot_style, ''))
+would collide under the new index.  This is a **data-destructive** migration.
+
 Revision ID: 3923230c8573
 Revises: a7ce7a38cece
 Create Date: 2026-03-11

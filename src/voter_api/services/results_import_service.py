@@ -181,6 +181,11 @@ async def _match_election(
         if existing_id:
             election_cache[cache_key] = existing_id
             return existing_id
+        msg = (
+            f"Election insert conflicted but no existing election could be resolved "
+            f"for '{normalized_name}' on {ctx.election_date}"
+        )
+        raise RuntimeError(msg)
 
     await session.flush()
     election_cache[cache_key] = new_id

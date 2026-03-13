@@ -8,6 +8,7 @@ Enables future swap to Celery/ARQ without service layer changes.
 import asyncio
 import enum
 import uuid
+import weakref
 from collections.abc import Coroutine
 from typing import Any, Protocol
 
@@ -59,18 +60,24 @@ class InProcessTaskRunner:
     def __init__(self) -> None:
         self._jobs: dict[str, JobStatus] = {}
         self._tasks: dict[str, asyncio.Task[Any]] = {}
-        self._semaphore: asyncio.Semaphore | None = None
+        self._semaphores: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = (
+            weakref.WeakKeyDictionary()
+        )
 
     def _get_semaphore(self) -> asyncio.Semaphore:
-        """Lazily create the semaphore on the current event loop.
+        """Lazily create a semaphore bound to the current event loop.
 
-        A module-level or __init__-time Semaphore binds to whatever loop
-        is running at construction time.  Creating it on first use ensures
-        it belongs to the loop that will actually await it.
+        Uses a per-loop ``WeakKeyDictionary`` so that each event loop
+        gets its own semaphore instance.  This avoids the "attached to
+        a different loop" error when the runner is reused across test
+        sessions or application restarts.
         """
-        if self._semaphore is None:
-            self._semaphore = asyncio.Semaphore(2)
-        return self._semaphore
+        loop = asyncio.get_running_loop()
+        sem = self._semaphores.get(loop)
+        if sem is None:
+            sem = asyncio.Semaphore(2)
+            self._semaphores[loop] = sem
+        return sem
 
     def submit_task(self, coro: Coroutine[Any, Any, Any]) -> str:
         """Submit an async task for background execution.

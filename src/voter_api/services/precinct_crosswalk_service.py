@@ -1,7 +1,7 @@
 """Precinct crosswalk service — CRUD and spatial join builder."""
 
 from loguru import logger
-from sqlalchemy import func, literal_column, select
+from sqlalchemy import column, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,7 +64,7 @@ async def upsert_crosswalk_entries(
         )
         # Use RETURNING with xmax to distinguish inserts from updates:
         # xmax = 0 means a genuine insert; nonzero means an update.
-        stmt = stmt.returning(literal_column("(xmax = 0)::int").label("is_insert"))  # type: ignore[assignment]
+        stmt = stmt.returning((column("xmax") == 0).label("is_insert"))
         result = await session.execute(stmt)
         row = result.one()
         if row.is_insert:

@@ -150,7 +150,7 @@ class TestTier0EventMatching:
         total = await _resolve_tier0_event_matching(session, force=False)
 
         assert total == 500
-        mock_backfill.assert_awaited_once_with(session)
+        mock_backfill.assert_awaited_once_with(session, election_date=None)
 
     @patch(
         "voter_api.services.election_resolution_service._backfill_election_event_ids",
@@ -208,7 +208,7 @@ class TestTier0EventMatching:
         total = await _resolve_tier0_event_matching(session, force=False)
 
         assert total == 500
-        mock_backfill.assert_awaited_once_with(session)
+        mock_backfill.assert_awaited_once_with(session, election_date=None)
 
 
 # ---------------------------------------------------------------------------

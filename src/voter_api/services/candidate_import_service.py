@@ -357,6 +357,11 @@ async def process_candidate_import(
                 filing_status = record.get("filing_status") or "qualified"
                 # Ensure filing_status is valid for the DB constraint
                 if filing_status not in ("qualified", "withdrawn", "disqualified", "write_in"):
+                    logger.warning(
+                        "Rewriting invalid filing_status '{}' to 'qualified' for candidate '{}'",
+                        filing_status,
+                        candidate_name,
+                    )
                     filing_status = "qualified"
 
                 is_incumbent = record.get("is_incumbent")

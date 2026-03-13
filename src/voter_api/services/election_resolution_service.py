@@ -310,19 +310,30 @@ async def _resolve_tier0_event_matching(
             )
 
     # Also backfill election_event_id on elections table
-    await _backfill_election_event_ids(session)
+    await _backfill_election_event_ids(session, election_date=election_date)
 
     await session.flush()
     logger.info("Tier 0: assigned {} voter_history records to election events", total_updated)
     return total_updated
 
 
-async def _backfill_election_event_ids(session: AsyncSession) -> None:
+async def _backfill_election_event_ids(
+    session: AsyncSession,
+    *,
+    election_date: date | None = None,
+) -> None:
     """Backfill election_event_id on elections that don't have one yet.
 
     Matches elections to existing election_events by (election_date, election_type).
+
+    Args:
+        session: Database session.
+        election_date: Optional date filter to limit the backfill scope.
     """
-    elections_result = await session.execute(select(Election).where(Election.election_event_id.is_(None)))
+    stmt = select(Election).where(Election.election_event_id.is_(None))
+    if election_date is not None:
+        stmt = stmt.where(Election.election_date == election_date)
+    elections_result = await session.execute(stmt)
     elections = list(elections_result.scalars().all())
 
     for election in elections:

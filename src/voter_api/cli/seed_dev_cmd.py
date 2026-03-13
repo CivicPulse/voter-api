@@ -65,7 +65,7 @@ async def _seed() -> None:
     from voter_api.core.config import get_settings
 
     settings = get_settings()
-    init_engine(settings.database_url)
+    init_engine(settings.database_url, schema=settings.database_schema)
     engine = get_engine()
     factory = async_sessionmaker(engine, expire_on_commit=False)
 

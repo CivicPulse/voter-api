@@ -363,11 +363,13 @@ class TestProcessCandidateImport:
             patch(
                 "voter_api.services.candidate_import_service._upsert_candidate_batch",
                 new_callable=AsyncMock,
-                return_value=(10, 0),
+                side_effect=[(10, 0), (10, 0), (5, 0)],
             ) as mock_upsert,
         ):
             result = await process_candidate_import(session, job, jsonl_file, batch_size=10)
 
         assert result.total_records == 25
+        assert result.records_inserted == 25
+        assert result.records_updated == 0
         # 25 records / 10 per batch = 3 upsert calls
         assert mock_upsert.await_count == 3
