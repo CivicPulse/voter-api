@@ -26,7 +26,7 @@
 |-----------|--------|-----------|------------|---------------|-------|---------|
 | Andrew S Clyde | Qualified | Yes | Gun Store Owner | 03/03/2026 | andrew@clyde4congress.com | [clyde4congress.com](https://clyde4congress.com) |
 | Warren Samuel Couvillon | Qualified | No | Insurance | 03/02/2026 | sam@sendsamtocongress.com | [samforhouse.com](https://www.samforhouse.com) |
-| Joel Gregory Poole | Qualified | No | Electrical And Plumbing Contractor | 03/03/2026 | — | — |
+| Joel Gregory Poole | Qualified | No | Electrical And Plumbing Contractor | 03/03/2026 | gregg@greggpoole.com | [greggpoole.com](https://greggpoole.com) |
 
 ## Democrat Primary
 
@@ -40,3 +40,5 @@
 ## Data Source
 
 - Candidate list: `data/new/MAY_19_2026-GENERAL_AND_PRIMARY_ELECTION_Qualified_Candidates.csv`
+- Joel Gregory Poole campaign: [greggpoole.com](https://greggpoole.com/)
+- Joel Gregory Poole (Ballotpedia): [ballotpedia.org/Gregg_Poole](https://ballotpedia.org/Gregg_Poole)

@@ -25,11 +25,11 @@
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
 | Robert Allen Adkerson | Qualified | No | Self Employed | 03/02/2026 | — | [voterobadkerson.com](https://voterobadkerson.com) |
-| William Brown | Qualified | No | Attorney | 03/06/2026 | wbrown@tbcsatx.com | — |
+| William Brown | Qualified | No | Attorney | 03/06/2026 | wbrown@tbcsatx.com | [williambrown2026.com](https://williambrown2026.com) |
 | Lisa Anne Carlquist | Qualified | No | Board Member | 03/03/2026 | — | [lisacforcongress.com](https://lisacforcongress.com) |
 | John A Cowan Jr | Qualified | No | Neurosurgeon | 03/02/2026 | drjohncowan@cowanforcongress.com | [cowanforcongress.com](https://www.cowanforcongress.com) |
 | John Hobbs | Qualified | No | CNC Machinist | 03/06/2026 | johnhobbsforcongress@gmail.com | [johnhobbsforcongress.com](https://johnhobbsforcongress.com) |
-| Uloma Stacy Kama | Qualified | No | Physician | 03/03/2026 | — | — |
+| Uloma Stacy Kama | Qualified | No | Physician | 03/03/2026 | — | [electuloma4uscongress.com](https://www.electuloma4uscongress.com) |
 | Chris Mora | Qualified | No | Telecommunications | 03/02/2026 | campaign@moraforgeorgia.com | [moraforgeorgia.com](https://moraforgeorgia.com) |
 | Tricia R Pridemore | Qualified | No | Public Service Commissioner | 03/03/2026 | — | [triciapridemore.org](https://triciapridemore.org) |
 
@@ -45,3 +45,6 @@
 ## Data Source
 
 - Candidate list: `data/new/MAY_19_2026-GENERAL_AND_PRIMARY_ELECTION_Qualified_Candidates.csv`
+- William Brown campaign: [williambrown2026.com](https://williambrown2026.com/)
+- Uloma Stacy Kama campaign: [electuloma4uscongress.com](https://www.electuloma4uscongress.com/)
+- Uloma Kama (Ballotpedia): [ballotpedia.org/Uloma_Kama](https://ballotpedia.org/Uloma_Kama)

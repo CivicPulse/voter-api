@@ -35,9 +35,11 @@
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
 | Craig L Cupid | Qualified | No | Attorney | 03/04/2026 | info@cupidforpsc.com | [www.cupidforpsc.com](https://www.cupidforpsc.com) |
-| Shelia Edwards | Qualified | No | Business Owner | 03/05/2026 | — | [shelia4psc.com](https://shelia4psc.com) |
+| Shelia Edwards | Qualified | No | Business Owner | 03/05/2026 | shelia@electshelia.com | [shelia4psc.com](https://shelia4psc.com) |
 | Angelia Pressley | Qualified | No | Professor | 03/03/2026 | angelia@pressleyforgapsc.com | [pressleyforgapsc.com](https://pressleyforgapsc.com) |
 
 ## Data Source
 
 - Candidate list: `data/new/MAY_19_2026-GENERAL_AND_PRIMARY_ELECTION_Qualified_Candidates.csv`
+- Ballotpedia: https://ballotpedia.org/Georgia_Public_Service_Commission_election,_2026
+- Shelia Edwards campaign: https://electshelia.com

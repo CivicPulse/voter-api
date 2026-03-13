@@ -36,8 +36,10 @@
 | Thomas Gabriel Dean | Qualified | No | Driver | 03/06/2026 | — | — |
 | Ambuj "AJ" Jain | Qualified | No | Entrepreneur | 03/06/2026 | — | — |
 | Deandre Bernard Mathis | Qualified | No | Insurance Agent | 03/02/2026 | info@deandreforgeorgia.com | [deandreforgeorgia.com](https://deandreforgeorgia.com) |
-| Keisha Sean Waites | Qualified | No | Former State Legislator | 03/06/2026 | seanwaites@hotmail.com | — |
+| Keisha Sean Waites | Qualified | No | Former State Legislator | 03/06/2026 | seanwaites@hotmail.com | [keishawaites.org](https://keishawaites.org) |
 
 ## Data Source
 
 - Candidate list: `data/new/MAY_19_2026-GENERAL_AND_PRIMARY_ELECTION_Qualified_Candidates.csv`
+- Ballotpedia: https://ballotpedia.org/Georgia_Insurance_Commissioner_election,_2026
+- Keisha Waites campaign: https://ballotpedia.org/Keisha_Sean_Waites

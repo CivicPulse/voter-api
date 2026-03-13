@@ -26,7 +26,7 @@
 |-----------|--------|-----------|------------|---------------|-------|---------|
 | Nelva Melissa Lee | Qualified | No | Business Owner | 03/03/2026 | electdrlee@gmail.com | [drnelvalee.com](https://drnelvalee.com) |
 | Fred Jackson Longgrear | Qualified | No | School Superintendent | 03/02/2026 | bubba@bubba4ga.com | [bubba4ga.com](https://bubba4ga.com) |
-| Mesha Mainor | Qualified | No | Former State Representative | 03/06/2026 | — | — |
+| Mesha Mainor | Qualified | No | Former State Representative | 03/06/2026 | — | [meshamainor.com](https://www.meshamainor.com) |
 | Randell Eugene Trammell | Qualified | No | Nonprofit Educational Executive | 03/02/2026 | randell@trammellforgeorgia.com | [trammellforgeorgia.com](https://www.trammellforgeorgia.com) |
 | Richard Lee Woods | Qualified | Yes | State School Superintendent | 03/05/2026 | woodsforsuper@yahoo.com | [woodsforsuper.com](https://www.woodsforsuper.com) |
 
@@ -43,3 +43,5 @@
 ## Data Source
 
 - Candidate list: `data/new/MAY_19_2026-GENERAL_AND_PRIMARY_ELECTION_Qualified_Candidates.csv`
+- Ballotpedia: https://ballotpedia.org/Georgia_Superintendent_of_Schools_election,_2026
+- Mesha Mainor campaign: https://www.meshamainor.com

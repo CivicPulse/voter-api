@@ -24,7 +24,7 @@
 
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
-| Bárbara Yolanda Rivera Holmes | Qualified | Yes | Commissioner of Labor | 03/03/2026 | — | — |
+| Bárbara Yolanda Rivera Holmes | Qualified | Yes | Commissioner of Labor | 03/03/2026 | — | [barbaraforga.com](https://www.barbaraforga.com) |
 
 ## Democrat Primary
 
@@ -43,3 +43,6 @@
 ## Data Source
 
 - Candidate list: `data/new/MAY_19_2026-GENERAL_AND_PRIMARY_ELECTION_Qualified_Candidates.csv`
+- Ballotpedia: https://ballotpedia.org/Georgia_Labor_Commissioner_election,_2026
+- Barbara Rivera Holmes campaign: https://www.barbaraforga.com
+- Christian Wise Smith campaign: https://wiseforthepeople.com

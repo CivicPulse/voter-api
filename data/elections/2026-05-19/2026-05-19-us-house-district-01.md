@@ -25,7 +25,7 @@
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
 | Pat Farrell | Qualified | No | Small Business Owner | 03/05/2026 | pat@patfarrellforcongress.com | [patfarrellforcongress.com](https://patfarrellforcongress.com) |
-| Jim Kingston | Qualified | No | Insurance Broker | 03/04/2026 | — | [jimkingston.org](https://jimkingston.org) |
+| Jim Kingston | Qualified | No | Insurance Broker | 03/04/2026 | jim@jimkingston.org | [jimkingston.org](https://jimkingston.org) |
 | Brian Allen Montgomery | Qualified | No | Retired, United States Army | 03/02/2026 | brian@brianmontgomery.org | [brianmontgomery.org](https://brianmontgomery.org) |
 | Krista Penn | Qualified | No | Healthcare Executive | 03/02/2026 | krista@krista4congress.com | [karista4congress.com](https://karista4congress.com) |
 | Kandiss S Taylor | Qualified | No | Educator | 03/02/2026 | kandisstaylor@gmail.com | [kandisstaylor.com](https://www.kandisstaylor.com) |
@@ -44,8 +44,10 @@
 | Joey Palimeno | Qualified | No | Veterinary Technician | 03/04/2026 | palimeno4thepeople@gmail.com | [joeyforga.com](https://www.joeyforga.com) |
 | Sharon Stokes Williamson | Qualified | No | Public Health Professional | 03/02/2026 | stokeswilliamson4congress@gmail.com | [sswilliamsonforcongress.com](https://sswilliamsonforcongress.com) |
 | Patrick J Wilver | Qualified | No | Self Employed | 03/05/2026 | — | — |
-| Randall Jay Zurcher | Qualified | No | Teachers Union Representative | 03/05/2026 | randy4georgia@proton.me | [randy4georgia](https://randy4georgia) |
+| Randall Jay Zurcher | Qualified | No | Teachers Union Representative | 03/05/2026 | randy4georgia@proton.me | [randy4georgia.com](https://www.randy4georgia.com) |
 
 ## Data Source
 
 - Candidate list: `data/new/MAY_19_2026-GENERAL_AND_PRIMARY_ELECTION_Qualified_Candidates.csv`
+- Jim Kingston campaign email: [Ballotpedia - James Kingston (Georgia)](https://ballotpedia.org/James_Kingston_(Georgia))
+- Randall Jay Zurcher campaign website: [Randy4Georgia.com](https://www.randy4georgia.com)

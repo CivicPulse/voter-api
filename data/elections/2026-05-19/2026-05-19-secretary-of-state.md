@@ -26,7 +26,7 @@
 |-----------|--------|-----------|------------|---------------|-------|---------|
 | Timothy Kyle Fleming | Qualified | No | Small Business Owner | 03/02/2026 | tim@flemingforga.com | [flemingforga.com](https://www.flemingforga.com) |
 | Vernon Jones | Qualified | No | Consultant | 03/02/2026 | contact@vernonjonesforga.com | [vernonjonessos2026.com](https://vernonjonessos2026.com) |
-| Kelvin D. King | Qualified | No | General Contractor | 03/02/2026 | — | [kelvinking.com](https://kelvinking.com) |
+| Kelvin D. King | Qualified | No | General Contractor | 03/02/2026 | kelvin@kelvinking.com | [kelvinking.com](https://kelvinking.com) |
 | Edward Tecumseh Metz | Qualified | No | Retired | 03/04/2026 | ted@tedmetz.com | [tedmetz.com](https://www.tedmetz.com) |
 | Robert Gabriel Sterling | Qualified | No | Consultant | 03/03/2026 | gabriel@gabrielsterling.com | [gabrielsterling.com](https://gabrielsterling.com) |
 
@@ -44,3 +44,5 @@
 ## Data Source
 
 - Candidate list: `data/new/MAY_19_2026-GENERAL_AND_PRIMARY_ELECTION_Qualified_Candidates.csv`
+- Ballotpedia: https://ballotpedia.org/Georgia_Secretary_of_State_election,_2026
+- Kelvin King campaign: https://kelvinking.com

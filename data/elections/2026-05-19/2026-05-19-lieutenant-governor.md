@@ -29,8 +29,8 @@
 | Steve Gooch | Qualified | No | Business Owner | 03/05/2026 | — | [goochforgeorgia.com](https://www.goochforgeorgia.com) |
 | John Flanders Kennedy | Qualified | No | Attorney | 03/04/2026 | info@jfkforgeorgia.com | [jfkforgeorgia.com](https://www.jfkforgeorgia.com) |
 | Brenda Lynn Nelson-Porter | Qualified | No | Research Scholar | 03/04/2026 | visionarymentorship@gmail.com | [brigettes.com](https://www.brigettes.com) |
-| Takosha Misheal Swan | Qualified | No | Small Business Owner | 03/06/2026 | — | — |
-| Michael Blake Tillery | Qualified | No | Attorney | 03/03/2026 | — | [tilleryforgeorgia.com](https://tilleryforgeorgia.com) |
+| Takosha Misheal Swan | Qualified | No | Small Business Owner | 03/06/2026 | — | [takosha4georgia.com](https://takosha4georgia.com) |
+| Michael Blake Tillery | Qualified | No | Attorney | 03/03/2026 | blake@tilleryforgeorgia.com | [tilleryforgeorgia.com](https://tilleryforgeorgia.com) |
 
 ## Democrat Primary
 
@@ -38,10 +38,14 @@
 
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
-| Josh Mclaurin | Qualified | No | Attorney | 03/02/2026 | josh@joshforgeorgia.com | — |
+| Josh Mclaurin | Qualified | No | Attorney | 03/02/2026 | josh@joshforgeorgia.com | [joshmclaurin.com](https://www.joshmclaurin.com) |
 | Nabilah Parkes | Qualified | No | State Senator | 03/05/2026 | info@nabilahparkes.com | [nabilahparkes.com](https://nabilahparkes.com) |
 | Richard N. Wright | Qualified | No | Certified Public Accountant | 03/02/2026 | richard@wrightforgeorgia2026.com | [wrightforgeorgia2026.com](https://wrightforgeorgia2026.com) |
 
 ## Data Source
 
 - Candidate list: `data/new/MAY_19_2026-GENERAL_AND_PRIMARY_ELECTION_Qualified_Candidates.csv`
+- Ballotpedia: https://ballotpedia.org/Georgia_lieutenant_gubernatorial_election,_2026
+- Takosha Swan campaign: https://takosha4georgia.com
+- Tillery for Georgia: https://tilleryforgeorgia.com
+- Josh McLaurin campaign: https://www.joshmclaurin.com

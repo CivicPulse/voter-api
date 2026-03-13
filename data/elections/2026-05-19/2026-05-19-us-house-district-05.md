@@ -24,7 +24,7 @@
 
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
-| John Oscar II Salvesen II | Qualified | No | Handyman | 03/06/2026 | hehandymancanatlanta@gmail.com | — |
+| John Oscar II Salvesen II | Qualified | No | Handyman | 03/06/2026 | hehandymancanatlanta@gmail.com | [bongoforcongress.com](https://www.bongoforcongress.com) |
 
 ## Democrat Primary
 
@@ -38,3 +38,4 @@
 ## Data Source
 
 - Candidate list: `data/new/MAY_19_2026-GENERAL_AND_PRIMARY_ELECTION_Qualified_Candidates.csv`
+- John Salvesen campaign website: [BallotReady - John "Bongo" Salvesen II](https://www.ballotready.org/people/john-salvesen-ii)
