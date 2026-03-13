@@ -64,7 +64,7 @@ async def upsert_crosswalk_entries(
         )
         # Use RETURNING with xmax to distinguish inserts from updates:
         # xmax = 0 means a genuine insert; nonzero means an update.
-        stmt = stmt.returning(literal_column("(xmax = 0)::int").label("is_insert"))
+        stmt = stmt.returning(literal_column("(xmax = 0)::int").label("is_insert"))  # type: ignore[assignment]
         result = await session.execute(stmt)
         row = result.one()
         if row.is_insert:

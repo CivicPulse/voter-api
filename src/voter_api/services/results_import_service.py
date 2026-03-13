@@ -241,7 +241,7 @@ async def _upsert_candidates(
             constraint="uq_candidate_election_name",
             set_=update_set,
         )
-        stmt = stmt.returning(
+        stmt = stmt.returning(  # type: ignore[assignment]
             Candidate.__table__.c.id,
             literal_column("(xmax = 0)::int").label("is_insert"),
         )
