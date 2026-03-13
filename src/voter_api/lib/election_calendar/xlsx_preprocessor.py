@@ -189,6 +189,7 @@ def preprocess_xlsx_calendar(
     headers: dict[str, int] = {}
     for cell in ws[header_row]:
         val = str(cell.value or "").strip().upper()
+        assert cell.column is not None
         if "ELECTION" in val and "DATE" not in val:
             headers["election"] = cell.column - 1
         elif "ELECTION DATE" in val or ("DATE" in val and "ELECTION" in val):
@@ -262,7 +263,7 @@ def preprocess_xlsx_calendar(
             # Try parsing as a datetime object from openpyxl
             if hasattr(date_val, "date"):
                 election_date = date_val.date()
-            elif hasattr(date_val, "strftime"):
+            elif isinstance(date_val, date):
                 election_date = date_val
             else:
                 logger.warning("Could not parse election date '{}' for '{}'", date_str, election_name_raw)

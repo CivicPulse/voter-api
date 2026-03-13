@@ -125,7 +125,7 @@ async def _resolve_election(
 
     # Create new election — preserve original as source_name
     new_id = uuid.uuid4()
-    stmt = pg_insert(Election.__table__).values(
+    stmt = pg_insert(Election).values(
         id=new_id,
         name=normalized_name,
         source_name=original_name,
@@ -189,7 +189,7 @@ async def _upsert_candidate_batch(
     for i in range(0, len(records), _UPSERT_SUB_BATCH):
         batch = records[i : i + _UPSERT_SUB_BATCH]
 
-        stmt = pg_insert(Candidate.__table__).values(batch)
+        stmt = pg_insert(Candidate).values(batch)
         update_set: dict = {col: stmt.excluded[col] for col in overwrite_columns}
         for col in coalesce_columns:
             update_set[col] = func.coalesce(stmt.excluded[col], Candidate.__table__.c[col])
@@ -245,7 +245,7 @@ async def _upsert_candidate_links(
             )
         )
         # Insert the new link
-        stmt = pg_insert(CandidateLink.__table__).values(
+        stmt = pg_insert(CandidateLink).values(
             id=uuid.uuid4(),
             candidate_id=link["candidate_id"],
             link_type=link["link_type"],

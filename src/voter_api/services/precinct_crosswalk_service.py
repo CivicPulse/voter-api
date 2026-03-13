@@ -53,7 +53,7 @@ async def upsert_crosswalk_entries(
     updated = 0
 
     for entry in entries:
-        stmt = pg_insert(PrecinctCrosswalk.__table__).values(**entry)
+        stmt = pg_insert(PrecinctCrosswalk).values(**entry)
         stmt = stmt.on_conflict_do_update(
             constraint="uq_precinct_crosswalk_county_precinct",
             set_={

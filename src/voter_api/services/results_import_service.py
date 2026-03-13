@@ -145,7 +145,7 @@ async def _match_election(
 
     new_id = uuid.uuid4()
     stmt_insert = (
-        pg_insert(Election.__table__)
+        pg_insert(Election)
         .values(
             id=new_id,
             name=normalized_name,
@@ -228,7 +228,7 @@ async def _upsert_candidates(
 
     for i in range(0, len(records), _CANDIDATE_UPSERT_BATCH):
         batch = records[i : i + _CANDIDATE_UPSERT_BATCH]
-        stmt = pg_insert(Candidate.__table__).values(batch)
+        stmt = pg_insert(Candidate).values(batch)
 
         # Conservative update: only update fields that should be overwritten
         update_set = {

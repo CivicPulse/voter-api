@@ -1659,13 +1659,19 @@ class TestAbsentee:
         assert resp.status_code == 404
 
     async def test_import_absentee_requires_auth(self, client: httpx.AsyncClient) -> None:
+        """Unauthenticated absentee upload is rejected.
+
+        Accept 429 (rate-limited) as well as 401 — RateLimitMiddleware
+        executes before route-level auth dependencies, so after many
+        requests in the session the limiter may fire first.
+        """
         from io import BytesIO
 
         resp = await client.post(
             _url("/imports/absentee"),
             files={"file": ("test.csv", BytesIO(b"header\nvalue"), "text/csv")},
         )
-        assert resp.status_code == 401
+        assert resp.status_code in (401, 429)
 
     async def test_import_absentee_forbidden_for_viewer(self, viewer_client: httpx.AsyncClient) -> None:
         """Viewer cannot upload absentee ballot CSV.

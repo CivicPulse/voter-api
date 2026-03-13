@@ -110,7 +110,7 @@ async def _upsert_absentee_batch(
     for i in range(0, len(records), _UPSERT_SUB_BATCH):
         batch = records[i : i + _UPSERT_SUB_BATCH]
 
-        stmt = pg_insert(AbsenteeBallotApplication.__table__).values(batch)
+        stmt = pg_insert(AbsenteeBallotApplication).values(batch)
         stmt = stmt.on_conflict_do_update(
             index_elements=[
                 AbsenteeBallotApplication.__table__.c.voter_registration_number,
