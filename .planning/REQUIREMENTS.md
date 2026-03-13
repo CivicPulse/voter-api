@@ -82,31 +82,31 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FMT-01 | — | Pending |
-| FMT-02 | — | Pending |
-| FMT-03 | — | Pending |
-| FMT-04 | — | Pending |
-| FMT-05 | — | Pending |
-| FMT-06 | — | Pending |
-| CNV-01 | — | Pending |
-| CNV-02 | — | Pending |
-| CNV-03 | — | Pending |
-| CNV-04 | — | Pending |
-| IMP-01 | — | Pending |
-| IMP-02 | — | Pending |
-| IMP-03 | — | Pending |
-| IMP-04 | — | Pending |
-| SKL-01 | — | Pending |
-| SKL-02 | — | Pending |
-| SKL-03 | — | Pending |
-| SKL-04 | — | Pending |
-| DEM-01 | — | Pending |
+| FMT-01 | Phase 1 | Pending |
+| FMT-02 | Phase 1 | Pending |
+| FMT-03 | Phase 1 | Pending |
+| FMT-04 | Phase 1 | Pending |
+| FMT-05 | Phase 1 | Pending |
+| FMT-06 | Phase 1 | Pending |
+| CNV-01 | Phase 2 | Pending |
+| CNV-02 | Phase 2 | Pending |
+| CNV-03 | Phase 2 | Pending |
+| CNV-04 | Phase 2 | Pending |
+| IMP-01 | Phase 2 | Pending |
+| IMP-02 | Phase 2 | Pending |
+| IMP-03 | Phase 2 | Pending |
+| IMP-04 | Phase 2 | Pending |
+| SKL-01 | Phase 3 | Pending |
+| SKL-02 | Phase 3 | Pending |
+| SKL-03 | Phase 3 | Pending |
+| SKL-04 | Phase 3 | Pending |
+| DEM-01 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 19 total
-- Mapped to phases: 0
-- Unmapped: 19 ⚠️
+- Mapped to phases: 19
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-13*
-*Last updated: 2026-03-13 after initial definition*
+*Last updated: 2026-03-13 after roadmap creation*
