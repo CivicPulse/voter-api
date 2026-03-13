@@ -114,13 +114,14 @@
 
 ## Local Elections
 
-County commission, board of education, judicial, and other local office races across 155 counties (1,645 candidates in 1,012 contests).
+County commission, board of education, judicial, and other local office races across 159 counties (1,645 candidates in 1,012 contests).
 
 | County | Contests | Candidates |
 |--------|----------|------------|
 | [Appling](2026-05-19-appling.md) | 8 | 11 |
 | [Atkinson](2026-05-19-atkinson.md) | 5 | 5 |
 | [Bacon](2026-05-19-bacon.md) | 7 | 10 |
+| [Baker](2026-05-19-baker.md) | 0 | 0 |
 | [Baldwin](2026-05-19-baldwin.md) | 6 | 10 |
 | [Banks](2026-05-19-banks.md) | 4 | 7 |
 | [Barrow](2026-05-19-barrow.md) | 10 | 16 |
@@ -155,6 +156,7 @@ County commission, board of education, judicial, and other local office races ac
 | [Columbia](2026-05-19-columbia.md) | 9 | 19 |
 | [Cook](2026-05-19-cook.md) | 5 | 5 |
 | [Coweta](2026-05-19-coweta.md) | 8 | 17 |
+| [Crawford](2026-05-19-crawford.md) | 0 | 0 |
 | [Crisp](2026-05-19-crisp.md) | 5 | 8 |
 | [Dade](2026-05-19-dade.md) | 4 | 9 |
 | [Dawson](2026-05-19-dawson.md) | 4 | 5 |
@@ -247,6 +249,7 @@ County commission, board of education, judicial, and other local office races ac
 | [Sumter](2026-05-19-sumter.md) | 3 | 6 |
 | [Talbot](2026-05-19-talbot.md) | 5 | 8 |
 | [Taliaferro](2026-05-19-taliaferro.md) | 3 | 10 |
+| [Taylor](2026-05-19-taylor.md) | 0 | 0 |
 | [Tattnall](2026-05-19-tattnall.md) | 5 | 7 |
 | [Telfair](2026-05-19-telfair.md) | 7 | 11 |
 | [Terrell](2026-05-19-terrell.md) | 3 | 3 |
@@ -272,6 +275,7 @@ County commission, board of education, judicial, and other local office races ac
 | [Whitfield](2026-05-19-whitfield.md) | 8 | 14 |
 | [Wilcox](2026-05-19-wilcox.md) | 6 | 11 |
 | [Wilkinson](2026-05-19-wilkinson.md) | 7 | 9 |
+| [Wilkes](2026-05-19-wilkes.md) | 0 | 0 |
 | [Worth](2026-05-19-worth.md) | 8 | 10 |
 
 ## Candidate Breakdown by Party (Qualified Only)

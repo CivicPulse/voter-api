@@ -1,6 +1,6 @@
 # County Election File Format — Canonical Reference
 
-This document defines the exact structure and conventions that all 155 Georgia county election files must follow. Use this as the authoritative template for file generation, review, and normalization.
+This document defines the exact structure and conventions that all 159 Georgia county election files must follow. Use this as the authoritative template for file generation, review, and normalization.
 
 ## File Naming Convention
 

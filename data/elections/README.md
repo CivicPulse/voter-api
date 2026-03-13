@@ -32,11 +32,17 @@ This directory tracks upcoming Georgia elections with candidate and contest deta
 | Haralson County | **Explained** — City of Buchanan mayor/council (municipal qualifying, not SOS) | [11Alive](https://www.11alive.com/article/news/local/special-election-march-2026-buchanan-mayor-conviction-deadly-2015-crash/85-085664b5-646a-4d0e-a63d-7e52e059c0e7), [Atlanta News First](https://www.atlantanewsfirst.com/2026/01/30/date-set-special-election-replace-ex-trooper-mayor-convicted-vehicular-homicide/) |
 | Elbert County | **Unresolvable** — likely unopposed candidate declared elected under O.C.G.A. § 21-2-291 | No news coverage found |
 
+### Filled via generation (May 19 general primary — local elections)
+
+| Field | Status | Source |
+|-------|--------|--------|
+| Local contest files | **Filled** — 159 county files with 1,070 contests and 1,645 candidates | Generated from SOS qualified candidates CSV |
+
 ### Remaining gaps requiring additional research
 
 | Gap | How it could be filled |
 |-----|----------------------|
-| May 19 local contest files | Statewide and federal contest files exist; local contest files (state legislative, county, municipal) are not yet created |
+| May 19 state legislative contest files | State House (299 contests) and State Senate (93 contests) files are not yet created |
 
 ## Data Sources
 
