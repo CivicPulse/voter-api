@@ -1,13 +1,13 @@
 # Montgomery County — Local Elections
 
-| | |
-|---|---|
-| **Election** | [2026 General Primary](../2026-05-19-general-primary.md) |
-| **Type** | County / Local |
-| **Contests** | 5 |
-| **Candidates** | 9 |
+## Metadata
 
----
+| Field | Value |
+|-------|-------|
+| Election | [May 19, 2026 — General and Primary Election](../2026-05-19-general-primary.md) |
+| Type | Local Races |
+| Contests | 5 |
+| Candidates | 9 |
 
 ## Election Calendar
 
@@ -19,49 +19,51 @@
 | Absentee Ballot Application Deadline | May 8, 2026 |
 | Election Day | May 19, 2026 |
 
+## Contests
+
 ### Commission - District 4
 
 **Republican Primary**
 
-| Candidate | Occupation | Email | Website |
-|-----------|-----------|-------|---------|
-| James Tyler Williamson | Business Owner | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
+|-----------|--------|-----------|------------|-----------|-------|---------|
+| James Tyler Williamson | Qualified | No | Business Owner | 03/02/2026 | — | — |
 
 **Democrat Primary**
 
-| Candidate | Occupation | Email | Website |
-|-----------|-----------|-------|---------|
-| Clarence E. Thomas (I) | Business Owner | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
+|-----------|--------|-----------|------------|-----------|-------|---------|
+| Clarence E. Thomas | Qualified | Yes | Business Owner | 03/03/2026 | — | — |
 
 ### Commission - District 5
 
 **Republican Primary**
 
-| Candidate | Occupation | Email | Website |
-|-----------|-----------|-------|---------|
-| Leland Grady Adams (I) | Business Owner | — | — |
-| Matthew Taylor Dykes | Maintenance Technican | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
+|-----------|--------|-----------|------------|-----------|-------|---------|
+| Leland Grady Adams | Qualified | Yes | Business Owner | 03/02/2026 | — | — |
+| Matthew Taylor Dykes | Qualified | No | Maintenance Technican | 03/02/2026 | — | — |
 
 ### Member, Board of Education, District 4
 
-| Candidate | Occupation | Email | Website |
-|-----------|-----------|-------|---------|
-| Eugene Pete Ward (I) | Retired | wardpete26@yahoo.com | — |
-| Sylvia Ann Moore | Business Owner | sylviamoore729@gmail.com | — |
+| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
+|-----------|--------|-----------|------------|-----------|-------|---------|
+| Eugene Pete Ward | Qualified | Yes | Retired | 03/05/2026 | wardpete26@yahoo.com | — |
+| Sylvia Ann Moore | Qualified | No | Business Owner | 03/06/2026 | sylviamoore729@gmail.com | — |
 
 ### Member, Board of Education, District 5
 
-| Candidate | Occupation | Email | Website |
-|-----------|-----------|-------|---------|
-| John Christian Oconner (I) | Healh Physicist | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
+|-----------|--------|-----------|------------|-----------|-------|---------|
+| John Christian Oconner | Qualified | Yes | Healh Physicist | 03/02/2026 | — | — |
 
-### Magistrate (civil) Court Judge
+### Magistrate (Civil) Court Judge
 
-| Candidate | Occupation | Email | Website |
-|-----------|-----------|-------|---------|
-| Ashley Adams Thornton (I) | Magistrate Judge | — | — |
-| Kimberly M. Wiggs | Nurse | kwiggs30@gmail.com | — |
+| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
+|-----------|--------|-----------|------------|-----------|-------|---------|
+| Ashley Adams Thornton | Qualified | Yes | Magistrate Judge | 03/02/2026 | — | — |
+| Kimberly M. Wiggs | Qualified | No | Nurse | 03/05/2026 | kwiggs30@gmail.com | — |
 
----
+## Data Source
 
-*Source: [Georgia Secretary of State — Qualified Candidates](https://sos.ga.gov/page/qualified-candidates) · CSV extract 2026-03-12*
+- Candidate list: `data/new/MAY_19_2026-GENERAL_AND_PRIMARY_ELECTION_Qualified_Candidates.csv`

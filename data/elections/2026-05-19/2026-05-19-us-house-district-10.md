@@ -22,21 +22,21 @@
 
 **Contest Name (SOS):** U.S House of Representatives, District 10 (R)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Jeffrey Dwayne Baker | No | Plumber | 03/04/2026 | — | [jeffbakerforcongress.com](https://www.jeffbakerforcongress.com) |
-| Houston Gaines | No | Small Business Development | 03/02/2026 | info@houstongaines.com | [houstongaines.com](https://houstongaines.com) |
-| Ryan Christopher Millsap | No | Entrepreneur | 03/04/2026 | ryan@ryanmillsapforcongress.com | [ryanmillsapforcongress.com](https://www.ryanmillsapforcongress.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Jeffrey Dwayne Baker | Qualified | No | Plumber | 03/04/2026 | — | [jeffbakerforcongress.com](https://www.jeffbakerforcongress.com) |
+| Houston Gaines | Qualified | No | Small Business Development | 03/02/2026 | info@houstongaines.com | [houstongaines.com](https://houstongaines.com) |
+| Ryan Christopher Millsap | Qualified | No | Entrepreneur | 03/04/2026 | ryan@ryanmillsapforcongress.com | [ryanmillsapforcongress.com](https://www.ryanmillsapforcongress.com) |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 10 (D)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Pamela "Pam" Delancy | No | Military Retiree | 03/03/2026 | electdelancy@votepamdelancy.com | [votepamdelancy.com](https://votepamdelancy.com) |
-| Alexandra "Lexy" Doherty | No | Candidate | 03/02/2026 | campaign@lexydoherty.com | [lexydoherty.com](https://lexydoherty.com) |
-| John B. Dority | No | Retired Engineer | 03/06/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Pamela "Pam" Delancy | Qualified | No | Military Retiree | 03/03/2026 | electdelancy@votepamdelancy.com | [votepamdelancy.com](https://votepamdelancy.com) |
+| Alexandra "Lexy" Doherty | Qualified | No | Candidate | 03/02/2026 | campaign@lexydoherty.com | [lexydoherty.com](https://lexydoherty.com) |
+| John B. Dority | Qualified | No | Retired Engineer | 03/06/2026 | — | — |
 
 ## Data Source
 

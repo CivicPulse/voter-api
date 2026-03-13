@@ -22,18 +22,18 @@
 
 **Contest Name (SOS):** Agriculture Commissioner (R)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Tyler J Harper | Yes | Farmer | 03/04/2026 | info@tylerharperga.com | [tylerharperga.com](https://tylerharperga.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Tyler J Harper | Qualified | Yes | Farmer | 03/04/2026 | info@tylerharperga.com | [tylerharperga.com](https://tylerharperga.com) |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** Agriculture Commissioner (D)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Katherine E. Juhan-Arnold | No | Farmer / Engineering & Construction Management | 03/05/2026 | connect@katherineforgeorgia.com | [katherineforgeorgia.com](https://katherineforgeorgia.com) |
-| Sedrick Kent Rowe Jr | No | Farmer / Agricultural Scientist | 03/05/2026 | — | [roweforgeorgia.com](https://roweforgeorgia.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Katherine E. Juhan-Arnold | Qualified | No | Farmer / Engineering & Construction Management | 03/05/2026 | connect@katherineforgeorgia.com | [katherineforgeorgia.com](https://katherineforgeorgia.com) |
+| Sedrick Kent Rowe Jr | Qualified | No | Farmer / Agricultural Scientist | 03/05/2026 | — | [roweforgeorgia.com](https://roweforgeorgia.com) |
 
 ## Data Source
 

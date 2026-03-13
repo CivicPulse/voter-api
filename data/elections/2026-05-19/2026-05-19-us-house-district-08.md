@@ -22,18 +22,18 @@
 
 **Contest Name (SOS):** U.S House of Representatives, District 8 (R)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| James Austin Scott | Yes | Us Representative | 03/02/2026 | — | [scottforga.com](https://scottforga.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| James Austin Scott | Qualified | Yes | Us Representative | 03/02/2026 | — | [scottforga.com](https://scottforga.com) |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 8 (D)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Kelly Esti | No | Analyst | 03/02/2026 | kellyesti4congress@gmail.com | [kellyesti4congress.com](https://kellyesti4congress.com) |
-| Justin M. Lucas | No | Education | 03/06/2026 | jlucasforcongress@gmail.com | [facebook.com/profile.php?id=61586467530528](https://facebook.com/profile.php?id=61586467530528) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Kelly Esti | Qualified | No | Analyst | 03/02/2026 | kellyesti4congress@gmail.com | [kellyesti4congress.com](https://kellyesti4congress.com) |
+| Justin M. Lucas | Qualified | No | Education | 03/06/2026 | jlucasforcongress@gmail.com | [facebook.com/profile.php?id=61586467530528](https://facebook.com/profile.php?id=61586467530528) |
 
 ## Data Source
 

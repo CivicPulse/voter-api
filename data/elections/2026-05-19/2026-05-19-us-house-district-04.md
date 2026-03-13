@@ -22,19 +22,19 @@
 
 **Contest Name (SOS):** U.S House of Representatives, District 4 (R)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| James Raymond Duffie | No | Retired | 03/05/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| James Raymond Duffie | Qualified | No | Retired | 03/05/2026 | — | — |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 4 (D)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Henry Calvin "Hank" Johnson Jr | Yes | Congressman | 03/02/2026 | — | [hankforcongress.com](https://hankforcongress.com) |
-| Ansel Postell | No | Entrepreneur | 03/05/2026 | postell4all@yahoo.com | [apostellforcongress.com](https://apostellforcongress.com) |
-| Ben Truman | No | Consultant | 03/03/2026 | ben@bentrumanforcongress.com | [bentrumanforcongress.com](https://www.bentrumanforcongress.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Henry Calvin "Hank" Johnson Jr | Qualified | Yes | Congressman | 03/02/2026 | — | [hankforcongress.com](https://hankforcongress.com) |
+| Ansel Postell | Qualified | No | Entrepreneur | 03/05/2026 | postell4all@yahoo.com | [apostellforcongress.com](https://apostellforcongress.com) |
+| Ben Truman | Qualified | No | Consultant | 03/03/2026 | ben@bentrumanforcongress.com | [bentrumanforcongress.com](https://www.bentrumanforcongress.com) |
 
 ## Data Source
 

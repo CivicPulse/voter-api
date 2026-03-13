@@ -22,17 +22,17 @@
 
 **Contest Name (SOS):** U.S House of Representatives, District 2 (R)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Benjamin Matthew Day | No | CEO & Chairman | 03/06/2026 | — | [votemattday.com](https://votemattday.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Benjamin Matthew Day | Qualified | No | CEO & Chairman | 03/06/2026 | — | [votemattday.com](https://votemattday.com) |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 2 (D)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Sanford Dixon Bishop Jr | Yes | Member Of Congress | 03/02/2026 | sanfordbishop@sanfordbishop.com | [sanfordbishop.com](https://sanfordbishop.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Sanford Dixon Bishop Jr | Qualified | Yes | Member Of Congress | 03/02/2026 | sanfordbishop@sanfordbishop.com | [sanfordbishop.com](https://sanfordbishop.com) |
 
 ## Data Source
 

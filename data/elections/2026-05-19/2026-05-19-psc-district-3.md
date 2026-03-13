@@ -22,18 +22,18 @@
 
 **Contest Name (SOS):** Public Service Commissioner, District 3 (R)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Terrell Fitz Johnson Sr | No | Entrepreneur | 03/03/2026 | fitz@friendsforfitz.com | [friendsforfitz.com](https://friendsforfitz.com) |
-| Brandon Lynn Martin | No | Purchasing | 03/05/2026 | — | [votebrandonmartin.com](https://votebrandonmartin.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Terrell Fitz Johnson Sr | Qualified | No | Entrepreneur | 03/03/2026 | fitz@friendsforfitz.com | [friendsforfitz.com](https://friendsforfitz.com) |
+| Brandon Lynn Martin | Qualified | No | Purchasing | 03/05/2026 | — | [votebrandonmartin.com](https://votebrandonmartin.com) |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** Public Service Commissioner, District 3 (D)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Peter Jacob Hubbard | Yes | Commissioner | 03/02/2026 | peter@peterforgeorgia.com | [peterforgeorgia.com](https://peterforgeorgia.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Peter Jacob Hubbard | Qualified | Yes | Commissioner | 03/02/2026 | peter@peterforgeorgia.com | [peterforgeorgia.com](https://peterforgeorgia.com) |
 
 ## Data Source
 

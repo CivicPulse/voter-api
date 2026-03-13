@@ -22,18 +22,18 @@
 
 **Contest Name (SOS):** U.S House of Representatives, District 5 (R)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| John Oscar II Salvesen II | No | Handyman | 03/06/2026 | hehandymancanatlanta@gmail.com | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| John Oscar II Salvesen II | Qualified | No | Handyman | 03/06/2026 | hehandymancanatlanta@gmail.com | — |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 5 (D)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Arnetress Elaine Beatty | No | Security | 03/04/2026 | — | [goddown.net](https://www.goddown.net) |
-| Nikema Williams | Yes | Congresswoman | 03/02/2026 | amber@nikemawilliams.com | [nikemawilliams.com](https://nikemawilliams.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Arnetress Elaine Beatty | Qualified | No | Security | 03/04/2026 | — | [goddown.net](https://www.goddown.net) |
+| Nikema Williams | Qualified | Yes | Congresswoman | 03/02/2026 | amber@nikemawilliams.com | [nikemawilliams.com](https://nikemawilliams.com) |
 
 ## Data Source
 

@@ -22,24 +22,24 @@
 
 **Contest Name (SOS):** Secretary of State (R)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Timothy Kyle Fleming | No | Small Business Owner | 03/02/2026 | tim@flemingforga.com | [flemingforga.com](https://www.flemingforga.com) |
-| Vernon Jones | No | Consultant | 03/02/2026 | contact@vernonjonesforga.com | [vernonjonessos2026.com](https://vernonjonessos2026.com) |
-| Kelvin D. King | No | General Contractor | 03/02/2026 | — | [kelvinking.com](https://kelvinking.com) |
-| Edward Tecumseh Metz | No | Retires | 03/04/2026 | ted@tedmetz.com | [tedmetz.com](https://www.tedmetz.com) |
-| Robert Gabriel Sterling | No | Consultant | 03/03/2026 | gabriel@gabrielsterling.com | [gabrielsterling.com](https://gabrielsterling.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Timothy Kyle Fleming | Qualified | No | Small Business Owner | 03/02/2026 | tim@flemingforga.com | [flemingforga.com](https://www.flemingforga.com) |
+| Vernon Jones | Qualified | No | Consultant | 03/02/2026 | contact@vernonjonesforga.com | [vernonjonessos2026.com](https://vernonjonessos2026.com) |
+| Kelvin D. King | Qualified | No | General Contractor | 03/02/2026 | — | [kelvinking.com](https://kelvinking.com) |
+| Edward Tecumseh Metz | Qualified | No | Retired | 03/04/2026 | ted@tedmetz.com | [tedmetz.com](https://www.tedmetz.com) |
+| Robert Gabriel Sterling | Qualified | No | Consultant | 03/03/2026 | gabriel@gabrielsterling.com | [gabrielsterling.com](https://gabrielsterling.com) |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** Secretary of State (D)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Cam Thi Ashling | No | Business Owner/Farmer | 03/03/2026 | info@camlovesga.com | [camlovesga.com](https://www.camlovesga.com) |
-| Dana Barrett | No | Fulton County Commissioner | 03/05/2026 | dana@electdanabarrett.com | [electdanabarrett.com](https://electdanabarrett.com) |
-| Adrian Consonery Jr | No | Voting Rights Advocate | 03/02/2026 | adrianc@aj4ga.org | [aj4ga.org](https://aj4ga.org) |
-| Penny Brown Reynolds | No | Attorney | 03/02/2026 | info@pennyforgeorgia.com | [pennyforgeorgia.com](https://pennyforgeorgia.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Cam Thi Ashling | Qualified | No | Business Owner/Farmer | 03/03/2026 | info@camlovesga.com | [camlovesga.com](https://www.camlovesga.com) |
+| Dana Barrett | Qualified | No | Fulton County Commissioner | 03/05/2026 | dana@electdanabarrett.com | [electdanabarrett.com](https://electdanabarrett.com) |
+| Adrian Consonery Jr | Qualified | No | Voting Rights Advocate | 03/02/2026 | adrianc@aj4ga.org | [aj4ga.org](https://aj4ga.org) |
+| Penny Brown Reynolds | Qualified | No | Attorney | 03/02/2026 | info@pennyforgeorgia.com | [pennyforgeorgia.com](https://pennyforgeorgia.com) |
 
 ## Data Source
 

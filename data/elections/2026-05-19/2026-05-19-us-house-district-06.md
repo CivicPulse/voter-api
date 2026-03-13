@@ -22,18 +22,18 @@
 
 **Contest Name (SOS):** U.S House of Representatives, District 6 (R)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Kevin Eugene Martin | No | Controller | 03/02/2026 | committee2electkem@gmail.com | — |
-| Justin Lee Pinker | No | Pest Control Tech | 03/05/2026 | justin@justinpinkerforcongress.com | [justinpinkerforcongress.com](https://www.justinpinkerforcongress.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Kevin Eugene Martin | Qualified | No | Controller | 03/02/2026 | committee2electkem@gmail.com | — |
+| Justin Lee Pinker | Qualified | No | Pest Control Tech | 03/05/2026 | justin@justinpinkerforcongress.com | [justinpinkerforcongress.com](https://www.justinpinkerforcongress.com) |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 6 (D)
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|-----------|------------|---------------|-------|---------|
-| Lucy McBath | Yes | Congresswoman | 03/02/2026 | info@lucyforcongress.com | [lucyforcongress.com](https://lucyforcongress.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Lucy McBath | Qualified | Yes | Congresswoman | 03/02/2026 | info@lucyforcongress.com | [lucyforcongress.com](https://lucyforcongress.com) |
 
 ## Data Source
 
