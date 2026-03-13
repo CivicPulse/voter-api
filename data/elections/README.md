@@ -44,6 +44,17 @@ This directory tracks upcoming Georgia elections with candidate and contest deta
 |-----|----------------------|
 | May 19 state legislative contest files | State House (299 contests) and State Senate (93 contests) files are not yet created |
 
+## File Formats
+
+Canonical format references for each file type are in [`formats/`](formats/):
+
+| Format | Applies To |
+|--------|-----------|
+| [COUNTY-FORMAT.md](formats/COUNTY-FORMAT.md) | 159 county local election files |
+| [STATEWIDE-CONTEST-FORMAT.md](formats/STATEWIDE-CONTEST-FORMAT.md) | Governor, US Senate, US House, PSC, state executive contests |
+| [SPECIAL-ELECTION-CONTEST-FORMAT.md](formats/SPECIAL-ELECTION-CONTEST-FORMAT.md) | Individual special election contest files |
+| [ELECTION-OVERVIEW-FORMAT.md](formats/ELECTION-OVERVIEW-FORMAT.md) | Top-level election summary files (general primary + special) |
+
 ## Data Sources
 
 Raw candidate CSVs are in `data/new/`:
