@@ -36,7 +36,7 @@ This directory tracks upcoming Georgia elections with candidate and contest deta
 
 | Gap | How it could be filled |
 |-----|----------------------|
-| May 19 contest-level files | Overview exists but no individual contest markdown files yet (2,319 candidates across hundreds of contests) |
+| May 19 local contest files | Statewide and federal contest files exist; local contest files (state legislative, county, municipal) are not yet created |
 
 ## Data Sources
 

@@ -1,0 +1,33 @@
+# Insurance and Fire Safety Commissioner
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
+| Type | Partisan Primary |
+| Candidates | 1 Republican, 5 Democrat |
+
+## Republican Primary
+
+**Contest Name (SOS):** Insurance and Fire Safety Commissioner (R)
+
+| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|-----------|------------|---------------|-------|---------|
+| John Franklin King | Yes | Commissioner | 03/02/2026 | info@votejohnking.com | [www.votejohnking.com](https://www.votejohnking.com) |
+
+## Democrat Primary
+
+**Contest Name (SOS):** Insurance and Fire Safety Commissioner (D)
+
+| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|-----------|------------|---------------|-------|---------|
+| Clarence Blalock | No | Small Business Owner | 03/06/2026 | clarence@clarenceforga.com | [clarenceforga.com](https://clarenceforga.com) |
+| Thomas Gabriel Dean | No | Driver | 03/06/2026 | — | — |
+| Ambuj "AJ" Jain | No | Entrepreneur | 03/06/2026 | — | — |
+| Deandre Bernard Mathis | No | Insurance Agent | 03/02/2026 | info@deandreforgeorgia.com | [deandreforgeorgia.com](https://deandreforgeorgia.com) |
+| Keisha Sean Waites | No | Former State Legislator | 03/06/2026 | seanwaites@hotmail.com | — |
+
+## Data Source
+
+- Candidate list: `data/new/MAY_19_2026-GENERAL_AND_PRIMARY_ELECTION_Qualified_Candidates.csv`
