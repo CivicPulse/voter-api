@@ -8,6 +8,16 @@
 | Type | Partisan Primary |
 | Candidates | 1 Republican, 5 Democrat |
 
+## Election Calendar
+
+| Milestone | Date |
+|-----------|------|
+| Qualifying Period | March 2–6, 2026 |
+| Voter Registration Deadline | April 20, 2026 |
+| Early Voting | April 27 – May 15, 2026 |
+| Absentee Ballot Application Deadline | May 8, 2026 |
+| Election Day | May 19, 2026 |
+
 ## Republican Primary
 
 **Contest Name (SOS):** Labor Commissioner (R)
