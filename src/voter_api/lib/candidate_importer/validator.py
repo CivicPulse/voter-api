@@ -56,7 +56,9 @@ def validate_candidate_record(record: dict) -> list[str]:
 
     # Optional: filing_status — normalize subtypes (e.g. "qualified - signatures accepted" → "qualified")
     filing_status = record.get("filing_status")
-    if filing_status is not None and filing_status != "" and filing_status not in _ALLOWED_FILING_STATUSES:
+    if filing_status is not None and filing_status != "" and not isinstance(filing_status, str):
+        errors.append(f"filing_status must be a string, got {type(filing_status).__name__}")
+    elif isinstance(filing_status, str) and filing_status != "" and filing_status not in _ALLOWED_FILING_STATUSES:
         # Check if it's a subtype of an allowed status (e.g. "qualified - ...")
         normalized = filing_status.split(" - ")[0].strip().lower()
         if normalized in _ALLOWED_FILING_STATUSES:
@@ -66,7 +68,9 @@ def validate_candidate_record(record: dict) -> list[str]:
 
     # Optional: email (basic format check if present)
     email = record.get("email")
-    if email is not None and email != "" and not _EMAIL_RE.match(email):
+    if email is not None and email != "" and not isinstance(email, str):
+        errors.append(f"email must be a string, got {type(email).__name__}")
+    elif isinstance(email, str) and email != "" and not _EMAIL_RE.match(email):
         errors.append(f"email '{email}' is not valid (must contain @)")
 
     return errors

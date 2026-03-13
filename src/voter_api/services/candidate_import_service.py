@@ -6,7 +6,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from loguru import logger
-from sqlalchemy import literal_column, select
+from sqlalchemy import func, literal_column, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -72,7 +72,7 @@ async def _resolve_election(
     election_name: str,
     election_date: date,
     election_type: str | None,
-    cache: dict[tuple[str, date], uuid.UUID],
+    cache: dict[tuple[str, date, str, str], uuid.UUID],
     county: str | None = None,
     municipality: str | None = None,
 ) -> uuid.UUID:
@@ -100,7 +100,7 @@ async def _resolve_election(
     """
     original_name = re.sub(r"\s+", " ", election_name).strip()
     normalized = _normalize_election_name(original_name)
-    cache_key = (normalized, election_date)
+    cache_key = (normalized, election_date, (county or "").upper(), municipality or "")
     if cache_key in cache:
         return cache[cache_key]
 
@@ -168,26 +168,34 @@ async def _upsert_candidate_batch(
     total_inserted = 0
     total_updated = 0
 
-    update_columns = [
-        "party",
+    # Columns that are always overwritten on conflict
+    overwrite_columns = [
         "filing_status",
         "is_incumbent",
+        "import_job_id",
+    ]
+    # Nullable columns: use COALESCE so a sparse re-import with None
+    # does not erase richer existing data.
+    coalesce_columns = [
+        "party",
         "contest_name",
         "qualified_date",
         "occupation",
         "email",
         "home_county",
         "municipality",
-        "import_job_id",
     ]
 
     for i in range(0, len(records), _UPSERT_SUB_BATCH):
         batch = records[i : i + _UPSERT_SUB_BATCH]
 
         stmt = pg_insert(Candidate.__table__).values(batch)
+        update_set: dict = {col: stmt.excluded[col] for col in overwrite_columns}
+        for col in coalesce_columns:
+            update_set[col] = func.coalesce(stmt.excluded[col], Candidate.__table__.c[col])
         stmt = stmt.on_conflict_do_update(
             constraint="uq_candidate_election_name",
-            set_={col: stmt.excluded[col] for col in update_columns},
+            set_=update_set,
         )
         # xmax = 0 identifies genuinely new rows (not updated via ON CONFLICT)
         stmt = stmt.returning(  # type: ignore[assignment]
@@ -211,7 +219,13 @@ async def _upsert_candidate_links(
 ) -> None:
     """Create or update candidate links (website URLs).
 
-    For each link, does an upsert on (candidate_id, link_type).
+    For each link, does a delete-then-insert on (candidate_id, link_type).
+    This avoids the race condition inherent in select-then-update/insert.
+
+    Note: A proper ``INSERT ... ON CONFLICT`` would be preferable, but
+    requires a unique constraint on ``(candidate_id, link_type)`` which
+    does not exist yet.  The delete+insert pair is safe within a single
+    transaction.
 
     Args:
         session: Database session.
@@ -220,30 +234,24 @@ async def _upsert_candidate_links(
     if not links:
         return
 
+    from sqlalchemy import delete
+
     for link in links:
-        # Check if link already exists
-        result = await session.execute(
-            select(CandidateLink.id).where(
+        # Remove existing link for this (candidate_id, link_type) pair
+        await session.execute(
+            delete(CandidateLink).where(
                 CandidateLink.candidate_id == link["candidate_id"],
                 CandidateLink.link_type == link["link_type"],
             )
         )
-        existing_id = result.scalar_one_or_none()
-
-        if existing_id is not None:
-            # Update existing link
-            from sqlalchemy import update
-
-            await session.execute(update(CandidateLink).where(CandidateLink.id == existing_id).values(url=link["url"]))
-        else:
-            # Insert new link
-            stmt = pg_insert(CandidateLink.__table__).values(
-                id=uuid.uuid4(),
-                candidate_id=link["candidate_id"],
-                link_type=link["link_type"],
-                url=link["url"],
-            )
-            await session.execute(stmt)
+        # Insert the new link
+        stmt = pg_insert(CandidateLink.__table__).values(
+            id=uuid.uuid4(),
+            candidate_id=link["candidate_id"],
+            link_type=link["link_type"],
+            url=link["url"],
+        )
+        await session.execute(stmt)
 
 
 async def process_candidate_import(
@@ -275,7 +283,7 @@ async def process_candidate_import(
     updated_count = 0
     needs_review_count = 0
     errors: list[dict] = []
-    election_cache: dict[tuple[str, date], uuid.UUID] = {}
+    election_cache: dict[tuple[str, date, str, str], uuid.UUID] = {}
 
     try:
         chunk_offset = job.last_processed_offset or 0

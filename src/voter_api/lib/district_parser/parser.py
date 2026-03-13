@@ -432,6 +432,9 @@ def parse_contest_name(
         result_county = county
     elif _is_judicial(lower):
         district_type = "judicial"
+    elif lower.startswith("city council"):
+        district_type = "city_council"
+        result_county = municipality
     elif _is_municipal(lower):
         district_type = "municipal"
         result_county = municipality

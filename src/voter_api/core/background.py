@@ -59,7 +59,18 @@ class InProcessTaskRunner:
     def __init__(self) -> None:
         self._jobs: dict[str, JobStatus] = {}
         self._tasks: dict[str, asyncio.Task[Any]] = {}
-        self._semaphore = asyncio.Semaphore(2)
+        self._semaphore: asyncio.Semaphore | None = None
+
+    def _get_semaphore(self) -> asyncio.Semaphore:
+        """Lazily create the semaphore on the current event loop.
+
+        A module-level or __init__-time Semaphore binds to whatever loop
+        is running at construction time.  Creating it on first use ensures
+        it belongs to the loop that will actually await it.
+        """
+        if self._semaphore is None:
+            self._semaphore = asyncio.Semaphore(2)
+        return self._semaphore
 
     def submit_task(self, coro: Coroutine[Any, Any, Any]) -> str:
         """Submit an async task for background execution.
@@ -74,7 +85,7 @@ class InProcessTaskRunner:
         self._jobs[job_id] = JobStatus.PENDING
 
         async def _run() -> None:
-            async with self._semaphore:
+            async with self._get_semaphore():
                 self._jobs[job_id] = JobStatus.RUNNING
                 try:
                     await coro

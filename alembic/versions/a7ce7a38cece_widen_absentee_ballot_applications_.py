@@ -49,27 +49,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.alter_column(
-        "absentee_ballot_applications",
-        "county_precinct",
-        type_=sa.String(20),
-        existing_type=sa.String(100),
-    )
-    op.alter_column(
-        "absentee_ballot_applications",
-        "municipal_precinct",
-        type_=sa.String(20),
-        existing_type=sa.String(100),
-    )
-    op.alter_column(
-        "absentee_ballot_applications",
-        "mailing_street_number",
-        type_=sa.String(20),
-        existing_type=sa.String(50),
-    )
-    op.alter_column(
-        "absentee_ballot_applications",
-        "street_number",
-        type_=sa.String(20),
-        existing_type=sa.String(50),
+    raise RuntimeError(
+        "Irreversible migration a7ce7a38cece: downgrade would truncate data in "
+        "street_number, mailing_street_number, municipal_precinct, and county_precinct "
+        "columns that may already contain values exceeding the original limits."
     )

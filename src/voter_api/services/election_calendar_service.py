@@ -75,19 +75,15 @@ async def process_calendar_import(
         result.matched += 1
 
         # Build update values (only non-None fields)
-        update_values: dict = {}
-        if entry.registration_deadline is not None:
-            update_values["registration_deadline"] = entry.registration_deadline
-        if entry.early_voting_start is not None:
-            update_values["early_voting_start"] = entry.early_voting_start
-        if entry.early_voting_end is not None:
-            update_values["early_voting_end"] = entry.early_voting_end
-        if entry.absentee_request_deadline is not None:
-            update_values["absentee_request_deadline"] = entry.absentee_request_deadline
-        if entry.qualifying_start is not None:
-            update_values["qualifying_start"] = entry.qualifying_start
-        if entry.qualifying_end is not None:
-            update_values["qualifying_end"] = entry.qualifying_end
+        _calendar_fields = (
+            "registration_deadline",
+            "early_voting_start",
+            "early_voting_end",
+            "absentee_request_deadline",
+            "qualifying_start",
+            "qualifying_end",
+        )
+        update_values = {f: getattr(entry, f) for f in _calendar_fields if getattr(entry, f) is not None}
 
         if not update_values:
             logger.info(

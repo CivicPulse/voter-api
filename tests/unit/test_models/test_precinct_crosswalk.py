@@ -30,6 +30,15 @@ class TestPrecinctCrosswalkModel:
         constraint_names = {c.name for c in PrecinctCrosswalk.__table__.constraints if hasattr(c, "name") and c.name}
         assert "uq_precinct_crosswalk_county_precinct" in constraint_names
 
+        # Verify the constraint covers the expected columns
+        constraint = next(
+            c
+            for c in PrecinctCrosswalk.__table__.constraints
+            if getattr(c, "name", None) == "uq_precinct_crosswalk_county_precinct"
+        )
+        column_names = {col.name for col in constraint.columns}
+        assert column_names == {"county_name", "voter_precinct_code"}
+
     def test_source_server_default(self) -> None:
         """Source column should default to 'spatial_join'."""
         col = PrecinctCrosswalk.__table__.c.source

@@ -129,8 +129,9 @@ def resolve_contest_names_batch(
     # Apply resolutions back to records
     for record in unresolved:
         contest_name = record.get("contest_name", "")
-        if contest_name in resolution_map:
-            resolved = resolution_map[contest_name]
+        sanitized = _sanitize_contest_name(contest_name)
+        if sanitized in resolution_map:
+            resolved = resolution_map[sanitized]
             record["district_type"] = resolved.get("district_type")
             record["district_identifier"] = resolved.get("district_identifier")
             record["district_party"] = resolved.get("district_party")
@@ -159,7 +160,11 @@ def _call_api(contest_names: list[str], api_key: str) -> list[dict] | None:
     Returns:
         Parsed list of resolution dicts, or None on failure.
     """
-    import anthropic  # noqa: PLC0415
+    try:
+        import anthropic  # noqa: PLC0415
+    except ImportError:
+        logger.error("anthropic package is not installed. Cannot use AI resolver.")
+        return None
 
     for attempt in range(_MAX_RETRIES):
         try:

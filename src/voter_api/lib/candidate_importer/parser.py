@@ -81,6 +81,7 @@ def parse_candidate_import_jsonl(
                     record["qualified_date"] = date.fromisoformat(qualified_date_str)
                 except ValueError:
                     logger.warning(f"Line {line_num}: Invalid qualified_date: {qualified_date_str}")
+                    record["_parse_error"] = f"Invalid qualified_date: {record.get('qualified_date')}"
 
             batch.append(record)
             if len(batch) >= batch_size:

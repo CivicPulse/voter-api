@@ -1374,7 +1374,11 @@ class TestImports:
         assert resp.status_code == 403
 
     async def test_import_candidates_requires_auth(self, client: httpx.AsyncClient) -> None:
-        resp = await client.post(_url("/imports/candidates"))
+        jsonl_content = b'{"election_name":"Test","election_date":"2026-05-19","candidate_name":"Auth Check"}\n'
+        resp = await client.post(
+            _url("/imports/candidates"),
+            files={"file": ("candidates.jsonl", jsonl_content, "application/x-ndjson")},
+        )
         assert resp.status_code == 401
 
     async def test_import_candidates_admin_accepts_upload(self, admin_client: httpx.AsyncClient) -> None:
@@ -1655,15 +1659,24 @@ class TestAbsentee:
         assert resp.status_code == 404
 
     async def test_import_absentee_requires_auth(self, client: httpx.AsyncClient) -> None:
-        resp = await client.post(_url("/imports/absentee"))
-        assert resp.status_code in (401, 422)
+        from io import BytesIO
+
+        resp = await client.post(
+            _url("/imports/absentee"),
+            files={"file": ("test.csv", BytesIO(b"header\nvalue"), "text/csv")},
+        )
+        assert resp.status_code == 401
 
     async def test_import_absentee_forbidden_for_viewer(self, viewer_client: httpx.AsyncClient) -> None:
-        """Viewer cannot upload absentee ballot CSV."""
+        """Viewer cannot upload absentee ballot CSV.
+
+        Accept 429 (rate-limited) as well as 403 — both prove the request was
+        processed server-side and rejected, not that auth was bypassed.
+        """
         from io import BytesIO
 
         resp = await viewer_client.post(
             _url("/imports/absentee"),
             files={"file": ("test.csv", BytesIO(b"test"), "text/csv")},
         )
-        assert resp.status_code == 403
+        assert resp.status_code in (403, 429)

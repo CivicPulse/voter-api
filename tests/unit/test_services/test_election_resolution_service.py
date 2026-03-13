@@ -4,8 +4,6 @@ import uuid
 from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from voter_api.services.election_resolution_service import (
     ResolutionResult,
     _resolve_tier0_event_matching,
@@ -71,7 +69,6 @@ class TestResolutionResult:
 class TestFindOrCreateElectionEvent:
     """Tests for the find_or_create_election_event helper."""
 
-    @pytest.mark.asyncio
     async def test_creates_event_and_returns_id(self) -> None:
         """Creates a new event and returns its UUID."""
         event_id = uuid.uuid4()
@@ -93,7 +90,6 @@ class TestFindOrCreateElectionEvent:
 
         assert result == event_id
 
-    @pytest.mark.asyncio
     async def test_default_event_name(self) -> None:
         """When event_name is None, a default is generated."""
         event_id = uuid.uuid4()
@@ -124,7 +120,6 @@ class TestFindOrCreateElectionEvent:
 class TestTier0EventMatching:
     """Tests for Tier 0 event-level resolution."""
 
-    @pytest.mark.asyncio
     @patch(
         "voter_api.services.election_resolution_service._backfill_election_event_ids",
         new_callable=AsyncMock,
@@ -157,7 +152,6 @@ class TestTier0EventMatching:
         assert total == 500
         mock_backfill.assert_awaited_once_with(session)
 
-    @pytest.mark.asyncio
     @patch(
         "voter_api.services.election_resolution_service._backfill_election_event_ids",
         new_callable=AsyncMock,
@@ -174,7 +168,6 @@ class TestTier0EventMatching:
         assert total == 0
         mock_backfill.assert_not_awaited()
 
-    @pytest.mark.asyncio
     @patch(
         "voter_api.services.election_resolution_service._backfill_election_event_ids",
         new_callable=AsyncMock,
@@ -226,7 +219,6 @@ class TestTier0EventMatching:
 class TestUpdateVhByPscCounty:
     """Tests for the _update_vh_by_psc_county helper."""
 
-    @pytest.mark.asyncio
     async def test_updates_matching_county_records(self) -> None:
         """Records with counties in the PSC district list are updated."""
         session = AsyncMock()
@@ -246,7 +238,6 @@ class TestUpdateVhByPscCounty:
         assert result == 42
         session.execute.assert_called_once()
 
-    @pytest.mark.asyncio
     async def test_force_overwrites_existing(self) -> None:
         """When force=True, records with existing election_id are also updated."""
         session = AsyncMock()
@@ -273,7 +264,6 @@ class TestUpdateVhByPscCounty:
 class TestTier2PscResolution:
     """Tests for PSC branch in _resolve_tier2_district_matching."""
 
-    @pytest.mark.asyncio
     async def test_psc_election_resolved_via_county(self) -> None:
         """PSC elections are resolved via county membership instead of voter column."""
         psc_election = _make_election(
@@ -295,7 +285,6 @@ class TestTier2PscResolution:
         assert updated == 100
         assert unresolvable == 0
 
-    @pytest.mark.asyncio
     async def test_psc_unknown_district_is_unresolvable(self) -> None:
         """PSC election with invalid district_identifier is marked unresolvable."""
         psc_election = _make_election(
@@ -313,7 +302,6 @@ class TestTier2PscResolution:
         assert updated == 0
         assert unresolvable == 1
 
-    @pytest.mark.asyncio
     async def test_mixed_psc_and_regular_elections(self) -> None:
         """Both PSC (county) and regular (voter column) elections resolve on same date."""
         psc_election = _make_election(
@@ -357,7 +345,6 @@ class TestTier2PscResolution:
 class TestTier1SingleElection:
     """Tests for Tier 1 county scoping with eligible_county priority."""
 
-    @pytest.mark.asyncio
     async def test_eligible_county_takes_priority_over_boundary(self) -> None:
         """eligible_county is used for county scoping even when boundary.county exists."""
         election_id = uuid.uuid4()
@@ -391,7 +378,6 @@ class TestTier1SingleElection:
         county_param = [v for k, v in params.items() if k.startswith("upper")]
         assert county_param == ["BIBB"]
 
-    @pytest.mark.asyncio
     async def test_eligible_county_scopes_when_boundary_county_is_null(self) -> None:
         """eligible_county provides county scoping when boundary has no county field."""
         election_id = uuid.uuid4()
@@ -419,7 +405,6 @@ class TestTier1SingleElection:
         county_param = [v for k, v in compiled.params.items() if k.startswith("upper")]
         assert county_param == ["BIBB"]
 
-    @pytest.mark.asyncio
     async def test_falls_back_to_boundary_county_when_no_eligible_county(self) -> None:
         """Without eligible_county, boundary.county is used (original behavior)."""
         election_id = uuid.uuid4()
@@ -447,7 +432,6 @@ class TestTier1SingleElection:
         county_param = [v for k, v in compiled.params.items() if k.startswith("upper")]
         assert county_param == ["FULTON"]
 
-    @pytest.mark.asyncio
     async def test_no_county_scoping_when_all_sources_null(self) -> None:
         """When no county source is available, no county filter is applied."""
         election_id = uuid.uuid4()
@@ -483,7 +467,6 @@ class TestTier1SingleElection:
 class TestLinkElectionToBoundaryCountyBackfill:
     """Tests for eligible_county backfill in link_election_to_boundary."""
 
-    @pytest.mark.asyncio
     async def test_sets_eligible_county_from_parsed_district(self) -> None:
         """County commission district text backfills eligible_county."""
         election = _make_election(
@@ -507,7 +490,6 @@ class TestLinkElectionToBoundaryCountyBackfill:
         assert election.district_type == "county_commission"
         assert election.district_identifier == "5"
 
-    @pytest.mark.asyncio
     async def test_does_not_overwrite_existing_eligible_county(self) -> None:
         """Preserves eligible_county set by candidate import (more authoritative)."""
         election = _make_election(
@@ -528,7 +510,6 @@ class TestLinkElectionToBoundaryCountyBackfill:
         assert result is True
         assert election.eligible_county == "HOUSTON"  # preserved, not overwritten
 
-    @pytest.mark.asyncio
     async def test_no_county_backfill_for_non_county_district(self) -> None:
         """Non-county districts (e.g. state_senate) don't set eligible_county."""
         election = _make_election(

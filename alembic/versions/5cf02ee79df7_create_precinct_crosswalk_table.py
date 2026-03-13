@@ -1,7 +1,7 @@
 """create precinct_crosswalk table
 
 Revision ID: 5cf02ee79df7
-Revises: c024a4a64e34
+Revises: bfbf3368b0a6
 Create Date: 2026-03-12 14:23:11.485504
 """
 

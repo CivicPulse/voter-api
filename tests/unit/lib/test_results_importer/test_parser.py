@@ -79,17 +79,17 @@ def sample_feed_json(tmp_path: Path) -> Path:
 
 
 class TestLoadResultsFile:
-    def test_loads_valid_json(self, sample_feed_json: Path):
+    def test_loads_valid_json(self, sample_feed_json: Path) -> None:
         feed = load_results_file(sample_feed_json)
         assert feed.electionDate == "2026-01-06"
         assert feed.electionName == "January 6, 2026 \u2013 HD 23 Special Election Runoff"
         assert len(feed.results.ballotItems) == 1
 
-    def test_file_not_found(self, tmp_path: Path):
+    def test_file_not_found(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError):
             load_results_file(tmp_path / "nonexistent.json")
 
-    def test_invalid_json(self, tmp_path: Path):
+    def test_invalid_json(self, tmp_path: Path) -> None:
         bad_file = tmp_path / "bad.json"
         bad_file.write_text("not json")
         with pytest.raises(json.JSONDecodeError):
@@ -97,7 +97,7 @@ class TestLoadResultsFile:
 
 
 class TestIterBallotItems:
-    def test_produces_contexts(self, sample_feed_json: Path):
+    def test_produces_contexts(self, sample_feed_json: Path) -> None:
         feed = load_results_file(sample_feed_json)
         contexts = iter_ballot_items(feed)
         assert len(contexts) == 1
@@ -109,7 +109,7 @@ class TestIterBallotItems:
         # "Runoff" appears in the name, so detect_election_type returns "runoff"
         assert ctx.election_type == "runoff"
 
-    def test_candidates_parsed(self, sample_feed_json: Path):
+    def test_candidates_parsed(self, sample_feed_json: Path) -> None:
         feed = load_results_file(sample_feed_json)
         contexts = iter_ballot_items(feed)
         candidates = contexts[0].candidates
@@ -123,7 +123,7 @@ class TestIterBallotItems:
         assert candidates[1].full_name == "Scott Sanders"
         assert candidates[1].party == "Democrat"
 
-    def test_ingestion_has_county_data(self, sample_feed_json: Path):
+    def test_ingestion_has_county_data(self, sample_feed_json: Path) -> None:
         feed = load_results_file(sample_feed_json)
         contexts = iter_ballot_items(feed)
         ingestion = contexts[0].ingestion
@@ -131,7 +131,7 @@ class TestIterBallotItems:
         assert len(ingestion.counties) == 1
         assert ingestion.counties[0].county_name == "Cherokee County"
 
-    def test_multi_ballot_items(self, tmp_path: Path):
+    def test_multi_ballot_items(self, tmp_path: Path) -> None:
         """Feed with multiple ballot items produces multiple contexts."""
         data = {
             "electionDate": "2025-12-09",

@@ -611,10 +611,12 @@ async def cleanup_abandoned_jobs(session: AsyncSession) -> int:
             ImportJob.total_records.is_(None),
         )
         .values(status="abandoned")
+        .returning(ImportJob.id)
     )
     result = await session.execute(stmt)
+    count = len(result.all())
     await session.commit()
-    return result.rowcount
+    return count
 
 
 async def get_import_job(session: AsyncSession, job_id: uuid.UUID) -> ImportJob | None:

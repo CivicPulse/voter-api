@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from datetime import date  # noqa: TC003
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from voter_api.models.base import Base, TimestampMixin, UUIDMixin
+
+if TYPE_CHECKING:
+    from voter_api.models.election import Election
 
 
 class ElectionEvent(Base, UUIDMixin, TimestampMixin):
@@ -26,6 +30,6 @@ class ElectionEvent(Base, UUIDMixin, TimestampMixin):
     event_type: Mapped[str] = mapped_column(String(50), nullable=False)
 
     # Relationships
-    elections: Mapped[list[Election]] = relationship(back_populates="election_event")  # noqa: F821
+    elections: Mapped[list[Election]] = relationship(back_populates="election_event")
 
     __table_args__ = (UniqueConstraint("event_date", "event_type", name="uq_election_event_date_type"),)

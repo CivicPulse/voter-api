@@ -7,7 +7,7 @@ duplicate election records caused by formatting variations.
 import re
 
 
-def normalize_election_name(name: str) -> str:
+def normalize_election_name(name: str | None) -> str | None:
     """Normalize an election name for consistent storage.
 
     Transformations applied:
@@ -18,10 +18,10 @@ def normalize_election_name(name: str) -> str:
     5. Strip leading/trailing whitespace.
 
     Args:
-        name: Raw election name from data source.
+        name: Raw election name from data source, or None.
 
     Returns:
-        Normalized election name.
+        Normalized election name, or None/empty string if input was None/empty.
     """
     if not name:
         return name
@@ -32,6 +32,7 @@ def normalize_election_name(name: str) -> str:
     result = result.replace("\u2013", "-").replace("\u2014", "-")
 
     # Standardize month names to 3-letter abbreviations
+    # Use word boundaries to avoid corrupting place names (e.g., "Augusta")
     month_map = {
         "January": "Jan",
         "February": "Feb",
@@ -47,7 +48,7 @@ def normalize_election_name(name: str) -> str:
         "December": "Dec",
     }
     for full, abbr in month_map.items():
-        result = result.replace(full, abbr)
+        result = re.sub(rf"\b{full}\b", abbr, result)
 
     # Standardize single-digit days to zero-padded (e.g., "Jan 5," -> "Jan 05,")
     result = re.sub(

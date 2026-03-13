@@ -1072,7 +1072,6 @@ class TestResolveElectionIds:
 class TestReplacePreviousImport:
     """Tests for _replace_previous_import including abandoned status handling."""
 
-    @pytest.mark.asyncio
     async def test_includes_abandoned_in_status_filter(self) -> None:
         """Abandoned jobs are included in the replacement query alongside completed/superseded."""
         current_job = MagicMock()
@@ -1097,7 +1096,6 @@ class TestReplacePreviousImport:
         assert "completed" in compiled
         assert "superseded" in compiled
 
-    @pytest.mark.asyncio
     async def test_no_previous_jobs_is_noop(self) -> None:
         """When no previous jobs exist, no deletions or status changes happen."""
         current_job = MagicMock()

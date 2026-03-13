@@ -103,6 +103,11 @@ async def _match_election(
         )
         if parsed.party:
             tier2_stmt = tier2_stmt.where(Election.district_party == parsed.party)
+        # Narrow by geography when available to prevent county/municipality-scoped
+        # contests that share the same district_type+identifier on the same date
+        # from colliding (e.g. two different county commission district 5s).
+        if parsed.county:
+            tier2_stmt = tier2_stmt.where(Election.eligible_county == parsed.county.upper())
 
         result = await session.execute(tier2_stmt)
         tier2_match = result.scalar_one_or_none()
@@ -158,10 +163,12 @@ async def _match_election(
             election_event_id=event_id,
         )
         .on_conflict_do_nothing()
+        .returning(Election.__table__.c.id)
     )
 
     result = await session.execute(stmt_insert)
-    if result.rowcount == 0:
+    inserted_row = result.scalar_one_or_none()
+    if inserted_row is None:
         # Election already exists with this name+date, fetch it
         existing = await session.execute(
             select(Election.id).where(
@@ -313,20 +320,21 @@ async def process_results_import(
 
         for ctx in contexts:
             try:
-                # Match or create election
-                election_id = await _match_election(session, ctx, election_cache)
-                elections_processed += 1
+                # Use a savepoint so that a single ballot-item failure can be
+                # rolled back without poisoning the session for subsequent items.
+                async with session.begin_nested():
+                    # Match or create election
+                    election_id = await _match_election(session, ctx, election_cache)
+                    elections_processed += 1
 
-                # Upsert candidates
-                c_ins, c_upd = await _upsert_candidates(session, election_id, ctx, job.id)
-                candidates_inserted += c_ins
-                candidates_updated += c_upd
+                    # Upsert candidates
+                    c_ins, c_upd = await _upsert_candidates(session, election_id, ctx, job.id)
+                    candidates_inserted += c_ins
+                    candidates_updated += c_upd
 
-                # Persist results (statewide + county)
-                counties_updated = await persist_ingestion_result(session, election_id, ctx.ingestion)
-                results_persisted += 1 + counties_updated  # 1 for statewide + counties
-
-                await session.flush()
+                    # Persist results (statewide + county)
+                    counties_updated = await persist_ingestion_result(session, election_id, ctx.ingestion)
+                    results_persisted += 1 + counties_updated  # 1 for statewide + counties
 
             except Exception as e:
                 logger.warning(

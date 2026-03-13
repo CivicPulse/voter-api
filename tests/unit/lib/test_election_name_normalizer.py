@@ -124,3 +124,13 @@ class TestNormalizeElectionName:
     def test_parametrized_normalization(self, raw: str, expected: str) -> None:
         """Parametrized tests for various normalization scenarios."""
         assert normalize_election_name(raw) == expected
+
+    def test_month_substring_not_replaced_in_place_names(self) -> None:
+        """Month replacement must not corrupt place names containing month substrings.
+
+        Regression: 'Augusta' contains 'Aug' which naive replacement would
+        turn into 'Auguesta' (via August -> Aug expansion applied in reverse).
+        Similarly, 'March' in a place context should not be shortened.
+        """
+        result = normalize_election_name("Augusta Commission District 1 Special Election")
+        assert result == "Augusta Commission District 1 Special Election"

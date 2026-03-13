@@ -81,7 +81,7 @@ async def find_or_create_election_event(
         event_name = f"{event_type.title()} {event_date}"
 
     stmt = (
-        pg_insert(ElectionEvent.__table__)
+        pg_insert(ElectionEvent)
         .values(
             event_date=event_date,
             event_type=event_type,
@@ -508,6 +508,38 @@ async def _resolve_tier2_district_matching(
                     election_date,
                     county,
                 )
+            continue
+
+        # --- Priority 2a: Municipal without district — resolve via municipality name ---
+        if dtype in ("municipal", "city_council") and election.district_identifier is None:
+            municipality = election.eligible_municipality
+            county = election.eligible_county
+            if municipality or county:
+                updated = await _update_vh_by_municipality(
+                    session,
+                    election_id=election.id,
+                    election_date=election_date,
+                    municipality=municipality,
+                    county=county,
+                    voter_column=None,
+                    district_identifier=None,
+                    force=force,
+                )
+                total_updated += updated
+                if updated > 0:
+                    logger.debug(
+                        "Tier 2 (municipal no-district): assigned {} records to '{}' on {} via municipality={}",
+                        updated,
+                        election.name,
+                        election_date,
+                        municipality,
+                    )
+                continue
+            logger.debug(
+                "Unresolvable: municipal election '{}' has no municipality or county",
+                election.name,
+            )
+            unresolvable += 1
             continue
 
         if dtype is None or election.district_identifier is None:

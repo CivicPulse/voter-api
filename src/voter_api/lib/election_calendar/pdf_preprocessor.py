@@ -204,7 +204,7 @@ def preprocess_pdf_calendar(
                 election_date = None
                 date_col_idx = None
                 for i, val in enumerate(row_vals):
-                    date_match = re.search(r"\d{1,2}/\d{1,2}/\d{4}", val)
+                    date_match = re.search(r"\d{1,2}/\d{1,2}/\d{2,4}", val)
                     if date_match:
                         parsed = _parse_date_flex(date_match.group())
                         if parsed is not None:
@@ -259,6 +259,7 @@ def preprocess_pdf_calendar(
                 entries.append(entry)
                 logger.debug("Extracted PDF entry: {} on {}", election_name, election_date)
 
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
         for entry in entries:
             f.write(json.dumps(entry) + "\n")

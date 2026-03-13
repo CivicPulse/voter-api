@@ -2,12 +2,16 @@
 
 import uuid
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from voter_api.models.base import Base, UUIDMixin
+
+if TYPE_CHECKING:
+    from voter_api.models.import_job import ImportJob
 
 
 class AbsenteeBallotApplication(Base, UUIDMixin):
@@ -89,7 +93,7 @@ class AbsenteeBallotApplication(Base, UUIDMixin):
     )
 
     # Relationships
-    import_job = relationship("ImportJob", lazy="selectin")
+    import_job: Mapped["ImportJob"] = relationship("ImportJob", lazy="selectin")
 
     __table_args__ = (
         Index(

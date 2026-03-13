@@ -145,9 +145,8 @@ async def _enable_vh_autovacuum_and_vacuum(session: AsyncSession) -> None:
         elapsed = time.monotonic() - start
         logger.info(f"VACUUM ANALYZE completed in {elapsed:.1f}s")
     except Exception:
-        logger.warning(
+        logger.opt(exception=True).warning(
             "VACUUM ANALYZE failed (non-fatal) — autovacuum will handle it",
-            exc_info=True,
         )
 
 
@@ -942,9 +941,18 @@ async def _build_election_match_conditions(
             county_filter: ColumnElement[bool] = (
                 func.upper(func.trim(VoterHistory.county)) == election.eligible_county.strip().upper()
             )
-            # For municipal elections, also require municipality match on voter
-            # (handled at query-time only when participation stats need it;
-            # for listing participants, the county filter is sufficient)
+            if election.eligible_municipality:
+                # Municipal election: VoterHistory has no municipality column,
+                # so we cannot distinguish voters in different cities within the
+                # same county.  Require election_id to be resolved (i.e. only
+                # count rows that were explicitly linked to this election) to
+                # prevent cross-city leakage.  We achieve this by returning a
+                # predicate that suppresses the unresolved-fallback branch while
+                # still allowing the resolved branch through.
+                return and_(
+                    county_filter,
+                    VoterHistory.election_id == election.id,
+                )
             return county_filter
 
         # Priority 2: Fall back to boundary-based scoping

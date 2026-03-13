@@ -5,12 +5,19 @@ published by the Georgia Secretary of State Elections Division and writes
 standardized JSONL output.
 """
 
+from __future__ import annotations
+
 import json
 import re
 from datetime import date
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from loguru import logger
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from openpyxl.worksheet.worksheet import Worksheet
 
 
 def _parse_mmddyyyy(value: str) -> date | None:
@@ -27,7 +34,10 @@ def _parse_mmddyyyy(value: str) -> date | None:
     if not match:
         return None
     month, day, year = int(match.group(1)), int(match.group(2)), int(match.group(3))
-    return date(year, month, day)
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
 
 
 def _parse_mmddyy(value: str) -> date | None:
@@ -45,7 +55,10 @@ def _parse_mmddyy(value: str) -> date | None:
         return None
     month, day, year_2 = int(match.group(1)), int(match.group(2)), int(match.group(3))
     year = 2000 + year_2
-    return date(year, month, day)
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
 
 
 def _parse_date_flex(value: str) -> date | None:
@@ -117,7 +130,7 @@ def _parse_registration_deadline(text: str) -> date | None:
     return None
 
 
-def _find_header_row(ws: object) -> int | None:
+def _find_header_row(ws: Worksheet) -> int | None:
     """Find the row index containing the column headers.
 
     Looks for a row containing ``"ELECTION"`` and ``"ELECTION DATE"``

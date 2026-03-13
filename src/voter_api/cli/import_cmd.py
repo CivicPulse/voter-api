@@ -723,23 +723,30 @@ def preprocess_all_candidates(
 
     summary: list[tuple[str, str, str, int, int, int, int]] = []
 
+    failed = 0
     for csv_path in csv_files:
         try:
             info = parse_candidate_filename(csv_path.name)
         except ValueError as e:
             typer.echo(f"WARNING: Skipping {csv_path.name}: {e}")
+            failed += 1
             continue
 
         output_path = output_dir / f"{csv_path.stem}.jsonl"
         typer.echo(f"Preprocessing {csv_path.name}...")
 
-        result = preprocess_candidates_csv(
-            csv_path,
-            output_path,
-            info.election_date,
-            info.election_type,
-            api_key=api_key,
-        )
+        try:
+            result = preprocess_candidates_csv(
+                csv_path,
+                output_path,
+                info.election_date,
+                info.election_type,
+                api_key=api_key,
+            )
+        except Exception as e:
+            typer.echo(f"ERROR: Failed to preprocess {csv_path.name}: {e}")
+            failed += 1
+            continue
 
         summary.append(
             (
@@ -798,32 +805,36 @@ async def _import_all_candidates(input_dir: Path, batch_size: int) -> None:
     try:
         factory = get_session_factory()
         for jsonl_path in jsonl_files:
-            typer.echo(f"\nImporting {jsonl_path.name}...")
-            async with factory() as session:
-                job = await create_candidate_import_job(session, file_name=jsonl_path.name)
-                typer.echo(f"  Import job created: {job.id}")
+            try:
+                typer.echo(f"\nImporting {jsonl_path.name}...")
+                async with factory() as session:
+                    job = await create_candidate_import_job(session, file_name=jsonl_path.name)
+                    typer.echo(f"  Import job created: {job.id}")
 
-                job = await process_candidate_import(session, job, jsonl_path, batch_size)
+                    job = await process_candidate_import(session, job, jsonl_path, batch_size)
 
-                status = "completed" if job.status == "completed" else "failed"
-                typer.echo(f"  Import {status}:")
-                typer.echo(f"    Total records:  {job.total_records or 0}")
-                typer.echo(f"    Succeeded:      {job.records_succeeded or 0}")
-                typer.echo(f"    Failed:         {job.records_failed or 0}")
-                typer.echo(f"    Inserted:       {job.records_inserted or 0}")
-                typer.echo(f"    Updated:        {job.records_updated or 0}")
+                    status = "completed" if job.status == "completed" else "failed"
+                    typer.echo(f"  Import {status}:")
+                    typer.echo(f"    Total records:  {job.total_records or 0}")
+                    typer.echo(f"    Succeeded:      {job.records_succeeded or 0}")
+                    typer.echo(f"    Failed:         {job.records_failed or 0}")
+                    typer.echo(f"    Inserted:       {job.records_inserted or 0}")
+                    typer.echo(f"    Updated:        {job.records_updated or 0}")
 
-                summary.append(
-                    (
-                        jsonl_path.name,
-                        status,
-                        job.total_records or 0,
-                        job.records_succeeded or 0,
-                        job.records_failed or 0,
-                        job.records_inserted or 0,
-                        job.records_updated or 0,
+                    summary.append(
+                        (
+                            jsonl_path.name,
+                            status,
+                            job.total_records or 0,
+                            job.records_succeeded or 0,
+                            job.records_failed or 0,
+                            job.records_inserted or 0,
+                            job.records_updated or 0,
+                        )
                     )
-                )
+            except Exception as e:
+                typer.echo(f"  ERROR: {jsonl_path.name}: {e}")
+                summary.append((jsonl_path.name, "error", 0, 0, 0, 0, 0))
     finally:
         await dispose_engine()
 
@@ -911,13 +922,13 @@ async def _import_election_results(path: Path, dry_run: bool) -> None:
             try:
                 feed = load_results_file(json_path)
                 errors = validate_results_file(feed)
-                contexts = iter_ballot_items(feed)
                 if errors:
                     typer.echo(f"  INVALID  {json_path.name}")
                     for e in errors:
                         typer.echo(f"           {e}")
                     all_valid = False
                 else:
+                    contexts = iter_ballot_items(feed)
                     candidates_count = sum(len(c.candidates) for c in contexts)
                     typer.echo(
                         f"  VALID    {json_path.name} "
@@ -949,32 +960,36 @@ async def _import_election_results(path: Path, dry_run: bool) -> None:
     try:
         factory = get_session_factory()
         for json_path in json_files:
-            typer.echo(f"\nImporting {json_path.name}...")
-            async with factory() as session:
-                job = await create_results_import_job(session, file_name=json_path.name)
-                typer.echo(f"  Import job created: {job.id}")
+            try:
+                typer.echo(f"\nImporting {json_path.name}...")
+                async with factory() as session:
+                    job = await create_results_import_job(session, file_name=json_path.name)
+                    typer.echo(f"  Import job created: {job.id}")
 
-                job = await process_results_import(session, job, json_path)
+                    job = await process_results_import(session, job, json_path)
 
-                status = "completed" if job.status == "completed" else "failed"
-                typer.echo(f"  Import {status}:")
-                typer.echo(f"    Ballot items:    {job.total_records or 0}")
-                typer.echo(f"    Succeeded:       {job.records_succeeded or 0}")
-                typer.echo(f"    Failed:          {job.records_failed or 0}")
-                typer.echo(f"    Candidates new:  {job.records_inserted or 0}")
-                typer.echo(f"    Candidates upd:  {job.records_updated or 0}")
+                    status = "completed" if job.status == "completed" else "failed"
+                    typer.echo(f"  Import {status}:")
+                    typer.echo(f"    Ballot items:    {job.total_records or 0}")
+                    typer.echo(f"    Succeeded:       {job.records_succeeded or 0}")
+                    typer.echo(f"    Failed:          {job.records_failed or 0}")
+                    typer.echo(f"    Candidates new:  {job.records_inserted or 0}")
+                    typer.echo(f"    Candidates upd:  {job.records_updated or 0}")
 
-                summary.append(
-                    (
-                        json_path.name,
-                        status,
-                        job.total_records or 0,
-                        job.records_succeeded or 0,
-                        job.records_failed or 0,
-                        job.records_inserted or 0,
-                        job.records_updated or 0,
+                    summary.append(
+                        (
+                            json_path.name,
+                            status,
+                            job.total_records or 0,
+                            job.records_succeeded or 0,
+                            job.records_failed or 0,
+                            job.records_inserted or 0,
+                            job.records_updated or 0,
+                        )
                     )
-                )
+            except Exception as e:
+                typer.echo(f"  ERROR: {json_path.name}: {e}")
+                summary.append((json_path.name, "error", 0, 0, 0, 0, 0))
     finally:
         await dispose_engine()
 

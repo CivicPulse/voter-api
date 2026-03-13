@@ -279,7 +279,7 @@ class TestCleanupAbandonedJobs:
         """Jobs with status=failed and total_records=NULL are marked abandoned."""
         session = AsyncMock()
         result_mock = MagicMock()
-        result_mock.rowcount = 3
+        result_mock.all.return_value = [MagicMock(), MagicMock(), MagicMock()]
         session.execute.return_value = result_mock
 
         count = await cleanup_abandoned_jobs(session)
@@ -293,7 +293,7 @@ class TestCleanupAbandonedJobs:
         """Returns 0 when no abandoned jobs exist."""
         session = AsyncMock()
         result_mock = MagicMock()
-        result_mock.rowcount = 0
+        result_mock.all.return_value = []
         session.execute.return_value = result_mock
 
         count = await cleanup_abandoned_jobs(session)

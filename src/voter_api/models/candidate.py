@@ -27,6 +27,7 @@ from voter_api.models.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from voter_api.models.election import Election
+    from voter_api.models.import_job import ImportJob
 
 
 class Candidate(Base, UUIDMixin, TimestampMixin):
@@ -68,6 +69,7 @@ class Candidate(Base, UUIDMixin, TimestampMixin):
 
     # Relationships
     election: Mapped["Election"] = relationship(back_populates="candidates")
+    import_job: Mapped["ImportJob | None"] = relationship("ImportJob", lazy="selectin")
     links: Mapped[list["CandidateLink"]] = relationship(
         back_populates="candidate",
         lazy="selectin",

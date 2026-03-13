@@ -2,8 +2,6 @@
 
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 from voter_api.services.precinct_crosswalk_service import (
     get_crosswalk_stats,
     upsert_crosswalk_entries,
@@ -13,7 +11,6 @@ from voter_api.services.precinct_crosswalk_service import (
 class TestGetCrosswalkStats:
     """Tests for get_crosswalk_stats()."""
 
-    @pytest.mark.asyncio
     async def test_returns_stats_dict(self) -> None:
         """Should return a dict with total_entries, counties_covered, avg_confidence."""
         mock_row = MagicMock()
@@ -33,7 +30,6 @@ class TestGetCrosswalkStats:
         assert stats["counties_covered"] == 5
         assert stats["avg_confidence"] == 0.851
 
-    @pytest.mark.asyncio
     async def test_handles_null_avg_confidence(self) -> None:
         """Should handle NULL avg_confidence (empty table) gracefully."""
         mock_row = MagicMock()
@@ -57,7 +53,6 @@ class TestGetCrosswalkStats:
 class TestUpsertCrosswalkEntries:
     """Tests for upsert_crosswalk_entries()."""
 
-    @pytest.mark.asyncio
     async def test_empty_entries_returns_zero(self) -> None:
         """Empty entries list should return (0, 0) without DB interaction."""
         session = AsyncMock()
@@ -66,7 +61,6 @@ class TestUpsertCrosswalkEntries:
         assert updated == 0
         session.execute.assert_not_called()
 
-    @pytest.mark.asyncio
     async def test_upserts_entries_and_commits(self) -> None:
         """Should execute upsert for each entry and commit."""
         session = AsyncMock()

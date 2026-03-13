@@ -100,6 +100,12 @@ class TestValidateCandidateRecord:
         }
         errors = validate_candidate_record(record)
         assert len(errors) == 5  # 3 required + filing_status + email
+        error_text = " ".join(errors)
+        assert "election_name" in error_text
+        assert "election_date" in error_text
+        assert "candidate_name" in error_text
+        assert "filing_status" in error_text
+        assert "email" in error_text
 
     def test_empty_optional_fields_are_ok(self) -> None:
         record = {

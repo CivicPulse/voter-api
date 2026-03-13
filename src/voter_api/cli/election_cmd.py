@@ -244,7 +244,12 @@ async def _import_calendar_impl(template: Path) -> None:
     init_engine(settings.database_url, echo=False)
 
     try:
-        entries = parse_calendar_jsonl(template)
+        try:
+            entries = parse_calendar_jsonl(template)
+        except Exception as e:
+            typer.echo(f"Failed to parse calendar file: {e}")
+            raise typer.Exit(code=1) from e
+
         if not entries:
             typer.echo("No calendar entries found in template.")
             return
@@ -252,8 +257,12 @@ async def _import_calendar_impl(template: Path) -> None:
         typer.echo(f"Parsed {len(entries)} calendar entries from {template}")
 
         factory = get_session_factory()
-        async with factory() as session:
-            result = await process_calendar_import(session, entries)
+        try:
+            async with factory() as session:
+                result = await process_calendar_import(session, entries)
+        except Exception as e:
+            typer.echo(f"Calendar import failed: {e}")
+            raise typer.Exit(code=1) from e
 
         typer.echo("\nCalendar import complete:")
         typer.echo(f"  Matched:   {result.matched}")

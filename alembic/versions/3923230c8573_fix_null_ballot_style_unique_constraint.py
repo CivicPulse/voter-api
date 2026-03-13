@@ -26,6 +26,27 @@ def upgrade() -> None:
         "absentee_ballot_applications",
         type_="unique",
     )
+    # Remove duplicates that the new COALESCE index would reject.
+    # NULL ballot_style values that were previously distinct become
+    # collisions once COALESCE(ballot_style, '') maps them to ''.
+    op.execute(
+        """
+        DELETE FROM absentee_ballot_applications
+        WHERE id IN (
+            SELECT id
+            FROM (
+                SELECT
+                    id,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY voter_registration_number, application_date, COALESCE(ballot_style, '')
+                        ORDER BY id
+                    ) AS rn
+                FROM absentee_ballot_applications
+            ) ranked
+            WHERE rn > 1
+        )
+        """
+    )
     op.execute(
         "CREATE UNIQUE INDEX uq_aba_voter_appdate_ballotstyle "
         "ON absentee_ballot_applications ("

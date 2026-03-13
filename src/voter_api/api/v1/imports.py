@@ -203,11 +203,15 @@ async def import_candidates(
         create_candidate_import_job,
     )
 
-    job = await create_candidate_import_job(
-        session,
-        file_name=file.filename,
-        triggered_by=current_user.id,
-    )
+    try:
+        job = await create_candidate_import_job(
+            session,
+            file_name=file.filename,
+            triggered_by=current_user.id,
+        )
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
     async def _run_import() -> None:
         from voter_api.core.database import get_session_factory
@@ -265,11 +269,15 @@ async def import_election_results(
 
     from voter_api.services.results_import_service import create_results_import_job
 
-    job = await create_results_import_job(
-        session,
-        file_name=file.filename,
-        triggered_by=current_user.id,
-    )
+    try:
+        job = await create_results_import_job(
+            session,
+            file_name=file.filename,
+            triggered_by=current_user.id,
+        )
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
     async def _run_import() -> None:
         from voter_api.core.database import get_session_factory

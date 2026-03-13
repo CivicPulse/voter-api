@@ -27,8 +27,6 @@ services:
       - path: .env
         required: false
     environment:
-      DATABASE_URL: postgresql+asyncpg://voter_api:voter_api_dev@db:5432/voter_api
-      JWT_SECRET_KEY: dev-only-secret-key-minimum-32-characters-long
       ELECTION_REFRESH_ENABLED: "false"
     command: ["--reload"]
     volumes:

@@ -571,6 +571,15 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
             "party": "NP",
             "import_job_id": IMPORT_JOB_ID,
         }
+        # Delete-before-insert to avoid unique constraint violations on the
+        # natural key (voter_registration_number, application_date, COALESCE(ballot_style, ''))
+        # when a leftover row has the same natural key but a different id.
+        await session.execute(
+            delete(AbsenteeBallotApplication).where(
+                AbsenteeBallotApplication.id.in_([ABSENTEE_RECORD_ID, ABSENTEE_RECORD_ID_2])
+            )
+        )
+
         stmt = pg_insert(AbsenteeBallotApplication).values(**absentee_data_1)
         stmt = stmt.on_conflict_do_update(
             index_elements=["id"],

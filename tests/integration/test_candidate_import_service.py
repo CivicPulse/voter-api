@@ -92,7 +92,6 @@ def _make_candidate_records(count: int = 2) -> list[dict]:
 class TestProcessCandidateImport:
     """Tests for the candidate import service function."""
 
-    @pytest.mark.asyncio
     async def test_successful_import(self, tmp_path: Path) -> None:
         """Successful import updates job with correct counts."""
         records = _make_candidate_records(2)
@@ -122,7 +121,6 @@ class TestProcessCandidateImport:
         assert result.records_updated == 0
         mock_upsert.assert_awaited_once()
 
-    @pytest.mark.asyncio
     async def test_invalid_records_counted_as_failed(self, tmp_path: Path) -> None:
         """Records with parse errors are counted as failed."""
         records = [
@@ -165,7 +163,6 @@ class TestProcessCandidateImport:
         # The second record has parse errors (_parse_error set by validator)
         assert result.records_failed >= 1
 
-    @pytest.mark.asyncio
     async def test_election_auto_creation(self, tmp_path: Path) -> None:
         """Election is resolved for each batch of records."""
         records = _make_candidate_records(1)
@@ -192,7 +189,6 @@ class TestProcessCandidateImport:
         # _resolve_election called once per record
         assert mock_resolve.await_count == 1
 
-    @pytest.mark.asyncio
     async def test_upsert_updates_on_reimport(self, tmp_path: Path) -> None:
         """Re-import of same candidates results in updates, not inserts."""
         records = _make_candidate_records(2)
@@ -218,7 +214,6 @@ class TestProcessCandidateImport:
         assert result.records_updated == 2
         assert result.records_succeeded == 2
 
-    @pytest.mark.asyncio
     async def test_exception_marks_job_failed(self, tmp_path: Path) -> None:
         """Exception during processing marks job as failed."""
         records = _make_candidate_records(1)
@@ -243,7 +238,6 @@ class TestProcessCandidateImport:
 
         assert job.status == "failed"
 
-    @pytest.mark.asyncio
     async def test_website_links_processed(self, tmp_path: Path) -> None:
         """Website links trigger candidate link creation."""
         records = [
@@ -293,24 +287,36 @@ class TestProcessCandidateImport:
         assert link_args[1][0]["link_type"] == "website"
         assert link_args[1][0]["url"] == "https://example.com"
 
-    @pytest.mark.asyncio
     async def test_job_lifecycle_pending_to_running_to_completed(self, tmp_path: Path) -> None:
         """Job transitions from pending -> running -> completed."""
         records = _make_candidate_records(1)
         jsonl_file = _write_jsonl(tmp_path, records)
-        job = _make_import_job()
         session = _make_session_mock()
 
-        statuses: list[str] = []
+        job = _make_import_job()
 
-        def capture_status(val: str) -> None:
-            statuses.append(val)
+        # Use a proxy class instead of patching type(mock).status with a property,
+        # which would mutate the MagicMock class and leak into later tests.
+        _original_setattr = object.__setattr__
 
-        # Use side_effect on status setter to capture transitions
-        type(job).status = property(
-            lambda self: statuses[-1] if statuses else "pending",
-            lambda self, v: capture_status(v),
-        )
+        class StatusCapturingJob:
+            """Proxy that captures status transitions while delegating everything else."""
+
+            def __init__(self, delegate: MagicMock) -> None:
+                _original_setattr(self, "_delegate", delegate)
+                _original_setattr(self, "statuses", [])
+
+            def __getattr__(self, name: str):  # noqa: ANN001
+                return getattr(self._delegate, name)
+
+            def __setattr__(self, name: str, value: object) -> None:
+                if name == "status":
+                    self.statuses.append(value)
+                    setattr(self._delegate, name, value)
+                else:
+                    setattr(self._delegate, name, value)
+
+        proxy_job = StatusCapturingJob(job)
 
         with (
             patch(
@@ -324,11 +330,10 @@ class TestProcessCandidateImport:
                 return_value=(1, 0),
             ),
         ):
-            await process_candidate_import(session, job, jsonl_file, batch_size=10)
+            await process_candidate_import(session, proxy_job, jsonl_file, batch_size=10)
 
-        assert statuses == ["running", "completed"]
+        assert proxy_job.statuses == ["running", "completed"]
 
-    @pytest.mark.asyncio
     async def test_empty_file(self, tmp_path: Path) -> None:
         """Empty JSONL file completes with zero records."""
         jsonl_file = _write_jsonl(tmp_path, [])
@@ -342,7 +347,6 @@ class TestProcessCandidateImport:
         assert result.records_succeeded == 0
         assert result.records_failed == 0
 
-    @pytest.mark.asyncio
     async def test_large_batch_processing(self, tmp_path: Path) -> None:
         """Large file is processed in multiple batches."""
         records = _make_candidate_records(25)

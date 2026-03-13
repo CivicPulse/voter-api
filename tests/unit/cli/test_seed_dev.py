@@ -29,17 +29,26 @@ class TestSeedDevExecution:
 
     @patch("voter_api.cli.seed_dev_cmd.asyncio")
     @patch("voter_api.cli.seed_dev_cmd._seed", new_callable=AsyncMock)
-    def test_seed_dev_calls_async_seed(self, mock_seed: AsyncMock, mock_asyncio: MagicMock) -> None:
+    @patch("voter_api.cli.seed_dev_cmd._is_dev_environment", return_value=True)
+    def test_seed_dev_calls_async_seed(
+        self, _mock_env: MagicMock, mock_seed: AsyncMock, mock_asyncio: MagicMock
+    ) -> None:
         """seed_dev() should delegate to asyncio.run(_seed())."""
         from voter_api.cli.seed_dev_cmd import seed_dev
 
         seed_dev()
         mock_asyncio.run.assert_called_once()
+        # Verify _seed() was called to produce the coroutine passed to asyncio.run()
+        mock_seed.assert_called_once()
 
+    @patch("voter_api.cli.seed_dev_cmd._is_dev_environment", return_value=True)
     @patch("voter_api.cli.seed_dev_cmd._seed", new_callable=AsyncMock)
     @patch("voter_api.cli.seed_dev_cmd.asyncio")
-    def test_seed_dev_via_typer_runner(self, mock_asyncio: MagicMock, mock_seed: AsyncMock) -> None:
+    def test_seed_dev_via_typer_runner(
+        self, mock_asyncio: MagicMock, mock_seed: AsyncMock, _mock_env: MagicMock
+    ) -> None:
         """Invoking via Typer runner should succeed."""
         result = runner.invoke(db_app, ["seed-dev"])
         assert result.exit_code == 0
         mock_asyncio.run.assert_called_once()
+        mock_seed.assert_called_once()

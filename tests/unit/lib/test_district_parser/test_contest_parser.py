@@ -331,7 +331,7 @@ class TestParseContestNameKnownPatterns:
             ),
             (
                 "City Council, Post 1 (NP)",
-                "municipal",
+                "city_council",
                 "1",
                 "Nonpartisan",
                 None,
@@ -340,7 +340,7 @@ class TestParseContestNameKnownPatterns:
             ),
             (
                 "City Council, Ward 2 (NP)",
-                "municipal",
+                "city_council",
                 "2",
                 "Nonpartisan",
                 None,
@@ -349,7 +349,7 @@ class TestParseContestNameKnownPatterns:
             ),
             (
                 "City Council, District 3 (NP)",
-                "municipal",
+                "city_council",
                 "3",
                 "Nonpartisan",
                 None,

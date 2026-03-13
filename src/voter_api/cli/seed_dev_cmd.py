@@ -8,6 +8,7 @@ records (users, elections, boundaries, voters, etc.) using idempotent
 from __future__ import annotations
 
 import asyncio
+import os
 import uuid
 from datetime import date
 
@@ -490,6 +491,21 @@ async def _seed() -> None:
         await dispose_engine()
 
 
+def _is_dev_environment() -> bool:
+    """Check whether the current environment is safe for dev seeding.
+
+    Returns True when any of these conditions hold:
+    - ENV or ENVIRONMENT is set to "development", "dev", or "test"
+    - DATABASE_URL points to localhost / 127.0.0.1 / a docker-compose service name
+    """
+    env = os.environ.get("ENV", os.environ.get("ENVIRONMENT", "")).lower()
+    if env in {"development", "dev", "test"}:
+        return True
+
+    db_url = os.environ.get("DATABASE_URL", "")
+    return any(host in db_url for host in ("localhost", "127.0.0.1", "db:"))
+
+
 def seed_dev() -> None:
     """Seed lightweight dev data (users, elections, boundaries, voters).
 
@@ -501,4 +517,10 @@ def seed_dev() -> None:
       dev_analyst / Dev-Password-2024!
       dev_viewer / Dev-Password-2024!
     """
+    if not _is_dev_environment():
+        logger.error(
+            "seed-dev is blocked outside development environments. "
+            "Set ENV=development or use a local DATABASE_URL to proceed."
+        )
+        raise SystemExit(1)
     asyncio.run(_seed())
