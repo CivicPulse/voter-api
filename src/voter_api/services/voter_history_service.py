@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from voter_api.core.database import get_engine
+from voter_api.core.utils import _mask_vrn
 from voter_api.lib.voter_history import (
     parse_voter_history_chunks,
 )
@@ -133,14 +134,20 @@ async def _enable_vh_autovacuum_and_vacuum(session: AsyncSession) -> None:
     await session.commit()
     logger.info("Re-enabled autovacuum on voter_history table")
 
-    logger.info("Running VACUUM ANALYZE on voter_history table...")
-    start = time.monotonic()
-    engine = get_engine()
-    async with engine.connect() as vacuum_conn:
-        autocommit_conn = await vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
-        await autocommit_conn.execute(text("VACUUM ANALYZE voter_history"))
-    elapsed = time.monotonic() - start
-    logger.info(f"VACUUM ANALYZE completed in {elapsed:.1f}s")
+    # VACUUM is best-effort — autovacuum will handle it if this fails
+    try:
+        logger.info("Running VACUUM ANALYZE on voter_history table...")
+        start = time.monotonic()
+        engine = get_engine()
+        async with engine.connect() as vacuum_conn:
+            autocommit_conn = await vacuum_conn.execution_options(isolation_level="AUTOCOMMIT")
+            await autocommit_conn.execute(text("VACUUM ANALYZE voter_history"))
+        elapsed = time.monotonic() - start
+        logger.info(f"VACUUM ANALYZE completed in {elapsed:.1f}s")
+    except Exception:
+        logger.opt(exception=True).warning(
+            "VACUUM ANALYZE failed (non-fatal) — autovacuum will handle it",
+        )
 
 
 @asynccontextmanager
@@ -252,7 +259,7 @@ async def process_voter_history_import(
                     chunk_failed += 1
                     errors.append(
                         {
-                            "voter_registration_number": record.get("voter_registration_number", "unknown"),
+                            "voter_registration_number": _mask_vrn(record.get("voter_registration_number", "unknown")),
                             "error": parse_error,
                         }
                     )
@@ -351,6 +358,21 @@ async def _upsert_voter_history_batch(
         records: List of validated record dicts.
         import_job_id: The current import job ID.
     """
+    # Deduplicate records within the batch to prevent PostgreSQL
+    # "ON CONFLICT DO UPDATE command cannot affect row a second time" errors.
+    # Keep the last occurrence (latest data wins) for each unique key.
+    seen: dict[tuple, int] = {}
+    deduped: list[dict] = []
+    for r in records:
+        key = (r["voter_registration_number"], r["election_date"], r["election_type"])
+        if key in seen:
+            # Replace the earlier record with this one
+            deduped[seen[key]] = r
+        else:
+            seen[key] = len(deduped)
+            deduped.append(r)
+    records = deduped
+
     for i in range(0, len(records), _UPSERT_SUB_BATCH):
         batch = records[i : i + _UPSERT_SUB_BATCH]
         values = [
@@ -407,7 +429,7 @@ async def _replace_previous_import(
             ImportJob.file_name == job.file_name,
             ImportJob.file_type == "voter_history",
             ImportJob.id != job.id,
-            ImportJob.status.in_(["completed", "superseded"]),
+            ImportJob.status.in_(["completed", "superseded", "abandoned"]),
         )
     )
     previous_jobs = list(result.scalars().all())
@@ -912,7 +934,28 @@ async def _build_election_match_conditions(
     """
 
     def _build_district_filter() -> ColumnElement[bool] | None:
-        """Return a county filter if election is county-scoped, else None."""
+        """Return a county/municipality filter if election is geographically scoped, else None."""
+        # Priority 1: Use eligible_county/eligible_municipality from the election itself
+        # (set during candidate import — the most authoritative source).
+        if election.eligible_county:
+            county_filter: ColumnElement[bool] = (
+                func.upper(func.trim(VoterHistory.county)) == election.eligible_county.strip().upper()
+            )
+            if election.eligible_municipality:
+                # Municipal election: VoterHistory has no municipality column,
+                # so we cannot distinguish voters in different cities within the
+                # same county.  Require election_id to be resolved (i.e. only
+                # count rows that were explicitly linked to this election) to
+                # prevent cross-city leakage.  We achieve this by returning a
+                # predicate that suppresses the unresolved-fallback branch while
+                # still allowing the resolved branch through.
+                return and_(
+                    county_filter,
+                    VoterHistory.election_id == election.id,
+                )
+            return county_filter
+
+        # Priority 2: Fall back to boundary-based scoping
         boundary = election.boundary
         if boundary is None:
             return None
@@ -948,13 +991,14 @@ async def _build_election_match_conditions(
         )
         election_count = count_result.scalar_one()
 
+        district_filter = _build_district_filter()
+
         if election_count == 1:
             # Single-election date: unresolved rows must belong to this election
             fallback_conditions: list[ColumnElement[bool]] = [
                 VoterHistory.election_id.is_(None),
                 VoterHistory.election_date == election.election_date,
             ]
-            district_filter = _build_district_filter()
             if district_filter is not None:
                 fallback_conditions.append(district_filter)
             fallback = and_(*fallback_conditions)
@@ -965,11 +1009,18 @@ async def _build_election_match_conditions(
                 VoterHistory.election_date == election.election_date,
                 VoterHistory.normalized_election_type == election.election_type,
             ]
-            district_filter = _build_district_filter()
             if district_filter is not None:
                 fallback_conditions.append(district_filter)
             fallback = and_(*fallback_conditions)
-        return [or_(VoterHistory.election_id == election.id, fallback)]
+
+        # Apply district filter to resolved branch too (defense-in-depth).
+        # If Tier 1 incorrectly assigned records from other counties,
+        # this prevents them from leaking into query results.
+        resolved_condition: ColumnElement[bool] = VoterHistory.election_id == election.id
+        if district_filter is not None:
+            resolved_condition = and_(resolved_condition, district_filter)
+
+        return [or_(resolved_condition, fallback)]
 
     # Fallback to date-based heuristic for fully-unresolved records
     count_result = await session.execute(

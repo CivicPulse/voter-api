@@ -40,6 +40,9 @@ ARG GIT_COMMIT=unknown
 ENV PATH="/app/.venv/bin:$PATH" \
     GIT_COMMIT=${GIT_COMMIT}
 
+COPY docker/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 8000
 
-CMD ["uvicorn", "voter_api.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["/app/entrypoint.sh"]

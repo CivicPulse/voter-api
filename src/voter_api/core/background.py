@@ -8,6 +8,7 @@ Enables future swap to Celery/ARQ without service layer changes.
 import asyncio
 import enum
 import uuid
+import weakref
 from collections.abc import Coroutine
 from typing import Any, Protocol
 
@@ -59,6 +60,24 @@ class InProcessTaskRunner:
     def __init__(self) -> None:
         self._jobs: dict[str, JobStatus] = {}
         self._tasks: dict[str, asyncio.Task[Any]] = {}
+        self._semaphores: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = (
+            weakref.WeakKeyDictionary()
+        )
+
+    def _get_semaphore(self) -> asyncio.Semaphore:
+        """Lazily create a semaphore bound to the current event loop.
+
+        Uses a per-loop ``WeakKeyDictionary`` so that each event loop
+        gets its own semaphore instance.  This avoids the "attached to
+        a different loop" error when the runner is reused across test
+        sessions or application restarts.
+        """
+        loop = asyncio.get_running_loop()
+        sem = self._semaphores.get(loop)
+        if sem is None:
+            sem = asyncio.Semaphore(2)
+            self._semaphores[loop] = sem
+        return sem
 
     def submit_task(self, coro: Coroutine[Any, Any, Any]) -> str:
         """Submit an async task for background execution.
@@ -73,14 +92,15 @@ class InProcessTaskRunner:
         self._jobs[job_id] = JobStatus.PENDING
 
         async def _run() -> None:
-            self._jobs[job_id] = JobStatus.RUNNING
-            try:
-                await coro
-                self._jobs[job_id] = JobStatus.COMPLETED
-            except Exception:
-                self._jobs[job_id] = JobStatus.FAILED
-                logger.exception(f"Background task {job_id} failed")
-                raise
+            async with self._get_semaphore():
+                self._jobs[job_id] = JobStatus.RUNNING
+                try:
+                    await coro
+                    self._jobs[job_id] = JobStatus.COMPLETED
+                except Exception:
+                    self._jobs[job_id] = JobStatus.FAILED
+                    logger.exception(f"Background task {job_id} failed")
+                    raise
 
         task = asyncio.create_task(_run())
         self._tasks[job_id] = task

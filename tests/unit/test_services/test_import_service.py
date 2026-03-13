@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from voter_api.services.import_service import (
+    _prepare_records_for_db,
+    cleanup_abandoned_jobs,
     create_import_job,
     get_import_diff,
     get_import_job,
@@ -218,3 +220,82 @@ class TestGetImportDiff:
         assert diff.added == ["REG001", "REG002"]
         assert diff.removed == ["REG003"]
         assert diff.updated == ["REG004"]
+
+
+class TestPrepareRecordsDistrictPadding:
+    """Tests for district zero-padding in _prepare_records_for_db."""
+
+    def _make_record(self, **overrides: object) -> dict:
+        """Create a minimal valid record with district fields."""
+        record: dict = {
+            "voter_registration_number": "12345678",
+            "congressional_district": None,
+            "state_senate_district": None,
+            "state_house_district": None,
+        }
+        record.update(overrides)
+        return record
+
+    def test_unpadded_values_become_padded(self) -> None:
+        record = self._make_record(
+            congressional_district="2",
+            state_senate_district="18",
+            state_house_district="5",
+        )
+        prepared, _ = _prepare_records_for_db([record], uuid.uuid4())
+        assert len(prepared) == 1
+        assert prepared[0]["congressional_district"] == "002"
+        assert prepared[0]["state_senate_district"] == "018"
+        assert prepared[0]["state_house_district"] == "005"
+
+    def test_already_padded_values_unchanged(self) -> None:
+        record = self._make_record(
+            congressional_district="002",
+            state_senate_district="018",
+            state_house_district="130",
+        )
+        prepared, _ = _prepare_records_for_db([record], uuid.uuid4())
+        assert prepared[0]["congressional_district"] == "002"
+        assert prepared[0]["state_senate_district"] == "018"
+        assert prepared[0]["state_house_district"] == "130"
+
+    def test_none_and_empty_values_unchanged(self) -> None:
+        record = self._make_record(
+            congressional_district=None,
+            state_senate_district="",
+            state_house_district="   ",
+        )
+        prepared, _ = _prepare_records_for_db([record], uuid.uuid4())
+        assert prepared[0]["congressional_district"] is None
+        assert prepared[0]["state_senate_district"] == ""
+        assert prepared[0]["state_house_district"] == "   "
+
+
+class TestCleanupAbandonedJobs:
+    """Tests for cleanup_abandoned_jobs."""
+
+    @pytest.mark.asyncio
+    async def test_updates_failed_null_jobs(self) -> None:
+        """Jobs with status=failed and total_records=NULL are marked abandoned."""
+        session = AsyncMock()
+        result_mock = MagicMock()
+        result_mock.all.return_value = [MagicMock(), MagicMock(), MagicMock()]
+        session.execute.return_value = result_mock
+
+        count = await cleanup_abandoned_jobs(session)
+
+        assert count == 3
+        session.execute.assert_awaited_once()
+        session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_returns_zero_when_no_abandoned(self) -> None:
+        """Returns 0 when no abandoned jobs exist."""
+        session = AsyncMock()
+        result_mock = MagicMock()
+        result_mock.all.return_value = []
+        session.execute.return_value = result_mock
+
+        count = await cleanup_abandoned_jobs(session)
+
+        assert count == 0

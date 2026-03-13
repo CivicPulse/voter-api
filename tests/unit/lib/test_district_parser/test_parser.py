@@ -3,7 +3,9 @@
 import pytest
 
 from voter_api.lib.district_parser import (
+    PSC_DISTRICT_COUNTIES,
     ParsedDistrict,
+    get_psc_district_for_county,
     pad_district_identifier,
     parse_election_district,
 )
@@ -191,3 +193,78 @@ class TestPadDistrictIdentifier:
     def test_overflow_not_truncated(self) -> None:
         """Identifiers longer than width are returned as-is (no truncation)."""
         assert pad_district_identifier("1234", width=3) == "1234"
+
+
+class TestGetPscDistrictForCounty:
+    """Tests for PSC district lookup by county name."""
+
+    @pytest.mark.parametrize(
+        ("county", "expected_district"),
+        [
+            # District 1 counties
+            ("Chatham", "1"),
+            ("Lowndes", "1"),
+            ("Richmond", "1"),
+            # District 2 counties
+            ("Bibb", "2"),
+            ("Muscogee", "2"),
+            ("Houston", "2"),
+            # District 3 counties
+            ("DeKalb", "3"),
+            ("Gwinnett", "3"),
+            ("Clayton", "3"),
+            # District 4 counties
+            ("Hall", "4"),
+            ("Floyd", "4"),
+            ("Whitfield", "4"),
+            # District 5 counties
+            ("Fulton", "5"),
+            ("Cobb", "5"),
+            ("Forsyth", "5"),
+        ],
+        ids=[
+            "d1-chatham",
+            "d1-lowndes",
+            "d1-richmond",
+            "d2-bibb",
+            "d2-muscogee",
+            "d2-houston",
+            "d3-dekalb",
+            "d3-gwinnett",
+            "d3-clayton",
+            "d4-hall",
+            "d4-floyd",
+            "d4-whitfield",
+            "d5-fulton",
+            "d5-cobb",
+            "d5-forsyth",
+        ],
+    )
+    def test_known_counties(self, county: str, expected_district: str) -> None:
+        assert get_psc_district_for_county(county) == expected_district
+
+    def test_unknown_county_returns_none(self) -> None:
+        assert get_psc_district_for_county("Atlantis") is None
+
+    def test_empty_string_returns_none(self) -> None:
+        assert get_psc_district_for_county("") is None
+
+    @pytest.mark.parametrize(
+        "county",
+        ["chatham", "CHATHAM", "Chatham", "  Chatham  ", "chatham  "],
+        ids=["lower", "upper", "title", "padded", "lower-trailing"],
+    )
+    def test_case_and_whitespace_insensitive(self, county: str) -> None:
+        assert get_psc_district_for_county(county) == "1"
+
+    def test_multi_word_county(self) -> None:
+        """Multi-word county names like 'Jeff Davis' are matched correctly."""
+        assert get_psc_district_for_county("Jeff Davis") == "1"
+        assert get_psc_district_for_county("Ben Hill") == "1"
+        assert get_psc_district_for_county("North Fulton") == "5"
+
+    def test_all_five_districts_covered(self) -> None:
+        """Every district has at least one county."""
+        for district_id in ("1", "2", "3", "4", "5"):
+            assert district_id in PSC_DISTRICT_COUNTIES
+            assert len(PSC_DISTRICT_COUNTIES[district_id]) > 0

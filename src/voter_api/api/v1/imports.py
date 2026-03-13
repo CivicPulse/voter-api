@@ -6,12 +6,15 @@ GET /imports/{job_id}/diff (diff report).
 """
 
 import math
+import os
 import tempfile
 import uuid
 from pathlib import Path
 from typing import Annotated
 
+import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.background import task_runner
@@ -30,6 +33,34 @@ MAX_VOTER_FILE_SIZE = 500 * 1024 * 1024  # 500 MB
 MAX_BOUNDARY_FILE_SIZE = 200 * 1024 * 1024  # 200 MB
 MAX_VOTER_HISTORY_FILE_SIZE = 100 * 1024 * 1024  # 100 MB (FR-005)
 _NO_FILE_DETAIL = "No file provided"
+_MIME_TEXT_PLAIN = "text/plain"
+_MIME_OCTET_STREAM = "application/octet-stream"
+_BG_TASK_FAILED = "Background task submission failed"
+
+# Allowed content types for CSV uploads
+_ALLOWED_CSV_TYPES = {"text/csv", "application/csv", _MIME_TEXT_PLAIN, _MIME_OCTET_STREAM}
+# Allowed content types for JSONL uploads
+_ALLOWED_JSONL_TYPES = {"application/jsonl", "application/x-ndjson", _MIME_TEXT_PLAIN, _MIME_OCTET_STREAM}
+
+
+def _validate_upload(file: UploadFile, max_size: int, allowed_types: set[str]) -> None:
+    """Validate upload file size hint and content type.
+
+    Args:
+        file: The uploaded file.
+        max_size: Maximum file size in bytes.
+        allowed_types: Set of allowed MIME content types.
+    """
+    if file.size and file.size > max_size:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File exceeds maximum size of {max_size // (1024 * 1024)} MB",
+        )
+    if file.content_type and file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Unsupported content type: {file.content_type}",
+        )
 
 
 @router.post("/voters", response_model=ImportJobResponse, status_code=202)
@@ -42,6 +73,8 @@ async def import_voters(
     """Upload and import a voter CSV file (admin only)."""
     if not file.filename:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_NO_FILE_DETAIL)
+
+    _validate_upload(file, MAX_VOTER_FILE_SIZE, _ALLOWED_CSV_TYPES)
 
     # Save uploaded file to temp location with size limit
     with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
@@ -74,7 +107,15 @@ async def import_voters(
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    task_runner.submit_task(_run_import())
+    try:
+        task_runner.submit_task(_run_import())
+    except Exception:
+        logger.exception("Failed to submit voter import task for job {}", job.id)
+        tmp_path.unlink(missing_ok=True)
+        job.status = "failed"
+        job.error_log = [{"error": _BG_TASK_FAILED}]
+        await session.commit()
+        raise
     return ImportJobResponse.model_validate(job)
 
 
@@ -90,6 +131,8 @@ async def import_voter_history(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=_NO_FILE_DETAIL,
         )
+
+    _validate_upload(file, MAX_VOTER_HISTORY_FILE_SIZE, _ALLOWED_CSV_TYPES)
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
         content = await file.read()
@@ -121,7 +164,215 @@ async def import_voter_history(
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    task_runner.submit_task(_run_import())
+    try:
+        task_runner.submit_task(_run_import())
+    except Exception:
+        logger.exception("Failed to submit voter-history import task for job {}", job.id)
+        tmp_path.unlink(missing_ok=True)
+        job.status = "failed"
+        job.error_log = [{"error": _BG_TASK_FAILED}]
+        await session.commit()
+        raise
+    return ImportJobResponse.model_validate(job)
+
+
+MAX_CANDIDATE_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+
+
+@router.post("/candidates", status_code=202)
+async def import_candidates(
+    file: UploadFile,
+    current_user: Annotated[User, Depends(require_role("admin"))],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> ImportJobResponse:
+    """Upload and import a candidates JSONL template (admin only)."""
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=_NO_FILE_DETAIL,
+        )
+
+    _validate_upload(file, MAX_CANDIDATE_FILE_SIZE, _ALLOWED_JSONL_TYPES)
+
+    fd, tmp_name = tempfile.mkstemp(suffix=".jsonl")
+    os.close(fd)
+    tmp_path = Path(tmp_name)
+    content = await file.read()
+    if len(content) > MAX_CANDIDATE_FILE_SIZE:
+        tmp_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File exceeds maximum size of {MAX_CANDIDATE_FILE_SIZE // (1024 * 1024)} MB",
+        )
+    async with aiofiles.open(tmp_path, "wb") as tmp:
+        await tmp.write(content)
+
+    from voter_api.services.candidate_import_service import (
+        create_candidate_import_job,
+    )
+
+    try:
+        job = await create_candidate_import_job(
+            session,
+            file_name=file.filename,
+            triggered_by=current_user.id,
+        )
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+    async def _run_import() -> None:
+        from voter_api.core.database import get_session_factory
+        from voter_api.services.candidate_import_service import process_candidate_import
+
+        try:
+            factory = get_session_factory()
+            async with factory() as bg_session:
+                bg_job = await import_service.get_import_job(bg_session, job.id)
+                if bg_job:
+                    await process_candidate_import(bg_session, bg_job, tmp_path)
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    try:
+        task_runner.submit_task(_run_import())
+    except Exception:
+        logger.exception("Failed to submit candidate import task for job {}", job.id)
+        tmp_path.unlink(missing_ok=True)
+        job.status = "failed"
+        job.error_log = [{"error": _BG_TASK_FAILED}]
+        await session.commit()
+        raise
+    return ImportJobResponse.model_validate(job)
+
+
+MAX_ELECTION_RESULTS_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+_ALLOWED_JSON_TYPES = {"application/json", _MIME_TEXT_PLAIN, _MIME_OCTET_STREAM}
+
+
+@router.post("/election-results", status_code=202)
+async def import_election_results(
+    file: UploadFile,
+    current_user: Annotated[User, Depends(require_role("admin"))],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> ImportJobResponse:
+    """Upload and import election results JSON (admin only)."""
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=_NO_FILE_DETAIL,
+        )
+
+    _validate_upload(file, MAX_ELECTION_RESULTS_FILE_SIZE, _ALLOWED_JSON_TYPES)
+
+    fd, tmp_name = tempfile.mkstemp(suffix=".json")
+    os.close(fd)
+    tmp_path = Path(tmp_name)
+    content = await file.read()
+    if len(content) > MAX_ELECTION_RESULTS_FILE_SIZE:
+        tmp_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File exceeds maximum size of {MAX_ELECTION_RESULTS_FILE_SIZE // (1024 * 1024)} MB",
+        )
+    async with aiofiles.open(tmp_path, "wb") as tmp:
+        await tmp.write(content)
+
+    from voter_api.services.results_import_service import create_results_import_job
+
+    try:
+        job = await create_results_import_job(
+            session,
+            file_name=file.filename,
+            triggered_by=current_user.id,
+        )
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+    async def _run_import() -> None:
+        from voter_api.core.database import get_session_factory
+        from voter_api.services.results_import_service import process_results_import
+
+        try:
+            factory = get_session_factory()
+            async with factory() as bg_session:
+                bg_job = await import_service.get_import_job(bg_session, job.id)
+                if bg_job:
+                    await process_results_import(bg_session, bg_job, tmp_path)
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    try:
+        task_runner.submit_task(_run_import())
+    except Exception:
+        logger.exception("Failed to submit election results import task for job {}", job.id)
+        tmp_path.unlink(missing_ok=True)
+        job.status = "failed"
+        job.error_log = [{"error": _BG_TASK_FAILED}]
+        await session.commit()
+        raise
+    return ImportJobResponse.model_validate(job)
+
+
+MAX_ABSENTEE_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
+
+
+@router.post("/absentee", status_code=202)
+async def import_absentee(
+    file: UploadFile,
+    current_user: Annotated[User, Depends(require_role("admin"))],
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> ImportJobResponse:
+    """Upload and import absentee ballot application CSV (admin only)."""
+    if not file.filename:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_NO_FILE_DETAIL)
+
+    _validate_upload(file, MAX_ABSENTEE_FILE_SIZE, _ALLOWED_CSV_TYPES)
+
+    fd, tmp_name = tempfile.mkstemp(suffix=".csv")
+    os.close(fd)
+    tmp_path = Path(tmp_name)
+    content = await file.read()
+    if len(content) > MAX_ABSENTEE_FILE_SIZE:
+        tmp_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File exceeds maximum size of {MAX_ABSENTEE_FILE_SIZE // (1024 * 1024)} MB",
+        )
+    async with aiofiles.open(tmp_path, "wb") as tmp:
+        await tmp.write(content)
+
+    from voter_api.services.absentee_service import create_absentee_import_job
+
+    job = await create_absentee_import_job(
+        session,
+        file_name=file.filename,
+        triggered_by=current_user.id,
+    )
+
+    async def _run_import() -> None:
+        from voter_api.core.database import get_session_factory
+        from voter_api.services.absentee_service import process_absentee_import
+
+        try:
+            factory = get_session_factory()
+            async with factory() as bg_session:
+                bg_job = await import_service.get_import_job(bg_session, job.id)
+                if bg_job:
+                    await process_absentee_import(bg_session, bg_job, tmp_path)
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    try:
+        task_runner.submit_task(_run_import())
+    except Exception:
+        logger.exception("Failed to submit absentee import task for job {}", job.id)
+        tmp_path.unlink(missing_ok=True)
+        job.status = "failed"
+        job.error_log = [{"error": _BG_TASK_FAILED}]
+        await session.commit()
+        raise
     return ImportJobResponse.model_validate(job)
 
 

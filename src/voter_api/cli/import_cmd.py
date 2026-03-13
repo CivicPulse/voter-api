@@ -11,14 +11,44 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.cli.voter_history_cmd import import_voter_history
 
+_BATCH_SIZE_HELP = "Records per batch"
+_IMPORT_SUMMARY_HEADER = "IMPORT SUMMARY"
+
 import_app = typer.Typer()
 import_app.command("voter-history")(import_voter_history)
+
+
+@import_app.command("cleanup-jobs")
+def cleanup_jobs_cmd() -> None:
+    """Mark abandoned import jobs (failed + no record counts) as 'abandoned'."""
+    asyncio.run(_cleanup_jobs())
+
+
+async def _cleanup_jobs() -> None:
+    """Async implementation of cleanup-jobs command."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.import_service import cleanup_abandoned_jobs
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            count = await cleanup_abandoned_jobs(session)
+            if count:
+                typer.echo(f"Marked {count} abandoned import job(s) as 'abandoned'.")
+            else:
+                typer.echo("No abandoned import jobs found.")
+    finally:
+        await dispose_engine()
 
 
 @import_app.command("voters")
 def import_voters(
     file: Path = typer.Argument(..., help="Path to voter CSV file", exists=True),  # noqa: B008
-    batch_size: int = typer.Option(5000, "--batch-size", help="Records per batch"),  # noqa: B008
+    batch_size: int = typer.Option(5000, "--batch-size", help=_BATCH_SIZE_HELP),  # noqa: B008
 ) -> None:
     """Import voter data from a CSV file."""
     asyncio.run(_import_voters(file, batch_size))
@@ -49,6 +79,46 @@ async def _import_voters(file_path: Path, batch_size: int) -> None:
             typer.echo(f"  Inserted:       {job.records_inserted or 0}")
             typer.echo(f"  Updated:        {job.records_updated or 0}")
             typer.echo(f"  Soft-deleted:   {job.records_soft_deleted or 0}")
+    finally:
+        await dispose_engine()
+
+
+@import_app.command("absentee")
+def import_absentee(
+    file: Path = typer.Argument(..., help="Path to absentee ballot application CSV", exists=True),  # noqa: B008
+    batch_size: int = typer.Option(400, "--batch-size", help=_BATCH_SIZE_HELP),  # noqa: B008
+) -> None:
+    """Import absentee ballot applications from a GA SoS CSV file."""
+    asyncio.run(_import_absentee(file, batch_size))
+
+
+async def _import_absentee(file_path: Path, batch_size: int) -> None:
+    """Async implementation of absentee ballot application import."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.absentee_service import (
+        create_absentee_import_job,
+        process_absentee_import,
+    )
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            job = await create_absentee_import_job(session, file_name=file_path.name)
+            typer.echo(f"Import job created: {job.id}")
+            typer.echo(f"Importing absentee ballot applications from {file_path.name}...")
+
+            job = await process_absentee_import(session, job, file_path, batch_size)
+
+            typer.echo(f"\nImport {'completed' if job.status == 'completed' else 'failed'}:")
+            typer.echo(f"  Total records:  {job.total_records or 0}")
+            typer.echo(f"  Succeeded:      {job.records_succeeded or 0}")
+            typer.echo(f"  Failed:         {job.records_failed or 0}")
+            typer.echo(f"  Inserted:       {job.records_inserted or 0}")
+            typer.echo(f"  Updated:        {job.records_updated or 0}")
     finally:
         await dispose_engine()
 
@@ -524,7 +594,7 @@ async def _import_filtered_boundaries(
 def _print_summary(results: list) -> None:
     """Print a summary table of import results."""
     typer.echo("\n" + "=" * 70)
-    typer.echo("IMPORT SUMMARY")
+    typer.echo(_IMPORT_SUMMARY_HEADER)
     typer.echo("=" * 70)
 
     ok_count = sum(1 for r in results if r.success)
@@ -594,5 +664,389 @@ async def _resolve_elections(election_date: date | None, force: bool, dry_run: b
             typer.echo(f"  Tier 2 (district match): {result.tier2_updated}")
             typer.echo(f"  Total VH updated:       {result.total_updated}")
             typer.echo(f"  Unresolvable elections: {result.unresolvable}")
+    finally:
+        await dispose_engine()
+
+
+@import_app.command("preprocess-candidates")
+def preprocess_candidates(
+    raw_csv: Path = typer.Argument(..., help="Path to raw GA SoS Qualified Candidates CSV", exists=True),  # noqa: B008
+    output: Path = typer.Option(..., "--output", help="Output path for JSONL template"),  # noqa: B008
+    election_date: str = typer.Option(..., "--election-date", help="Election date (YYYY-MM-DD)"),  # noqa: B008
+    election_type: str = typer.Option(..., "--election-type", help="Election type: primary, general, runoff, special"),  # noqa: B008
+) -> None:
+    """Preprocess raw GA SoS candidates CSV into importable JSONL template."""
+    from voter_api.core.config import get_settings
+    from voter_api.lib.candidate_importer import preprocess_candidates_csv
+
+    try:
+        election_date_parsed = date.fromisoformat(election_date)
+    except ValueError:
+        typer.echo(f"Invalid date format: {election_date}. Use YYYY-MM-DD.", err=True)
+        raise typer.Exit(code=1) from None
+
+    settings = get_settings()
+    api_key = settings.anthropic_api_key.get_secret_value() if settings.anthropic_api_key else None
+
+    typer.echo(f"Preprocessing candidates CSV: {raw_csv}")
+    result = preprocess_candidates_csv(
+        raw_csv,
+        output,
+        election_date_parsed,
+        election_type,
+        api_key=api_key,
+    )
+
+    typer.echo("\nPreprocessing complete:")
+    typer.echo(f"  Total records:    {result.total_records}")
+    typer.echo(f"  Resolved (regex): {result.resolved_regex}")
+    typer.echo(f"  Resolved (AI):    {result.resolved_ai}")
+    typer.echo(f"  Needs review:     {result.needs_review}")
+    typer.echo(f"  Output:           {result.output_path}")
+
+
+@import_app.command("preprocess-all-candidates")
+def preprocess_all_candidates(
+    input_dir: Path = typer.Option("data/new", "--input-dir", help="Directory containing raw candidate CSVs"),  # noqa: B008
+    output_dir: Path = typer.Option("data/results", "--output-dir", help="Directory for JSONL output files"),  # noqa: B008
+) -> None:
+    """Preprocess all Qualified Candidates CSVs in a directory into JSONL templates."""
+    from voter_api.core.config import get_settings
+    from voter_api.lib.candidate_importer import parse_candidate_filename, preprocess_candidates_csv
+
+    settings = get_settings()
+    api_key = settings.anthropic_api_key.get_secret_value() if settings.anthropic_api_key else None
+
+    csv_files = sorted(input_dir.glob("*_Qualified_Candidates.csv"))
+    if not csv_files:
+        typer.echo(f"No *_Qualified_Candidates.csv files found in {input_dir}")
+        raise typer.Exit(code=1)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    summary: list[tuple[str, str, str, int, int, int, int]] = []
+
+    _ = 0
+    for csv_path in csv_files:
+        try:
+            info = parse_candidate_filename(csv_path.name)
+        except ValueError as e:
+            typer.echo(f"WARNING: Skipping {csv_path.name}: {e}")
+            _ += 1
+            continue
+
+        output_path = output_dir / f"{csv_path.stem}.jsonl"
+        typer.echo(f"Preprocessing {csv_path.name}...")
+
+        try:
+            result = preprocess_candidates_csv(
+                csv_path,
+                output_path,
+                info.election_date,
+                info.election_type,
+                api_key=api_key,
+            )
+        except Exception as e:
+            typer.echo(f"ERROR: Failed to preprocess {csv_path.name}: {e}")
+            _ += 1
+            continue
+
+        summary.append(
+            (
+                csv_path.name,
+                str(info.election_date),
+                info.election_type,
+                result.total_records,
+                result.resolved_regex,
+                result.resolved_ai,
+                result.needs_review,
+            )
+        )
+
+    if not summary:
+        typer.echo("No files were successfully preprocessed.")
+        raise typer.Exit(code=1)
+
+    typer.echo("\n" + "=" * 100)
+    typer.echo("PREPROCESSING SUMMARY")
+    typer.echo("=" * 100)
+    typer.echo(f"  {'Filename':<55s} {'Date':<12s} {'Type':<10s} {'Total':>6s} {'Regex':>6s} {'AI':>4s} {'Review':>7s}")
+    typer.echo("-" * 100)
+    for name, edate, etype, total, regex, ai, review in summary:
+        typer.echo(f"  {name:<55s} {edate:<12s} {etype:<10s} {total:>6d} {regex:>6d} {ai:>4d} {review:>7d}")
+    typer.echo("=" * 100)
+
+
+@import_app.command("import-all-candidates")
+def import_all_candidates_cmd(
+    input_dir: Path = typer.Option("data/results", "--input-dir", help="Directory containing preprocessed JSONL files"),  # noqa: B008
+    batch_size: int = typer.Option(500, "--batch-size", help=_BATCH_SIZE_HELP),  # noqa: B008
+) -> None:
+    """Import all preprocessed candidate JSONL files from a directory."""
+    asyncio.run(_import_all_candidates(input_dir, batch_size))
+
+
+async def _import_all_candidates(input_dir: Path, batch_size: int) -> None:
+    """Async implementation of import-all-candidates."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.candidate_import_service import (
+        create_candidate_import_job,
+        process_candidate_import,
+    )
+
+    jsonl_files = sorted(input_dir.glob("*.jsonl"))
+    if not jsonl_files:
+        typer.echo(f"No *.jsonl files found in {input_dir}")
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    summary: list[tuple[str, str, int, int, int, int, int]] = []
+
+    try:
+        factory = get_session_factory()
+        for jsonl_path in jsonl_files:
+            try:
+                typer.echo(f"\nImporting {jsonl_path.name}...")
+                async with factory() as session:
+                    job = await create_candidate_import_job(session, file_name=jsonl_path.name)
+                    typer.echo(f"  Import job created: {job.id}")
+
+                    job = await process_candidate_import(session, job, jsonl_path, batch_size)
+
+                    status = "completed" if job.status == "completed" else "failed"
+                    typer.echo(f"  Import {status}:")
+                    typer.echo(f"    Total records:  {job.total_records or 0}")
+                    typer.echo(f"    Succeeded:      {job.records_succeeded or 0}")
+                    typer.echo(f"    Failed:         {job.records_failed or 0}")
+                    typer.echo(f"    Inserted:       {job.records_inserted or 0}")
+                    typer.echo(f"    Updated:        {job.records_updated or 0}")
+
+                    summary.append(
+                        (
+                            jsonl_path.name,
+                            status,
+                            job.total_records or 0,
+                            job.records_succeeded or 0,
+                            job.records_failed or 0,
+                            job.records_inserted or 0,
+                            job.records_updated or 0,
+                        )
+                    )
+            except Exception as e:
+                typer.echo(f"  ERROR: {jsonl_path.name}: {e}")
+                summary.append((jsonl_path.name, "error", 0, 0, 0, 0, 0))
+    finally:
+        await dispose_engine()
+
+    typer.echo("\n" + "=" * 100)
+    typer.echo(_IMPORT_SUMMARY_HEADER)
+    typer.echo("=" * 100)
+    typer.echo(
+        f"  {'Filename':<45s} {'Status':<10s} {'Total':>6s} {'OK':>6s} {'Fail':>6s} {'Insert':>7s} {'Update':>7s}"
+    )
+    typer.echo("-" * 100)
+    for name, status, total, ok, fail, ins, upd in summary:
+        typer.echo(f"  {name:<45s} {status:<10s} {total:>6d} {ok:>6d} {fail:>6d} {ins:>7d} {upd:>7d}")
+    typer.echo("=" * 100)
+
+    if any(s[1] != "completed" for s in summary):
+        raise typer.Exit(code=1)
+
+
+@import_app.command("candidates")
+def import_candidates_cmd(
+    file: Path = typer.Argument(..., help="Path to preprocessed candidates JSONL template", exists=True),  # noqa: B008
+    batch_size: int = typer.Option(500, "--batch-size", help=_BATCH_SIZE_HELP),  # noqa: B008
+) -> None:
+    """Import candidates from a preprocessed JSONL template."""
+    asyncio.run(_import_candidates(file, batch_size))
+
+
+async def _import_candidates(file_path: Path, batch_size: int) -> None:
+    """Async implementation of candidate import."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.candidate_import_service import (
+        create_candidate_import_job,
+        process_candidate_import,
+    )
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            job = await create_candidate_import_job(session, file_name=file_path.name)
+            typer.echo(f"Import job created: {job.id}")
+            typer.echo(f"Importing candidates from {file_path.name}...")
+
+            job = await process_candidate_import(session, job, file_path, batch_size)
+
+            typer.echo(f"\nImport {'completed' if job.status == 'completed' else 'failed'}:")
+            typer.echo(f"  Total records:  {job.total_records or 0}")
+            typer.echo(f"  Succeeded:      {job.records_succeeded or 0}")
+            typer.echo(f"  Failed:         {job.records_failed or 0}")
+            typer.echo(f"  Inserted:       {job.records_inserted or 0}")
+            typer.echo(f"  Updated:        {job.records_updated or 0}")
+    finally:
+        await dispose_engine()
+
+
+@import_app.command("election-results")
+def import_election_results_cmd(
+    path: Path = typer.Argument(..., help="Path to JSON file or directory of JSON files", exists=True),  # noqa: B008
+    dry_run: bool = typer.Option(False, "--dry-run", help="Parse and validate without importing"),  # noqa: B008
+) -> None:
+    """Import election results from SoS JSON export file(s)."""
+    asyncio.run(_import_election_results(path, dry_run))
+
+
+async def _import_election_results(path: Path, dry_run: bool) -> None:
+    """Async implementation of election-results import."""
+    from voter_api.lib.results_importer import iter_ballot_items, load_results_file, validate_results_file
+
+    # Collect files
+    if path.is_file():
+        json_files = [path]
+    else:
+        json_files = sorted(path.glob("*.json"))
+        if not json_files:
+            typer.echo(f"No *.json files found in {path}")
+            raise typer.Exit(code=1)
+
+    if dry_run:
+        typer.echo("DRY RUN — validating files without importing\n")
+        all_valid = True
+        for json_path in json_files:
+            try:
+                feed = load_results_file(json_path)
+                errors = validate_results_file(feed)
+                if errors:
+                    typer.echo(f"  INVALID  {json_path.name}")
+                    for e in errors:
+                        typer.echo(f"           {e}")
+                    all_valid = False
+                else:
+                    contexts = iter_ballot_items(feed)
+                    candidates_count = sum(len(c.candidates) for c in contexts)
+                    typer.echo(
+                        f"  VALID    {json_path.name} "
+                        f"({len(contexts)} races, {candidates_count} candidates, "
+                        f"date={feed.electionDate})"
+                    )
+            except Exception as e:
+                typer.echo(f"  ERROR    {json_path.name}: {e}")
+                all_valid = False
+
+        if not all_valid:
+            raise typer.Exit(code=1)
+        typer.echo(f"\nAll {len(json_files)} file(s) valid.")
+        return
+
+    # Real import
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.results_import_service import (
+        create_results_import_job,
+        process_results_import,
+    )
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    summary: list[tuple[str, str, int, int, int, int, int]] = []
+
+    try:
+        factory = get_session_factory()
+        for json_path in json_files:
+            try:
+                typer.echo(f"\nImporting {json_path.name}...")
+                async with factory() as session:
+                    job = await create_results_import_job(session, file_name=json_path.name)
+                    typer.echo(f"  Import job created: {job.id}")
+
+                    job = await process_results_import(session, job, json_path)
+
+                    status = "completed" if job.status == "completed" else "failed"
+                    typer.echo(f"  Import {status}:")
+                    typer.echo(f"    Ballot items:    {job.total_records or 0}")
+                    typer.echo(f"    Succeeded:       {job.records_succeeded or 0}")
+                    typer.echo(f"    Failed:          {job.records_failed or 0}")
+                    typer.echo(f"    Candidates new:  {job.records_inserted or 0}")
+                    typer.echo(f"    Candidates upd:  {job.records_updated or 0}")
+
+                    summary.append(
+                        (
+                            json_path.name,
+                            status,
+                            job.total_records or 0,
+                            job.records_succeeded or 0,
+                            job.records_failed or 0,
+                            job.records_inserted or 0,
+                            job.records_updated or 0,
+                        )
+                    )
+            except Exception as e:
+                typer.echo(f"  ERROR: {json_path.name}: {e}")
+                summary.append((json_path.name, "error", 0, 0, 0, 0, 0))
+    finally:
+        await dispose_engine()
+
+    typer.echo("\n" + "=" * 100)
+    typer.echo(_IMPORT_SUMMARY_HEADER)
+    typer.echo("=" * 100)
+    typer.echo(f"  {'Filename':<55s} {'Status':<10s} {'Items':>6s} {'OK':>6s} {'Fail':>6s} {'New':>6s} {'Upd':>6s}")
+    typer.echo("-" * 100)
+    for name, status, total, ok, fail, ins, upd in summary:
+        typer.echo(f"  {name:<55s} {status:<10s} {total:>6d} {ok:>6d} {fail:>6d} {ins:>6d} {upd:>6d}")
+    typer.echo("=" * 100)
+
+    if any(s[1] != "completed" for s in summary):
+        raise typer.Exit(code=1)
+
+
+@import_app.command("build-crosswalk")
+def build_crosswalk_cmd() -> None:
+    """Build or display the precinct crosswalk table.
+
+    Shows current crosswalk statistics. The actual spatial join builder
+    (build_crosswalk_from_spatial_join) is deferred to a future task
+    since it requires geocoded voter data.
+    """
+    asyncio.run(_build_crosswalk())
+
+
+async def _build_crosswalk() -> None:
+    """Async implementation of build-crosswalk command."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.services.precinct_crosswalk_service import get_crosswalk_stats
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            stats = await get_crosswalk_stats(session)
+            typer.echo("Precinct Crosswalk Status:")
+            typer.echo(f"  Total entries:    {stats['total_entries']}")
+            typer.echo(f"  Counties covered: {stats['counties_covered']}")
+            typer.echo(f"  Avg confidence:   {stats['avg_confidence']}")
+
+            if stats["total_entries"] == 0:
+                typer.echo(
+                    "\nNo crosswalk entries found. The spatial join builder "
+                    "is not yet implemented — it requires geocoded voter data."
+                )
+            else:
+                typer.echo(
+                    "\nNote: The spatial join builder is a placeholder. "
+                    "Entries were loaded via upsert_crosswalk_entries()."
+                )
     finally:
         await dispose_engine()

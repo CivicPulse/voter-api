@@ -10,6 +10,8 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
+from voter_api.lib.csv_utils import detect_delimiter, detect_encoding
+
 # GA SoS voter history 9-column mapping: CSV header → model field name
 GA_SOS_VOTER_HISTORY_COLUMN_MAP: dict[str, str] = {
     "County Name": "county",
@@ -35,6 +37,13 @@ ELECTION_TYPE_MAP: dict[str, str] = {
     "SPECIAL PRIMARY": "primary",
     "SPECIAL PRIMARY RUNOFF": "runoff",
     "PRESIDENTIAL PREFERENCE PRIMARY": "primary",
+    # Additional variants found in real GA SoS data
+    "PRIMARY": "primary",
+    "PRIMARY ELECTION": "primary",
+    "PRIMARY RUNOFF": "runoff",
+    "RUNOFF": "runoff",
+    "RUNOFF ELECTION": "runoff",
+    "SPECIAL": "special",
 }
 
 # Default normalized type for unknown election types
@@ -50,67 +59,16 @@ def map_election_type(raw_type: str) -> str:
     Returns:
         Normalized election type (e.g., "general", "primary", "special", "runoff").
     """
-    return ELECTION_TYPE_MAP.get(raw_type.strip().upper(), DEFAULT_ELECTION_TYPE)
-
-
-def _detect_delimiter(file_path: Path) -> str:
-    """Detect the CSV delimiter by reading the first line.
-
-    Args:
-        file_path: Path to the CSV file.
-
-    Returns:
-        The detected delimiter character.
-
-    Raises:
-        ValueError: If the delimiter cannot be detected.
-    """
-    for encoding in ("utf-8", "latin-1"):
-        try:
-            with file_path.open("r", encoding=encoding) as f:
-                first_line = f.readline()
-            break
-        except UnicodeDecodeError:
-            continue
-    else:
-        msg = f"Cannot detect encoding for {file_path}"
-        raise ValueError(msg)
-
-    counts = {
-        ",": first_line.count(","),
-        "|": first_line.count("|"),
-        "\t": first_line.count("\t"),
-    }
-    delimiter = max(counts, key=counts.get)  # type: ignore[arg-type]
-    if counts[delimiter] == 0:
-        msg = f"Cannot detect delimiter in {file_path}"
-        raise ValueError(msg)
-
-    logger.debug(f"Detected delimiter: {delimiter!r} for {file_path}")
-    return delimiter
-
-
-def _detect_encoding(file_path: Path) -> str:
-    """Detect file encoding by attempting to read with common encodings.
-
-    Args:
-        file_path: Path to the CSV file.
-
-    Returns:
-        The detected encoding string.
-
-    Raises:
-        ValueError: If encoding cannot be detected.
-    """
-    for encoding in ("utf-8", "latin-1"):
-        try:
-            with file_path.open("r", encoding=encoding) as f:
-                f.read(8192)
-            return encoding
-        except UnicodeDecodeError:
-            continue
-    msg = f"Cannot detect encoding for {file_path}"
-    raise ValueError(msg)
+    normalized = raw_type.strip().upper()
+    result = ELECTION_TYPE_MAP.get(normalized)
+    if result is None:
+        logger.warning(
+            "Unknown election type '{}' — defaulting to '{}'",
+            raw_type.strip(),
+            DEFAULT_ELECTION_TYPE,
+        )
+        return DEFAULT_ELECTION_TYPE
+    return result
 
 
 def parse_voter_history_chunks(
@@ -131,8 +89,8 @@ def parse_voter_history_chunks(
         ``normalized_election_type`` field and ``_parse_error`` key
         (None if valid, error message string if invalid).
     """
-    delimiter = _detect_delimiter(file_path)
-    encoding = _detect_encoding(file_path)
+    delimiter = detect_delimiter(file_path)
+    encoding = detect_encoding(file_path)
 
     logger.info(
         f"Parsing voter history {file_path} with delimiter={delimiter!r}, encoding={encoding}, batch_size={batch_size}"

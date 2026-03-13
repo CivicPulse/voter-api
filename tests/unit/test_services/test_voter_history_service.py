@@ -18,6 +18,7 @@ from voter_api.services.voter_history_service import (
     VoterLookupResult,
     _build_election_match_conditions,
     _get_election_or_raise,
+    _replace_previous_import,
     get_participation_stats,
     get_participation_summary,
     get_voter_history,
@@ -84,6 +85,8 @@ def _mock_election(**overrides) -> MagicMock:
         "district_type": None,
         "district_identifier": None,
         "boundary": None,
+        "eligible_county": None,
+        "eligible_municipality": None,
     }
     defaults.update(overrides)
     election = MagicMock(spec=Election)
@@ -786,6 +789,36 @@ class TestBuildElectionMatchConditions:
         assert "upper(voter_history.county)" in or_sql.lower()
         assert "13121" not in or_sql
 
+    async def test_resolved_county_election_applies_district_filter_to_both_branches(self) -> None:
+        """District filter applies to resolved branch too (defense-in-depth against cross-county leakage)."""
+        boundary = MagicMock()
+        boundary.name = "Bibb County"
+        boundary.boundary_type = "county"
+        election = _mock_election(
+            district_type="county",
+            district_identifier="13021",
+            boundary=boundary,
+        )
+        session = AsyncMock()
+        resolved_count_result = MagicMock()
+        resolved_count_result.scalar_one.return_value = 10  # Has resolved records
+        date_count_result = MagicMock()
+        date_count_result.scalar_one.return_value = 1  # Single election on date
+        session.execute = AsyncMock(side_effect=[resolved_count_result, date_count_result])
+
+        conditions = await _build_election_match_conditions(session, election)
+
+        # Single OR condition
+        assert len(conditions) == 1
+        or_sql = str(conditions[0]).lower()
+        # County filter should appear in BOTH branches of the OR:
+        # 1. The resolved branch (election_id = X AND county filter)
+        # 2. The fallback branch (election_id IS NULL AND date AND county filter)
+        assert "upper(voter_history.county)" in or_sql
+        # The election_id match should be AND-ed with the county filter,
+        # not a bare election_id match
+        assert "voter_history.election_id" in or_sql
+
     async def test_manual_county_election_unresolved_single_date_adds_county_predicate(self) -> None:
         """Manual county election (null district fields, county boundary) appends county predicate."""
         boundary = MagicMock()
@@ -1029,3 +1062,54 @@ class TestResolveElectionIds:
         # Multiple elections on 2026-02-17 → type-specific match
         assert lookup[(date(2026, 2, 17), "special")] == eid_special
         assert lookup[(date(2026, 2, 17), "runoff")] == eid_runoff
+
+
+# ---------------------------------------------------------------------------
+# _replace_previous_import
+# ---------------------------------------------------------------------------
+
+
+class TestReplacePreviousImport:
+    """Tests for _replace_previous_import including abandoned status handling."""
+
+    async def test_includes_abandoned_in_status_filter(self) -> None:
+        """Abandoned jobs are included in the replacement query alongside completed/superseded."""
+        current_job = MagicMock()
+        current_job.id = uuid.uuid4()
+        current_job.file_name = "voter_history.csv"
+        current_job.file_type = "voter_history"
+
+        session = AsyncMock()
+        # Mock the query for previous jobs — return empty list (no previous jobs)
+        prev_result = MagicMock()
+        prev_result.scalars.return_value.all.return_value = []
+        session.execute.return_value = prev_result
+
+        await _replace_previous_import(session, current_job)
+
+        # Verify the SQL query was executed — check that the status filter
+        # includes "abandoned" by inspecting the query argument
+        session.execute.assert_awaited_once()
+        query_arg = session.execute.call_args[0][0]
+        compiled = str(query_arg.compile(compile_kwargs={"literal_binds": True}))
+        assert "abandoned" in compiled
+        assert "completed" in compiled
+        assert "superseded" in compiled
+
+    async def test_no_previous_jobs_is_noop(self) -> None:
+        """When no previous jobs exist, no deletions or status changes happen."""
+        current_job = MagicMock()
+        current_job.id = uuid.uuid4()
+        current_job.file_name = "voter_history.csv"
+        current_job.file_type = "voter_history"
+
+        session = AsyncMock()
+        prev_result = MagicMock()
+        prev_result.scalars.return_value.all.return_value = []
+        session.execute.return_value = prev_result
+
+        await _replace_previous_import(session, current_job)
+
+        # Only the initial SELECT was executed, no DELETE or flush
+        assert session.execute.await_count == 1
+        session.flush.assert_not_awaited()

@@ -52,6 +52,7 @@ async def _import_voter_history(file_path: Path, batch_size: int) -> None:
                 resolve_elapsed = time.monotonic() - resolve_start
 
                 typer.echo(f"Resolution completed in {resolve_elapsed:.1f}s:")
+                typer.echo(f"  Linked (tier 0):   {resolution.tier0_updated}")
                 typer.echo(f"  Linked (tier 1):   {resolution.tier1_updated}")
                 typer.echo(f"  Linked (tier 2):   {resolution.tier2_updated}")
                 typer.echo(f"  Unresolvable:      {resolution.unresolvable}")

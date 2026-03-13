@@ -4,8 +4,10 @@ Provides Election, ElectionResult, and ElectionCountyResult models
 for tracking Georgia Secretary of State election results.
 """
 
-import uuid
-from datetime import date, datetime
+from __future__ import annotations
+
+import uuid  # noqa: TC003
+from datetime import date, datetime  # noqa: TC003
 
 from sqlalchemy import (
     CheckConstraint,
@@ -26,6 +28,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from voter_api.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
 from voter_api.models.boundary import Boundary  # noqa: TC001
 from voter_api.models.candidate import Candidate  # noqa: TC001
+from voter_api.models.election_event import ElectionEvent  # noqa: TC001
 
 _CASCADE = "all, delete-orphan"
 
@@ -40,6 +43,7 @@ class Election(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     election_type: Mapped[str] = mapped_column(String(50), nullable=False)
     district: Mapped[str] = mapped_column(String(200), nullable=False)
     data_source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
     source: Mapped[str] = mapped_column(String(20), nullable=False, server_default="sos_feed")
     ballot_item_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
@@ -68,11 +72,23 @@ class Election(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     district_identifier: Mapped[str | None] = mapped_column(String(50), nullable=True)
     district_party: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
+    # Geographic eligibility scoping (from candidate CSV COUNTY/MUNICIPALITY columns)
+    eligible_county: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    eligible_municipality: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # FK to election_events (parent "election day" grouping)
+    election_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("election_events.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # Relationships
-    result: Mapped["ElectionResult | None"] = relationship(back_populates="election", uselist=False, cascade=_CASCADE)
-    county_results: Mapped[list["ElectionCountyResult"]] = relationship(back_populates="election", cascade=_CASCADE)
-    boundary: Mapped["Boundary | None"] = relationship(foreign_keys=[boundary_id])
-    candidates: Mapped[list["Candidate"]] = relationship(back_populates="election", cascade=_CASCADE)
+    election_event: Mapped[ElectionEvent | None] = relationship(back_populates="elections")
+    result: Mapped[ElectionResult | None] = relationship(back_populates="election", uselist=False, cascade=_CASCADE)
+    county_results: Mapped[list[ElectionCountyResult]] = relationship(back_populates="election", cascade=_CASCADE)
+    boundary: Mapped[Boundary | None] = relationship(foreign_keys=[boundary_id])
+    candidates: Mapped[list[Candidate]] = relationship(back_populates="election", cascade=_CASCADE)
 
     __table_args__ = (
         Index(
@@ -92,6 +108,9 @@ class Election(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         Index("idx_elections_boundary_id", "boundary_id"),
         Index("idx_elections_district_type", "district_type"),
         Index("idx_elections_source", "source"),
+        Index("idx_elections_election_event_id", "election_event_id"),
+        Index("idx_elections_eligible_county", "eligible_county"),
+        Index("idx_elections_eligible_municipality", "eligible_municipality"),
         Index(
             "uq_election_feed_ballot_item",
             "data_source_url",
@@ -120,7 +139,7 @@ class ElectionResult(Base, UUIDMixin):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     # Relationships
-    election: Mapped["Election"] = relationship(back_populates="result")
+    election: Mapped[Election] = relationship(back_populates="result")
 
     __table_args__ = (
         UniqueConstraint("election_id", name="uq_election_results_election_id"),
@@ -150,7 +169,7 @@ class ElectionCountyResult(Base, UUIDMixin):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     # Relationships
-    election: Mapped["Election"] = relationship(back_populates="county_results")
+    election: Mapped[Election] = relationship(back_populates="county_results")
 
     __table_args__ = (
         UniqueConstraint("election_id", "county_name", name="uq_election_county_results"),

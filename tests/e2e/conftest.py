@@ -25,6 +25,7 @@ from voter_api.core.config import Settings, get_settings
 from voter_api.core.database import get_engine
 from voter_api.core.security import create_access_token, hash_password
 from voter_api.main import create_app, lifespan
+from voter_api.models.absentee_ballot import AbsenteeBallotApplication
 from voter_api.models.auth_tokens import UserInvite
 from voter_api.models.boundary import Boundary
 from voter_api.models.candidate import Candidate, CandidateLink
@@ -42,7 +43,7 @@ from voter_api.models.voter_history import VoterHistory
 
 ADMIN_USERNAME = "e2e_admin"
 ADMIN_EMAIL = "e2e_admin@test.com"
-ADMIN_PASSWORD = os.environ.get(  # noqa: S105
+ADMIN_PASSWORD = os.environ.get(  # noqa: S105  # NOSONAR - test-only credential
     "E2E_ADMIN_PASSWORD", "E2e-S3cur3-P@ssw0rd-2024!"
 )
 
@@ -182,6 +183,8 @@ IMPORT_JOB_ID = uuid.UUID("00000000-0000-0000-0000-000000000060")
 VOTER_HISTORY_ID = uuid.UUID("00000000-0000-0000-0000-000000000061")
 CANDIDATE_ID = uuid.UUID("00000000-0000-0000-0000-000000000070")
 CANDIDATE_LINK_ID = uuid.UUID("00000000-0000-0000-0000-000000000071")
+ABSENTEE_RECORD_ID = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee01")
+ABSENTEE_RECORD_ID_2 = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee02")
 
 TOTP_USERNAME = "e2e_totp_user"
 INVITE_EMAIL = "e2e_invite@test.com"
@@ -554,12 +557,79 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         )
         await session.execute(stmt)
 
+        # --- Absentee Ballot Applications ----------------------------------
+        absentee_data_1 = {
+            "id": ABSENTEE_RECORD_ID,
+            "county": "CHEROKEE",
+            "voter_registration_number": "12345",
+            "last_name": "SMITH",
+            "first_name": "JOHN",
+            "application_status": "A",
+            "ballot_status": "I",
+            "application_date": date(2024, 10, 1),
+            "ballot_style": "CHEROKEE-01",
+            "party": "NP",
+            "import_job_id": IMPORT_JOB_ID,
+        }
+        # Delete-before-insert to avoid unique constraint violations on the
+        # natural key (voter_registration_number, application_date, COALESCE(ballot_style, ''))
+        # when a leftover row has the same natural key but a different id.
+        await session.execute(
+            delete(AbsenteeBallotApplication).where(
+                AbsenteeBallotApplication.id.in_([ABSENTEE_RECORD_ID, ABSENTEE_RECORD_ID_2])
+            )
+        )
+
+        stmt = pg_insert(AbsenteeBallotApplication).values(**absentee_data_1)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "county": stmt.excluded.county,
+                "voter_registration_number": stmt.excluded.voter_registration_number,
+                "application_status": stmt.excluded.application_status,
+                "ballot_status": stmt.excluded.ballot_status,
+                "import_job_id": stmt.excluded.import_job_id,
+            },
+        )
+        await session.execute(stmt)
+
+        absentee_data_2 = {
+            "id": ABSENTEE_RECORD_ID_2,
+            "county": "FULTON",
+            "voter_registration_number": "67890",
+            "last_name": "DOE",
+            "first_name": "JANE",
+            "application_status": "A",
+            "ballot_status": "R",
+            "application_date": date(2024, 10, 5),
+            "ballot_style": "FULTON-01",
+            "party": "D",
+            "import_job_id": IMPORT_JOB_ID,
+        }
+        stmt = pg_insert(AbsenteeBallotApplication).values(**absentee_data_2)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "county": stmt.excluded.county,
+                "voter_registration_number": stmt.excluded.voter_registration_number,
+                "application_status": stmt.excluded.application_status,
+                "ballot_status": stmt.excluded.ballot_status,
+                "import_job_id": stmt.excluded.import_job_id,
+            },
+        )
+        await session.execute(stmt)
+
         await session.commit()
 
     yield
 
     # Cleanup: remove seeded rows so the DB is left clean.
     async with factory() as session:
+        await session.execute(
+            delete(AbsenteeBallotApplication).where(
+                AbsenteeBallotApplication.id.in_([ABSENTEE_RECORD_ID, ABSENTEE_RECORD_ID_2])
+            )
+        )
         await session.execute(delete(VoterHistory).where(VoterHistory.id == VOTER_HISTORY_ID))
         await session.execute(delete(UserInvite).where(UserInvite.id == INVITE_ID))
         await session.execute(delete(TOTPCredential).where(TOTPCredential.user_id == TOTP_USER_ID))

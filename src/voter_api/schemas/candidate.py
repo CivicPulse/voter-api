@@ -5,7 +5,7 @@ Request/response models per specs/010-election-info/contracts/openapi.yaml.
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -70,6 +70,12 @@ class CandidateCreateRequest(BaseModel):
     filing_status: FilingStatus = FilingStatus.QUALIFIED
     is_incumbent: bool = False
     sos_ballot_option_id: str | None = Field(default=None, max_length=50)
+    contest_name: str | None = Field(default=None, max_length=500)
+    qualified_date: date | None = None
+    occupation: str | None = Field(default=None, max_length=200)
+    email: str | None = Field(default=None, max_length=200)
+    home_county: str | None = Field(default=None, max_length=100)
+    municipality: str | None = Field(default=None, max_length=100)
     links: list[CandidateLinkCreateRequest] = Field(default_factory=list)
 
 
@@ -90,6 +96,12 @@ class CandidateUpdateRequest(BaseModel):
     filing_status: FilingStatus | None = None
     is_incumbent: bool | None = None
     sos_ballot_option_id: str | None = None
+    contest_name: str | None = Field(default=None, max_length=500)
+    qualified_date: date | None = None
+    occupation: str | None = Field(default=None, max_length=200)
+    email: str | None = Field(default=None, max_length=200)
+    home_county: str | None = Field(default=None, max_length=100)
+    municipality: str | None = Field(default=None, max_length=100)
 
 
 class CandidateSummaryResponse(BaseModel):
@@ -106,6 +118,8 @@ class CandidateSummaryResponse(BaseModel):
     filing_status: str
     is_incumbent: bool
     created_at: datetime
+    contest_name: str | None = None
+    home_county: str | None = None
 
 
 class CandidateDetailResponse(CandidateSummaryResponse):
@@ -113,6 +127,11 @@ class CandidateDetailResponse(CandidateSummaryResponse):
 
     bio: str | None = None
     sos_ballot_option_id: str | None = None
+    qualified_date: date | None = None
+    occupation: str | None = None
+    email: str | None = None
+    municipality: str | None = None
+    import_job_id: uuid.UUID | None = None
     updated_at: datetime
     links: list[CandidateLinkResponse] = Field(default_factory=list)
     result_vote_count: int | None = None

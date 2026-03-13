@@ -1,8 +1,9 @@
 """Election resolution service — link voter history records to elections.
 
-Provides three-tier matching to populate voter_history.election_id:
+Provides four-tier matching to populate voter_history fields:
 
-1. Single-election dates: bulk assign when only one election on a date.
+0. Event-level matching: assign election_event_id by (date, type).
+1. Single-election dates: bulk assign election_id when only one election on a date.
 2. District-based matching: use voter district registration to disambiguate
    multi-election dates.
 3. Unresolvable: PSC (no voter column), missing voters, or no election for date.
@@ -17,15 +18,18 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 from sqlalchemy import func, select, text, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from voter_api.lib.district_parser import (
     DISTRICT_TYPE_TO_BOUNDARY_TYPE,
     DISTRICT_TYPE_TO_VOTER_COLUMN,
+    PSC_DISTRICT_COUNTIES,
     pad_district_identifier,
     parse_election_district,
 )
 from voter_api.models.boundary import Boundary
 from voter_api.models.election import Election
+from voter_api.models.election_event import ElectionEvent
 from voter_api.models.voter_history import VoterHistory
 
 if TYPE_CHECKING:
@@ -39,6 +43,7 @@ if TYPE_CHECKING:
 class ResolutionResult:
     """Summary of an election resolution run."""
 
+    tier0_updated: int = 0
     tier1_updated: int = 0
     tier2_updated: int = 0
     unresolvable: int = 0
@@ -47,7 +52,54 @@ class ResolutionResult:
 
     @property
     def total_updated(self) -> int:
-        return self.tier1_updated + self.tier2_updated
+        return self.tier0_updated + self.tier1_updated + self.tier2_updated
+
+
+async def find_or_create_election_event(
+    session: AsyncSession,
+    *,
+    event_date: date,
+    event_type: str,
+    event_name: str | None = None,
+) -> uuid.UUID:
+    """Find or create an ElectionEvent by (event_date, event_type).
+
+    Uses INSERT ... ON CONFLICT DO NOTHING + a follow-up SELECT for
+    idempotent upsert without race conditions.
+
+    Args:
+        session: Database session.
+        event_date: The election day date.
+        event_type: Normalized election type (e.g. "general", "primary").
+        event_name: Optional human-readable name. Defaults to
+            "{event_type} {event_date}" if not provided.
+
+    Returns:
+        UUID of the existing or newly created ElectionEvent.
+    """
+    if event_name is None:
+        event_name = f"{event_type.title()} {event_date}"
+
+    stmt = (
+        pg_insert(ElectionEvent)
+        .values(
+            event_date=event_date,
+            event_type=event_type,
+            event_name=event_name,
+        )
+        .on_conflict_do_nothing(constraint="uq_election_event_date_type")
+    )
+    await session.execute(stmt)
+    await session.flush()
+
+    # Fetch the id (whether just inserted or already existing)
+    result = await session.execute(
+        select(ElectionEvent.id).where(
+            ElectionEvent.event_date == event_date,
+            ElectionEvent.event_type == event_type,
+        )
+    )
+    return result.scalar_one()
 
 
 async def backfill_election_district_fields(session: AsyncSession) -> int:
@@ -96,6 +148,11 @@ async def link_election_to_boundary(session: AsyncSession, election: Election) -
     election.district_identifier = parsed.district_identifier
     election.district_party = parsed.party
 
+    # Backfill eligible_county from parsed district text if not already set
+    # (candidate import sets this from CSV; this covers manual/API-created elections)
+    if parsed.county and not election.eligible_county:
+        election.eligible_county = parsed.county.upper()
+
     # Look up boundary by (type, zero-padded identifier), scoped by county when known
     if parsed.district_identifier is not None:
         boundary_type = DISTRICT_TYPE_TO_BOUNDARY_TYPE.get(parsed.district_type)
@@ -123,7 +180,11 @@ async def resolve_voter_history_elections(
     force: bool = False,
     dry_run: bool = False,
 ) -> ResolutionResult:
-    """Resolve voter_history.election_id using three-tier matching.
+    """Resolve voter_history election fields using four-tier matching.
+
+    Tier 0: Assign election_event_id by (date, normalized_election_type).
+    Tier 1: Assign election_id on single-election dates.
+    Tier 2: Assign election_id via voter district matching on multi-election dates.
 
     Args:
         session: Database session.
@@ -140,7 +201,10 @@ async def resolve_voter_history_elections(
     # First, backfill any elections missing structured fields
     result.elections_backfilled = await backfill_election_district_fields(session)
 
-    # Build election date filter
+    # Tier 0: event-level matching (by date + type)
+    result.tier0_updated = await _resolve_tier0_event_matching(session, election_date=election_date, force=force)
+
+    # Build election date filter for Tier 1/2
     election_query = select(
         Election.election_date,
         func.count(Election.id).label("election_count"),
@@ -165,12 +229,127 @@ async def resolve_voter_history_elections(
     else:
         await session.commit()
     logger.info(
-        "Election resolution complete: tier1={}, tier2={}, unresolvable={}",
+        "Election resolution complete: tier0={}, tier1={}, tier2={}, unresolvable={}",
+        result.tier0_updated,
         result.tier1_updated,
         result.tier2_updated,
         result.unresolvable,
     )
     return result
+
+
+async def _resolve_tier0_event_matching(
+    session: AsyncSession,
+    *,
+    election_date: date | None = None,
+    force: bool = False,
+) -> int:
+    """Tier 0: Assign election_event_id to voter_history by (date, type).
+
+    For each unique (election_date, normalized_election_type) combination
+    in voter_history, find or create an ElectionEvent and bulk-assign
+    all matching records.
+
+    Args:
+        session: Database session.
+        election_date: Optional date filter.
+        force: If True, overwrite existing election_event_id values.
+
+    Returns:
+        Total number of voter_history records updated.
+    """
+    # Find distinct (date, type) combinations needing resolution
+    distinct_query = select(
+        VoterHistory.election_date,
+        VoterHistory.normalized_election_type,
+    ).distinct()
+
+    if election_date:
+        distinct_query = distinct_query.where(VoterHistory.election_date == election_date)
+    if not force:
+        distinct_query = distinct_query.where(VoterHistory.election_event_id.is_(None))
+
+    date_types = (await session.execute(distinct_query)).all()
+
+    if not date_types:
+        logger.info("Tier 0: no voter_history records need event-level resolution")
+        return 0
+
+    total_updated = 0
+    for vh_date, vh_type in date_types:
+        # Find or create the event
+        event_id = await find_or_create_election_event(
+            session,
+            event_date=vh_date,
+            event_type=vh_type,
+        )
+
+        # Bulk update voter_history
+        stmt = (
+            update(VoterHistory)
+            .where(
+                VoterHistory.election_date == vh_date,
+                VoterHistory.normalized_election_type == vh_type,
+            )
+            .values(election_event_id=event_id)
+        )
+        if not force:
+            stmt = stmt.where(VoterHistory.election_event_id.is_(None))
+
+        cursor = await session.execute(stmt)
+        updated: int = cursor.rowcount  # type: ignore[attr-defined]
+        total_updated += updated
+
+        if updated > 0:
+            logger.debug(
+                "Tier 0: assigned {} records to event {} ({} {})",
+                updated,
+                event_id,
+                vh_date,
+                vh_type,
+            )
+
+    # Also backfill election_event_id on elections table
+    await _backfill_election_event_ids(session, election_date=election_date)
+
+    await session.flush()
+    logger.info("Tier 0: assigned {} voter_history records to election events", total_updated)
+    return total_updated
+
+
+async def _backfill_election_event_ids(
+    session: AsyncSession,
+    *,
+    election_date: date | None = None,
+) -> None:
+    """Backfill election_event_id on elections that don't have one yet.
+
+    Matches elections to existing election_events by (election_date, election_type).
+
+    Args:
+        session: Database session.
+        election_date: Optional date filter to limit the backfill scope.
+    """
+    stmt = select(Election).where(Election.election_event_id.is_(None))
+    if election_date is not None:
+        stmt = stmt.where(Election.election_date == election_date)
+    elections_result = await session.execute(stmt)
+    elections = list(elections_result.scalars().all())
+
+    for election in elections:
+        # Look up the event by date + type
+        event_result = await session.execute(
+            select(ElectionEvent.id).where(
+                ElectionEvent.event_date == election.election_date,
+                ElectionEvent.event_type == election.election_type,
+            )
+        )
+        event_id = event_result.scalar_one_or_none()
+        if event_id:
+            election.election_event_id = event_id
+
+    if elections:
+        await session.flush()
 
 
 async def _resolve_tier1_single_election(
@@ -201,6 +380,7 @@ async def _resolve_tier1_single_election(
             select(
                 Election.id,
                 Election.district_type,
+                Election.eligible_county,
                 Boundary.county,
                 Boundary.boundary_type,
                 Boundary.name,
@@ -210,18 +390,21 @@ async def _resolve_tier1_single_election(
         )
     ).one()
 
-    election_id, district_type, b_county, b_boundary_type, b_name = row
+    election_id, district_type, eligible_county, b_county, b_boundary_type, b_name = row
 
     stmt = update(VoterHistory).where(VoterHistory.election_date == election_date).values(election_id=election_id)
     if not force:
         stmt = stmt.where(VoterHistory.election_id.is_(None))
 
     # Scope to county to prevent cross-county assignment.
-    # Sub-county boundaries carry county in boundary.county;
-    # county-type boundaries carry it in boundary.name (e.g. "Bibb County").
+    # Priority 1: eligible_county (from candidate import, most authoritative)
+    # Priority 2: boundary.county (sub-county boundaries)
+    # Priority 3: boundary.name for county-type boundaries (e.g. "Bibb County")
     # Strip whitespace from boundary strings to guard against incidental spaces.
     county_name: str | None = None
-    if b_county:
+    if eligible_county:
+        county_name = eligible_county.strip()
+    elif b_county:
         county_name = b_county.strip()
     elif (b_boundary_type == "county" or district_type == "county") and b_name:
         name = b_name.strip()
@@ -290,7 +473,107 @@ async def _resolve_tier2_district_matching(
             seen_keys[key] = election
 
     for election in seen_keys.values():
-        if election.district_type is None or election.district_identifier is None:
+        dtype = election.district_type
+
+        # --- Priority 1: Statewide / US Senate — all VH records on that date ---
+        if dtype in ("statewide", "us_senate"):
+            updated = await _update_vh_statewide(
+                session,
+                election_id=election.id,
+                election_date=election_date,
+                force=force,
+            )
+            total_updated += updated
+            if updated > 0:
+                logger.debug(
+                    "Tier 2 (statewide): assigned {} records to '{}' on {}",
+                    updated,
+                    election.name,
+                    election_date,
+                )
+            continue
+
+        # --- Priority 2: County office — match VH.county to election.eligible_county ---
+        if dtype == "county_office":
+            county = election.eligible_county
+            if not county:
+                logger.debug(
+                    "Unresolvable: county_office election '{}' has no eligible_county",
+                    election.name,
+                )
+                unresolvable += 1
+                continue
+            updated = await _update_vh_by_county(
+                session,
+                election_id=election.id,
+                election_date=election_date,
+                county=county,
+                force=force,
+            )
+            total_updated += updated
+            if updated > 0:
+                logger.debug(
+                    "Tier 2 (county_office): assigned {} records to '{}' on {} via county={}",
+                    updated,
+                    election.name,
+                    election_date,
+                    county,
+                )
+            continue
+
+        # --- Priority 2a: Municipal without district — resolve via municipality name ---
+        if dtype in ("municipal", "city_council") and election.district_identifier is None:
+            municipality = election.eligible_municipality
+            county = election.eligible_county
+            if municipality or county:
+                updated = await _update_vh_by_municipality(
+                    session,
+                    election_id=election.id,
+                    election_date=election_date,
+                    municipality=municipality,
+                    county=county,
+                    voter_column=None,
+                    district_identifier=None,
+                    force=force,
+                )
+                total_updated += updated
+                if updated > 0:
+                    logger.debug(
+                        "Tier 2 (municipal no-district): assigned {} records to '{}' on {} via municipality={}",
+                        updated,
+                        election.name,
+                        election_date,
+                        municipality,
+                    )
+                continue
+            logger.debug(
+                "Unresolvable: municipal election '{}' has no municipality or county",
+                election.name,
+            )
+            unresolvable += 1
+            continue
+
+        if dtype is None or election.district_identifier is None:
+            # --- Priority 2b: Unresolved type but has eligible_county — try county scoping ---
+            if election.eligible_county:
+                updated = await _update_vh_by_county(
+                    session,
+                    election_id=election.id,
+                    election_date=election_date,
+                    county=election.eligible_county,
+                    force=force,
+                )
+                total_updated += updated
+                if updated > 0:
+                    logger.debug(
+                        "Tier 2 (county fallback): assigned {} records to '{}' on {} via county={}",
+                        updated,
+                        election.name,
+                        election_date,
+                        election.eligible_county,
+                    )
+                continue
+
             logger.debug(
                 "Unresolvable: election '{}' on {} has no parsed district",
                 election.name,
@@ -299,14 +582,83 @@ async def _resolve_tier2_district_matching(
             unresolvable += 1
             continue
 
-        voter_column = DISTRICT_TYPE_TO_VOTER_COLUMN.get(election.district_type)
+        voter_column = DISTRICT_TYPE_TO_VOTER_COLUMN.get(dtype)
+
+        # --- Priority 5: PSC — resolve via county membership ---
+        if voter_column is None and dtype == "psc":
+            counties = PSC_DISTRICT_COUNTIES.get(election.district_identifier, [])
+            if not counties:
+                logger.debug(
+                    "Unresolvable: PSC election '{}' has unknown district '{}'",
+                    election.name,
+                    election.district_identifier,
+                )
+                unresolvable += 1
+                continue
+
+            updated = await _update_vh_by_psc_county(
+                session,
+                election_id=election.id,
+                election_date=election_date,
+                counties=counties,
+                force=force,
+            )
+            total_updated += updated
+            if updated > 0:
+                logger.debug(
+                    "Tier 2 (PSC): assigned {} records to '{}' on {} via county membership ({} counties)",
+                    updated,
+                    election.name,
+                    election_date,
+                    len(counties),
+                )
+            continue
+
         if voter_column is None:
             logger.debug(
                 "Unresolvable: election '{}' ({}) has no voter column mapping",
                 election.name,
-                election.district_type,
+                dtype,
             )
             unresolvable += 1
+            continue
+
+        # --- Priority 3/4: District-column matching (with optional county scoping) ---
+        # County-scoped district types (county_commission, school_board, board_of_education)
+        # need a county filter in addition to the voter district column to prevent
+        # cross-county assignment (e.g., Bibb District 1 vs Clayton District 1).
+        county_scoped_types = frozenset(
+            {
+                "county_commission",
+                "school_board",
+                "board_of_education",
+            }
+        )
+        county_scope = election.eligible_county if dtype in county_scoped_types else None
+
+        # --- Priority 6: Municipal — county match + voter.municipality ---
+        if dtype in ("municipal", "city_council"):
+            municipality = election.eligible_municipality
+            county = election.eligible_county
+            updated = await _update_vh_by_municipality(
+                session,
+                election_id=election.id,
+                election_date=election_date,
+                municipality=municipality,
+                county=county,
+                voter_column=voter_column if dtype == "city_council" else None,
+                district_identifier=election.district_identifier if dtype == "city_council" else None,
+                force=force,
+            )
+            total_updated += updated
+            if updated > 0:
+                logger.debug(
+                    "Tier 2 (municipal): assigned {} records to '{}' on {} via municipality={}",
+                    updated,
+                    election.name,
+                    election_date,
+                    municipality,
+                )
             continue
 
         # voter_column comes from a controlled constant (DISTRICT_TYPE_TO_VOTER_COLUMN),
@@ -317,18 +669,20 @@ async def _resolve_tier2_district_matching(
             election_date=election_date,
             voter_column=voter_column,
             district_identifier=election.district_identifier,
+            county=county_scope,
             force=force,
         )
         total_updated += updated
         if updated > 0:
             logger.debug(
-                "Tier 2: assigned {} records to '{}' on {} via {}.{}={}",
+                "Tier 2: assigned {} records to '{}' on {} via {}.{}={}{}",
                 updated,
                 election.name,
                 election_date,
                 "voters",
                 voter_column,
                 election.district_identifier,
+                f" (county={county_scope})" if county_scope else "",
             )
 
     return total_updated, unresolvable
@@ -339,6 +693,158 @@ async def _resolve_tier2_district_matching(
 _ALLOWED_VOTER_COLUMNS = frozenset(DISTRICT_TYPE_TO_VOTER_COLUMN.values())
 
 
+async def _update_vh_statewide(
+    session: AsyncSession,
+    *,
+    election_id: uuid.UUID,
+    election_date: date,
+    force: bool,
+) -> int:
+    """Assign all voter_history records on a date to a statewide election.
+
+    Args:
+        session: Database session.
+        election_id: Election UUID to assign.
+        election_date: Election date filter.
+        force: If True, overwrite existing election_id values.
+
+    Returns:
+        Number of voter_history records updated.
+    """
+    stmt = update(VoterHistory).where(VoterHistory.election_date == election_date).values(election_id=election_id)
+    if not force:
+        stmt = stmt.where(VoterHistory.election_id.is_(None))
+    cursor = await session.execute(stmt)
+    return cursor.rowcount  # type: ignore[attr-defined, no-any-return]
+
+
+async def _update_vh_by_county(
+    session: AsyncSession,
+    *,
+    election_id: uuid.UUID,
+    election_date: date,
+    county: str,
+    force: bool,
+) -> int:
+    """Assign voter_history records matching a county on a date.
+
+    Used for county-office contests (Sheriff, Probate Judge, etc.) that
+    are scoped to a single county but have no district number.
+
+    Args:
+        session: Database session.
+        election_id: Election UUID to assign.
+        election_date: Election date filter.
+        county: County name to match (case-insensitive).
+        force: If True, overwrite existing election_id values.
+
+    Returns:
+        Number of voter_history records updated.
+    """
+    stmt = (
+        update(VoterHistory)
+        .where(
+            VoterHistory.election_date == election_date,
+            func.upper(func.trim(VoterHistory.county)) == county.strip().upper(),
+        )
+        .values(election_id=election_id)
+    )
+    if not force:
+        stmt = stmt.where(VoterHistory.election_id.is_(None))
+    cursor = await session.execute(stmt)
+    return cursor.rowcount  # type: ignore[attr-defined, no-any-return]
+
+
+async def _update_vh_by_municipality(
+    session: AsyncSession,
+    *,
+    election_id: uuid.UUID,
+    election_date: date,
+    municipality: str | None,
+    county: str | None,
+    voter_column: str | None,
+    district_identifier: str | None,
+    force: bool,
+) -> int:
+    """Assign voter_history records for municipal elections.
+
+    Matches via county + voter.municipality. For city_council types,
+    also matches voter district column.
+
+    Args:
+        session: Database session.
+        election_id: Election UUID to assign.
+        election_date: Election date filter.
+        municipality: Municipality name to match on voter.municipality.
+        county: County name for additional scoping.
+        voter_column: Voter district column for city_council matching.
+        district_identifier: District number for city_council matching.
+        force: If True, overwrite existing election_id values.
+
+    Returns:
+        Number of voter_history records updated.
+    """
+    conditions = ["vh.election_date = :election_date"]
+    params: dict[str, object] = {
+        "election_id": election_id,
+        "election_date": election_date,
+    }
+
+    if not force:
+        conditions.append("vh.election_id IS NULL")
+
+    # Always JOIN to voters for municipality matching
+    join_clause = "FROM voters v WHERE vh.voter_registration_number = v.voter_registration_number"
+
+    if county:
+        conditions.append("UPPER(TRIM(vh.county)) = :county")
+        params["county"] = county.strip().upper()
+
+    if municipality:
+        conditions.append("UPPER(TRIM(v.municipality)) = UPPER(:municipality)")
+        params["municipality"] = municipality.strip()
+
+    if voter_column and district_identifier:
+        if voter_column not in _ALLOWED_VOTER_COLUMNS:
+            msg = f"Invalid voter column: {voter_column}"
+            raise ValueError(msg)
+        district_ids = _build_district_id_variants(district_identifier)
+        conditions.append(f"v.{voter_column} = ANY(:district_ids)")  # noqa: S608
+        params["district_ids"] = district_ids
+
+    where_clause = " AND ".join(conditions)
+    sql = f"UPDATE voter_history vh SET election_id = :election_id {join_clause} AND {where_clause}"  # noqa: S608
+
+    cursor = await session.execute(text(sql), params)
+    return cursor.rowcount  # type: ignore[attr-defined, no-any-return]
+
+
+def _build_district_id_variants(district_identifier: str) -> list[str]:
+    """Generate padded variants of a district identifier.
+
+    Handles zero-padding mismatches between election district text
+    and voter CSV fields.
+
+    Args:
+        district_identifier: Unpadded district identifier (e.g. "5").
+
+    Returns:
+        List of padded/unpadded variants for matching.
+    """
+    if district_identifier.isdigit():
+        num_val = int(district_identifier)
+        return [
+            *{
+                district_identifier,
+                str(num_val),
+                str(num_val).zfill(2),
+                str(num_val).zfill(3),
+                str(num_val).zfill(4),
+            }
+        ]
+    return [district_identifier]
+
+
 async def _update_vh_by_district(
     session: AsyncSession,
     *,
@@ -346,6 +852,7 @@ async def _update_vh_by_district(
     election_date: date,
     voter_column: str,
     district_identifier: str,
+    county: str | None = None,
     force: bool,
 ) -> int:
     """Execute district-based UPDATE of voter_history via JOIN to voters.
@@ -359,6 +866,7 @@ async def _update_vh_by_district(
         election_date: Election date filter.
         voter_column: Voter table column name for district matching.
         district_identifier: Unpadded district identifier value.
+        county: Optional county name for sub-county scoping.
         force: If True, overwrite existing election_id values.
 
     Returns:
@@ -368,24 +876,20 @@ async def _update_vh_by_district(
         msg = f"Invalid voter column: {voter_column}"
         raise ValueError(msg)
 
-    # Generate padded variants of numeric identifiers to handle zero-padding
-    # mismatches between election district text and voter CSV fields.
-    # Same strategy as voter_stats_service.get_voter_stats_for_boundary.
-    if district_identifier.isdigit():
-        num_val = int(district_identifier)
-        district_ids = list(  # NOSONAR - set literal used for deduplication
-            {
-                district_identifier,
-                str(num_val),
-                str(num_val).zfill(2),
-                str(num_val).zfill(3),
-                str(num_val).zfill(4),
-            }
-        )
-    else:
-        district_ids = [district_identifier]
+    district_ids = _build_district_id_variants(district_identifier)
 
     null_filter = "" if force else "AND vh.election_id IS NULL "
+    county_filter = ""
+    params: dict[str, object] = {
+        "election_id": election_id,
+        "election_date": election_date,
+        "district_ids": district_ids,
+    }
+
+    if county:
+        county_filter = "AND UPPER(TRIM(vh.county)) = :county "
+        params["county"] = county.strip().upper()
+
     # voter_column is validated against _ALLOWED_VOTER_COLUMNS above
     sql = (
         f"UPDATE voter_history vh SET election_id = :election_id "  # noqa: S608
@@ -393,14 +897,51 @@ async def _update_vh_by_district(
         f"WHERE vh.voter_registration_number = v.voter_registration_number "
         f"AND vh.election_date = :election_date "
         f"{null_filter}"
+        f"{county_filter}"
         f"AND v.{voter_column} = ANY(:district_ids)"
     )
-    cursor = await session.execute(
-        text(sql),
-        {
-            "election_id": election_id,
-            "election_date": election_date,
-            "district_ids": district_ids,
-        },
+    cursor = await session.execute(text(sql), params)
+    return cursor.rowcount  # type: ignore[attr-defined, no-any-return]
+
+
+async def _update_vh_by_psc_county(
+    session: AsyncSession,
+    *,
+    election_id: uuid.UUID,
+    election_date: date,
+    counties: list[str],
+    force: bool,
+) -> int:
+    """Update voter_history records for a PSC election via county membership.
+
+    PSC districts don't have a voter table column. Instead, we match
+    voter_history records whose county falls within the PSC district's
+    county list.
+
+    Args:
+        session: Database session.
+        election_id: Election UUID to assign.
+        election_date: Election date filter.
+        counties: List of county names in the PSC district.
+        force: If True, overwrite existing election_id values.
+
+    Returns:
+        Number of voter_history records updated.
+    """
+    # Upper-case county names for case-insensitive matching against
+    # voter_history.county (which may have varying case).
+    upper_counties = [c.upper() for c in counties]
+
+    stmt = (
+        update(VoterHistory)
+        .where(
+            VoterHistory.election_date == election_date,
+            func.upper(func.trim(VoterHistory.county)).in_(upper_counties),
+        )
+        .values(election_id=election_id)
     )
+    if not force:
+        stmt = stmt.where(VoterHistory.election_id.is_(None))
+
+    cursor = await session.execute(stmt)
     return cursor.rowcount  # type: ignore[attr-defined, no-any-return]

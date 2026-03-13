@@ -13,6 +13,7 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.e2e.conftest import (
+    ABSENTEE_RECORD_ID,
     ADMIN_EMAIL,
     ADMIN_PASSWORD,
     ADMIN_USER_ID,
@@ -1372,6 +1373,79 @@ class TestImports:
         resp = await viewer_client.get(_url("/imports"))
         assert resp.status_code == 403
 
+    async def test_import_candidates_requires_auth(self, client: httpx.AsyncClient) -> None:
+        jsonl_content = b'{"election_name":"Test","election_date":"2026-05-19","candidate_name":"Auth Check"}\n'
+        resp = await client.post(
+            _url("/imports/candidates"),
+            files={"file": ("candidates.jsonl", jsonl_content, "application/x-ndjson")},
+        )
+        assert resp.status_code == 401
+
+    async def test_import_candidates_admin_accepts_upload(self, admin_client: httpx.AsyncClient) -> None:
+        """Admin can upload a candidate JSONL file and gets 202 Accepted."""
+        jsonl_content = b'{"election_name":"Test","election_date":"2026-05-19","candidate_name":"Test Candidate"}\n'
+        resp = await admin_client.post(
+            _url("/imports/candidates"),
+            files={"file": ("candidates.jsonl", jsonl_content, "application/x-ndjson")},
+        )
+        assert resp.status_code == 202
+        body = resp.json()
+        assert body["file_type"] == "candidate_import"
+        assert body["status"] == "pending"
+
+    async def test_import_candidates_forbidden_for_viewer(self, viewer_client: httpx.AsyncClient) -> None:
+        jsonl_content = b'{"election_name":"Test","election_date":"2026-05-19","candidate_name":"Test"}\n'
+        resp = await viewer_client.post(
+            _url("/imports/candidates"),
+            files={"file": ("candidates.jsonl", jsonl_content, "application/x-ndjson")},
+        )
+        assert resp.status_code == 403
+
+    async def test_import_election_results_requires_auth(self, client: httpx.AsyncClient) -> None:
+        resp = await client.post(_url("/imports/election-results"))
+        assert resp.status_code == 401
+
+    async def test_import_election_results_admin_accepts_upload(self, admin_client: httpx.AsyncClient) -> None:
+        """Admin can upload an election results JSON file and gets 202 Accepted."""
+        import json
+
+        results_json = json.dumps(
+            {
+                "electionDate": "2026-05-19",
+                "electionName": "Test Election",
+                "createdAt": "2026-05-20T00:00:00Z",
+                "results": {
+                    "id": "r1",
+                    "name": "Georgia",
+                    "ballotItems": [
+                        {
+                            "id": "TEST1",
+                            "name": "Test Race",
+                            "ballotOptions": [
+                                {
+                                    "id": "1",
+                                    "name": "Test Candidate (Rep)",
+                                    "ballotOrder": 1,
+                                    "voteCount": 100,
+                                    "politicalParty": "Rep",
+                                    "groupResults": [],
+                                }
+                            ],
+                        }
+                    ],
+                },
+                "localResults": [],
+            }
+        ).encode()
+
+        resp = await admin_client.post(
+            _url("/imports/election-results"),
+            files={"file": ("results.json", results_json, "application/json")},
+        )
+        assert resp.status_code == 202
+        body = resp.json()
+        assert body["file_type"] == "election_results"
+
 
 # ── Exports ────────────────────────────────────────────────────────────────
 
@@ -1543,3 +1617,72 @@ class TestVoterHistory:
         assert "by_precinct" in body
         assert "total_eligible_voters" in body
         assert "turnout_percentage" in body
+
+
+# ── Absentee Ballot Applications ──────────────────────────────────────────
+
+
+class TestAbsentee:
+    """Absentee ballot application endpoints — admin/analyst access."""
+
+    async def test_absentee_requires_auth(self, client: httpx.AsyncClient) -> None:
+        resp = await client.get(_url("/absentee"))
+        assert resp.status_code == 401
+
+    async def test_list_absentee_ballots(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.get(_url("/absentee"))
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "items" in data
+        assert "pagination" in data
+
+    async def test_absentee_detail(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.get(_url(f"/absentee/{ABSENTEE_RECORD_ID}"))
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["county"] == "CHEROKEE"
+
+    async def test_absentee_stats(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.get(_url("/absentee/stats"))
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "total_applications" in data
+
+    async def test_absentee_by_voter(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.get(_url("/absentee/by-voter/12345"))
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "items" in data
+
+    async def test_absentee_not_found(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.get(_url(f"/absentee/{uuid.uuid4()}"))
+        assert resp.status_code == 404
+
+    async def test_import_absentee_requires_auth(self, client: httpx.AsyncClient) -> None:
+        """Unauthenticated absentee upload is rejected.
+
+        Accept 429 (rate-limited) as well as 401 — RateLimitMiddleware
+        executes before route-level auth dependencies, so after many
+        requests in the session the limiter may fire first.
+        """
+        from io import BytesIO
+
+        resp = await client.post(
+            _url("/imports/absentee"),
+            files={"file": ("test.csv", BytesIO(b"header\nvalue"), "text/csv")},
+        )
+        assert resp.status_code in (401, 429)
+
+    async def test_import_absentee_forbidden_for_viewer(self, viewer_client: httpx.AsyncClient) -> None:
+        """Viewer cannot upload absentee ballot CSV.
+
+        Accept 429 (rate-limited) as well as 403 — both prove the request was
+        processed server-side and rejected, not that auth was bypassed.
+        """
+        from io import BytesIO
+
+        resp = await viewer_client.post(
+            _url("/imports/absentee"),
+            files={"file": ("test.csv", BytesIO(b"test"), "text/csv")},
+        )
+        assert resp.status_code in (403, 429)

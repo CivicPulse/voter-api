@@ -63,8 +63,8 @@ class TestInitEngine:
             mock_create.assert_called_once_with(
                 "postgresql+asyncpg://localhost/db",
                 echo=False,
-                pool_size=10,
-                max_overflow=5,
+                pool_size=20,
+                max_overflow=10,
             )
 
     def test_init_engine_with_schema(self) -> None:
@@ -75,8 +75,8 @@ class TestInitEngine:
                 "postgresql+asyncpg://localhost/db",
                 echo=False,
                 connect_args={"options": "-c search_path=pr_42,public"},
-                pool_size=10,
-                max_overflow=5,
+                pool_size=20,
+                max_overflow=10,
             )
 
     def test_init_engine_skips_pool_for_sqlite(self) -> None:

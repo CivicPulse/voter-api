@@ -1,0 +1,206 @@
+# Agriculture Commissioner
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
+| Type | Partisan Primary |
+| Candidates | 1 Republican, 2 Democrat |
+
+## Counties
+
+All 159 Georgia counties participate in this statewide race.
+
+| County | County Election |
+|--------|----------------|
+| Appling | [Local Races](counties/2026-05-19-appling.md) |
+| Atkinson | [Local Races](counties/2026-05-19-atkinson.md) |
+| Bacon | [Local Races](counties/2026-05-19-bacon.md) |
+| Baker | [Local Races](counties/2026-05-19-baker.md) |
+| Baldwin | [Local Races](counties/2026-05-19-baldwin.md) |
+| Banks | [Local Races](counties/2026-05-19-banks.md) |
+| Barrow | [Local Races](counties/2026-05-19-barrow.md) |
+| Bartow | [Local Races](counties/2026-05-19-bartow.md) |
+| Ben Hill | [Local Races](counties/2026-05-19-benhill.md) |
+| Berrien | [Local Races](counties/2026-05-19-berrien.md) |
+| Bibb | [Local Races](counties/2026-05-19-bibb.md) |
+| Bleckley | [Local Races](counties/2026-05-19-bleckley.md) |
+| Brantley | [Local Races](counties/2026-05-19-brantley.md) |
+| Brooks | [Local Races](counties/2026-05-19-brooks.md) |
+| Bryan | [Local Races](counties/2026-05-19-bryan.md) |
+| Bulloch | [Local Races](counties/2026-05-19-bulloch.md) |
+| Burke | [Local Races](counties/2026-05-19-burke.md) |
+| Butts | [Local Races](counties/2026-05-19-butts.md) |
+| Calhoun | [Local Races](counties/2026-05-19-calhoun.md) |
+| Camden | [Local Races](counties/2026-05-19-camden.md) |
+| Candler | [Local Races](counties/2026-05-19-candler.md) |
+| Carroll | [Local Races](counties/2026-05-19-carroll.md) |
+| Catoosa | [Local Races](counties/2026-05-19-catoosa.md) |
+| Charlton | [Local Races](counties/2026-05-19-charlton.md) |
+| Chatham | [Local Races](counties/2026-05-19-chatham.md) |
+| Chattahoochee | [Local Races](counties/2026-05-19-chattahoochee.md) |
+| Chattooga | [Local Races](counties/2026-05-19-chattooga.md) |
+| Cherokee | [Local Races](counties/2026-05-19-cherokee.md) |
+| Clarke | [Local Races](counties/2026-05-19-clarke.md) |
+| Clay | [Local Races](counties/2026-05-19-clay.md) |
+| Clayton | [Local Races](counties/2026-05-19-clayton.md) |
+| Clinch | [Local Races](counties/2026-05-19-clinch.md) |
+| Cobb | [Local Races](counties/2026-05-19-cobb.md) |
+| Coffee | [Local Races](counties/2026-05-19-coffee.md) |
+| Colquitt | [Local Races](counties/2026-05-19-colquitt.md) |
+| Columbia | [Local Races](counties/2026-05-19-columbia.md) |
+| Cook | [Local Races](counties/2026-05-19-cook.md) |
+| Coweta | [Local Races](counties/2026-05-19-coweta.md) |
+| Crawford | [Local Races](counties/2026-05-19-crawford.md) |
+| Crisp | [Local Races](counties/2026-05-19-crisp.md) |
+| Dade | [Local Races](counties/2026-05-19-dade.md) |
+| Dawson | [Local Races](counties/2026-05-19-dawson.md) |
+| DeKalb | [Local Races](counties/2026-05-19-dekalb.md) |
+| Decatur | [Local Races](counties/2026-05-19-decatur.md) |
+| Dodge | [Local Races](counties/2026-05-19-dodge.md) |
+| Dooly | [Local Races](counties/2026-05-19-dooly.md) |
+| Dougherty | [Local Races](counties/2026-05-19-dougherty.md) |
+| Douglas | [Local Races](counties/2026-05-19-douglas.md) |
+| Early | [Local Races](counties/2026-05-19-early.md) |
+| Echols | [Local Races](counties/2026-05-19-echols.md) |
+| Effingham | [Local Races](counties/2026-05-19-effingham.md) |
+| Elbert | [Local Races](counties/2026-05-19-elbert.md) |
+| Emanuel | [Local Races](counties/2026-05-19-emanuel.md) |
+| Evans | [Local Races](counties/2026-05-19-evans.md) |
+| Fannin | [Local Races](counties/2026-05-19-fannin.md) |
+| Fayette | [Local Races](counties/2026-05-19-fayette.md) |
+| Floyd | [Local Races](counties/2026-05-19-floyd.md) |
+| Forsyth | [Local Races](counties/2026-05-19-forsyth.md) |
+| Franklin | [Local Races](counties/2026-05-19-franklin.md) |
+| Fulton | [Local Races](counties/2026-05-19-fulton.md) |
+| Gilmer | [Local Races](counties/2026-05-19-gilmer.md) |
+| Glascock | [Local Races](counties/2026-05-19-glascock.md) |
+| Glynn | [Local Races](counties/2026-05-19-glynn.md) |
+| Gordon | [Local Races](counties/2026-05-19-gordon.md) |
+| Grady | [Local Races](counties/2026-05-19-grady.md) |
+| Greene | [Local Races](counties/2026-05-19-greene.md) |
+| Gwinnett | [Local Races](counties/2026-05-19-gwinnett.md) |
+| Habersham | [Local Races](counties/2026-05-19-habersham.md) |
+| Hall | [Local Races](counties/2026-05-19-hall.md) |
+| Hancock | [Local Races](counties/2026-05-19-hancock.md) |
+| Haralson | [Local Races](counties/2026-05-19-haralson.md) |
+| Harris | [Local Races](counties/2026-05-19-harris.md) |
+| Hart | [Local Races](counties/2026-05-19-hart.md) |
+| Heard | [Local Races](counties/2026-05-19-heard.md) |
+| Henry | [Local Races](counties/2026-05-19-henry.md) |
+| Houston | [Local Races](counties/2026-05-19-houston.md) |
+| Irwin | [Local Races](counties/2026-05-19-irwin.md) |
+| Jackson | [Local Races](counties/2026-05-19-jackson.md) |
+| Jasper | [Local Races](counties/2026-05-19-jasper.md) |
+| Jeff Davis | [Local Races](counties/2026-05-19-jeffdavis.md) |
+| Jefferson | [Local Races](counties/2026-05-19-jefferson.md) |
+| Jenkins | [Local Races](counties/2026-05-19-jenkins.md) |
+| Johnson | [Local Races](counties/2026-05-19-johnson.md) |
+| Jones | [Local Races](counties/2026-05-19-jones.md) |
+| Lamar | [Local Races](counties/2026-05-19-lamar.md) |
+| Lanier | [Local Races](counties/2026-05-19-lanier.md) |
+| Laurens | [Local Races](counties/2026-05-19-laurens.md) |
+| Lee | [Local Races](counties/2026-05-19-lee.md) |
+| Liberty | [Local Races](counties/2026-05-19-liberty.md) |
+| Lincoln | [Local Races](counties/2026-05-19-lincoln.md) |
+| Long | [Local Races](counties/2026-05-19-long.md) |
+| Lowndes | [Local Races](counties/2026-05-19-lowndes.md) |
+| Lumpkin | [Local Races](counties/2026-05-19-lumpkin.md) |
+| Macon | [Local Races](counties/2026-05-19-macon.md) |
+| Madison | [Local Races](counties/2026-05-19-madison.md) |
+| Marion | [Local Races](counties/2026-05-19-marion.md) |
+| McDuffie | [Local Races](counties/2026-05-19-mcduffie.md) |
+| McIntosh | [Local Races](counties/2026-05-19-mcintosh.md) |
+| Meriwether | [Local Races](counties/2026-05-19-meriwether.md) |
+| Miller | [Local Races](counties/2026-05-19-miller.md) |
+| Mitchell | [Local Races](counties/2026-05-19-mitchell.md) |
+| Monroe | [Local Races](counties/2026-05-19-monroe.md) |
+| Montgomery | [Local Races](counties/2026-05-19-montgomery.md) |
+| Morgan | [Local Races](counties/2026-05-19-morgan.md) |
+| Murray | [Local Races](counties/2026-05-19-murray.md) |
+| Muscogee | [Local Races](counties/2026-05-19-muscogee.md) |
+| Newton | [Local Races](counties/2026-05-19-newton.md) |
+| Oconee | [Local Races](counties/2026-05-19-oconee.md) |
+| Oglethorpe | [Local Races](counties/2026-05-19-oglethorpe.md) |
+| Paulding | [Local Races](counties/2026-05-19-paulding.md) |
+| Peach | [Local Races](counties/2026-05-19-peach.md) |
+| Pickens | [Local Races](counties/2026-05-19-pickens.md) |
+| Pierce | [Local Races](counties/2026-05-19-pierce.md) |
+| Pike | [Local Races](counties/2026-05-19-pike.md) |
+| Polk | [Local Races](counties/2026-05-19-polk.md) |
+| Pulaski | [Local Races](counties/2026-05-19-pulaski.md) |
+| Putnam | [Local Races](counties/2026-05-19-putnam.md) |
+| Quitman | [Local Races](counties/2026-05-19-quitman.md) |
+| Rabun | [Local Races](counties/2026-05-19-rabun.md) |
+| Randolph | [Local Races](counties/2026-05-19-randolph.md) |
+| Richmond | [Local Races](counties/2026-05-19-richmond.md) |
+| Rockdale | [Local Races](counties/2026-05-19-rockdale.md) |
+| Schley | [Local Races](counties/2026-05-19-schley.md) |
+| Screven | [Local Races](counties/2026-05-19-screven.md) |
+| Seminole | [Local Races](counties/2026-05-19-seminole.md) |
+| Spalding | [Local Races](counties/2026-05-19-spalding.md) |
+| Stephens | [Local Races](counties/2026-05-19-stephens.md) |
+| Stewart | [Local Races](counties/2026-05-19-stewart.md) |
+| Sumter | [Local Races](counties/2026-05-19-sumter.md) |
+| Talbot | [Local Races](counties/2026-05-19-talbot.md) |
+| Taliaferro | [Local Races](counties/2026-05-19-taliaferro.md) |
+| Tattnall | [Local Races](counties/2026-05-19-tattnall.md) |
+| Taylor | [Local Races](counties/2026-05-19-taylor.md) |
+| Telfair | [Local Races](counties/2026-05-19-telfair.md) |
+| Terrell | [Local Races](counties/2026-05-19-terrell.md) |
+| Thomas | [Local Races](counties/2026-05-19-thomas.md) |
+| Tift | [Local Races](counties/2026-05-19-tift.md) |
+| Toombs | [Local Races](counties/2026-05-19-toombs.md) |
+| Towns | [Local Races](counties/2026-05-19-towns.md) |
+| Treutlen | [Local Races](counties/2026-05-19-treutlen.md) |
+| Troup | [Local Races](counties/2026-05-19-troup.md) |
+| Turner | [Local Races](counties/2026-05-19-turner.md) |
+| Twiggs | [Local Races](counties/2026-05-19-twiggs.md) |
+| Union | [Local Races](counties/2026-05-19-union.md) |
+| Upson | [Local Races](counties/2026-05-19-upson.md) |
+| Walker | [Local Races](counties/2026-05-19-walker.md) |
+| Walton | [Local Races](counties/2026-05-19-walton.md) |
+| Ware | [Local Races](counties/2026-05-19-ware.md) |
+| Warren | [Local Races](counties/2026-05-19-warren.md) |
+| Washington | [Local Races](counties/2026-05-19-washington.md) |
+| Wayne | [Local Races](counties/2026-05-19-wayne.md) |
+| Webster | [Local Races](counties/2026-05-19-webster.md) |
+| Wheeler | [Local Races](counties/2026-05-19-wheeler.md) |
+| White | [Local Races](counties/2026-05-19-white.md) |
+| Whitfield | [Local Races](counties/2026-05-19-whitfield.md) |
+| Wilcox | [Local Races](counties/2026-05-19-wilcox.md) |
+| Wilkes | [Local Races](counties/2026-05-19-wilkes.md) |
+| Wilkinson | [Local Races](counties/2026-05-19-wilkinson.md) |
+| Worth | [Local Races](counties/2026-05-19-worth.md) |
+
+## Election Calendar
+
+| Milestone | Date |
+|-----------|------|
+| Qualifying Period | March 2–6, 2026 |
+| Voter Registration Deadline | April 20, 2026 |
+| Early Voting | April 27 – May 15, 2026 |
+| Absentee Ballot Application Deadline | May 8, 2026 |
+| Election Day | May 19, 2026 |
+
+## Republican Primary
+
+**Contest Name (SOS):** Agriculture Commissioner (R)
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Tyler J Harper | Qualified | Yes | Farmer | 03/04/2026 | info@tylerharperga.com | [tylerharperga.com](https://tylerharperga.com) |
+
+## Democrat Primary
+
+**Contest Name (SOS):** Agriculture Commissioner (D)
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
+|-----------|--------|-----------|------------|---------------|-------|---------|
+| Katherine E. Juhan-Arnold | Qualified | No | Farmer / Engineering & Construction Management | 03/05/2026 | connect@katherineforgeorgia.com | [katherineforgeorgia.com](https://katherineforgeorgia.com) |
+| Sedrick Kent Rowe Jr | Qualified | No | Farmer / Agricultural Scientist | 03/05/2026 | — | [roweforgeorgia.com](https://roweforgeorgia.com) |
+
+## Data Source
+
+- Candidate list: `data/new/MAY_19_2026-GENERAL_AND_PRIMARY_ELECTION_Qualified_Candidates.csv`
