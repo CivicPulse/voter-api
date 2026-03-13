@@ -15,7 +15,7 @@ _ALLOWED_FILING_STATUSES = frozenset(
     }
 )
 
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+\.[^@\s.]+$")
 
 
 def validate_candidate_record(record: dict) -> list[str]:

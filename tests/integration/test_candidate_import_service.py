@@ -330,7 +330,7 @@ class TestProcessCandidateImport:
                 return_value=(1, 0),
             ),
         ):
-            await process_candidate_import(session, proxy_job, jsonl_file, batch_size=10)
+            await process_candidate_import(session, proxy_job, jsonl_file, batch_size=10)  # type: ignore[arg-type]
 
         assert proxy_job.statuses == ["running", "completed"]
 

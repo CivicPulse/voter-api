@@ -22,7 +22,7 @@ from voter_api.lib.results_importer.candidate_parser import (
 )
 
 # Matches trailing parenthetical markers like (Rep), (Dem), (I)
-_PAREN_MARKER_RE = re.compile(r"\s*\((?:Rep|Dem|I|Ind|Lib|NP)\)", re.IGNORECASE)
+_PAREN_MARKER_RE = re.compile(r"\s*\((?:Rep|Dem|Ind|Lib|NP|I)\)", re.IGNORECASE)
 
 
 @dataclass(frozen=True)

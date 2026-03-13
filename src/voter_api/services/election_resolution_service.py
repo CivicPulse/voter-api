@@ -822,15 +822,15 @@ def _build_district_id_variants(district_identifier: str) -> list[str]:
     """
     if district_identifier.isdigit():
         num_val = int(district_identifier)
-        return list(
-            {
+        return [
+            *{
                 district_identifier,
                 str(num_val),
                 str(num_val).zfill(2),
                 str(num_val).zfill(3),
                 str(num_val).zfill(4),
             }
-        )
+        ]
     return [district_identifier]
 
 

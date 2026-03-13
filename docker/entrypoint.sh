@@ -13,7 +13,7 @@ for i in $(seq 1 10); do
     sleep 2
 done
 
-if [ "$migration_ok" = false ]; then
+if [[ "$migration_ok" = false ]]; then
     echo "FATAL: Alembic migrations failed after 10 attempts"
     exit 1
 fi

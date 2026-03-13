@@ -242,7 +242,7 @@ class TestPrepareRecordsDistrictPadding:
             state_senate_district="18",
             state_house_district="5",
         )
-        prepared, reg_numbers = _prepare_records_for_db([record], uuid.uuid4())
+        prepared, _ = _prepare_records_for_db([record], uuid.uuid4())
         assert len(prepared) == 1
         assert prepared[0]["congressional_district"] == "002"
         assert prepared[0]["state_senate_district"] == "018"

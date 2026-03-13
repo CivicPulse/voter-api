@@ -196,7 +196,9 @@ def _normalize_row(row: pd.Series, election_date: date, election_type: str) -> d
     website: str | None = None
     if website_raw:
         website = website_raw
-        if not website.lower().startswith(("http://", "https://")):
+        if website.lower().startswith("http://"):
+            website = f"https://{website[len('http://') :]}"
+        elif not website.lower().startswith("https://"):
             website = f"https://{website}"
         # Validate URL: must be <= 2048 chars and hostname must contain at least one dot
         if len(website) > 2048:

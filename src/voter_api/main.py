@@ -18,6 +18,8 @@ from voter_api.core.config import get_settings
 from voter_api.core.database import dispose_engine, get_session_factory, init_engine
 from voter_api.core.logging import setup_logging
 
+_STALE_TASK_NOTE = "Server restarted while task was in progress"
+
 
 async def _recover_stale_analysis_runs() -> None:
     """Mark any 'running' or 'pending' analysis runs as 'failed' on startup.
@@ -39,9 +41,9 @@ async def _recover_stale_analysis_runs() -> None:
                 notes=case(
                     (
                         AnalysisRun.notes.isnot(None),
-                        AnalysisRun.notes + "; Server restarted while task was in progress",
+                        AnalysisRun.notes + "; " + _STALE_TASK_NOTE,
                     ),
-                    else_="Server restarted while task was in progress",
+                    else_=_STALE_TASK_NOTE,
                 ),
                 completed_at=func.now(),
             )
@@ -64,7 +66,7 @@ async def _recover_stale_geocoding_jobs() -> None:
 
     from voter_api.models.geocoding_job import GeocodingJob
 
-    recovery_note = [{"error": "Server restarted while task was in progress"}]
+    recovery_note = [{"error": _STALE_TASK_NOTE}]
 
     factory = get_session_factory()
     async with factory() as session:
@@ -129,7 +131,7 @@ async def _recover_stale_import_jobs() -> None:
 
     from voter_api.models.import_job import ImportJob
 
-    recovery_note = [{"error": "Server restarted while task was in progress"}]
+    recovery_note = [{"error": _STALE_TASK_NOTE}]
 
     factory = get_session_factory()
     async with factory() as session:

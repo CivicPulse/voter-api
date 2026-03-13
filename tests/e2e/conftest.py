@@ -43,7 +43,7 @@ from voter_api.models.voter_history import VoterHistory
 
 ADMIN_USERNAME = "e2e_admin"
 ADMIN_EMAIL = "e2e_admin@test.com"
-ADMIN_PASSWORD = os.environ.get(  # noqa: S105
+ADMIN_PASSWORD = os.environ.get(  # noqa: S105  # NOSONAR - test-only credential
     "E2E_ADMIN_PASSWORD", "E2e-S3cur3-P@ssw0rd-2024!"
 )
 

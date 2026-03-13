@@ -11,6 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.cli.voter_history_cmd import import_voter_history
 
+_BATCH_SIZE_HELP = "Records per batch"
+_IMPORT_SUMMARY_HEADER = "IMPORT SUMMARY"
+
 import_app = typer.Typer()
 import_app.command("voter-history")(import_voter_history)
 
@@ -45,7 +48,7 @@ async def _cleanup_jobs() -> None:
 @import_app.command("voters")
 def import_voters(
     file: Path = typer.Argument(..., help="Path to voter CSV file", exists=True),  # noqa: B008
-    batch_size: int = typer.Option(5000, "--batch-size", help="Records per batch"),  # noqa: B008
+    batch_size: int = typer.Option(5000, "--batch-size", help=_BATCH_SIZE_HELP),  # noqa: B008
 ) -> None:
     """Import voter data from a CSV file."""
     asyncio.run(_import_voters(file, batch_size))
@@ -83,7 +86,7 @@ async def _import_voters(file_path: Path, batch_size: int) -> None:
 @import_app.command("absentee")
 def import_absentee(
     file: Path = typer.Argument(..., help="Path to absentee ballot application CSV", exists=True),  # noqa: B008
-    batch_size: int = typer.Option(400, "--batch-size", help="Records per batch"),  # noqa: B008
+    batch_size: int = typer.Option(400, "--batch-size", help=_BATCH_SIZE_HELP),  # noqa: B008
 ) -> None:
     """Import absentee ballot applications from a GA SoS CSV file."""
     asyncio.run(_import_absentee(file, batch_size))
@@ -591,7 +594,7 @@ async def _import_filtered_boundaries(
 def _print_summary(results: list) -> None:
     """Print a summary table of import results."""
     typer.echo("\n" + "=" * 70)
-    typer.echo("IMPORT SUMMARY")
+    typer.echo(_IMPORT_SUMMARY_HEADER)
     typer.echo("=" * 70)
 
     ok_count = sum(1 for r in results if r.success)
@@ -723,13 +726,13 @@ def preprocess_all_candidates(
 
     summary: list[tuple[str, str, str, int, int, int, int]] = []
 
-    failed = 0
+    _ = 0
     for csv_path in csv_files:
         try:
             info = parse_candidate_filename(csv_path.name)
         except ValueError as e:
             typer.echo(f"WARNING: Skipping {csv_path.name}: {e}")
-            failed += 1
+            _ += 1
             continue
 
         output_path = output_dir / f"{csv_path.stem}.jsonl"
@@ -745,7 +748,7 @@ def preprocess_all_candidates(
             )
         except Exception as e:
             typer.echo(f"ERROR: Failed to preprocess {csv_path.name}: {e}")
-            failed += 1
+            _ += 1
             continue
 
         summary.append(
@@ -777,7 +780,7 @@ def preprocess_all_candidates(
 @import_app.command("import-all-candidates")
 def import_all_candidates_cmd(
     input_dir: Path = typer.Option("data/results", "--input-dir", help="Directory containing preprocessed JSONL files"),  # noqa: B008
-    batch_size: int = typer.Option(500, "--batch-size", help="Records per batch"),  # noqa: B008
+    batch_size: int = typer.Option(500, "--batch-size", help=_BATCH_SIZE_HELP),  # noqa: B008
 ) -> None:
     """Import all preprocessed candidate JSONL files from a directory."""
     asyncio.run(_import_all_candidates(input_dir, batch_size))
@@ -839,7 +842,7 @@ async def _import_all_candidates(input_dir: Path, batch_size: int) -> None:
         await dispose_engine()
 
     typer.echo("\n" + "=" * 100)
-    typer.echo("IMPORT SUMMARY")
+    typer.echo(_IMPORT_SUMMARY_HEADER)
     typer.echo("=" * 100)
     typer.echo(
         f"  {'Filename':<45s} {'Status':<10s} {'Total':>6s} {'OK':>6s} {'Fail':>6s} {'Insert':>7s} {'Update':>7s}"
@@ -856,7 +859,7 @@ async def _import_all_candidates(input_dir: Path, batch_size: int) -> None:
 @import_app.command("candidates")
 def import_candidates_cmd(
     file: Path = typer.Argument(..., help="Path to preprocessed candidates JSONL template", exists=True),  # noqa: B008
-    batch_size: int = typer.Option(500, "--batch-size", help="Records per batch"),  # noqa: B008
+    batch_size: int = typer.Option(500, "--batch-size", help=_BATCH_SIZE_HELP),  # noqa: B008
 ) -> None:
     """Import candidates from a preprocessed JSONL template."""
     asyncio.run(_import_candidates(file, batch_size))
@@ -994,7 +997,7 @@ async def _import_election_results(path: Path, dry_run: bool) -> None:
         await dispose_engine()
 
     typer.echo("\n" + "=" * 100)
-    typer.echo("IMPORT SUMMARY")
+    typer.echo(_IMPORT_SUMMARY_HEADER)
     typer.echo("=" * 100)
     typer.echo(f"  {'Filename':<55s} {'Status':<10s} {'Items':>6s} {'OK':>6s} {'Fail':>6s} {'New':>6s} {'Upd':>6s}")
     typer.echo("-" * 100)

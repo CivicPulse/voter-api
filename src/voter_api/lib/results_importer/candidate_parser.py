@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 
 # Matches trailing parenthetical markers like (Rep), (Dem), (I), (I) (Rep)
-_PAREN_MARKER_RE = re.compile(r"\s*\((?:Rep|Dem|I|Ind|Lib|NP)\)", re.IGNORECASE)
+_PAREN_MARKER_RE = re.compile(r"\s*\((?:Rep|Dem|Ind|Lib|NP|I)\)", re.IGNORECASE)
 
 _PARTY_MAP: dict[str, str] = {
     "rep": "Republican",

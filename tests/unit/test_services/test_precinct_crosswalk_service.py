@@ -2,6 +2,8 @@
 
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 from voter_api.services.precinct_crosswalk_service import (
     get_crosswalk_stats,
     upsert_crosswalk_entries,
@@ -28,7 +30,7 @@ class TestGetCrosswalkStats:
 
         assert stats["total_entries"] == 42
         assert stats["counties_covered"] == 5
-        assert stats["avg_confidence"] == 0.851
+        assert stats["avg_confidence"] == pytest.approx(0.851)
 
     async def test_handles_null_avg_confidence(self) -> None:
         """Should handle NULL avg_confidence (empty table) gracefully."""
@@ -47,7 +49,7 @@ class TestGetCrosswalkStats:
 
         assert stats["total_entries"] == 0
         assert stats["counties_covered"] == 0
-        assert stats["avg_confidence"] == 0.0
+        assert stats["avg_confidence"] == pytest.approx(0.0)
 
 
 class TestUpsertCrosswalkEntries:
@@ -87,7 +89,7 @@ class TestUpsertCrosswalkEntries:
             },
         ]
 
-        inserted, updated = await upsert_crosswalk_entries(session, entries)
+        inserted, _ = await upsert_crosswalk_entries(session, entries)
 
         assert inserted == 2
         assert session.execute.call_count == 2

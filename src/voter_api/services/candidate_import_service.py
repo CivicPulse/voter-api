@@ -20,7 +20,7 @@ from voter_api.models.import_job import ImportJob
 _UPSERT_SUB_BATCH = 500
 
 # Pattern matching trailing party markers like (R), (D), (NP), (I)
-_PARTY_MARKER_RE = re.compile(r"\s*\([RDNPI]+\)\s*$")
+_PARTY_MARKER_RE = re.compile(r"\s*\([RDNPI]+\)\s*\Z")
 
 
 def _normalize_election_name(name: str) -> str:

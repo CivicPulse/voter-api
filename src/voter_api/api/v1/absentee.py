@@ -24,7 +24,7 @@ from voter_api.services import absentee_service
 absentee_router = APIRouter(prefix="/absentee", tags=["absentee"])
 
 
-@absentee_router.get("", response_model=PaginatedAbsenteeResponse)
+@absentee_router.get("")
 async def list_absentee_ballots(
     current_user: Annotated[User, Depends(require_role("admin", "analyst"))],
     session: Annotated[AsyncSession, Depends(get_async_session)],
@@ -55,7 +55,7 @@ async def list_absentee_ballots(
     )
 
 
-@absentee_router.get("/stats", response_model=AbsenteeStatsResponse)
+@absentee_router.get("/stats")
 async def get_absentee_stats(
     current_user: Annotated[User, Depends(require_role("admin", "analyst"))],
     session: Annotated[AsyncSession, Depends(get_async_session)],
@@ -66,7 +66,7 @@ async def get_absentee_stats(
     return AbsenteeStatsResponse(**stats)
 
 
-@absentee_router.get("/by-voter/{voter_registration_number}", response_model=PaginatedAbsenteeResponse)
+@absentee_router.get("/by-voter/{voter_registration_number}")
 async def get_voter_absentee_ballots(
     voter_registration_number: str,
     current_user: Annotated[User, Depends(require_role("admin", "analyst"))],
@@ -91,7 +91,7 @@ async def get_voter_absentee_ballots(
     )
 
 
-@absentee_router.get("/{ballot_app_id}", response_model=AbsenteeBallotDetailResponse)
+@absentee_router.get("/{ballot_app_id}")
 async def get_absentee_ballot_detail(
     ballot_app_id: uuid.UUID,
     current_user: Annotated[User, Depends(require_role("admin", "analyst"))],
