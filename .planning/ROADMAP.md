@@ -12,7 +12,7 @@ This roadmap delivers a three-stage data import pipeline for Georgia SOS electio
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Data Contracts** - Define the enhanced markdown format and JSONL schemas that every downstream component depends on
+- [x] **Phase 1: Data Contracts** - Define the enhanced markdown format and JSONL schemas that every downstream component depends on
 - [ ] **Phase 2: Converter and Import Pipeline** - Build the deterministic MD-to-JSONL converter and CLI import commands so JSONL files reach the database
 - [ ] **Phase 3: Claude Code Skills** - Create the AI-assisted skills and deterministic normalizer that produce markdown from raw SOS data
 - [ ] **Phase 4: End-to-End Demo** - Prove the full pipeline with May 19 SOS data from raw CSV through to API query results
@@ -31,9 +31,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Controlled vocabularies and enhanced markdown format specifications
+- [x] 01-01-PLAN.md — Controlled vocabularies and enhanced markdown format specifications
 - [x] 01-02-PLAN.md — JSONL Pydantic schema models with TDD tests
-- [ ] 01-03-PLAN.md — JSONL doc generation, Bibb example, and process specs (UUID, backfill, migration)
+- [x] 01-03-PLAN.md — JSONL doc generation, Bibb example, and process specs (UUID, backfill, migration)
 
 ### Phase 2: Converter and Import Pipeline
 **Goal**: Markdown files deterministically convert to validated JSONL, and JSONL files load into the database via CLI commands with idempotent, verifiable results
@@ -88,7 +88,7 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Contracts | 1/3 | In progress | - |
+| 1. Data Contracts | 3/3 | Complete | 2026-03-14 |
 | 2. Converter and Import Pipeline | 0/? | Not started | - |
 | 3. Claude Code Skills | 0/? | Not started | - |
 | 4. End-to-End Demo | 0/? | Not started | - |
