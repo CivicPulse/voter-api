@@ -113,6 +113,7 @@ ignore = [
 "src/voter_api/schemas/auth.py" = ["S105"]
 "src/voter_api/api/**/*.py" = ["B008"]  # FastAPI Depends() in defaults is idiomatic
 "src/voter_api/cli/**/*.py" = ["B008"]  # Typer Argument/Option in defaults is idiomatic
+"tools/**/*.py" = ["T20"]  # Standalone CLI scripts use print for output
 
 [tool.mypy]
 python_version = "3.13"
