@@ -28,11 +28,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. A markdown file following the enhanced format spec includes election metadata (early voting, registration deadline, absentee deadline) and candidate details (party, photo URL, bio, contact info, external IDs)
   3. JSONL schema definitions for elections and candidates exist with field-level documentation, and every field maps 1:1 to the corresponding DB model column
   4. JSONL files include a `_schema_version` field and the schema documents how version changes are handled
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md — Controlled vocabularies and enhanced markdown format specifications
+- [ ] 01-02-PLAN.md — JSONL Pydantic schema models with TDD tests
+- [ ] 01-03-PLAN.md — JSONL doc generation, Bibb example, and process specs (UUID, backfill, migration)
 
 ### Phase 2: Converter and Import Pipeline
 **Goal**: Markdown files deterministically convert to validated JSONL, and JSONL files load into the database via CLI commands with idempotent, verifiable results
@@ -87,7 +88,7 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Contracts | 0/? | Not started | - |
+| 1. Data Contracts | 0/3 | Planning complete | - |
 | 2. Converter and Import Pipeline | 0/? | Not started | - |
 | 3. Claude Code Skills | 0/? | Not started | - |
 | 4. End-to-End Demo | 0/? | Not started | - |
