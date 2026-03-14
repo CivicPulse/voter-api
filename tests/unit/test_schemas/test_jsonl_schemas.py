@@ -8,7 +8,7 @@ Requirements: FMT-04, FMT-05, FMT-06
 """
 
 import uuid
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -27,7 +27,6 @@ from voter_api.schemas.jsonl.enums import (
     FilingStatus,
     LinkType,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -137,7 +136,7 @@ class TestElectionEventJSONL:
         """Feed-related fields are optional."""
         data = _valid_election_event_data()
         data["data_source_url"] = "https://results.sos.ga.gov/api/v1"
-        data["last_refreshed_at"] = datetime(2026, 5, 19, 20, 0, 0)
+        data["last_refreshed_at"] = datetime(2026, 5, 19, 20, 0, 0, tzinfo=UTC)
         data["refresh_interval_seconds"] = 120
         model = ElectionEventJSONL(**data)
         assert model.data_source_url == "https://results.sos.ga.gov/api/v1"
@@ -575,9 +574,7 @@ class TestSchemaVersionAllModels:
         props = schema["properties"]
         assert len(props) > 0
         for field_name, field_info in props.items():
-            assert "description" in field_info, (
-                f"{model_cls.__name__}.{field_name} missing description"
-            )
+            assert "description" in field_info, f"{model_cls.__name__}.{field_name} missing description"
 
 
 # ===================================================================
