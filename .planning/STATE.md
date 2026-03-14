@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-03-14T00:56:33.440Z"
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-03-14T00:56:56.226Z"
 last_activity: 2026-03-14 -- Plan 01-02 JSONL schema models complete
 progress:
   total_phases: 4
@@ -50,6 +50,7 @@ Progress: [███████░░░] 67%
 - Trend: baseline
 
 *Updated after each plan completion*
+| Phase 01-data-contracts P01 | 5min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,11 @@ Recent decisions affecting current work:
 - [01-02]: Self-contained enums in schemas/jsonl/enums.py for package independence
 - [01-02]: schema_version field uses no underscore prefix for Pydantic v2 compatibility
 - [01-02]: boundary_type on ElectionJSONL is plain string for future flexibility
+- [01-01]: Seat ID patterns locked down: sole, at-large, post-N, district-N, judge-{surname}
+- [01-01]: Body ID scoping: ga- for statewide, county name for county-level, municipality name for municipal
+- [01-01]: Bibb magistrate court uses sole seat pattern (single-judge court)
+- [01-01]: Judicial seat IDs use incumbent surname, expected to change when judges change
+- [Phase 01-data-contracts]: Seat ID patterns: sole, at-large, post-N, district-N, judge-{surname} - all lowercase, hyphens, unpadded
 
 ### Pending Todos
 
@@ -86,6 +92,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-14
-Stopped at: Completed 01-02-PLAN.md
-Resume file: .planning/phases/01-data-contracts/01-02-SUMMARY.md
+Last session: 2026-03-14T00:56:52.081Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None

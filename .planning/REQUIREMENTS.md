@@ -9,9 +9,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Format & Schema
 
-- [ ] **FMT-01**: Enhanced markdown format spec includes district linkage fields (boundary_type + district_identifier) for every contest
-- [ ] **FMT-02**: Enhanced markdown format spec includes election metadata (early voting start/end, registration deadline, absentee deadline) per election
-- [ ] **FMT-03**: Enhanced markdown format spec includes candidate details (party, photo URL, bio, contact info, external IDs) per candidate
+- [x] **FMT-01**: Enhanced markdown format spec includes district linkage fields (boundary_type + district_identifier) for every contest
+- [x] **FMT-02**: Enhanced markdown format spec includes election metadata (early voting start/end, registration deadline, absentee deadline) per election
+- [x] **FMT-03**: Enhanced markdown format spec includes candidate details (party, photo URL, bio, contact info, external IDs) per candidate
 - [x] **FMT-04**: JSONL schema for elections mirrors the Election DB model with all required and optional fields documented
 - [x] **FMT-05**: JSONL schema for candidates mirrors the Candidate DB model with all required and optional fields documented
 - [x] **FMT-06**: JSONL files include a `schema_version` field for forward compatibility
@@ -82,9 +82,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FMT-01 | Phase 1 | Pending |
-| FMT-02 | Phase 1 | Pending |
-| FMT-03 | Phase 1 | Pending |
+| FMT-01 | Phase 1 | Complete |
+| FMT-02 | Phase 1 | Complete |
+| FMT-03 | Phase 1 | Complete |
 | FMT-04 | Phase 1 | Complete |
 | FMT-05 | Phase 1 | Complete |
 | FMT-06 | Phase 1 | Complete |
