@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [ ] 01-01-PLAN.md — Controlled vocabularies and enhanced markdown format specifications
-- [ ] 01-02-PLAN.md — JSONL Pydantic schema models with TDD tests
+- [x] 01-02-PLAN.md — JSONL Pydantic schema models with TDD tests
 - [ ] 01-03-PLAN.md — JSONL doc generation, Bibb example, and process specs (UUID, backfill, migration)
 
 ### Phase 2: Converter and Import Pipeline
@@ -88,7 +88,7 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Contracts | 0/3 | Planning complete | - |
+| 1. Data Contracts | 1/3 | In progress | - |
 | 2. Converter and Import Pipeline | 0/? | Not started | - |
 | 3. Claude Code Skills | 0/? | Not started | - |
 | 4. End-to-End Demo | 0/? | Not started | - |
