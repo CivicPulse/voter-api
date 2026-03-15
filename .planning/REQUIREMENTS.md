@@ -32,7 +32,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Claude Code Skills
 
-- [ ] **SKL-01**: Skill processes a GA SOS qualified candidates CSV into per-election structured markdown files following the enhanced format spec
+- [x] **SKL-01**: Skill processes a GA SOS qualified candidates CSV into per-election structured markdown files following the enhanced format spec
 - [x] **SKL-02**: Deterministic Python normalizer post-processes AI-generated markdown to enforce title case, URL normalization, occupation formatting, and field consistency
 - [ ] **SKL-03**: Skill processes a GA SOS election calendar PDF into election metadata (dates, deadlines) in the markdown format
 - [ ] **SKL-04**: Skill enriches candidate markdown with bios, photo URLs, and contact info from web research
@@ -96,7 +96,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | IMP-02 | Phase 2 | Complete |
 | IMP-03 | Phase 2 | Complete |
 | IMP-04 | Phase 2 | Complete |
-| SKL-01 | Phase 3 | Pending |
+| SKL-01 | Phase 3 | Complete |
 | SKL-02 | Phase 3 | Complete |
 | SKL-03 | Phase 3 | Pending |
 | SKL-04 | Phase 3 | Pending |
