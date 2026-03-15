@@ -72,7 +72,7 @@ def _detect_file_type(file_path: Path) -> str:
 # Metadata table parsing helpers
 # ---------------------------------------------------------------------------
 
-_META_ROW_RE = re.compile(r"^\|\s*(.+?)\s*\|\s*(.*?)\s*\|$")
+_META_ROW_RE = re.compile(r"^\|([^|]+)\|([^|]*)\|$")
 
 
 def _replace_metadata_value(content: str, field_name: str, new_value: str) -> str:
@@ -234,7 +234,7 @@ def _normalize_candidate_table_row(row: str, header_cols: list[str]) -> tuple[st
 
         if col_name == "Candidate":
             # Handle linked candidates: [Name](path.md)
-            link_match = re.match(r"^\[(.+?)\]\((.+?)\)$", cell)
+            link_match = re.match(r"^\[([^\]]+)\]\(([^)]+)\)$", cell)
             if link_match:
                 name_text = link_match.group(1)
                 link_path = link_match.group(2)

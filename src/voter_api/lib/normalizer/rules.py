@@ -42,11 +42,11 @@ def normalize_url(url: str) -> str:
 
     # If it looks like a plain domain (no scheme), add https://
     lower = stripped.lower()
-    if not lower.startswith("http://") and not lower.startswith("https://"):
+    if not lower.startswith("http://") and not lower.startswith("https://"):  # NOSONAR
         lower = "https://" + lower
 
     # Upgrade http to https
-    if lower.startswith("http://"):
+    if lower.startswith("http://"):  # NOSONAR
         lower = "https://" + lower[7:]
 
     return lower

@@ -20,7 +20,7 @@ class TestNormalizeUrl:
             # Add https:// to www domain without protocol
             ("WWW.EXAMPLE.COM", "https://www.example.com"),
             # Upgrade http to https, lowercase
-            ("http://Example.COM", "https://example.com"),
+            ("http://Example.COM", "https://example.com"),  # NOSONAR
             # Already correct -- unchanged
             ("https://example.com", "https://example.com"),
             # Dash placeholder -- unchanged

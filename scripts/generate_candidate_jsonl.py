@@ -61,7 +61,7 @@ def _extract_metadata_table(content: str) -> dict[str, str]:
     table_section = content[meta_match.end() :]
     # Match table rows: | Field | Value |
     for line in table_section.split("\n"):
-        row = re.match(r"^\|\s*([^|]+?)\s*\|\s*(.*?)\s*\|?\s*$", line)
+        row = re.match(r"^\|([^|]+)\|([^|]*)\|", line)
         if row:
             field = row.group(1).strip()
             value = row.group(2).strip()
@@ -108,7 +108,7 @@ def _extract_external_ids(content: str) -> dict[str, str] | None:
 
     result: dict[str, str] = {}
     for line in section.split("\n"):
-        row = re.match(r"^\|\s*([^|]+?)\s*\|\s*(.*?)\s*\|?\s*$", line)
+        row = re.match(r"^\|([^|]+)\|([^|]*)\|", line)
         if row:
             source = row.group(1).strip()
             ext_id = row.group(2).strip()
@@ -134,7 +134,7 @@ def _extract_links(content: str) -> list[CandidateLinkJSONL]:
 
     links: list[CandidateLinkJSONL] = []
     for line in section.split("\n"):
-        row = re.match(r"^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(.*?)\s*\|?\s*$", line)
+        row = re.match(r"^\|([^|]+)\|([^|]+)\|([^|]*)\|", line)
         if row:
             link_type_raw = row.group(1).strip().lower()
             url = row.group(2).strip()
@@ -188,7 +188,7 @@ def _extract_election_sections(content: str) -> list[dict[str, str]]:
         # Extract table rows from the section
         fields: dict[str, str] = {}
         for line in section.split("\n"):
-            row = re.match(r"^\|\s*([^|]+?)\s*\|\s*(.*?)\s*\|?\s*$", line)
+            row = re.match(r"^\|([^|]+)\|([^|]*)\|", line)
             if row:
                 field = row.group(1).strip()
                 value = row.group(2).strip()
@@ -198,7 +198,7 @@ def _extract_election_sections(content: str) -> list[dict[str, str]]:
 
         # Extract Contest File path from markdown link
         contest_file_raw = fields.get("Contest File", "")
-        contest_file_match = re.search(r"\[.*?\]\((.*?)\)", contest_file_raw)
+        contest_file_match = re.search(r"\[[^\]]*\]\(([^)]*)\)", contest_file_raw)
         contest_file = contest_file_match.group(1) if contest_file_match else ""
 
         result.append(
@@ -238,7 +238,7 @@ def _resolve_election_id(contest_file: str) -> tuple[str | None, str | None]:
     content = contest_path.read_text(encoding="utf-8")
 
     # Extract ID from metadata table
-    id_match = re.search(r"\|\s*ID\s*\|\s*(.*?)\s*\|", content)
+    id_match = re.search(r"\|\s*ID\s*\|([^|]*)\|", content)
     if not id_match:
         return None, None
 

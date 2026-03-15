@@ -159,7 +159,7 @@ def _detect_file_type(file_path: Path) -> str:
     name = file_path.name
 
     # Overview: filename pattern {date}-{type}.md (e.g., 2026-05-19-general-primary.md)
-    if re.match(r"\d{4}-\d{2}-\d{2}-[a-z]+-?[a-z]*\.md$", name) and file_path.parent.name != "counties":
+    if re.match(r"\d{4}-\d{2}-\d{2}-[a-z]+(?:-[a-z]+)*\.md$", name) and file_path.parent.name != "counties":
         # Check if it's a statewide contest (not overview)
         is_contest = any(pat.search(name) for pat, _, _ in _STATEWIDE_BODY_SEAT)
         if not is_contest:
@@ -682,7 +682,7 @@ async def _backfill_uuids(directory: Path, dry_run: bool) -> None:
                 elif file_type == "single" and election_date:
                     # Match Election by (name, election_date)
                     # Name is the H1 heading
-                    h1_match = re.match(r"^#\s+(.+)$", content, re.MULTILINE)
+                    h1_match = re.match(r"^#[ \t]+(.+)$", content, re.MULTILINE)
                     if h1_match:
                         name = h1_match.group(1).strip()
                         result = await session.execute(

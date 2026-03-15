@@ -51,7 +51,7 @@ def ensure_uuid(content: str) -> tuple[str, str | None]:
         ValueError: If the ID field contains a non-empty, non-placeholder
             value that is not a valid UUID.
     """
-    pattern = r"\|\s*ID\s*\|\s*(.*?)\s*\|"
+    pattern = r"\|\s*ID\s*\|([^|]*)\|"
     match = re.search(pattern, content)
 
     if not match:
@@ -65,7 +65,7 @@ def ensure_uuid(content: str) -> tuple[str, str | None]:
         # Missing UUID -- generate one
         new_uuid = str(uuid.uuid4())
         new_content = re.sub(
-            r"(\|\s*ID\s*\|)\s*.*?\s*(\|)",
+            r"(\|\s*ID\s*\|)[^|]*(\|)",
             rf"\g<1> {new_uuid} \2",
             content,
             count=1,
