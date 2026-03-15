@@ -7,9 +7,8 @@ and writing validated records to JSONL files.
 import json
 from pathlib import Path
 
-from voter_api.lib.converter.writer import parse_result_to_records, write_jsonl
-
 from voter_api.lib.converter.types import ContestData, FileType, ParseResult
+from voter_api.lib.converter.writer import parse_result_to_records, write_jsonl
 from voter_api.schemas.jsonl.election_event import ElectionEventJSONL
 
 

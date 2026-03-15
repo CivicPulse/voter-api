@@ -8,7 +8,6 @@ markdown strings matching the format specifications.
 from pathlib import Path
 
 from voter_api.lib.converter.parser import parse_markdown
-
 from voter_api.lib.converter.types import FileType
 
 # -- Fixtures: markdown content strings --

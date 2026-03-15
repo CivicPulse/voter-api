@@ -6,9 +6,8 @@ file type detection by path pattern, and output file placement.
 
 from pathlib import Path
 
-from voter_api.lib.converter.report import ConversionReport
-
 from voter_api.lib.converter import convert_directory, convert_file
+from voter_api.lib.converter.report import ConversionReport
 from voter_api.lib.converter.types import ConversionResult
 
 # Minimal valid overview markdown
