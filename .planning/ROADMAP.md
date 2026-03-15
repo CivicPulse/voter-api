@@ -93,11 +93,12 @@ Plans:
   1. REQUIREMENTS.md DEM-01 row shows "Complete" (not "In Progress")
   2. Walkthrough accurately describes election_event_id FK behavior (NULL after import, resolved by resolve-elections step)
   3. Walkthrough branch reference removed (assumes pipeline code is on main)
-  4. Walkthrough includes resolve-elections step with real terminal output and API verification
-  5. Full walkthrough reviewed for any other inaccuracies
-  6. Nyquist validation completed for phases 3 and 4 (phases 1 and 2 already validated)
+  4. Walkthrough includes resolve-elections step with expected output and API verification
+  5. Full walkthrough reviewed for any other inaccuracies beyond known issues
+  6. Nyquist validation run for phases 3 and 4 (phases 1 and 2 already validated)
   7. v1.0 milestone audit artifact committed for traceability
-  8. Phase 3 context artifact committed
+  8. Phase 3 context artifact (03-CONTEXT.md) committed
+  9. ROADMAP.md Phase 5 success criteria reflects expanded scope (Nyquist, artifacts)
 **Plans**: 2 plans
 
 Plans:
