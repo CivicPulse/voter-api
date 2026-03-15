@@ -36,7 +36,7 @@ jobs:
       RATE_LIMIT_PER_MINUTE: "0"  # 0 = disabled (no rate limiting in E2E tests)
       LOG_LEVEL: WARNING
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
 
       - uses: astral-sh/setup-uv@v7
         with:
