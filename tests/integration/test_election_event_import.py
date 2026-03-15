@@ -131,6 +131,28 @@ class TestImportElectionEvents:
         # Commit should NOT be called in dry-run
         session.commit.assert_not_called()
 
+    @pytest.mark.asyncio
+    async def test_reimport_returns_updates_not_inserts(self) -> None:
+        """Second import of the same records reports updates (0 inserts)."""
+        from voter_api.services.election_event_import_service import import_election_events
+
+        session = _make_session_mock()
+        records = _make_election_event_records(3)
+
+        # Simulate all rows already existing — UPSERT triggers UPDATE path (xmax != 0)
+        mock_result = MagicMock()
+        mock_result.all.return_value = [
+            MagicMock(is_insert=0),
+            MagicMock(is_insert=0),
+            MagicMock(is_insert=0),
+        ]
+        session.execute.return_value = mock_result
+
+        result = await import_election_events(session, records)
+        assert result["inserted"] == 0
+        assert result["updated"] == 3
+        assert result["errors"] == []
+
 
 class TestImportElections:
     """Tests for the election import service."""
@@ -162,6 +184,88 @@ class TestImportElections:
         assert result["inserted"] >= 0
         assert "errors" in result
 
+    @pytest.mark.asyncio
+    async def test_reimport_returns_updates_not_inserts(self) -> None:
+        """Second import of the same records reports updates, not inserts."""
+        from voter_api.services.election_import_service import import_elections
+
+        session = _make_session_mock()
+        records = [
+            {
+                "schema_version": 1,
+                "id": str(uuid.uuid4()),
+                "election_event_id": str(uuid.uuid4()),
+                "name": "Governor - Republican Primary",
+                "election_date": "2026-05-19",
+                "election_type": "general_primary",
+                "election_stage": "election",
+                "district": "Governor",
+            },
+            {
+                "schema_version": 1,
+                "id": str(uuid.uuid4()),
+                "election_event_id": str(uuid.uuid4()),
+                "name": "Lt. Governor - Republican Primary",
+                "election_date": "2026-05-19",
+                "election_type": "general_primary",
+                "election_stage": "election",
+                "district": "Lt. Governor",
+            },
+        ]
+
+        # Simulate all rows being updates (xmax != 0 -> is_insert = 0)
+        mock_result = MagicMock()
+        mock_result.all.return_value = [
+            MagicMock(is_insert=0),
+            MagicMock(is_insert=0),
+        ]
+        session.execute.return_value = mock_result
+
+        result = await import_elections(session, records)
+        assert result["inserted"] == 0
+        assert result["updated"] == 2
+        assert result["errors"] == []
+
+    @pytest.mark.asyncio
+    async def test_dry_run_does_not_write(self) -> None:
+        """Dry-run mode returns counts without writing to DB."""
+        from voter_api.services.election_import_service import import_elections
+
+        election_id = uuid.uuid4()
+        records = [
+            {
+                "schema_version": 1,
+                "id": str(election_id),
+                "election_event_id": str(uuid.uuid4()),
+                "name": "Governor - Republican Primary",
+                "election_date": "2026-05-19",
+                "election_type": "general_primary",
+                "election_stage": "election",
+                "district": "Governor",
+            },
+            {
+                "schema_version": 1,
+                "id": str(uuid.uuid4()),
+                "election_event_id": str(uuid.uuid4()),
+                "name": "Lt. Governor - Republican Primary",
+                "election_date": "2026-05-19",
+                "election_type": "general_primary",
+                "election_stage": "election",
+                "district": "Lt. Governor",
+            },
+        ]
+
+        session = _make_session_mock()
+        # Simulate one existing record (election_id already in DB)
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [uuid.UUID(str(election_id))]
+        session.execute.return_value = mock_result
+
+        result = await import_elections(session, records, dry_run=True)
+        assert result["would_insert"] == 1
+        assert result["would_update"] == 1
+        session.commit.assert_not_called()
+
 
 class TestImportCandidacies:
     """Tests for the candidacy import service."""
@@ -190,3 +294,120 @@ class TestImportCandidacies:
         result = await import_candidacies(session, records)
         assert result["inserted"] >= 0
         assert "errors" in result
+
+    @pytest.mark.asyncio
+    async def test_reimport_returns_updates_not_inserts(self) -> None:
+        """Second import of the same candidacy records reports updates, not inserts."""
+        from voter_api.services.candidacy_import_service import import_candidacies
+
+        session = _make_session_mock()
+        records = [
+            {
+                "schema_version": 1,
+                "id": str(uuid.uuid4()),
+                "candidate_id": str(uuid.uuid4()),
+                "election_id": str(uuid.uuid4()),
+                "filing_status": "qualified",
+                "is_incumbent": False,
+            },
+            {
+                "schema_version": 1,
+                "id": str(uuid.uuid4()),
+                "candidate_id": str(uuid.uuid4()),
+                "election_id": str(uuid.uuid4()),
+                "filing_status": "qualified",
+                "is_incumbent": True,
+                "party": "Republican",
+            },
+        ]
+
+        # All rows are updates on reimport (is_insert = 0)
+        mock_result = MagicMock()
+        mock_result.all.return_value = [
+            MagicMock(is_insert=0),
+            MagicMock(is_insert=0),
+        ]
+        session.execute.return_value = mock_result
+
+        result = await import_candidacies(session, records)
+        assert result["inserted"] == 0
+        assert result["updated"] == 2
+        assert result["errors"] == []
+
+    @pytest.mark.asyncio
+    async def test_dry_run_does_not_write(self) -> None:
+        """Dry-run mode returns counts without writing to DB."""
+        from voter_api.services.candidacy_import_service import import_candidacies
+
+        existing_id = uuid.uuid4()
+        records = [
+            {
+                "schema_version": 1,
+                "id": str(existing_id),
+                "candidate_id": str(uuid.uuid4()),
+                "election_id": str(uuid.uuid4()),
+                "filing_status": "qualified",
+                "is_incumbent": False,
+            },
+            {
+                "schema_version": 1,
+                "id": str(uuid.uuid4()),
+                "candidate_id": str(uuid.uuid4()),
+                "election_id": str(uuid.uuid4()),
+                "filing_status": "qualified",
+                "is_incumbent": True,
+            },
+            {
+                "schema_version": 1,
+                "id": str(uuid.uuid4()),
+                "candidate_id": str(uuid.uuid4()),
+                "election_id": str(uuid.uuid4()),
+                "filing_status": "withdrawn",
+                "is_incumbent": False,
+            },
+        ]
+
+        session = _make_session_mock()
+        # One record already exists in the DB
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [uuid.UUID(str(existing_id))]
+        session.execute.return_value = mock_result
+
+        result = await import_candidacies(session, records, dry_run=True)
+        assert result["would_insert"] == 2
+        assert result["would_update"] == 1
+        session.commit.assert_not_called()
+
+
+class TestImportCandidateJsonl:
+    """Tests for the candidate JSONL person-entity import service."""
+
+    @pytest.mark.asyncio
+    async def test_dry_run_does_not_write(self) -> None:
+        """Dry-run mode returns counts without writing to DB."""
+        from voter_api.services.candidate_import_service import import_candidates_jsonl
+
+        existing_id = uuid.uuid4()
+        records = [
+            {
+                "schema_version": 1,
+                "id": str(existing_id),
+                "full_name": "Jane Smith",
+            },
+            {
+                "schema_version": 1,
+                "id": str(uuid.uuid4()),
+                "full_name": "John Doe",
+            },
+        ]
+
+        session = _make_session_mock()
+        # One candidate already exists in the DB
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [uuid.UUID(str(existing_id))]
+        session.execute.return_value = mock_result
+
+        result = await import_candidates_jsonl(session, records, dry_run=True)
+        assert result["would_insert"] == 1
+        assert result["would_update"] == 1
+        session.commit.assert_not_called()
