@@ -100,7 +100,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SKL-02 | Phase 3 | Complete |
 | SKL-03 | Phase 3 | Complete |
 | SKL-04 | Phase 3 | Complete |
-| DEM-01 | Phase 4 | In Progress (pipeline done, walkthrough pending) |
+| DEM-01 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 19 total
@@ -109,4 +109,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-13*
-*Last updated: 2026-03-13 after roadmap creation*
+*Last updated: 2026-03-15 after v1.0 milestone audit gap closure*

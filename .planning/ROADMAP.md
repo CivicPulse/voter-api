@@ -14,8 +14,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Data Contracts** - Define the enhanced markdown format and JSONL schemas that every downstream component depends on
 - [x] **Phase 2: Converter and Import Pipeline** - Build the deterministic MD-to-JSONL converter and CLI import commands so JSONL files reach the database (completed 2026-03-15)
-- [ ] **Phase 3: Claude Code Skills** - Create the AI-assisted skills and deterministic normalizer that produce markdown from raw SOS data
+- [x] **Phase 3: Claude Code Skills** - Create the AI-assisted skills and deterministic normalizer that produce markdown from raw SOS data (completed 2026-03-15)
 - [x] **Phase 4: End-to-End Demo** - Prove the full pipeline with May 19 SOS data from raw CSV through to API query results (completed 2026-03-15)
+- [ ] **Phase 5: Milestone Cleanup & Traceability** - Fix documentation inaccuracies, stale traceability, and integration gap from milestone audit
 
 ## Phase Details
 
@@ -64,11 +65,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Normalizer library core: smart title case, URL/date/occupation rules, report generator (TDD)
-- [ ] 03-02-PLAN.md — Normalizer file engine, UUID handler, CLI commands, golden files, and Hypothesis tests
-- [ ] 03-03-PLAN.md — Skills infrastructure: shared includes, qualified-candidates skill, normalize skill, /election:process and /election:normalize commands
-- [ ] 03-04-PLAN.md — Election calendar skill, candidate enrichment skill, pipeline orchestrator, remaining /election:* commands
-- [ ] 03-05-PLAN.md — Process all three SOS CSVs (May 19, March 17, March 10) through skills and normalizer to produce demo-ready markdown
+- [x] 03-01-PLAN.md — Normalizer library core: smart title case, URL/date/occupation rules, report generator (TDD)
+- [x] 03-02-PLAN.md — Normalizer file engine, UUID handler, CLI commands, golden files, and Hypothesis tests
+- [x] 03-03-PLAN.md — Skills infrastructure: shared includes, qualified-candidates skill, normalize skill, /election:process and /election:normalize commands
+- [x] 03-04-PLAN.md — Election calendar skill, candidate enrichment skill, pipeline orchestrator, remaining /election:* commands
+- [x] 03-05-PLAN.md — Process all three SOS CSVs (May 19, March 17, March 10) through skills and normalizer to produce demo-ready markdown
 
 ### Phase 4: End-to-End Demo
 **Goal**: The full pipeline is proven working from raw SOS source data to queryable API results, validating that all three stages integrate correctly
@@ -81,7 +82,22 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — Fix placeholder FK issue, prepare markdown files, convert to JSONL, and import all three elections into database
-- [ ] 04-02-PLAN.md — Write pipeline walkthrough document with real terminal output, human-verify checkpoint
+- [x] 04-02-PLAN.md — Write pipeline walkthrough document with real terminal output, human-verify checkpoint
+
+### Phase 5: Milestone Cleanup & Traceability
+**Goal**: All audit tech debt is resolved — documentation matches reality, traceability is accurate, and the integration gap (election_event_id FK) is addressed
+**Depends on**: Phase 4
+**Requirements**: DEM-01 (traceability fix)
+**Gap Closure**: Closes gaps from v1.0 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. REQUIREMENTS.md DEM-01 row shows "Complete" (not "In Progress")
+  2. Walkthrough line 366 accurately describes election_event_id FK behavior (NULL, not "resolved during import")
+  3. Walkthrough branch reference updated for post-merge context
+  4. election_event_id FK resolution is either executed or documented as a separate operational step
+**Plans**: 1 plan
+
+Plans:
+- [ ] 05-01-PLAN.md — Documentation fixes, traceability updates, and election_event_id FK resolution
 
 ## Progress
 
@@ -94,5 +110,6 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 |-------|----------------|--------|-----------|
 | 1. Data Contracts | 3/3 | Complete | 2026-03-14 |
 | 2. Converter and Import Pipeline | 3/3 | Complete   | 2026-03-15 |
-| 3. Claude Code Skills | 4/5 | In Progress|  |
+| 3. Claude Code Skills | 5/5 | Complete   | 2026-03-15 |
 | 4. End-to-End Demo | 2/2 | Complete   | 2026-03-15 |
+| 5. Milestone Cleanup | 0/1 | Pending    |  |
