@@ -22,6 +22,7 @@ Parse `$ARGUMENTS` to extract:
 1. Verify the PDF path or directory exists
 2. Verify the election date is in YYYY-MM-DD format
 3. Verify the target overview file exists: `data/elections/{date}/{date}-*.md`
+   - The glob must resolve to exactly one file. If multiple files match, print: `ERROR: Multiple overview files found at data/elections/{date}/ — expected exactly one` and stop.
    - If not found, print: `ERROR: No election overview file found at data/elections/{date}/`
    - Stop — do not continue
 

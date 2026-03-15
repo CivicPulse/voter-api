@@ -593,7 +593,7 @@ Note: FMT-01, FMT-02, FMT-03 are prose format specifications. Correctness is ver
 - `data/elections/2026-05-19/counties/2026-05-19-bibb.md` -- concrete Bibb County file showing all 12 contests
 - `data/elections/2026-05-19/2026-05-19-general-primary.md` -- overview file showing unified format structure
 - `data/elections/2026-05-19/2026-05-19-governor.md` -- statewide contest file showing partisan primary structure
-- `.planning/phases/01-data-contracts/01-CONTEXT.md` -- all implementation decisions (locked)
+- `.planning/milestones/v1.0-phases/01-data-contracts/01-CONTEXT.md` -- all implementation decisions (locked)
 
 ### Secondary (MEDIUM confidence)
 - SOS results JSON files in `data/results/` -- 14 files showing all election type patterns (special, runoff, recount, PSC primary, municipal)

@@ -37,7 +37,7 @@ expected: In `.planning/ROADMAP.md`, both `05-01-PLAN.md` and `05-02-PLAN.md` li
 result: [pending]
 
 ### 6. All 5 phases Nyquist-compliant
-expected: Each phase's VALIDATION.md has `nyquist_compliant: true` in frontmatter. Check `.planning/phases/01-data-contracts/01-VALIDATION.md` through `.planning/phases/05-milestone-cleanup/05-VALIDATION.md`.
+expected: Each phase's VALIDATION.md has `nyquist_compliant: true` in frontmatter. Check `.planning/milestones/v1.0-phases/01-data-contracts/01-VALIDATION.md` through `.planning/milestones/v1.0-phases/05-milestone-cleanup/05-VALIDATION.md`.
 result: [pending]
 
 ## Summary

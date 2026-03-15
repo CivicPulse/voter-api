@@ -243,10 +243,10 @@ None -- Phase 5 is documentation-only. No new test infrastructure needed. Nyquis
 
 ### Primary (HIGH confidence)
 - `.planning/v1.0-MILESTONE-AUDIT.md` -- full audit identifying all 6 tech debt items
-- `.planning/phases/05-milestone-cleanup/05-CONTEXT.md` -- user decisions locking implementation approach
+- `.planning/milestones/v1.0-phases/05-milestone-cleanup/05-CONTEXT.md` -- user decisions locking implementation approach
 - `docs/pipeline-walkthrough.md` -- the primary file being corrected (874 lines)
 - `src/voter_api/cli/import_cmd.py` -- resolve-elections command implementation (line 614)
-- `.planning/phases/*/VALIDATION.md` -- current Nyquist validation state for all 4 phases
+- `.planning/milestones/v1.0-phases/*/VALIDATION.md` -- current Nyquist validation state for all 4 phases
 
 ### Secondary (MEDIUM confidence)
 - None needed -- all information sourced from project files

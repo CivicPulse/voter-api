@@ -23,7 +23,7 @@ tech-stack:
     - "hypothesis==6.151.9 (property-based testing)"
   patterns:
     - "State machine pattern for tracking table context (in_metadata_table, in_calendar_table, in_candidate_table, etc.)"
-    - "Dry-run support: normalize without writing via dry_run=False default"
+    - "Dry-run support: normalize without writing via dry_run=True default"
     - "File type detection via path inspection (candidates/, counties/ dirs, election-type slugs)"
     - "Golden file approach: generate 'after' fixtures by running normalizer on 'before' fixtures"
     - "Hypothesis with max_codepoint=0x7F to restrict to ASCII for SOS data domain"
@@ -69,7 +69,7 @@ patterns-established:
 requirements-completed: [SKL-02]
 
 # Metrics
-duration: 14min
+duration: 15min
 completed: 2026-03-15
 ---
 
@@ -79,7 +79,7 @@ completed: 2026-03-15
 
 ## Performance
 
-- **Duration:** 14 min
+- **Duration:** 15min
 - **Started:** 2026-03-15T04:51:30Z
 - **Completed:** 2026-03-15T05:06:28Z
 - **Tasks:** 3

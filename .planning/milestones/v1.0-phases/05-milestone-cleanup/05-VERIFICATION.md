@@ -19,7 +19,7 @@ gaps:
 
 **Phase Goal:** All audit tech debt is resolved — documentation matches reality, traceability is accurate, and the integration gap (election_event_id FK) is addressed
 **Verified:** 2026-03-15T18:30:00Z
-**Status:** gaps_found
+**Status:** passed
 **Re-verification:** No — initial verification
 
 ## Goal Achievement
@@ -61,10 +61,10 @@ gaps:
 | `docs/pipeline-walkthrough.md` | Corrected walkthrough with resolve-elections step | VERIFIED | Contains "resolve-elections" 7 times; Step 7 section exists; no stale branch reference; election_event_id behavior accurately described |
 | `.planning/REQUIREMENTS.md` | Accurate DEM-01 traceability showing Complete | VERIFIED | DEM-01 marked `[x]` in requirements list and "Complete" in traceability table |
 | `.planning/ROADMAP.md` | Updated Phase 5 success criteria with expanded scope | PARTIAL | Success criteria content correct (9 items, includes "Nyquist validation"), but plan checkboxes for Phase 5 plans remain unchecked |
-| `.planning/phases/03-claude-code-skills/03-VALIDATION.md` | Nyquist-compliant validation for Phase 3 | VERIFIED | `nyquist_compliant: true`, `status: validated`, `wave_0_complete: true` |
-| `.planning/phases/04-end-to-end-demo/04-VALIDATION.md` | Nyquist-compliant validation for Phase 4 | VERIFIED | `nyquist_compliant: true`, `status: validated`, `wave_0_complete: true` |
+| `.planning/milestones/v1.0-phases/03-claude-code-skills/03-VALIDATION.md` | Nyquist-compliant validation for Phase 3 | VERIFIED | `nyquist_compliant: true`, `status: validated`, `wave_0_complete: true` |
+| `.planning/milestones/v1.0-phases/04-end-to-end-demo/04-VALIDATION.md` | Nyquist-compliant validation for Phase 4 | VERIFIED | `nyquist_compliant: true`, `status: validated`, `wave_0_complete: true` |
 | `.planning/v1.0-MILESTONE-AUDIT.md` | Committed audit artifact | VERIFIED | Committed in e1eeca2, exists on disk |
-| `.planning/phases/03-claude-code-skills/03-CONTEXT.md` | Committed Phase 3 context artifact | VERIFIED | Committed in 2bbcc6d, exists on disk |
+| `.planning/milestones/v1.0-phases/03-claude-code-skills/03-CONTEXT.md` | Committed Phase 3 context artifact | VERIFIED | Committed in 2bbcc6d, exists on disk |
 
 ---
 

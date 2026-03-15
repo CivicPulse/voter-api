@@ -96,30 +96,50 @@ def upgrade() -> None:
         """
         UPDATE election_events ee
         SET
-            registration_deadline = e.registration_deadline,
-            early_voting_start = e.early_voting_start,
-            early_voting_end = e.early_voting_end,
-            absentee_request_deadline = e.absentee_request_deadline,
-            qualifying_start = e.qualifying_start,
-            qualifying_end = e.qualifying_end,
-            data_source_url = e.data_source_url,
-            last_refreshed_at = e.last_refreshed_at,
-            refresh_interval_seconds = e.refresh_interval_seconds
-        FROM elections e
-        WHERE e.election_event_id = ee.id
-            AND (
-                e.registration_deadline IS NOT NULL
-                OR e.early_voting_start IS NOT NULL
-                OR e.early_voting_end IS NOT NULL
-                OR e.absentee_request_deadline IS NOT NULL
-                OR e.qualifying_start IS NOT NULL
-                OR e.qualifying_end IS NOT NULL
-            )
+            registration_deadline = sub.registration_deadline,
+            early_voting_start = sub.early_voting_start,
+            early_voting_end = sub.early_voting_end,
+            absentee_request_deadline = sub.absentee_request_deadline,
+            qualifying_start = sub.qualifying_start,
+            qualifying_end = sub.qualifying_end,
+            data_source_url = sub.data_source_url,
+            last_refreshed_at = sub.last_refreshed_at,
+            refresh_interval_seconds = sub.refresh_interval_seconds
+        FROM (
+            SELECT DISTINCT ON (e.election_event_id)
+                e.election_event_id,
+                e.registration_deadline,
+                e.early_voting_start,
+                e.early_voting_end,
+                e.absentee_request_deadline,
+                e.qualifying_start,
+                e.qualifying_end,
+                e.data_source_url,
+                e.last_refreshed_at,
+                e.refresh_interval_seconds
+            FROM elections e
+            WHERE e.election_event_id IS NOT NULL
+              AND (
+                  e.registration_deadline IS NOT NULL
+                  OR e.early_voting_start IS NOT NULL
+                  OR e.early_voting_end IS NOT NULL
+                  OR e.absentee_request_deadline IS NOT NULL
+                  OR e.qualifying_start IS NOT NULL
+                  OR e.qualifying_end IS NOT NULL
+              )
+            ORDER BY e.election_event_id, e.updated_at DESC NULLS LAST
+        ) sub
+        WHERE ee.id = sub.election_event_id
         """
     )
 
 
 def downgrade() -> None:
+    # WARNING: This downgrade is destructive. Candidates created after the
+    # migration with NULL election_id will be deleted, and all candidacy
+    # records (including any created post-migration) will be dropped.
+    # Contest-specific data stored only in candidacies will be lost.
+
     # --- Reverse step 5: make candidates.election_id NOT NULL again ---
     # First, delete any candidates with NULL election_id (created after migration)
     op.execute("DELETE FROM candidates WHERE election_id IS NULL")

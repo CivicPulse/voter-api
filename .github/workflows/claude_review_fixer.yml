@@ -142,6 +142,7 @@ jobs:
           REPO: ${{ github.repository }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         with:
+          # OAuth token is preferred; API key is fallback if OAuth isn't configured
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}

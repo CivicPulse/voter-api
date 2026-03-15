@@ -107,5 +107,5 @@ None - no external service configuration required.
 ## Self-Check: PASSED
 
 - docs/pipeline-walkthrough.md: FOUND (874 lines)
-- .planning/phases/04-end-to-end-demo/04-02-SUMMARY.md: FOUND
+- .planning/milestones/v1.0-phases/04-end-to-end-demo/04-02-SUMMARY.md: FOUND
 - Commit d5e6b90: FOUND

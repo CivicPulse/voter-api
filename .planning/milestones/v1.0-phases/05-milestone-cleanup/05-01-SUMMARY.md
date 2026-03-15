@@ -23,7 +23,7 @@ tech-stack:
 key-files:
   created:
     - .planning/v1.0-MILESTONE-AUDIT.md
-    - .planning/phases/03-claude-code-skills/03-CONTEXT.md
+    - .planning/milestones/v1.0-phases/03-claude-code-skills/03-CONTEXT.md
   modified:
     - docs/pipeline-walkthrough.md
     - .planning/ROADMAP.md
@@ -70,7 +70,7 @@ Each task was committed atomically:
 - `docs/pipeline-walkthrough.md` - Removed branch ref, fixed election_event_id claim, added resolve-elections step and API verification query
 - `.planning/ROADMAP.md` - Updated Phase 5 success criteria with expanded scope
 - `.planning/v1.0-MILESTONE-AUDIT.md` - Committed existing untracked audit artifact
-- `.planning/phases/03-claude-code-skills/03-CONTEXT.md` - Committed existing untracked Phase 3 context
+- `.planning/milestones/v1.0-phases/03-claude-code-skills/03-CONTEXT.md` - Committed existing untracked Phase 3 context
 
 ## Decisions Made
 - DEM-01 in REQUIREMENTS.md already showed "Complete" (updated in a previous session) -- verified and skipped the edit
@@ -82,7 +82,7 @@ Each task was committed atomically:
 None - plan executed exactly as written. The only adjustment was that DEM-01 was already marked Complete (per research findings), so the edit was skipped as anticipated by the plan.
 
 ## Issues Encountered
-- Docker daemon not accessible in this environment, so resolve-elections output was constructed from CLI code analysis rather than live capture. The expected output accurately reflects the CLI's `_resolve_elections` function format.
+- Docker daemon not accessible in this environment, so resolve-elections output was constructed from CLI code analysis rather than live capture. This was due to lack of PostGIS access during the phase -- no running database was available to execute the command against. The expected output accurately reflects the CLI's `_resolve_elections` function format.
 
 ## User Setup Required
 None - no external service configuration required.

@@ -48,7 +48,7 @@ Election pipeline starting.
 2. Determine the election date from the CSV filename:
    - Pattern: `{date}-qualified-candidates.csv` (e.g., `2026-05-19-qualified-candidates.csv`)
    - Also try SOS naming conventions: `MARCH_10_2026-...` → `2026-03-10`
-   - If date cannot be parsed from filename: **require the user to provide it explicitly** as a second argument (e.g., `/election:pipeline path/to/file.csv 2026-03-10`). Do NOT fall back to the QUALIFIED DATE column — that is the candidate qualification date, not the election date.
+   - If date cannot be parsed from filename: **require the user to provide it explicitly** as a second argument (e.g., `/election:process path/to/file.csv 2026-03-10`). Do NOT fall back to the QUALIFIED DATE column — that is the candidate qualification date, not the election date.
    - Print: `Election date: {date}`
 3. Confirm the expected output directory: `data/elections/{date}/`
 4. If the CSV does not exist: print error and stop immediately

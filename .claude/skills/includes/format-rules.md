@@ -55,7 +55,7 @@ consistent across skill output. Full format specifications live in `docs/formats
 ```markdown
 | Field | Value |
 |-------|-------|
-| ID | {uuid or empty for new records} |
+| ID | {uuid or — for new records} |
 | Format Version | 1 |
 ```
 

@@ -19,7 +19,7 @@ how each column maps to the enhanced markdown format.
 | INCUMBENT | Incumbent column | `Y` or `YES` → `Yes`. Empty or any other value → `No`. |
 | OCCUPATION | Occupation column in contest tables AND candidate file | Apply smart title case. Expand common abbreviations: `Ret` → `Retired`, `Mgr` → `Manager`, `Atty` → `Attorney`. Preserve uppercase acronyms: CEO, CFO, CPA, LLC, LLP. |
 | EMAIL ADDRESS | Candidate file Links table | Do NOT include in contest tables. Goes in global candidate file under Links with type `email`. |
-| WEBSITE | Candidate file Links table | Do NOT include in contest tables. Goes in global candidate file under Links with type `website`. Normalize: lowercase, add `https://` prefix if missing. |
+| WEBSITE | Candidate file Links table | Do NOT include in contest tables. Goes in global candidate file under Links with type `website`. Normalize: add `https://` prefix if no protocol is present; preserve original URL casing. |
 
 ## Multi-County Deduplication
 

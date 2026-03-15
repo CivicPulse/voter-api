@@ -255,9 +255,10 @@ uv run voter-api import election-data data/elections/2026-03-10/jsonl/
 
 ```bash
 # Login (JSON body, not form-data -- Phase 009 breaking change)
+# Set DEMO_PASSWORD in your environment before running (do not hardcode credentials)
 TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"demo","password":"DemoP@ss123!"}' | jq -r .access_token)
+  -d "{\"username\":\"demo\",\"password\":\"$DEMO_PASSWORD\"}" | jq -r .access_token)
 
 # List elections (public, no auth needed)
 curl -s http://localhost:8000/api/v1/elections | jq '.items | length'

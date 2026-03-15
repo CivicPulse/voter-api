@@ -152,7 +152,7 @@ Work through the CSV in this order:
 
 **Step 1: Determine election date**
 - Parse from CSV filename (e.g., `2026-05-19-qualified-candidates.csv` → `2026-05-19`)
-- Or derive from the dominant QUALIFIED DATE value if filename is not date-prefixed
+- If the election date cannot be parsed from the filename, **require the user to provide it explicitly** as a second positional argument (e.g., `/election:qualified-candidates path/to/file.csv 2026-05-19`). Do NOT fall back to inferring from the QUALIFIED DATE column — that is the candidate qualification date, not the election date.
 - Confirm: print `Processing election date: {date}`
 
 **Step 2: Group rows by CONTEST NAME**

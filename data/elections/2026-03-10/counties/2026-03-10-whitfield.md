@@ -21,8 +21,8 @@
 | Candidate | Status | Incumbent | Occupation | Qualified Date |
 |-----------|--------|-----------|------------|----------------|
 | Julie Locke | Qualified | No | Independent Contractor | 01/12/2026 |
-| Rojelio "roy" Alvarran | Qualified | No | Insurance Agent | 01/13/2026 |
-| Zeucis "z" Martinez | Qualified | No | — | 01/12/2026 |
+| Rojelio "Roy" Alvarran | Qualified | No | Insurance Agent | 01/13/2026 |
+| Zeucis "Z" Martinez | Qualified | No | — | 01/12/2026 |
 
 ## Statewide & District Races
 

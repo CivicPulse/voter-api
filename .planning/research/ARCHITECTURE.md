@@ -136,6 +136,7 @@ __all__ = ["convert_elections", "convert_candidates"]
 
 **What:** Never load entire JSONL files into memory. Process line-by-line with generators.
 **When:** Any JSONL file that could grow beyond election/candidate size (voter reg, voter history in future).
+**Note:** The streaming guidance applies to voter-scale data (millions of records). Small, bounded datasets like elections and candidates can safely be loaded entirely into memory.
 
 ```python
 async def stream_jsonl(path: Path, schema: type[BaseModel]) -> AsyncIterator[dict]:
@@ -151,6 +152,9 @@ async def stream_jsonl(path: Path, schema: type[BaseModel]) -> AsyncIterator[dic
                 record = schema.model_validate_json(line)
                 yield record.model_dump()
             except ValidationError as e:
+                # WARNING: Error dicts are yielded in the same iterator as valid records.
+                # Consumers MUST check for the `_error` key before processing each item.
+                # Future improvement: separate error channel (e.g., callback or second iterator).
                 yield {"_error": True, "_line": line_num, "_errors": e.errors()}
 ```
 
@@ -181,14 +185,15 @@ async def import_jsonl_task(job_id: str, file_path: str, file_type: str):
 
 ### Pattern 4: Sub-Batch UPSERT with Checkpoint
 
-**What:** Bulk UPSERT in sub-batches, updating import job progress after each batch.
+**What:** Bulk UPSERT in sub-batches, committing once after all sub-batches in a chunk.
 **When:** All JSONL imports.
-**Why:** Already proven in import_service.py. asyncpg's 32,767 parameter limit drives batch sizing.
+**Why:** Already proven in import_service.py. asyncpg's 32,767 parameter limit drives batch sizing. A single commit per chunk (not per sub-batch) avoids excessive transaction overhead while keeping the transaction scope bounded to one chunk rather than the entire file.
 
 ```python
 _UPSERT_SUB_BATCH = 500  # existing constant
 
 async def _upsert_batch(session: AsyncSession, model: type, records: list[dict]):
+    """UPSERT records in sub-batches, then commit once for the whole chunk."""
     for i in range(0, len(records), _UPSERT_SUB_BATCH):
         sub = records[i:i + _UPSERT_SUB_BATCH]
         stmt = pg_insert(model).values(sub)
@@ -197,6 +202,7 @@ async def _upsert_batch(session: AsyncSession, model: type, records: list[dict])
             set_={col: stmt.excluded[col] for col in update_cols},
         )
         await session.execute(stmt)
+    # Commit once after all sub-batches, not per sub-batch
     await session.commit()
 ```
 
@@ -212,7 +218,7 @@ async def _upsert_batch(session: AsyncSession, model: type, records: list[dict])
 
 **What:** Wrapping the full JSONL import in one database transaction.
 **Why bad:** Transaction log bloat; holds locks for the entire duration; crash loses ALL progress.
-**Instead:** Commit per sub-batch (500 records); checkpoint `last_processed_line` on ImportJob.
+**Instead:** Commit once per chunk (after all sub-batches within that chunk); checkpoint `last_processed_line` on ImportJob after each chunk commit. See Pattern 4 above.
 
 ### Anti-Pattern 3: Random UUIDs for JSONL Entity IDs
 

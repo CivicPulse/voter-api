@@ -249,7 +249,7 @@ Example: `src/voter_api/lib/geocoder/__init__.py` — 287 lines, documents 30+ p
 # Correct
 from voter_api.lib.geocoder import GeocodingResult, BaseGeocoder, get_geocoder
 
-# Also seen (importing specific submodule for clarity)
+# Acceptable for symbols not re-exported in __init__.py
 from voter_api.lib.geocoder.base import GeocodingResult
 ```
 

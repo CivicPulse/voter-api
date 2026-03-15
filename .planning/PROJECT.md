@@ -76,7 +76,7 @@ Known remaining items from v1.0: R2 upload and procrastinate job queue were desc
 | R2 signed URLs for upload | Large files (voter reg, history) shouldn't pass through API server | — Deferred to v2 (not needed for CLI-only pipeline) |
 | Procrastinate for job queue | PostgreSQL-native, async-compatible, no Redis dependency | — Deferred to v2 (not needed for CLI-only pipeline) |
 | JSONL mirrors DB models | Simplest import path; no mapping layer needed; JSONL files serve as portable backups | ✓ Good — zero mapping code in import services |
-| Elections + Candidates first | May 19 election is upcoming; smallest data type to prove the pipeline | ✓ Good — pipeline proven with 3 elections before May 19 deadline |
+| Elections + Candidates first | May 19, 2026 election; smallest data type to prove the pipeline | ✓ Good — pipeline proven with 3 elections before May 19 deadline |
 | mistune AST parsing for converter | Deterministic token-based parsing, no HTML rendering needed | ✓ Good — handles all markdown variations without regex fragility |
 | Candidacy junction table | Many-to-many candidate-election relationship supports candidates running in multiple contests | ✓ Good — cleaner data model, enables proper relational queries |
 | Body/Seat reference system | County reference files define governing body structures for district linkage resolution | ✓ Good — 159 county files cover all GA counties |

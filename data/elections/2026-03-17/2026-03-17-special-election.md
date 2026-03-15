@@ -68,7 +68,7 @@ Bibb, Clayton, Jefferson
 
 > **Note:** The original SOS election calendar listed 5 participating counties (Bibb, Clayton, Elbert, Haralson, Jefferson), but the qualified candidates CSV only contains contests for 3 (Bibb, Clayton, Jefferson).
 >
-> - **Haralson County:** The City of Buchanan held a special election for Mayor and one Council seat. Candidates qualified through the municipality, not the SOS.
+> - **Haralson County:** The City of Buchanan held a special election for [Mayor](2026-03-17-buchanan-mayor.md) and one Council seat. Candidates qualified through the municipality, not the SOS.
 > - **Elbert County:** Likely an unopposed candidate declared elected without a vote under O.C.G.A. § 21-2-291.
 
 ## Candidate Breakdown

@@ -76,8 +76,8 @@ Fix all tech debt identified in the v1.0 milestone audit: documentation inaccura
 - `voter-api import resolve-elections` CLI command: Already exists, resolves election_event_id FKs by matching elections to events. Just needs to be run and documented.
 - `docs/pipeline-walkthrough.md`: The primary document being corrected — ~900 lines of step-by-step pipeline documentation with real terminal output
 - `.planning/v1.0-MILESTONE-AUDIT.md`: Untracked audit artifact documenting all 6 tech debt items that Phase 5 addresses
-- `.planning/phases/03-claude-code-skills/03-CONTEXT.md`: Untracked context file from Phase 3 discussion
-- `.planning/phases/*/VALIDATION.md`: Existing stubs with `nyquist_compliant: false` in all 4 phases
+- `.planning/milestones/v1.0-phases/03-claude-code-skills/03-CONTEXT.md`: Untracked context file from Phase 3 discussion
+- `.planning/milestones/v1.0-phases/*/VALIDATION.md`: Existing stubs with `nyquist_compliant: false` in all 4 phases
 
 ### Established Patterns
 - Walkthrough uses curl for all API verification (zero dependencies, universal)
@@ -89,7 +89,7 @@ Fix all tech debt identified in the v1.0 milestone audit: documentation inaccura
 - `docs/pipeline-walkthrough.md` — corrections and new resolve-elections section
 - `.planning/REQUIREMENTS.md` — DEM-01 checkbox update
 - `.planning/ROADMAP.md` — Phase 5 success criteria expansion
-- `.planning/phases/*/VALIDATION.md` — Nyquist validation updates for phases 1-4
+- `.planning/milestones/v1.0-phases/*/VALIDATION.md` — Nyquist validation updates for phases 1-4
 - docker-compose PostGIS — needed for running resolve-elections to capture real output
 
 </code_context>

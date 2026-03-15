@@ -23,8 +23,8 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - .planning/phases/03-claude-code-skills/03-VALIDATION.md
-    - .planning/phases/04-end-to-end-demo/04-VALIDATION.md
+    - .planning/milestones/v1.0-phases/03-claude-code-skills/03-VALIDATION.md
+    - .planning/milestones/v1.0-phases/04-end-to-end-demo/04-VALIDATION.md
 
 key-decisions:
   - "Manual walkthrough tasks marked green based on successful Phase 4 execution"
@@ -63,8 +63,8 @@ Each task was committed atomically:
 2. **Task 2: Validate Phase 4 (End-to-End Demo)** - `cb7d94b` (test)
 
 ## Files Created/Modified
-- `.planning/phases/03-claude-code-skills/03-VALIDATION.md` - Updated to validated status with all test results
-- `.planning/phases/04-end-to-end-demo/04-VALIDATION.md` - Updated to validated status with all test results
+- `.planning/milestones/v1.0-phases/03-claude-code-skills/03-VALIDATION.md` - Updated to validated status with all test results
+- `.planning/milestones/v1.0-phases/04-end-to-end-demo/04-VALIDATION.md` - Updated to validated status with all test results
 
 ## Decisions Made
 - Manual walkthrough tasks (04-01-01 through 04-01-03) marked green based on successful execution during Phase 4

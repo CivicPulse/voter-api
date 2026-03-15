@@ -32,7 +32,7 @@ Last activity: 2026-03-15 -- Milestone v1.0 completion
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 15
 - Average duration: 9min
 - Total execution time: 0.92 hours
 
@@ -60,7 +60,7 @@ Last activity: 2026-03-15 -- Milestone v1.0 completion
 | Phase 03-claude-code-skills P04 | 3min | 2 tasks | 6 files |
 | Phase 03-claude-code-skills P05 | 13min | 2 tasks | 87 files |
 | Phase 04-end-to-end-demo P01 | 36min | 2 tasks | 241 files |
-| Phase 04-end-to-end-demo P02 | 5 | 2 tasks | 1 files |
+| Phase 04-end-to-end-demo P02 | 5min | 2 tasks | 1 files |
 | Phase 05-milestone-cleanup P01 | 3min | 2 tasks | 4 files |
 | Phase 05 P02 | 2min | 2 tasks | 2 files |
 
