@@ -56,11 +56,11 @@ class TestSettings:
         with pytest.raises(ValidationError):
             Settings()  # type: ignore[call-arg]
 
-    def test_validation_rate_limit_positive(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Rate limit per minute must be a positive integer."""
+    def test_validation_rate_limit_non_negative(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Rate limit per minute must be non-negative (0 disables rate limiting)."""
         monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://localhost/db")
         monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key-that-is-at-least-32-characters-long")
-        monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "0")
+        monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "-1")
         with pytest.raises(ValidationError):
             Settings()  # type: ignore[call-arg]
 
