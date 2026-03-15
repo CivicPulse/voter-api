@@ -49,8 +49,8 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — DB migrations and model refactoring (candidacy junction table, ElectionEvent enhancement, API schema updates, E2E test fixes)
-- [ ] 02-02-PLAN.md — Converter library (lib/converter/ with mistune AST parser, JSONL writer, Body/Seat resolver, CLI command, 159 county reference files)
-- [ ] 02-03-PLAN.md — Import pipeline and file migration (4 JSONL import services + CLI commands, pipeline command, file migration script, UUID backfill)
+- [x] 02-02-PLAN.md — Converter library (lib/converter/ with mistune AST parser, JSONL writer, Body/Seat resolver, CLI command, 159 county reference files)
+- [x] 02-03-PLAN.md — Import pipeline and file migration (4 JSONL import services + CLI commands, pipeline command, file migration script, UUID backfill)
 
 ### Phase 3: Claude Code Skills
 **Goal**: A user working in Claude Code can process raw GA SOS data files into human-reviewable markdown that conforms to the enhanced format spec
@@ -61,11 +61,13 @@ Plans:
   2. Running the deterministic normalizer on AI-generated markdown enforces title case, URL normalization, occupation formatting, and field consistency, producing stable output across repeated runs
   3. Running the election-calendar skill on a GA SOS PDF produces election metadata (dates, deadlines) in the correct markdown format fields
   4. Running the candidate-enrichment skill adds bios, photo URLs, and contact info from web research to existing candidate markdown files
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md — Normalizer library core: smart title case, URL/date/occupation rules, report generator (TDD)
+- [ ] 03-02-PLAN.md — Normalizer file engine, UUID handler, CLI commands, golden files, and Hypothesis tests
+- [ ] 03-03-PLAN.md — Skills infrastructure: shared includes, qualified-candidates skill, normalize skill, /election:process and /election:normalize commands
+- [ ] 03-04-PLAN.md — Election calendar skill, candidate enrichment skill, pipeline orchestrator, remaining /election:* commands
 
 ### Phase 4: End-to-End Demo
 **Goal**: The full pipeline is proven working from raw SOS source data to queryable API results, validating that all three stages integrate correctly
@@ -90,5 +92,5 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 |-------|----------------|--------|-----------|
 | 1. Data Contracts | 3/3 | Complete | 2026-03-14 |
 | 2. Converter and Import Pipeline | 3/3 | Complete   | 2026-03-15 |
-| 3. Claude Code Skills | 0/? | Not started | - |
+| 3. Claude Code Skills | 0/4 | In progress | - |
 | 4. End-to-End Demo | 0/? | Not started | - |
