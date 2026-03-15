@@ -611,24 +611,31 @@ async def _upsert_candidate_jsonl_batch(
     total_inserted = 0
     total_updated = 0
 
+    # Normalize: ensure every record has the same set of keys so that
+    # PostgreSQL INSERT ... ON CONFLICT DO UPDATE gets uniform columns.
+    all_keys: set[str] = set()
+    for r in records:
+        all_keys.update(r.keys())
+    normalized_records = [dict.fromkeys(all_keys) | r for r in records]
+
     # Always-overwrite fields
     overwrite_fields = ["full_name"]
     # COALESCE fields: preserve richer existing data
     coalesce_fields = _CANDIDATE_JSONL_COALESCE
 
-    for i in range(0, len(records), _UPSERT_SUB_BATCH):
-        batch = records[i : i + _UPSERT_SUB_BATCH]
+    for i in range(0, len(normalized_records), _UPSERT_SUB_BATCH):
+        batch = normalized_records[i : i + _UPSERT_SUB_BATCH]
 
         stmt = pg_insert(Candidate).values(batch)
         update_set: dict = {}
         for col in overwrite_fields:
-            if col in batch[0]:
+            if col in all_keys:
                 update_set[col] = stmt.excluded[col]
         for col in coalesce_fields:
-            if col in batch[0]:
+            if col in all_keys:
                 update_set[col] = func.coalesce(stmt.excluded[col], Candidate.__table__.c[col])
         # external_ids: merge via COALESCE
-        if "external_ids" in batch[0]:
+        if "external_ids" in all_keys:
             update_set["external_ids"] = func.coalesce(stmt.excluded.external_ids, Candidate.__table__.c.external_ids)
 
         if not update_set:
@@ -674,12 +681,29 @@ async def import_candidates_jsonl(
         Summary dict with inserted/updated/errors counts.
     """
     prepared = []
+    all_links: list[dict] = []
     errors: list[dict] = []
 
     for record in records:
         try:
             db_record = _prepare_candidate_jsonl_record(record)
             prepared.append(db_record)
+
+            # Extract links for upsert (link_type, url, label)
+            candidate_id = db_record.get("id")
+            for link in record.get("links", []):
+                link_type = link.get("link_type") or link.get("type")
+                url = link.get("url", "")
+                label = link.get("label")
+                if candidate_id and link_type and url:
+                    all_links.append(
+                        {
+                            "candidate_id": candidate_id,
+                            "link_type": link_type,
+                            "url": url,
+                            "label": label,
+                        }
+                    )
         except Exception as e:
             errors.append({"id": str(record.get("id", "unknown")), "error": str(e)})
 
@@ -698,6 +722,11 @@ async def import_candidates_jsonl(
         }
 
     inserted, updated = await _upsert_candidate_jsonl_batch(session, prepared)
+
+    # Upsert links extracted from the JSONL records
+    if all_links:
+        await _upsert_candidate_links(session, all_links)
+
     await session.commit()
 
     logger.info(f"Candidates JSONL import: {inserted} inserted, {updated} updated, {len(errors)} errors")

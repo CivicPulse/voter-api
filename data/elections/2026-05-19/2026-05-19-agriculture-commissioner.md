@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 54673902-1b6d-4ccd-9d69-31ae52122ebe |
+| Format Version | 1 |
+| Body | ga-agriculture |
+| Seat | sole |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 1 Republican, 2 Democrat |
@@ -188,18 +193,18 @@ All 159 Georgia counties participate in this statewide race.
 
 **Contest Name (SOS):** Agriculture Commissioner (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Tyler J. Harper | Qualified | Yes | Farmer | 03/04/2026 | info@tylerharperga.com | [tylerharperga.com](https://tylerharperga.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Tyler J. Harper | Qualified | Yes | Farmer | 03/04/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** Agriculture Commissioner (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Katherine E. Juhan-Arnold | Qualified | No | Farmer / Engineering & Construction Management | 03/05/2026 | connect@katherineforgeorgia.com | [katherineforgeorgia.com](https://katherineforgeorgia.com) |
-| Sedrick Kent Rowe Jr | Qualified | No | Farmer / Agricultural Scientist | 03/05/2026 | — | [roweforgeorgia.com](https://roweforgeorgia.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Katherine E. Juhan-Arnold | Qualified | No | Farmer / Engineering & Construction Management | 03/05/2026 |
+| Sedrick Kent Rowe Jr | Qualified | No | Farmer / Agricultural Scientist | 03/05/2026 |
 
 ## Data Source
 

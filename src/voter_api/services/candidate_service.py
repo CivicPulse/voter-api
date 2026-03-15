@@ -331,6 +331,7 @@ def build_candidate_detail_response(
         full_name=candidate.full_name,
         party=candidate.party,
         photo_url=candidate.photo_url,
+        email=candidate.email,
         ballot_order=candidate.ballot_order,
         filing_status=candidate.filing_status,
         is_incumbent=candidate.is_incumbent,

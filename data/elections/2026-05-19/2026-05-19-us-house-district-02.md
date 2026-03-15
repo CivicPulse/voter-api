@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 34b883c7-c26c-4fb6-8d65-2f878bbc503d |
+| Format Version | 1 |
+| Body | ga-us-house |
+| Seat | district-2 |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 1 Republican, 1 Democrat |
@@ -59,17 +64,17 @@ Congressional District 2 includes 30 counties (some counties are split across mu
 
 **Contest Name (SOS):** U.S House of Representatives, District 2 (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Benjamin Matthew Day | Qualified | No | CEO & Chairman | 03/06/2026 | — | [votemattday.com](https://votemattday.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Benjamin Matthew Day | Qualified | No | CEO & Chairman | 03/06/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 2 (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Sanford Dixon Bishop Jr | Qualified | Yes | Member of Congress | 03/02/2026 | sanfordbishop@sanfordbishop.com | [sanfordbishop.com](https://sanfordbishop.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Sanford Dixon Bishop Jr | Qualified | Yes | Member of Congress | 03/02/2026 |
 
 ## Data Source
 

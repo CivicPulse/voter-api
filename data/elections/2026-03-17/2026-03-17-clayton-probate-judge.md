@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| ID | |
+| ID | 2fae3852-e0b2-43e8-9d10-43e553386ea0 |
 | Format Version | 1 |
 | Election | [March 17, 2026 — Special Election](2026-03-17-special-election.md) |
 | Type | special |

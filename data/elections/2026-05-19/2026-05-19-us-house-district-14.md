@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 2ed6be04-5ff9-4eee-91af-7e45cb80a3f2 |
+| Format Version | 1 |
+| Body | ga-us-house |
+| Seat | district-14 |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 10 Republican, 1 Democrat |
@@ -39,26 +44,26 @@ Congressional District 14 includes 10 counties (some counties are split across m
 
 **Contest Name (SOS):** U.S House of Representatives, District 14 (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Star Black | Qualified | No | Retired Federal Service | 03/04/2026 | info@starblackforcongress.com | [starblackforcongress.com](https://starblackforcongress.com) |
-| Reagan Christane Box | Qualified | No | Self-Employed | 03/06/2026 | boxreagan@yahoo.com | [reaganboxforcongress.com](https://reaganboxforcongress.com) |
-| Timothy Beau Brown | Qualified | No | Risk Engineer | 03/06/2026 | info@beaubrownforcongress.com | [beaubrownforcongress.com](https://beaubrownforcongress.com) |
-| Eric Brad Cunningham | Qualified | No | Railroad | 03/04/2026 | ericcunninghamforcongress@gmail.com | [ericcunninghamforcongress.com](https://www.ericcunninghamforcongress.com) |
-| Clay Fuller | Qualified | No | District Attorney | 03/04/2026 | — | [clayfullerforgeorgia.com](https://clayfullerforgeorgia.com) |
-| Thomas J. Gray | Qualified | No | Pastor | 03/03/2026 | — | [tomgray.com](https://tomgray.com) |
-| Nicky Lama | Qualified | No | Entrepreneur | 03/02/2026 | nicky@nickylama.com | [nickylama.com](https://nickylama.com) |
-| Colton Moore | Qualified | No | Auctioneer/truck Driver | 03/03/2026 | colton@coltonmoore.com | [coltonmoore.com](https://coltonmoore.com) |
-| Brian C. Stover | Qualified | No | Entrepreneur | 03/02/2026 | info@brianstoverforcongress.com | [brianstoverforcongress.com](https://brianstoverforcongress.com) |
-| James Edward Tully Jr | Qualified | No | Self Employed | 03/02/2026 | jimt@jimtullyforgeorgia.com | [jimtullyforgeorgia.com](https://jimtullyforgeorgia.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Star Black | Qualified | No | Retired Federal Service | 03/04/2026 |
+| Reagan Christane Box | Qualified | No | Self-Employed | 03/06/2026 |
+| Timothy Beau Brown | Qualified | No | Risk Engineer | 03/06/2026 |
+| Eric Brad Cunningham | Qualified | No | Railroad | 03/04/2026 |
+| Clay Fuller | Qualified | No | District Attorney | 03/04/2026 |
+| Thomas J. Gray | Qualified | No | Pastor | 03/03/2026 |
+| Nicky Lama | Qualified | No | Entrepreneur | 03/02/2026 |
+| Colton Moore | Qualified | No | Auctioneer/truck Driver | 03/03/2026 |
+| Brian C. Stover | Qualified | No | Entrepreneur | 03/02/2026 |
+| James Edward Tully Jr | Qualified | No | Self Employed | 03/02/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 14 (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Shawn Andre Harris | Qualified | No | Veteran/cattle Farmer | 03/02/2026 | info@shawnforgeorgia.com | [shawnforgeorgia.com](https://www.shawnforgeorgia.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Shawn Andre Harris | Qualified | No | Veteran/cattle Farmer | 03/02/2026 |
 
 ## Data Source
 

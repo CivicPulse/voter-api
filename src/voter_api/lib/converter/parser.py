@@ -78,6 +78,9 @@ def _extract_text_from_children(children: list[dict]) -> str:
     for child in children:
         if child.get("type") in ("text", "codespan"):
             parts.append(child.get("raw", child.get("text", "")))
+        elif child.get("type") in ("softbreak", "linebreak", "hardbreak"):
+            # Render line breaks as newline to separate tokens on adjacent lines
+            parts.append("\n")
         elif "children" in child:
             parts.append(_extract_text_from_children(child["children"]))
     return "".join(parts)
@@ -271,9 +274,11 @@ def _extract_contests(tokens: list[dict]) -> list[ContestData]:
                 in_contests_section = True
                 continue
             if level == 2 and in_contests_section:
-                # End of Contests section
+                # End of Contests section -- append last contest and stop.
+                # Do NOT fall through to the post-loop append below.
                 if current_contest:
                     contests.append(current_contest)
+                    current_contest = None  # Prevent double-append after break
                 break
             if level == 3 and in_contests_section:
                 # New contest heading

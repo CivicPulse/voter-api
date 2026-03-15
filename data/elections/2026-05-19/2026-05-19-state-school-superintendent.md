@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | de7f3916-1360-41f1-ac26-53929d08a204 |
+| Format Version | 1 |
+| Body | ga-school-superintendent |
+| Seat | sole |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 5 Republican, 3 Democrat |
@@ -188,23 +193,23 @@ All 159 Georgia counties participate in this statewide race.
 
 **Contest Name (SOS):** State School Superintendent (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Nelva Melissa Lee | Qualified | No | Business Owner | 03/03/2026 | electdrlee@gmail.com | [drnelvalee.com](https://drnelvalee.com) |
-| Fred Jackson Longgrear | Qualified | No | School Superintendent | 03/02/2026 | bubba@bubba4ga.com | [bubba4ga.com](https://bubba4ga.com) |
-| Mesha Mainor | Qualified | No | Former State Representative | 03/06/2026 | — | [meshamainor.com](https://www.meshamainor.com) |
-| Randell Eugene Trammell | Qualified | No | Nonprofit Educational Executive | 03/02/2026 | randell@trammellforgeorgia.com | [trammellforgeorgia.com](https://www.trammellforgeorgia.com) |
-| Richard Lee Woods | Qualified | Yes | State School Superintendent | 03/05/2026 | woodsforsuper@yahoo.com | [woodsforsuper.com](https://www.woodsforsuper.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Nelva Melissa Lee | Qualified | No | Business Owner | 03/03/2026 |
+| Fred Jackson Longgrear | Qualified | No | School Superintendent | 03/02/2026 |
+| Mesha Mainor | Qualified | No | Former State Representative | 03/06/2026 |
+| Randell Eugene Trammell | Qualified | No | Nonprofit Educational Executive | 03/02/2026 |
+| Richard Lee Woods | Qualified | Yes | State School Superintendent | 03/05/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** State School Superintendent (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Anton Anthony | Qualified | No | Hancock County School Superintendent | 03/03/2026 | antonanthonysr@gmail.com | [voteantonanthonysr.com](https://www.voteantonanthonysr.com) |
-| Lydia Catalina Powell | Qualified | No | Educator | 03/03/2026 | votedrlydiapowell@gmail.com | [drlydiapowell.com](https://www.drlydiapowell.com) |
-| Otha Thornton | Qualified | No | 53rd National Parent Teacher Association President | 03/05/2026 | othathornton26@gmail.com | [othathornton.com](https://www.othathornton.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Anton Anthony | Qualified | No | Hancock County School Superintendent | 03/03/2026 |
+| Lydia Catalina Powell | Qualified | No | Educator | 03/03/2026 |
+| Otha Thornton | Qualified | No | 53rd National Parent Teacher Association President | 03/05/2026 |
 
 ## Data Source
 

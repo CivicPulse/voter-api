@@ -537,9 +537,11 @@ def _extract_metadata_value(content: str, field_name: str) -> str:
         field_name: The field name to extract (e.g., 'ID', 'Type').
 
     Returns:
-        The value string, or empty string if not found.
+        The value string, or empty string if not found or empty cell.
     """
-    pattern = rf"\|\s*{re.escape(field_name)}\s*\|\s*(.+?)\s*\|"
+    # Use (.*?) to allow empty cells -- (.+?) incorrectly matches the next row's
+    # leading pipe character when the value column is blank (e.g., "| ID | |")
+    pattern = rf"\|\s*{re.escape(field_name)}\s*\|\s*(.*?)\s*\|"
     match = re.search(pattern, content)
     if match:
         return match.group(1).strip()

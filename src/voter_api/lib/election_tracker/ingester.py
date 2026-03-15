@@ -12,7 +12,17 @@ from loguru import logger
 
 from voter_api.lib.election_tracker.parser import BallotItem, SoSFeed
 
-ElectionType = Literal["special", "general", "primary", "runoff"]
+ElectionType = Literal[
+    # Legacy SoS feed types
+    "special",
+    "general",
+    "primary",
+    "runoff",
+    # JSONL pipeline types (markdown converter)
+    "general_primary",
+    "special_primary",
+    "municipal",
+]
 
 
 def detect_election_type(election_name: str) -> ElectionType:

@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 2df46c10-c4b1-4b7d-9c6d-8ac9c3efdb8a |
+| Format Version | 1 |
+| Body | ga-labor |
+| Seat | sole |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 1 Republican, 5 Democrat |
@@ -188,21 +193,21 @@ All 159 Georgia counties participate in this statewide race.
 
 **Contest Name (SOS):** Labor Commissioner (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Bárbara Yolanda Rivera Holmes | Qualified | Yes | Commissioner of Labor | 03/03/2026 | — | [barbaraforga.com](https://www.barbaraforga.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Bárbara Yolanda Rivera Holmes | Qualified | Yes | Commissioner of Labor | 03/03/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** Labor Commissioner (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Brett A. Hulme | Qualified | No | Self-Employed | 03/04/2026 | brett@bretthulme.com | [bretthulme.com](https://bretthulme.com) |
-| Jason Matthew Moon | Qualified | No | Professional Representative for U.s. Sba | 03/03/2026 | — | — |
-| Nikki Porcher | Qualified | No | Business Woman | 03/05/2026 | info@voteporcher4ga.com | [vote4nikki.com](https://vote4nikki.com) |
-| Michelle Michi Sanchez | Qualified | No | Self Employed | 03/05/2026 | info@michi4ga.com | [michi4ga.com](https://michi4ga.com) |
-| Christian D. Smith | Qualified | No | Attorney | 03/03/2026 | — | [wiseforthepeople.com](https://wiseforthepeople.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Brett A. Hulme | Qualified | No | Self-Employed | 03/04/2026 |
+| Jason Matthew Moon | Qualified | No | Professional Representative for U.s. Sba | 03/03/2026 |
+| Nikki Porcher | Qualified | No | Business Woman | 03/05/2026 |
+| Michelle Michi Sanchez | Qualified | No | Self Employed | 03/05/2026 |
+| Christian D. Smith | Qualified | No | Attorney | 03/03/2026 |
 
 > **Withdrawn:** Clarence Blalock (Small Business Owner)
 

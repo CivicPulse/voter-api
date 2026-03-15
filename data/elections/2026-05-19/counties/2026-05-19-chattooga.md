@@ -4,6 +4,8 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 8b90e145-f2df-4743-9de2-b3b8943e3ee1 |
+| Format Version | 1 |
 | Election | [May 19, 2026 — General and Primary Election](../2026-05-19-general-primary.md) |
 | Type | Local Races |
 | Contests | 5 |
@@ -41,34 +43,44 @@ Voters in Chattooga County will also see the following statewide and district ra
 
 ### County Board of Education District 2
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Norma J. Peterson | Qualified | No | IT Service Desk Analyst II | 03/02/2026 | — | — |
-| Tiffany Tarin Lawrence | Qualified | Yes | Master Cosmetologist | 03/06/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Norma J. Peterson | Qualified | No | IT Service Desk Analyst II | 03/02/2026 |
+| Tiffany Tarin Lawrence | Qualified | Yes | Master Cosmetologist | 03/06/2026 |
 
 ### County Board of Education District 3
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Lori Ann Brady | Qualified | Yes | Nurse Practitioner | 03/02/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Lori Ann Brady | Qualified | Yes | Nurse Practitioner | 03/02/2026 |
 
 ### County Board of Education District 4
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Bonnie Kinnamont Fletcher | Qualified | Yes | Radio / Florist | 03/05/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Bonnie Kinnamont Fletcher | Qualified | Yes | Radio / Florist | 03/05/2026 |
 
 ### Judge of Superior Court, Lookout Mountain Judicial Circuit - Thompson
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Don Wesley Thompson | Qualified | Yes | Superior Court Judge | 03/02/2026 | judgedonthompson@gmail.com | — |
+**Body:** chattooga-superior-court | **Seat:** judge-thompson
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Don Wesley Thompson | Qualified | Yes | Superior Court Judge | 03/02/2026 |
 
 ### State Court Judge
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Johnny Roger Dennis | Qualified | Yes | Lawyer | 03/05/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Johnny Roger Dennis | Qualified | Yes | Lawyer | 03/05/2026 |
 
 ## Data Source
 

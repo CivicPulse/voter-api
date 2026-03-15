@@ -59,6 +59,7 @@ def _mock_candidate(**overrides: object) -> MagicMock:
     candidate.filing_status = "qualified"
     candidate.is_incumbent = False
     candidate.sos_ballot_option_id = None
+    candidate.email = None
     candidate.created_at = datetime(2026, 2, 1, tzinfo=UTC)
     candidate.updated_at = datetime(2026, 2, 1, tzinfo=UTC)
     candidate.links = []

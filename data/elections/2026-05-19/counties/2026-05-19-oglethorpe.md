@@ -4,6 +4,8 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 41cadb2c-3715-499d-8002-e8d5a5f0c814 |
+| Format Version | 1 |
 | Election | [May 19, 2026 — General and Primary Election](../2026-05-19-general-primary.md) |
 | Type | Local Races |
 | Contests | 5 |
@@ -40,46 +42,56 @@ Voters in Oglethorpe County will also see the following statewide and district r
 
 ### Commissioner-District 1
 
+**Body:**  | **Seat:** 
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Brittain Lane Brooks | Qualified | No | Self Employed Construction | 03/05/2026 | brooksconst1228@gmail.com | — |
-| Norman Howard Sanders | Qualified | Yes | Farmer | 03/02/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Brittain Lane Brooks | Qualified | No | Self Employed Construction | 03/05/2026 |
+| Norman Howard Sanders | Qualified | Yes | Farmer | 03/02/2026 |
 
 ### Commissioner-District 3
 
+**Body:**  | **Seat:** 
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| David R. Clark | Qualified | Yes | Flight Instructor | 03/03/2026 | drclarkdist3@windstream.net | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| David R. Clark | Qualified | Yes | Flight Instructor | 03/03/2026 |
 
 ### Commissioner-District 5
 
+**Body:**  | **Seat:** 
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Randolph Reeves Gordon | Qualified | No | Retired | 03/02/2026 | gordonr134@gmail.com | — |
-| Tracy Alan Norman | Qualified | Yes | Sourcing Director | 03/02/2026 | commissionertracynorman@gmail.com | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Randolph Reeves Gordon | Qualified | No | Retired | 03/02/2026 |
+| Tracy Alan Norman | Qualified | Yes | Sourcing Director | 03/02/2026 |
 
 ### Board of Education-District 3
 
+**Body:**  | **Seat:** 
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Susan H. Robinson | Qualified | Yes | Retired | 03/04/2026 | srobinson@oglethorpe.k12.ga.us | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Susan H. Robinson | Qualified | Yes | Retired | 03/04/2026 |
 
 ### Board of Education-District 5
 
+**Body:**  | **Seat:** 
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Jennifer McDuffie Wisham | Qualified | No | Physical Therapist | 03/03/2026 | jennywisham@gmail.com | — |
-| Thomas Andrew Carroll | Qualified | No | Physicist | 03/02/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Jennifer McDuffie Wisham | Qualified | No | Physical Therapist | 03/03/2026 |
+| Thomas Andrew Carroll | Qualified | No | Physicist | 03/02/2026 |
 
 ## Data Source
 

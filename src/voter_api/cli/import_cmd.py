@@ -1242,7 +1242,7 @@ def import_election_data_cmd(
 ) -> None:
     """Import all election data from a directory in FK dependency order.
 
-    Looks for election-events.jsonl, elections.jsonl, candidates.jsonl,
+    Looks for election_events.jsonl, elections.jsonl, candidates.jsonl,
     and candidacies.jsonl. Imports in order, stops on first failure.
     """
     asyncio.run(_import_election_data(directory, dry_run))
@@ -1263,8 +1263,9 @@ async def _import_election_data(directory: Path, dry_run: bool) -> None:
     from voter_api.services.jsonl_reader import read_jsonl
 
     # Define the import pipeline in FK dependency order
+    # Note: converter outputs election_events.jsonl (underscore), not election-events.jsonl (hyphen)
     pipeline: list[tuple[str, type, Any]] = [
-        ("election-events.jsonl", ElectionEventJSONL, import_election_events),
+        ("election_events.jsonl", ElectionEventJSONL, import_election_events),
         ("elections.jsonl", ElectionJSONL, import_elections),
         ("candidates.jsonl", CandidateJSONL, import_candidates_jsonl),
         ("candidacies.jsonl", CandidacyJSONL, import_candidacies),

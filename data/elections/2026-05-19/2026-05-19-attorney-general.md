@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 80626258-029d-42c0-abfb-618efae4160b |
+| Format Version | 1 |
+| Body | ga-ag |
+| Seat | sole |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 2 Republican, 2 Democrat |
@@ -188,19 +193,19 @@ All 159 Georgia counties participate in this statewide race.
 
 **Contest Name (SOS):** Attorney General (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| William Stone Cowsert | Qualified | No | Attorney | 03/02/2026 | bill@cowsertforgeorgia.com | [cowsertforgeorgia.com](https://cowsertforgeorgia.com) |
-| Robert Brian Strickland | Qualified | No | Attorney | 03/02/2026 | brian@stricklandforgeorgia.com | [stricklandforgeorgia.com](https://www.stricklandforgeorgia.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| William Stone Cowsert | Qualified | No | Attorney | 03/02/2026 |
+| Robert Brian Strickland | Qualified | No | Attorney | 03/02/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** Attorney General (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Tanya Miller | Qualified | No | Lawyer | 03/04/2026 | tanya@tanyaforgeorgia.com | [tanyaforgeorgia.com](https://tanyaforgeorgia.com) |
-| Bob Trammell | Qualified | No | Attorney | 03/03/2026 | — | [bobtrammell.com](https://bobtrammell.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Tanya Miller | Qualified | No | Lawyer | 03/04/2026 |
+| Bob Trammell | Qualified | No | Attorney | 03/03/2026 |
 
 > **Withdrawn:** Herbert Adams Jr (Attorney)
 

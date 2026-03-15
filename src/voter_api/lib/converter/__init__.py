@@ -41,6 +41,9 @@ def convert_directory(
     Walks the directory tree, identifies file types by path pattern,
     parses each file, validates records, and writes JSONL output.
 
+    Records are accumulated in-memory across all files and written
+    once at the end to avoid overwriting on each file conversion.
+
     Args:
         directory: Path to the election directory to convert.
         output: Output directory for JSONL files. Defaults to
@@ -70,10 +73,17 @@ def convert_directory(
     # Find all markdown files
     md_files = sorted(directory.rglob("*.md"))
 
+    # Accumulate records by file type across all files
+    # Converting each file individually and writing with open("w") would
+    # overwrite previous records -- instead collect all then write once.
+    all_election_events: list[dict] = []
+    all_elections: list[dict] = []
+
     for md_file in md_files:
+        # Convert file without writing to disk (output=None)
         result = convert_file(
             md_file,
-            output=output,
+            output=None,
             county_refs=county_refs,
         )
 
@@ -83,6 +93,28 @@ def convert_directory(
                 break
         else:
             report.add_success(md_file, len(result.records))
+            # Route records by detected file type
+            parse_result = parse_markdown(md_file)
+            if not parse_result.errors:
+                if parse_result.file_type == FileType.OVERVIEW:
+                    all_election_events.extend(result.records)
+                else:
+                    all_elections.extend(result.records)
+
+    # Write accumulated records to output files
+    from voter_api.schemas.jsonl.election import ElectionJSONL
+    from voter_api.schemas.jsonl.election_event import ElectionEventJSONL
+
+    if all_election_events:
+        write_jsonl(all_election_events, output / "election_events.jsonl", ElectionEventJSONL)
+    else:
+        # Create empty file so importers don't skip silently
+        (output / "election_events.jsonl").write_text("")
+
+    if all_elections:
+        write_jsonl(all_elections, output / "elections.jsonl", ElectionJSONL)
+    else:
+        (output / "elections.jsonl").write_text("")
 
     # Write JSON report
     report.write_json(output / "conversion-report.json")

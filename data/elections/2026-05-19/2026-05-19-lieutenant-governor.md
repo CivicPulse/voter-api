@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | be9e5b6f-713b-48ee-ba1e-f37a0377b0bb |
+| Format Version | 1 |
+| Body | ga-governor |
+| Seat | sole |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 7 Republican, 3 Democrat |
@@ -188,25 +193,25 @@ All 159 Georgia counties participate in this statewide race.
 
 **Contest Name (SOS):** Lieutenant Governor (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| David Timothy Clark | Qualified | No | Businessman | 03/05/2026 | david@votedavidclark.com | [votedavidclark.com](https://votedavidclark.com) |
-| Gregory Robert Dolezal | Qualified | No | Business Owner | 03/03/2026 | team@gregdolezal.com | [gregdolezal.com](https://gregdolezal.com) |
-| Steve Gooch | Qualified | No | Business Owner | 03/05/2026 | — | [goochforgeorgia.com](https://www.goochforgeorgia.com) |
-| John Flanders Kennedy | Qualified | No | Attorney | 03/04/2026 | info@jfkforgeorgia.com | [jfkforgeorgia.com](https://www.jfkforgeorgia.com) |
-| Brenda Lynn Nelson-Porter | Qualified | No | Research Scholar | 03/04/2026 | visionarymentorship@gmail.com | [brigettes.com](https://www.brigettes.com) |
-| Takosha Misheal Swan | Qualified | No | Small Business Owner | 03/06/2026 | — | [takosha4georgia.com](https://takosha4georgia.com) |
-| Michael Blake Tillery | Qualified | No | Attorney | 03/03/2026 | blake@tilleryforgeorgia.com | [tilleryforgeorgia.com](https://tilleryforgeorgia.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| David Timothy Clark | Qualified | No | Businessman | 03/05/2026 |
+| Gregory Robert Dolezal | Qualified | No | Business Owner | 03/03/2026 |
+| Steve Gooch | Qualified | No | Business Owner | 03/05/2026 |
+| John Flanders Kennedy | Qualified | No | Attorney | 03/04/2026 |
+| Brenda Lynn Nelson-Porter | Qualified | No | Research Scholar | 03/04/2026 |
+| Takosha Misheal Swan | Qualified | No | Small Business Owner | 03/06/2026 |
+| Michael Blake Tillery | Qualified | No | Attorney | 03/03/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** Lieutenant Governor (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Josh McLaurin | Qualified | No | Attorney | 03/02/2026 | josh@joshforgeorgia.com | [joshmclaurin.com](https://www.joshmclaurin.com) |
-| Nabilah Parkes | Qualified | No | State Senator | 03/05/2026 | info@nabilahparkes.com | [nabilahparkes.com](https://nabilahparkes.com) |
-| Richard N. Wright | Qualified | No | Certified Public Accountant | 03/02/2026 | richard@wrightforgeorgia2026.com | [wrightforgeorgia2026.com](https://wrightforgeorgia2026.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Josh McLaurin | Qualified | No | Attorney | 03/02/2026 |
+| Nabilah Parkes | Qualified | No | State Senator | 03/05/2026 |
+| Richard N. Wright | Qualified | No | Certified Public Accountant | 03/02/2026 |
 
 ## Data Source
 

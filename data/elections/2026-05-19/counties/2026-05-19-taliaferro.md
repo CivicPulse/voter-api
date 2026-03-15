@@ -4,6 +4,8 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 319b1616-f95f-4baf-93f6-46d7683fed19 |
+| Format Version | 1 |
 | Election | [May 19, 2026 — General and Primary Election](../2026-05-19-general-primary.md) |
 | Type | Local Races |
 | Contests | 3 |
@@ -40,27 +42,33 @@ Voters in Taliaferro County will also see the following statewide and district r
 
 ### Commission Chair
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Carl R. George | Qualified | No | Retired | 03/11/2026 | carl_george2003@yahoo.com | — |
-| Shawanco Shareka Alexander | Qualified | No | Chairman | 03/11/2026 | — | — |
-| Stafford R. Randolph Sr. | Qualified | No | A-1 Mechanical Inc. CEO | 03/11/2026 | — | — |
-| Stevey Griffin | Qualified | No | Business Owner | 03/11/2026 | sgriffin1963@yahoo.com | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Carl R. George | Qualified | No | Retired | 03/11/2026 |
+| Shawanco Shareka Alexander | Qualified | No | Chairman | 03/11/2026 |
+| Stafford R. Randolph Sr. | Qualified | No | A-1 Mechanical Inc. CEO | 03/11/2026 |
+| Stevey Griffin | Qualified | No | Business Owner | 03/11/2026 |
 
 ### Commission Post 1
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Cysta V. Moore | Qualified | No | Self Employed | 03/11/2026 | — | — |
-| Kirby Mark Beggs Sr. | Qualified | No | Farmer | 03/11/2026 | kirbybeggs@gmail.com | — |
-| Shanece Lasha Mayes | Qualified | No | Para | 03/11/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Cysta V. Moore | Qualified | No | Self Employed | 03/11/2026 |
+| Kirby Mark Beggs Sr. | Qualified | No | Farmer | 03/11/2026 |
+| Shanece Lasha Mayes | Qualified | No | Para | 03/11/2026 |
 
 ### Commission Post 2
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Catherine Dorsey | Qualified | Yes | Post 2 | 03/11/2026 | — | — |
-| Debra Mayes Barnes | Qualified | No | Director | 03/11/2026 | debra1961barnes@gmail.com | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Catherine Dorsey | Qualified | Yes | Post 2 | 03/11/2026 |
+| Debra Mayes Barnes | Qualified | No | Director | 03/11/2026 |
 
 ## Data Source
 

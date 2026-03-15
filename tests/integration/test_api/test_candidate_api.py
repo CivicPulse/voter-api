@@ -66,6 +66,7 @@ def _make_candidate(election_id: uuid.UUID | None = None, **overrides) -> MagicM
         "filing_status": "qualified",
         "is_incumbent": False,
         "sos_ballot_option_id": None,
+        "email": None,
         "created_at": datetime(2026, 2, 1, tzinfo=UTC),
         "updated_at": datetime(2026, 2, 1, tzinfo=UTC),
         "links": [],

@@ -51,8 +51,15 @@ async def _upsert_candidacy_batch(
     total_inserted = 0
     total_updated = 0
 
-    for i in range(0, len(records), _UPSERT_SUB_BATCH):
-        batch = records[i : i + _UPSERT_SUB_BATCH]
+    # Normalize: ensure every record has the same set of keys so that
+    # PostgreSQL INSERT ... ON CONFLICT DO UPDATE gets uniform columns.
+    all_keys: set[str] = set()
+    for r in records:
+        all_keys.update(r.keys())
+    normalized_records = [dict.fromkeys(all_keys) | r for r in records]
+
+    for i in range(0, len(normalized_records), _UPSERT_SUB_BATCH):
+        batch = normalized_records[i : i + _UPSERT_SUB_BATCH]
 
         stmt = pg_insert(Candidacy).values(batch)
 
@@ -63,7 +70,7 @@ async def _upsert_candidacy_batch(
             "ballot_order": stmt.excluded.ballot_order,
         }
         for col in _COALESCE_COLUMNS:
-            if col in batch[0]:
+            if col in all_keys:
                 update_set[col] = func.coalesce(stmt.excluded[col], Candidacy.__table__.c[col])
 
         stmt = stmt.on_conflict_do_update(

@@ -18,6 +18,20 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
+# Normalize election type strings from old markdown format to ElectionType enum values.
+# Handles human-readable values from the format-migration tool that weren't normalized.
+_ELECTION_TYPE_NORMALIZE: dict[str, str] = {
+    "partisan primary": "general_primary",
+    "general and primary": "general_primary",
+    "general & primary": "general_primary",
+    "nonpartisan primary": "general_primary",
+    "nonpartisan general": "general",
+    "general primary": "general_primary",
+    "special election": "special",
+    "special primary": "special_primary",
+    "municipal election": "municipal",
+}
+
 
 def write_jsonl(
     records: list[dict[str, Any]],
@@ -92,6 +106,48 @@ def parse_result_to_records(
     ]
 
 
+def _normalize_election_type(value: str) -> str:
+    """Normalize a raw election type string to an ElectionType enum value.
+
+    Handles human-readable type strings from old markdown format (e.g.,
+    "Partisan Primary" -> "general_primary") and passes through already-
+    normalized values unchanged.
+
+    Args:
+        value: Raw election type string from markdown metadata.
+
+    Returns:
+        Normalized ElectionType string value.
+    """
+    if not value:
+        return value
+    normalized = _ELECTION_TYPE_NORMALIZE.get(value.strip().lower())
+    return normalized if normalized is not None else value
+
+
+def _normalize_date(value: str) -> str | None:
+    """Normalize a date string to ISO format (YYYY-MM-DD) or return None.
+
+    Handles:
+    - ISO format (YYYY-MM-DD) -> returned as-is
+    - MM/DD/YYYY format -> converted to YYYY-MM-DD
+    - Em-dash (—) or empty string -> None (treat as absent)
+
+    Args:
+        value: Raw date string from markdown metadata.
+
+    Returns:
+        ISO date string or None if value is absent/placeholder.
+    """
+    if not value or value in ("—", "-", "--", "—"):
+        return None
+    # Handle MM/DD/YYYY
+    mm_dd_yyyy = re.match(r"^(\d{2})/(\d{2})/(\d{4})$", value.strip())
+    if mm_dd_yyyy:
+        return f"{mm_dd_yyyy.group(3)}-{mm_dd_yyyy.group(1)}-{mm_dd_yyyy.group(2)}"
+    return value
+
+
 def _overview_to_records(result: ParseResult) -> ConversionResult:
     """Convert an overview ParseResult to an ElectionEventJSONL record."""
     from voter_api.schemas.jsonl.election_event import ElectionEventJSONL
@@ -102,15 +158,20 @@ def _overview_to_records(result: ParseResult) -> ConversionResult:
     meta = result.metadata
 
     try:
+        # Normalize event_date from metadata Date field (may be MM/DD/YYYY) or
+        # fall back to filename-based date
+        raw_date = meta.get("Date", "")
+        event_date = _normalize_date(raw_date) or _extract_date_from_filename(result)
+
         record: dict[str, Any] = {
             "schema_version": 1,
             "id": meta.get("ID", ""),
-            "event_date": meta.get("Date", ""),
+            "event_date": event_date,
             "event_name": result.heading or meta.get("Name (SOS)", ""),
             "event_type": meta.get("Type", ""),
         }
 
-        # Add calendar fields if present
+        # Add calendar fields if present; skip em-dash placeholder values
         cal = result.calendar
         field_map = {
             "Registration Deadline": "registration_deadline",
@@ -122,7 +183,9 @@ def _overview_to_records(result: ParseResult) -> ConversionResult:
         }
         for md_field, jsonl_field in field_map.items():
             if md_field in cal:
-                record[jsonl_field] = cal[md_field]
+                normalized = _normalize_date(cal[md_field])
+                if normalized is not None:
+                    record[jsonl_field] = normalized
 
         # Validate against Pydantic model
         ElectionEventJSONL.model_validate(record)
@@ -163,7 +226,7 @@ def _single_contest_to_records(
             "name": result.heading or "",
             "name_sos": meta.get("Name (SOS)"),
             "election_date": _infer_election_date(meta, result),
-            "election_type": meta.get("Type", ""),
+            "election_type": _normalize_election_type(meta.get("Type", "")),
             "election_stage": meta.get("Stage", "election"),
             "boundary_type": boundary_type,
             "district_identifier": seat_id if seat_id else None,
@@ -201,7 +264,7 @@ def _multi_contest_to_records(
                 "election_event_id": _extract_election_event_id(meta),
                 "name": contest.heading,
                 "election_date": election_date,
-                "election_type": meta.get("Type", ""),
+                "election_type": _normalize_election_type(meta.get("Type", "")),
                 "election_stage": meta.get("Stage", "election"),
                 "boundary_type": boundary_type,
                 "district_identifier": contest.seat_id,
@@ -215,6 +278,22 @@ def _multi_contest_to_records(
         records=records,
         errors=errors,
     )
+
+
+def _extract_date_from_filename(result: ParseResult) -> str:
+    """Extract YYYY-MM-DD date from filename prefix.
+
+    Args:
+        result: ParseResult with file_path.
+
+    Returns:
+        ISO date string from filename, or empty string if not matched.
+    """
+    name = result.file_path.stem
+    date_match = re.match(r"(\d{4}-\d{2}-\d{2})", name)
+    if date_match:
+        return date_match.group(1)
+    return ""
 
 
 def _extract_election_event_id(metadata: dict[str, str]) -> str:
@@ -235,15 +314,19 @@ def _extract_election_event_id(metadata: dict[str, str]) -> str:
 def _infer_election_date(metadata: dict[str, str], result: ParseResult) -> str:
     """Infer the election date from metadata or file path.
 
-    Checks metadata Date field first, then tries to extract from filename.
+    Checks metadata Date field first (normalizing MM/DD/YYYY to ISO),
+    then falls back to the YYYY-MM-DD prefix in the filename.
+
+    Args:
+        metadata: Parsed metadata dict.
+        result: ParseResult with file_path for fallback.
+
+    Returns:
+        ISO date string (YYYY-MM-DD) or empty string if not found.
     """
     if "Date" in metadata:
-        return metadata["Date"]
+        normalized = _normalize_date(metadata["Date"])
+        if normalized:
+            return normalized
 
-    # Try to extract from filename pattern: YYYY-MM-DD-*
-    name = result.file_path.stem
-    date_match = re.match(r"(\d{4}-\d{2}-\d{2})", name)
-    if date_match:
-        return date_match.group(1)
-
-    return ""
+    return _extract_date_from_filename(result)
