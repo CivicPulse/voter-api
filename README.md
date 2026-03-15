@@ -33,16 +33,6 @@ No `.env` file or manual configuration required. The API will be available at `h
 3. **Dev seed data** is inserted via `voter-api db seed-dev` (idempotent — safe to re-run)
 4. **Uvicorn** starts with `--reload` — edit files under `src/` on the host and changes are picked up automatically
 
-### Dev Credentials
-
-All three users share the same password: `Dev-Password-2024!`
-
-| Username | Role | Email |
-|---|---|---|
-| `dev_admin` | admin | dev_admin@localhost |
-| `dev_analyst` | analyst | dev_analyst@localhost |
-| `dev_viewer` | viewer | dev_viewer@localhost |
-
 ### Seed Data Summary
 
 | Data | Count | Details |
