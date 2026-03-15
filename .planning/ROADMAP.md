@@ -118,4 +118,4 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 | 2. Converter and Import Pipeline | 3/3 | Complete   | 2026-03-15 |
 | 3. Claude Code Skills | 5/5 | Complete   | 2026-03-15 |
 | 4. End-to-End Demo | 2/2 | Complete   | 2026-03-15 |
-| 5. Milestone Cleanup | 0/2 | Pending    |  |
+| 5. Milestone Cleanup | 1/2 | In Progress | |
