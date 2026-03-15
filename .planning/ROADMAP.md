@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Data Contracts** - Define the enhanced markdown format and JSONL schemas that every downstream component depends on
 - [x] **Phase 2: Converter and Import Pipeline** - Build the deterministic MD-to-JSONL converter and CLI import commands so JSONL files reach the database (completed 2026-03-15)
 - [ ] **Phase 3: Claude Code Skills** - Create the AI-assisted skills and deterministic normalizer that produce markdown from raw SOS data
-- [ ] **Phase 4: End-to-End Demo** - Prove the full pipeline with May 19 SOS data from raw CSV through to API query results
+- [x] **Phase 4: End-to-End Demo** - Prove the full pipeline with May 19 SOS data from raw CSV through to API query results (completed 2026-03-15)
 
 ## Phase Details
 
@@ -95,4 +95,4 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 | 1. Data Contracts | 3/3 | Complete | 2026-03-14 |
 | 2. Converter and Import Pipeline | 3/3 | Complete   | 2026-03-15 |
 | 3. Claude Code Skills | 4/5 | In Progress|  |
-| 4. End-to-End Demo | 1/2 | In Progress | - |
+| 4. End-to-End Demo | 2/2 | Complete   | 2026-03-15 |

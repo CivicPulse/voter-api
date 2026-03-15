@@ -39,7 +39,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Pipeline Demo
 
-- [ ] **DEM-01**: End-to-end demo: May 19 SOS CSV → run skill → review markdown → convert to JSONL → import → query elections and candidates via API
+- [x] **DEM-01**: End-to-end demo: May 19 SOS CSV → run skill → review markdown → convert to JSONL → import → query elections and candidates via API
 
 ## v2 Requirements
 
