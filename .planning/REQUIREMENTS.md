@@ -34,8 +34,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **SKL-01**: Skill processes a GA SOS qualified candidates CSV into per-election structured markdown files following the enhanced format spec
 - [x] **SKL-02**: Deterministic Python normalizer post-processes AI-generated markdown to enforce title case, URL normalization, occupation formatting, and field consistency
-- [ ] **SKL-03**: Skill processes a GA SOS election calendar PDF into election metadata (dates, deadlines) in the markdown format
-- [ ] **SKL-04**: Skill enriches candidate markdown with bios, photo URLs, and contact info from web research
+- [x] **SKL-03**: Skill processes a GA SOS election calendar PDF into election metadata (dates, deadlines) in the markdown format
+- [x] **SKL-04**: Skill enriches candidate markdown with bios, photo URLs, and contact info from web research
 
 ### Pipeline Demo
 
@@ -98,8 +98,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | IMP-04 | Phase 2 | Complete |
 | SKL-01 | Phase 3 | Complete |
 | SKL-02 | Phase 3 | Complete |
-| SKL-03 | Phase 3 | Pending |
-| SKL-04 | Phase 3 | Pending |
+| SKL-03 | Phase 3 | Complete |
+| SKL-04 | Phase 3 | Complete |
 | DEM-01 | Phase 4 | Pending |
 
 **Coverage:**
