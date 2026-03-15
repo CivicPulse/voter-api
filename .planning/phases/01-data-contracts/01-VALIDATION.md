@@ -1,10 +1,11 @@
 ---
 phase: 1
 slug: data-contracts
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-14
+validated: 2026-03-15
 ---
 
 # Phase 1 — Validation Strategy
@@ -21,7 +22,7 @@ created: 2026-03-14
 | **Config file** | `pyproject.toml` (`[tool.pytest.ini_options]`) |
 | **Quick run command** | `uv run pytest tests/unit/test_schemas/test_jsonl_schemas.py -x` |
 | **Full suite command** | `uv run pytest tests/unit/test_schemas/ -v` |
-| **Estimated runtime** | ~5 seconds |
+| **Estimated runtime** | ~0.4 seconds |
 
 ---
 
@@ -30,7 +31,7 @@ created: 2026-03-14
 - **After every task commit:** Run `uv run pytest tests/unit/test_schemas/test_jsonl_schemas.py -x`
 - **After every plan wave:** Run `uv run pytest tests/unit/test_schemas/ -v`
 - **Before `/gsd:verify-work`:** Full suite must be green
-- **Max feedback latency:** 5 seconds
+- **Max feedback latency:** <1 second
 
 ---
 
@@ -38,12 +39,12 @@ created: 2026-03-14
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | 1 | FMT-04 | unit | `uv run pytest tests/unit/test_schemas/test_jsonl_schemas.py::test_election_jsonl_valid -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 1 | FMT-05 | unit | `uv run pytest tests/unit/test_schemas/test_jsonl_schemas.py::test_candidate_and_candidacy_jsonl -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 1 | FMT-06 | unit | `uv run pytest tests/unit/test_schemas/test_jsonl_schemas.py::test_schema_version_present -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 1 | FMT-04 | unit | `uv run pytest tests/unit/test_schemas/test_jsonl_schemas.py::test_election_type_validation -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 1 | FMT-05 | unit | `uv run pytest tests/unit/test_schemas/test_jsonl_schemas.py::test_candidacy_filing_status_validation -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 1 | FMT-01, FMT-02, FMT-03 | manual | N/A | N/A | ⬜ pending |
+| 01-02-T1 | 01-02 | 1 | FMT-04 | unit | `uv run pytest tests/unit/test_schemas/test_jsonl_schemas.py::TestElectionEventJSONL::test_valid_record tests/unit/test_schemas/test_jsonl_schemas.py::TestElectionJSONL::test_valid_record -x` | ✅ | ✅ green |
+| 01-02-T1 | 01-02 | 1 | FMT-05 | unit | `uv run pytest tests/unit/test_schemas/test_jsonl_schemas.py::TestCandidateJSONL::test_valid_person_record tests/unit/test_schemas/test_jsonl_schemas.py::TestCandidacyJSONL::test_valid_junction_record -x` | ✅ | ✅ green |
+| 01-02-T1 | 01-02 | 1 | FMT-06 | unit | `uv run pytest tests/unit/test_schemas/test_jsonl_schemas.py::TestSchemaVersionConsistency -x` | ✅ | ✅ green |
+| 01-02-T1 | 01-02 | 1 | FMT-04 | unit | `uv run pytest tests/unit/test_schemas/test_jsonl_schemas.py::TestElectionJSONL::test_invalid_election_type_rejected tests/unit/test_schemas/test_jsonl_schemas.py::TestElectionEventJSONL::test_invalid_event_type_rejected -x` | ✅ | ✅ green |
+| 01-02-T1 | 01-02 | 1 | FMT-05 | unit | `uv run pytest tests/unit/test_schemas/test_jsonl_schemas.py::TestCandidacyJSONL::test_invalid_filing_status_rejected -x` | ✅ | ✅ green |
+| 01-01-T1/T2 | 01-01 | 1 | FMT-01, FMT-02, FMT-03 | manual | N/A | N/A | ✅ reviewed |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -51,10 +52,10 @@ created: 2026-03-14
 
 ## Wave 0 Requirements
 
-- [ ] `tests/unit/test_schemas/test_jsonl_schemas.py` — stubs for FMT-04, FMT-05, FMT-06
-- [ ] `src/voter_api/schemas/jsonl/__init__.py` — new package, doesn't exist yet
+- [x] `tests/unit/test_schemas/test_jsonl_schemas.py` — 68 tests covering all 4 JSONL models, enums, and CandidateLinkJSONL
+- [x] `src/voter_api/schemas/jsonl/__init__.py` — package exists with all exports
 
-*Wave 0 creates the test stubs and package structure before implementation begins.*
+*Wave 0 stubs were created and fully implemented during plan 01-02 execution.*
 
 ---
 
@@ -70,11 +71,23 @@ created: 2026-03-14
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 5s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 1s (0.39s actual)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated (2026-03-15)
+
+---
+
+## Validation Audit 2026-03-15
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+| Tests passing | 68 |
+| Manual-only | 3 (FMT-01, FMT-02, FMT-03) |
