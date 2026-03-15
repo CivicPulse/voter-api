@@ -49,7 +49,7 @@ async def _upsert_election_batch(
     # has the same set of keys. PostgreSQL requires INSERT ... VALUES with
     # uniform columns when using ON CONFLICT DO UPDATE (excluded.<col>
     # references are only valid if the column was present in the INSERT).
-    all_keys = set()
+    all_keys: set[str] = set()
     for r in records:
         all_keys.update(r.keys())
     normalized_records = [dict.fromkeys(all_keys) | r for r in records]

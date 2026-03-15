@@ -281,8 +281,8 @@ class Settings(BaseSettings):
     )
     rate_limit_per_minute: int = Field(
         default=200,
-        description="Maximum API requests per minute per IP address",
-        gt=0,
+        description="Maximum API requests per minute per IP address (0 to disable)",
+        ge=0,
     )
     trusted_proxy_headers: str = Field(
         default="CF-Connecting-IP,X-Forwarded-For,X-Real-IP",

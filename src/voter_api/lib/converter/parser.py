@@ -32,6 +32,7 @@ def parse_markdown(file_path: Path) -> ParseResult:
     text = file_path.read_text(encoding="utf-8")
     md = mistune.create_markdown(renderer=None, plugins=["table"])
     tokens = md(text)
+    assert isinstance(tokens, list)
 
     heading = _extract_h1_heading(tokens)
     metadata = _extract_metadata_table(tokens)

@@ -70,6 +70,7 @@ def _make_candidate(election_id: uuid.UUID | None = None, **overrides) -> MagicM
         "created_at": datetime(2026, 2, 1, tzinfo=UTC),
         "updated_at": datetime(2026, 2, 1, tzinfo=UTC),
         "links": [],
+        "external_ids": None,
     }
     defaults.update(overrides)
     candidate = MagicMock(spec=Candidate)
