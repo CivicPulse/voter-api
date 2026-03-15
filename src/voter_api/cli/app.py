@@ -50,12 +50,14 @@ def _register_subcommands() -> None:
     from voter_api.cli.geocode_cmd import geocode_app
     from voter_api.cli.import_cmd import import_app
     from voter_api.cli.meetings_cmd import meetings_app
+    from voter_api.cli.normalize_cmd import normalize_app
     from voter_api.cli.officials_cmd import officials_app
     from voter_api.cli.publish_cmd import publish_app
     from voter_api.cli.seed_cmd import seed
     from voter_api.cli.user_cmd import user_app
 
     app.add_typer(convert_app, name="convert", help="Markdown to JSONL conversion")
+    app.add_typer(normalize_app, name="normalize", help="Normalize markdown files")
     app.add_typer(db_app, name="db", help="Database migration commands")
     app.add_typer(user_app, name="user", help="User management commands")
     app.add_typer(import_app, name="import", help="Data import commands")
