@@ -102,8 +102,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Documentation fixes: full walkthrough review, resolve-elections step, REQUIREMENTS.md and ROADMAP.md updates, commit planning artifacts
-- [ ] 05-02-PLAN.md — Nyquist validation for phases 3 and 4
+- [x] 05-01-PLAN.md — Documentation fixes: full walkthrough review, resolve-elections step, REQUIREMENTS.md and ROADMAP.md updates, commit planning artifacts
+- [x] 05-02-PLAN.md — Nyquist validation for phases 3 and 4
 
 ## Progress
 
