@@ -18,7 +18,6 @@ candidacies stored in a local PostGIS database and queryable through the API.
 ```bash
 git clone https://github.com/CivicPulse/voter-api.git
 cd voter-api
-git checkout worktree-better-imports   # or main once merged
 uv sync
 ```
 
@@ -362,9 +361,11 @@ Sample `elections.jsonl` record (U.S. House District 14):
 ```
 
 Note the `election_event_id` is a placeholder UUID
-(`00000000-0000-0000-0000-000000000000`). The import service treats this as
-`NULL` — the election event FK is resolved during import using the matching
-event in the database, not from the JSONL file directly.
+(`00000000-0000-0000-0000-000000000000`). The import service detects this
+placeholder and stores `NULL` in the database — the FK is **not** resolved
+during import. Instead, it is populated later by the `resolve-elections`
+command (Step 7 below), which matches each election to its event by date and
+type.
 
 ---
 
@@ -563,7 +564,40 @@ After all three imports, the database contains:
 
 ---
 
-## Step 7: Verify Idempotency
+## Step 7: Resolve Election Event FKs
+
+After import, every election record has `election_event_id = NULL` because the
+JSONL placeholder UUID was skipped. The `resolve-elections` command populates
+this FK by matching each election to its election event using the election date
+and type.
+
+```bash
+uv run voter-api import resolve-elections
+```
+
+Expected output:
+
+```
+Election Resolution Results:
+  Elections backfilled:    0
+  Tier 1 (single-date):   0
+  Tier 2 (district match): 0
+  Total VH updated:       0
+  Unresolvable elections: 0
+```
+
+The `Elections backfilled` count refers to structured district fields (already
+populated by the JSONL import). The Tier 1/2 and Total VH counts are zero
+because this walkthrough has no voter history data — those tiers resolve
+`voter_history.election_id`, which is a separate concern.
+
+The important side effect is that `election_event_id` is now populated on all
+34 election records. You can verify this in the API output (Step 9 below) —
+the `election_event_id` field will be non-null.
+
+---
+
+## Step 8: Verify Idempotency
 
 Re-run any import to confirm the UPSERT behavior — same UUIDs produce updates,
 not duplicates or errors.
@@ -588,7 +622,7 @@ not overwrite existing non-null values.
 
 ---
 
-## Step 8: Verify via API
+## Step 9: Verify via API
 
 ### Start the API server
 
@@ -814,6 +848,36 @@ boundaries.
 
 ---
 
+### Query 5: Verify election_event_id FK resolution
+
+After running `resolve-elections` (Step 7), every election should have a
+non-null `election_event_id` linking it to its parent election event. Verify
+with the March 10 special election:
+
+```bash
+curl -s "http://localhost:8000/api/v1/elections?date_from=2026-03-10&date_to=2026-03-10&limit=1" \
+  -H "$AUTH" | jq '{total: .total, sample: .items[0] | {id, name, election_event_id}}'
+```
+
+Expected response:
+
+```json
+{
+  "total": 5,
+  "sample": {
+    "id": "...",
+    "name": "State House — District 130",
+    "election_event_id": "0459e7b6-59e1-418e-a6eb-fd6cc3d7760b"
+  }
+}
+```
+
+The `election_event_id` is the UUID of the March 10 election event (from
+`election_events.jsonl`). Before running `resolve-elections`, this field was
+`null`. The resolution matched each election to its event by date and type.
+
+---
+
 ## Cleanup
 
 **Keep the database running** (recommended for development):
@@ -845,7 +909,8 @@ SOS CSV source
   → Step 4:  generate_candidate_jsonl.py → enriched candidate/candidacy JSONL
   → Step 5:  voter-api import --dry-run  → validation preview
   → Step 6:  voter-api import            → database write
-  → Step 8:  API queries                 → verified results
+  → Step 7:  voter-api import resolve-elections → FK resolution
+  → Step 9:  API queries                 → verified results
 ```
 
 **What works:**
@@ -860,6 +925,8 @@ SOS CSV source
   (one candidate, multiple elections possible)
 - The Body/Seat district reference system is preserved through all pipeline
   stages and supports `boundary_type` + `district_identifier` API queries
+- The `resolve-elections` command populates `election_event_id` FKs by
+  matching elections to events by date and type
 - Import is idempotent: re-running the same import produces 0 inserts and N
   updates with no errors
 - The human-in-the-loop design is enforced by the pipeline structure: markdown
