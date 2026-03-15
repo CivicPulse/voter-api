@@ -93,5 +93,5 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 |-------|----------------|--------|-----------|
 | 1. Data Contracts | 3/3 | Complete | 2026-03-14 |
 | 2. Converter and Import Pipeline | 3/3 | Complete   | 2026-03-15 |
-| 3. Claude Code Skills | 0/5 | In progress | - |
+| 3. Claude Code Skills | 3/5 | In Progress|  |
 | 4. End-to-End Demo | 0/? | Not started | - |
