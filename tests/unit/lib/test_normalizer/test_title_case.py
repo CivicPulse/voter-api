@@ -60,7 +60,9 @@ class TestSmartTitleCase:
     def test_occupation_mode(self, input_text: str, expected: str) -> None:
         """Test smart title case in occupation mode."""
         result = smart_title_case(input_text, is_occupation=True)
-        assert result == expected, f"smart_title_case({input_text!r}, is_occupation=True) = {result!r}, expected {expected!r}"
+        assert result == expected, (
+            f"smart_title_case({input_text!r}, is_occupation=True) = {result!r}, expected {expected!r}"
+        )
 
     def test_single_letter_initial_gets_period(self) -> None:
         """Single-letter middle initials should get a period."""
