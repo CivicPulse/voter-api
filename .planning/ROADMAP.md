@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Converter and Import Pipeline** - Build the deterministic MD-to-JSONL converter and CLI import commands so JSONL files reach the database (completed 2026-03-15)
 - [x] **Phase 3: Claude Code Skills** - Create the AI-assisted skills and deterministic normalizer that produce markdown from raw SOS data (completed 2026-03-15)
 - [x] **Phase 4: End-to-End Demo** - Prove the full pipeline with May 19 SOS data from raw CSV through to API query results (completed 2026-03-15)
-- [ ] **Phase 5: Milestone Cleanup & Traceability** - Fix documentation inaccuracies, stale traceability, and integration gap from milestone audit
+- [x] **Phase 5: Milestone Cleanup & Traceability** - Fix documentation inaccuracies, stale traceability, and integration gap from milestone audit (completed 2026-03-15)
 
 ## Phase Details
 
@@ -118,4 +118,4 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 | 2. Converter and Import Pipeline | 3/3 | Complete   | 2026-03-15 |
 | 3. Claude Code Skills | 5/5 | Complete   | 2026-03-15 |
 | 4. End-to-End Demo | 2/2 | Complete   | 2026-03-15 |
-| 5. Milestone Cleanup | 1/2 | In Progress | |
+| 5. Milestone Cleanup | 2/2 | Complete   | 2026-03-15 |
