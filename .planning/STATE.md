@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 2 context gathered
-last_updated: "2026-03-14T16:49:44.461Z"
-last_activity: 2026-03-14 -- Plan 01-03 JSONL docs, Bibb example, process specs complete
+status: in-progress
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-15T01:49:00.000Z"
+last_activity: 2026-03-15 -- Plan 02-01 DB migrations and model refactoring complete
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 100
+  total_plans: 6
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State
@@ -21,38 +21,40 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-13)
 
 **Core value:** Election and candidate data flows reliably from raw SOS sources into the database through a pipeline where every intermediate step is human-reviewable, version-controlled, and reproducible.
-**Current focus:** Phase 1: Data Contracts
+**Current focus:** Phase 2: Converter and Import Pipeline
 
 ## Current Position
 
-Phase: 1 of 4 (Data Contracts) -- COMPLETE
-Plan: 3 of 3 in current phase
-Status: Phase 01 complete, Phase 02 next
-Last activity: 2026-03-14 -- Plan 01-03 JSONL docs, Bibb example, process specs complete
+Phase: 2 of 4 (Converter and Import Pipeline)
+Plan: 1 of 3 in current phase -- COMPLETE
+Status: Plan 02-01 complete, Plan 02-02 next
+Last activity: 2026-03-15 -- Plan 02-01 DB migrations and model refactoring complete
 
-Progress: [██████████] 100% (Phase 1)
+Progress: [██████░░░░] 67% (4 of 6 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 5min
-- Total execution time: 0.25 hours
+- Total plans completed: 4
+- Average duration: 7min
+- Total execution time: 0.47 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-data-contracts | 3 | 15min | 5min |
+| 02-converter-and-import-pipeline | 1 | 13min | 13min |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 4min, 6min
-- Trend: stable
+- Last 5 plans: 5min, 4min, 6min, 13min
+- Trend: increasing (model refactoring is more complex than contracts)
 
 *Updated after each plan completion*
 | Phase 01-data-contracts P01 | 5min | 2 tasks | 10 files |
 | Phase 01-data-contracts P02 | 4min | 2 tasks | 7 files |
 | Phase 01-data-contracts P03 | 6min | 2 tasks | 11 files |
+| Phase 02-converter-and-import-pipeline P01 | 13min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -87,6 +89,10 @@ Recent decisions affecting current work:
 - [01-03]: Backfill order is ElectionEvents -> Elections -> Candidates due to foreign key dependencies
 - [01-03]: Migration creates candidate stubs with 00000000 placeholder in filename, replaced during backfill
 - [01-03]: bibb-civil-magistrate Body ID per plan spec (plan takes precedence over county-reference.md worked example)
+- [02-01]: TYPE_CHECKING imports for Candidacy model to avoid circular import with Election model
+- [02-01]: Safe isinstance checks for external_ids/candidacies to handle mock objects in unit tests
+- [02-01]: Candidacy UPSERT uses COALESCE for nullable fields to preserve richer data on re-import
+- [02-01]: Additive-first migration -- keep Candidate.election_id nullable, don't remove old columns yet
 
 ### Pending Todos
 
@@ -99,6 +105,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-14T16:49:44.448Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-converter-and-import-pipeline/02-CONTEXT.md
+Last session: 2026-03-15T01:49:00.000Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: .planning/phases/02-converter-and-import-pipeline/02-02-PLAN.md

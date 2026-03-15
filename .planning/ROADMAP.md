@@ -48,7 +48,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — DB migrations and model refactoring (candidacy junction table, ElectionEvent enhancement, API schema updates, E2E test fixes)
+- [x] 02-01-PLAN.md — DB migrations and model refactoring (candidacy junction table, ElectionEvent enhancement, API schema updates, E2E test fixes)
 - [ ] 02-02-PLAN.md — Converter library (lib/converter/ with mistune AST parser, JSONL writer, Body/Seat resolver, CLI command, 159 county reference files)
 - [ ] 02-03-PLAN.md — Import pipeline and file migration (4 JSONL import services + CLI commands, pipeline command, file migration script, UUID backfill)
 
@@ -89,6 +89,6 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Contracts | 3/3 | Complete | 2026-03-14 |
-| 2. Converter and Import Pipeline | 0/3 | Planned | - |
+| 2. Converter and Import Pipeline | 1/3 | In Progress | - |
 | 3. Claude Code Skills | 0/? | Not started | - |
 | 4. End-to-End Demo | 0/? | Not started | - |
