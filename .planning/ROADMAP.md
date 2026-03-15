@@ -61,13 +61,14 @@ Plans:
   2. Running the deterministic normalizer on AI-generated markdown enforces title case, URL normalization, occupation formatting, and field consistency, producing stable output across repeated runs
   3. Running the election-calendar skill on a GA SOS PDF produces election metadata (dates, deadlines) in the correct markdown format fields
   4. Running the candidate-enrichment skill adds bios, photo URLs, and contact info from web research to existing candidate markdown files
-**Plans**: 4 plans
+**Plans**: 5 plans
 
 Plans:
 - [ ] 03-01-PLAN.md — Normalizer library core: smart title case, URL/date/occupation rules, report generator (TDD)
 - [ ] 03-02-PLAN.md — Normalizer file engine, UUID handler, CLI commands, golden files, and Hypothesis tests
 - [ ] 03-03-PLAN.md — Skills infrastructure: shared includes, qualified-candidates skill, normalize skill, /election:process and /election:normalize commands
 - [ ] 03-04-PLAN.md — Election calendar skill, candidate enrichment skill, pipeline orchestrator, remaining /election:* commands
+- [ ] 03-05-PLAN.md — Process all three SOS CSVs (May 19, March 17, March 10) through skills and normalizer to produce demo-ready markdown
 
 ### Phase 4: End-to-End Demo
 **Goal**: The full pipeline is proven working from raw SOS source data to queryable API results, validating that all three stages integrate correctly
@@ -92,5 +93,5 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 |-------|----------------|--------|-----------|
 | 1. Data Contracts | 3/3 | Complete | 2026-03-14 |
 | 2. Converter and Import Pipeline | 3/3 | Complete   | 2026-03-15 |
-| 3. Claude Code Skills | 0/4 | In progress | - |
+| 3. Claude Code Skills | 0/5 | In progress | - |
 | 4. End-to-End Demo | 0/? | Not started | - |
