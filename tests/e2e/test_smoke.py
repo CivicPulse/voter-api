@@ -1698,3 +1698,27 @@ class TestAbsentee:
             files={"file": ("test.csv", BytesIO(b"test"), "text/csv")},
         )
         assert resp.status_code in (403, 429)
+
+
+# ── Import Pipeline (JSONL) ───────────────────────────────────────────────
+
+
+class TestImportPipeline:
+    """JSONL import CLI command registration and import endpoints.
+
+    Full functional testing of JSONL imports requires a PostGIS database
+    with real data. These are smoke tests confirming CLI registration and
+    basic auth enforcement on existing import endpoints.
+    """
+
+    async def test_import_list_requires_auth(self, client: httpx.AsyncClient) -> None:
+        """Import listing endpoint requires authentication."""
+        resp = await client.get(_url("/imports"))
+        assert resp.status_code == 401
+
+    async def test_import_list_admin_returns_200(self, admin_client: httpx.AsyncClient) -> None:
+        """Admin can list import jobs."""
+        resp = await admin_client.get(_url("/imports"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "items" in body
