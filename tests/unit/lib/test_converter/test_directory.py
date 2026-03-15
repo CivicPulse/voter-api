@@ -120,7 +120,7 @@ class TestConvertDirectory:
         report = convert_directory(election_dir)
 
         assert isinstance(report, ConversionReport)
-        assert report.files_processed >= 1
+        assert report.files_processed == 3
 
     def test_returns_conversion_report(self, tmp_path: Path) -> None:
         """convert_directory returns a ConversionReport with results."""

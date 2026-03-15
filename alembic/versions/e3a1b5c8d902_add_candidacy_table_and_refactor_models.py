@@ -59,8 +59,8 @@ def upgrade() -> None:
     op.add_column("election_events", sa.Column("early_voting_start", sa.Date(), nullable=True))
     op.add_column("election_events", sa.Column("early_voting_end", sa.Date(), nullable=True))
     op.add_column("election_events", sa.Column("absentee_request_deadline", sa.Date(), nullable=True))
-    op.add_column("election_events", sa.Column("qualifying_start", sa.DateTime(timezone=True), nullable=True))
-    op.add_column("election_events", sa.Column("qualifying_end", sa.DateTime(timezone=True), nullable=True))
+    op.add_column("election_events", sa.Column("qualifying_start", sa.Date(), nullable=True))
+    op.add_column("election_events", sa.Column("qualifying_end", sa.Date(), nullable=True))
     op.add_column("election_events", sa.Column("data_source_url", sa.Text(), nullable=True))
     op.add_column("election_events", sa.Column("last_refreshed_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column(
@@ -88,7 +88,6 @@ def upgrade() -> None:
             c.home_county, c.municipality, c.sos_ballot_option_id, c.import_job_id, now(), now()
         FROM candidates c
         WHERE c.election_id IS NOT NULL
-        ON CONFLICT DO NOTHING
         """
     )
 

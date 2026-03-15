@@ -40,10 +40,19 @@ async def _upsert_election_event_batch(
     total_inserted = 0
     total_updated = 0
 
-    update_columns = sorted(set(records[0].keys()) - _EXCLUDE_COLUMNS)
+    # Compute the union of all column keys across records so every record
+    # has the same set of keys. PostgreSQL requires INSERT ... VALUES with
+    # uniform columns when using ON CONFLICT DO UPDATE (excluded.<col>
+    # references are only valid if the column was present in the INSERT).
+    all_keys: set[str] = set()
+    for r in records:
+        all_keys.update(r.keys())
+    normalized_records = [dict.fromkeys(all_keys) | r for r in records]
 
-    for i in range(0, len(records), _UPSERT_SUB_BATCH):
-        batch = records[i : i + _UPSERT_SUB_BATCH]
+    update_columns = sorted(all_keys - _EXCLUDE_COLUMNS)
+
+    for i in range(0, len(normalized_records), _UPSERT_SUB_BATCH):
+        batch = normalized_records[i : i + _UPSERT_SUB_BATCH]
 
         stmt = pg_insert(ElectionEvent).values(batch)
         stmt = stmt.on_conflict_do_update(

@@ -360,9 +360,11 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         await session.execute(stmt)
 
         # --- Candidate (for seeded election) --------------------------------
+        # election_id is intentionally omitted here; the candidate-election
+        # relationship is represented by the Candidacy row below (single
+        # source of truth after the candidacy refactor).
         candidate_data = {
             "id": CANDIDATE_ID,
-            "election_id": ELECTION_ID,
             "full_name": "E2E Test Candidate",
             "party": "Independent",
             "bio": "E2E test biographical info.",
@@ -374,7 +376,6 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         stmt = stmt.on_conflict_do_update(
             index_elements=["id"],
             set_={
-                "election_id": stmt.excluded.election_id,
                 "full_name": stmt.excluded.full_name,
                 "party": stmt.excluded.party,
                 "bio": stmt.excluded.bio,

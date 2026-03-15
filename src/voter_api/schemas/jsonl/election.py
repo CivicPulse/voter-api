@@ -32,8 +32,9 @@ class ElectionJSONL(BaseModel):
     id: uuid.UUID = Field(
         description="UUID from markdown contest metadata table. Required.",
     )
-    election_event_id: uuid.UUID = Field(
-        description="UUID of the parent ElectionEvent (overview file).",
+    election_event_id: uuid.UUID | None = Field(
+        default=None,
+        description="UUID of the parent ElectionEvent (overview file). None until resolved during import.",
     )
     name: str = Field(
         description="Display name matching the H1 heading in the contest markdown file.",

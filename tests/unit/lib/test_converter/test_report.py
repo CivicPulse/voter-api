@@ -56,8 +56,11 @@ class TestConversionReport:
         output = report.render_terminal()
         assert isinstance(output, str)
         assert len(output) > 0
+        # Verify structural content: both filenames and summary counts appear
         assert "good.md" in output
         assert "bad.md" in output
+        assert "2" in output  # total files processed
+        assert "1" in output  # files succeeded / files failed
 
     def test_write_json(self, tmp_path: Path) -> None:
         """JSON report is written with correct structure."""

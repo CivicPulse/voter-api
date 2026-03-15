@@ -16,16 +16,16 @@ if TYPE_CHECKING:
 # Built-in mapping of statewide/federal Body IDs to boundary_type values.
 # These resolve without needing a county reference file.
 STATEWIDE_BODIES: dict[str, str | None] = {
-    # Statewide constitutional officers -- no specific boundary type
-    # (statewide office, maps to state boundary)
-    "ga-governor": "state",
-    "ga-lt-governor": "state",
-    "ga-sos": "state",
-    "ga-ag": "state",
-    "ga-insurance": "state",
-    "ga-labor": "state",
-    "ga-school-superintendent": "state",
-    "ga-agriculture": "state",
+    # Statewide constitutional officers -- no boundary_type in BoundaryType enum;
+    # these are statewide offices without a specific boundary polygon.
+    "ga-governor": None,
+    "ga-lt-governor": None,
+    "ga-sos": None,
+    "ga-ag": None,
+    "ga-insurance": None,
+    "ga-labor": None,
+    "ga-school-superintendent": None,
+    "ga-agriculture": None,
     # Federal
     "ga-us-senate": "us_senate",
     "ga-us-house": "congressional",

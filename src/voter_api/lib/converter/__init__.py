@@ -93,13 +93,11 @@ def convert_directory(
                 break
         else:
             report.add_success(md_file, len(result.records))
-            # Route records by detected file type
-            parse_result = parse_markdown(md_file)
-            if not parse_result.errors:
-                if parse_result.file_type == FileType.OVERVIEW:
-                    all_election_events.extend(result.records)
-                else:
-                    all_elections.extend(result.records)
+            # Route records by file type already detected during convert_file
+            if result.file_type == FileType.OVERVIEW:
+                all_election_events.extend(result.records)
+            else:
+                all_elections.extend(result.records)
 
     # Write accumulated records to output files
     from voter_api.schemas.jsonl.election import ElectionJSONL
@@ -171,6 +169,7 @@ def convert_file(
         file_path=file_path,
         records=all_records,
         errors=all_errors,
+        file_type=parse_result.file_type,
     )
 
 

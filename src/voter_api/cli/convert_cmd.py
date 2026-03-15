@@ -139,7 +139,7 @@ _COUNTY_CONTEST_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         "judge-{surname}",
     ),
     (
-        re.compile(r"^State Court Judge\s*\((\w+)\)", re.I),
+        re.compile(r"^State Court Judge\s*(?:\(\w+\))?\s*[-–—]\s*(\w+)\s*$", re.I),
         "{county}-state-court",
         "judge-{surname}",
     ),

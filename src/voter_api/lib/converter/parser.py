@@ -32,7 +32,12 @@ def parse_markdown(file_path: Path) -> ParseResult:
     text = file_path.read_text(encoding="utf-8")
     md = mistune.create_markdown(renderer=None, plugins=["table"])
     tokens = md(text)
-    assert isinstance(tokens, list)
+    if not isinstance(tokens, list):
+        return ParseResult(
+            file_path=file_path,
+            file_type=FileType.OVERVIEW,
+            errors=[f"Markdown parser returned {type(tokens).__name__} instead of list for {file_path}"],
+        )
 
     heading = _extract_h1_heading(tokens)
     metadata = _extract_metadata_table(tokens)

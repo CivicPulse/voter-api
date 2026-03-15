@@ -36,10 +36,6 @@ def normalize_url(url: str) -> str:
 
     stripped = url.strip()
 
-    # Pass through placeholder values
-    if stripped in _PLACEHOLDERS:
-        return url
-
     # If it looks like a plain domain (no scheme), add https://
     lower = stripped.lower()
     if not lower.startswith("http://") and not lower.startswith("https://"):  # NOSONAR

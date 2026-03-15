@@ -186,8 +186,12 @@ async def import_candidacies(
             "errors": errors,
         }
 
-    inserted, updated = await _upsert_candidacy_batch(session, prepared)
-    await session.commit()
+    try:
+        inserted, updated = await _upsert_candidacy_batch(session, prepared)
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
 
     logger.info(f"Candidacies import: {inserted} inserted, {updated} updated, {len(errors)} errors")
     return {

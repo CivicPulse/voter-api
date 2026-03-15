@@ -124,6 +124,7 @@ class CandidateLink(Base, UUIDMixin):
     candidate: Mapped["Candidate"] = relationship(back_populates="links")
 
     __table_args__ = (
+        UniqueConstraint("candidate_id", "link_type", name="uq_candidate_link_type"),
         CheckConstraint(
             "link_type IN ('website', 'campaign', 'facebook', 'twitter', 'instagram', 'youtube', 'linkedin', 'other')",
             name="ck_candidate_link_type",

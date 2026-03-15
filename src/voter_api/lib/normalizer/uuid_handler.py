@@ -55,8 +55,17 @@ def ensure_uuid(content: str) -> tuple[str, str | None]:
     match = re.search(pattern, content)
 
     if not match:
-        # No ID field found -- treat as missing, generate UUID
+        # No ID field found -- treat as missing, generate UUID and insert row
         new_uuid = str(uuid.uuid4())
+        # Insert an | ID | <uuid> | row into the metadata table after the
+        # header separator (|---|---|), matching the empty-placeholder branch.
+        separator_pattern = r"(\|\s*Field\s*\|\s*Value\s*\|\s*\n\|[-| ]+\|)"
+        sep_match = re.search(separator_pattern, content)
+        if sep_match:
+            insert_pos = sep_match.end()
+            new_content = content[:insert_pos] + f"\n| ID | {new_uuid} |" + content[insert_pos:]
+            return new_content, new_uuid
+        # No metadata table found at all -- return content unchanged with UUID
         return content, new_uuid
 
     id_value = match.group(1).strip()

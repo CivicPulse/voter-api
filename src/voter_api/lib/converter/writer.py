@@ -139,7 +139,7 @@ def _normalize_date(value: str) -> str | None:
     Returns:
         ISO date string or None if value is absent/placeholder.
     """
-    if not value or value in ("—", "-", "--", "—"):
+    if not value or value in ("\u2014", "-", "--"):
         return None
     # Handle MM/DD/YYYY
     mm_dd_yyyy = re.match(r"^(\d{2})/(\d{2})/(\d{4})$", value.strip())
@@ -296,7 +296,7 @@ def _extract_date_from_filename(result: ParseResult) -> str:
     return ""
 
 
-def _extract_election_event_id(metadata: dict[str, str]) -> str:
+def _extract_election_event_id(metadata: dict[str, str]) -> str | None:
     """Extract the election event UUID from an Election metadata link.
 
     The Election field contains a markdown link like:
@@ -307,8 +307,8 @@ def _extract_election_event_id(metadata: dict[str, str]) -> str:
     """
     # The election_event_id can't be fully resolved at conversion time
     # since we'd need to read the referenced overview file.
-    # Return a placeholder that will be resolved during import.
-    return "00000000-0000-0000-0000-000000000000"
+    # Return None -- it will be resolved during import.
+    return None
 
 
 def _infer_election_date(metadata: dict[str, str], result: ParseResult) -> str:

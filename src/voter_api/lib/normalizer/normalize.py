@@ -37,7 +37,7 @@ _ELECTION_TYPE_SLUGS: frozenset[str] = frozenset(
 )
 
 
-def _detect_file_type(file_path: Path) -> str:
+def detect_file_type(file_path: Path) -> str:
     """Detect the markdown file type.
 
     Args:
@@ -642,9 +642,10 @@ def _normalize_candidate_file_content(
                 new_lines.append(line)
                 continue
 
-            # Detect Links table header
-            if re.match(r"^\|\s*Type\s*\|\s*URL\s*\|", line, re.IGNORECASE):
-                in_links_table = True
+            # Detect Links table header -- only set in_links_table when
+            # already in the Links section to avoid false positives from
+            # | Type | URL | headers in other sections (e.g., Elections).
+            if in_links_table and re.match(r"^\|\s*Type\s*\|\s*URL\s*\|", line, re.IGNORECASE):
                 past_header_separator = False
                 new_lines.append(line)
                 continue
@@ -766,7 +767,7 @@ def normalize_file(
             errors=[f"Could not read file: {exc}"],
         )
 
-    file_type = _detect_file_type(file_path)
+    file_type = detect_file_type(file_path)
 
     if file_type == "candidate":
         normalized_content, changes, warnings = _normalize_candidate_file_content(content)
@@ -820,7 +821,7 @@ def normalize_directory(
 
     # Filter by file_type if requested
     if file_type == "candidate":
-        md_files = [f for f in md_files if _detect_file_type(f) == "candidate"]
+        md_files = [f for f in md_files if detect_file_type(f) == "candidate"]
 
     for file_path in md_files:
         result = normalize_file(file_path, dry_run=dry_run)

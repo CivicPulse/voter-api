@@ -214,7 +214,7 @@ def normalize_candidates(
     occupations, and generates UUIDs for candidates missing IDs.
     Renames placeholder filenames (00000000) to use UUID prefix.
     """
-    from voter_api.lib.normalizer.normalize import _detect_file_type
+    from voter_api.lib.normalizer import detect_file_type
     from voter_api.lib.normalizer.uuid_handler import ensure_uuid, rename_candidate_file
 
     # Create DB job record
@@ -230,7 +230,7 @@ def normalize_candidates(
     # UUID generation and file renaming for candidate files
     if not dry_run:
         candidate_files = sorted(directory.rglob("*.md"))
-        candidate_files = [f for f in candidate_files if f.name != "README.md" and _detect_file_type(f) == "candidate"]
+        candidate_files = [f for f in candidate_files if f.name != "README.md" and detect_file_type(f) == "candidate"]
         for file_path in candidate_files:
             try:
                 content = file_path.read_text(encoding="utf-8")

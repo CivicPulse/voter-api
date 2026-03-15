@@ -39,9 +39,10 @@ class TestStatewideResolution:
     """Tests for statewide/federal Body ID resolution."""
 
     def test_governor_resolves(self) -> None:
-        """ga-governor resolves to a known boundary type."""
+        """ga-governor resolves to None (statewide office, no boundary polygon)."""
         result = resolve_body("ga-governor", {})
-        assert result is not None
+        assert "ga-governor" in STATEWIDE_BODIES
+        assert result is None
 
     def test_us_senate_resolves(self) -> None:
         """ga-us-senate resolves to us_senate."""
@@ -116,8 +117,8 @@ class TestCountyResolution:
             "ga": {"ga-governor": "wrong_type"},
         }
         result = resolve_body("ga-governor", county_refs)
-        assert result is not None
-        # Statewide should give the correct type, not the county override
+        # Statewide mapping returns None (no boundary polygon), not the county override
+        assert result is None
         assert result != "wrong_type"
 
 

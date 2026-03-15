@@ -19,11 +19,12 @@ only when explicitly requested.
 
 from __future__ import annotations
 
-from voter_api.lib.normalizer.normalize import normalize_directory, normalize_file
+from voter_api.lib.normalizer.normalize import detect_file_type, normalize_directory, normalize_file
 from voter_api.lib.normalizer.report import NormalizationReport
 from voter_api.lib.normalizer.title_case import smart_title_case
 
 __all__ = [
+    "detect_file_type",
     "normalize_directory",
     "normalize_file",
     "NormalizationReport",

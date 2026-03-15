@@ -11,7 +11,6 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.candidate_importer import parse_candidate_import_jsonl
-from voter_api.lib.election_name_normalizer import normalize_election_name
 from voter_api.models.candidacy import Candidacy
 from voter_api.models.candidate import Candidate, CandidateLink
 from voter_api.models.election import Election
@@ -27,8 +26,14 @@ _PARTY_MARKER_RE = re.compile(r"\s*\([RDNPI]+\)\s*\Z")
 def _normalize_election_name(name: str) -> str:
     """Normalize an election name for deduplication lookups.
 
-    Strips trailing party markers such as ``(R)``, ``(D)``, ``(NP)``,
-    ``(I)``, collapses whitespace, and lowercases the result.
+    Applies the library-level normalizations (dash replacement, date
+    standardization, abbreviation expansion) then strips trailing party
+    markers such as ``(R)``, ``(D)``, ``(NP)``, ``(I)``, collapses
+    whitespace, and lowercases the result.
+
+    This is the single source of truth for election name normalization
+    within the candidate import pipeline — used for both cache keys and
+    DB queries to prevent cache misses from divergent normalization.
 
     Args:
         name: Raw election/contest name.
@@ -36,7 +41,14 @@ def _normalize_election_name(name: str) -> str:
     Returns:
         Normalized lowercase name suitable for cache key comparison.
     """
-    stripped = _PARTY_MARKER_RE.sub("", name)
+    from voter_api.lib.election_name_normalizer import (
+        normalize_election_name as _lib_normalize,
+    )
+
+    # Apply library normalizations first (dashes, dates, abbreviations)
+    lib_normalized = _lib_normalize(name) or name
+    # Then strip party markers
+    stripped = _PARTY_MARKER_RE.sub("", lib_normalized)
     collapsed = re.sub(r"\s+", " ", stripped).strip()
     return collapsed.lower()
 
@@ -105,11 +117,11 @@ async def _resolve_election(
     if cache_key in cache:
         return cache[cache_key]
 
-    # Query for existing election using normalized name for comparison
-    normalized_name = normalize_election_name(original_name)
+    # Query for existing election using case-insensitive comparison with the
+    # same normalization used for cache keys (party markers stripped, lowered).
     result = await session.execute(
         select(Election).where(
-            Election.name == normalized_name,
+            func.lower(Election.name) == normalized,
             Election.election_date == election_date,
             Election.deleted_at.is_(None),
         )
@@ -124,11 +136,18 @@ async def _resolve_election(
         cache[cache_key] = existing.id
         return existing.id
 
-    # Create new election — preserve original as source_name
+    # Create new election — preserve original as source_name.
+    # Store the party-stripped, library-normalized name (preserving case).
+    display_name = _PARTY_MARKER_RE.sub("", original_name).strip()
+    from voter_api.lib.election_name_normalizer import (
+        normalize_election_name as _lib_normalize,
+    )
+
+    stored_name = _lib_normalize(display_name) or display_name
     new_id = uuid.uuid4()
     stmt = pg_insert(Election).values(
         id=new_id,
-        name=normalized_name,
+        name=stored_name,
         source_name=original_name,
         election_date=election_date,
         election_type=election_type or "general",
@@ -150,7 +169,7 @@ async def _resolve_election(
 async def _upsert_candidate_batch(
     session: AsyncSession,
     records: list[dict],
-) -> tuple[int, int]:
+) -> tuple[int, int, list[uuid.UUID]]:
     """Bulk upsert candidate records using PostgreSQL INSERT ... ON CONFLICT.
 
     Uses the unique constraint on ``(election_id, full_name)`` as the
@@ -161,13 +180,16 @@ async def _upsert_candidate_batch(
         records: Prepared candidate record dicts.
 
     Returns:
-        Tuple of (inserted_count, updated_count).
+        Tuple of (inserted_count, updated_count, resolved_ids) where
+        resolved_ids contains the actual database IDs (in input order)
+        from the RETURNING clause.
     """
     if not records:
-        return 0, 0
+        return 0, 0, []
 
     total_inserted = 0
     total_updated = 0
+    all_ids: list[uuid.UUID] = []
 
     # Columns that are always overwritten on conflict
     overwrite_columns = [
@@ -198,20 +220,33 @@ async def _upsert_candidate_batch(
             constraint="uq_candidate_election_name",
             set_=update_set,
         )
-        # xmax = 0 identifies genuinely new rows (not updated via ON CONFLICT)
+        # xmax = 0 identifies genuinely new rows (not updated via ON CONFLICT).
+        # Also return election_id and full_name for ID resolution.
         stmt = stmt.returning(  # type: ignore[assignment]
             Candidate.__table__.c.id,
+            Candidate.__table__.c.election_id,
+            Candidate.__table__.c.full_name,
             literal_column("(xmax = 0)::int").label("is_insert"),
         )
 
         result = await session.execute(stmt)
         rows = result.all()
 
+        # Build lookup by (election_id, full_name) -> resolved DB id
+        id_lookup: dict[tuple, uuid.UUID] = {}
+        for row in rows:
+            id_lookup[(row.election_id, row.full_name)] = row.id
+
+        # Preserve input order for resolved IDs
+        for rec in batch:
+            key = (rec["election_id"], rec["full_name"])
+            all_ids.append(id_lookup[key])
+
         batch_inserted = sum(row.is_insert for row in rows)
         total_inserted += batch_inserted
         total_updated += len(rows) - batch_inserted
 
-    return total_inserted, total_updated
+    return total_inserted, total_updated, all_ids
 
 
 async def _upsert_candidate_links(
@@ -220,37 +255,41 @@ async def _upsert_candidate_links(
 ) -> None:
     """Create or update candidate links (website URLs).
 
-    For each link, does a delete-then-insert on (candidate_id, link_type).
-    This avoids the race condition inherent in select-then-update/insert.
-
-    Note: A proper ``INSERT ... ON CONFLICT`` would be preferable, but
-    requires a unique constraint on ``(candidate_id, link_type)`` which
-    does not exist yet.  The delete+insert pair is safe within a single
-    transaction.
+    Uses ``INSERT ... ON CONFLICT DO UPDATE`` on the
+    ``(candidate_id, link_type)`` unique constraint for batch upsert
+    instead of per-link delete+insert.
 
     Args:
         session: Database session.
-        links: List of dicts with candidate_id, link_type, url.
+        links: List of dicts with candidate_id, link_type, url,
+            and optionally label.
     """
     if not links:
         return
 
-    from sqlalchemy import delete
-
+    # Prepare records with UUIDs for new rows
+    values = []
     for link in links:
-        # Remove existing link for this (candidate_id, link_type) pair
-        await session.execute(
-            delete(CandidateLink).where(
-                CandidateLink.candidate_id == link["candidate_id"],
-                CandidateLink.link_type == link["link_type"],
-            )
+        values.append(
+            {
+                "id": uuid.uuid4(),
+                "candidate_id": link["candidate_id"],
+                "link_type": link["link_type"],
+                "url": link["url"],
+                "label": link.get("label"),
+            }
         )
-        # Insert the new link
-        stmt = pg_insert(CandidateLink).values(
-            id=uuid.uuid4(),
-            candidate_id=link["candidate_id"],
-            link_type=link["link_type"],
-            url=link["url"],
+
+    for i in range(0, len(values), _UPSERT_SUB_BATCH):
+        batch = values[i : i + _UPSERT_SUB_BATCH]
+
+        stmt = pg_insert(CandidateLink).values(batch)
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_candidate_link_type",
+            set_={
+                "url": stmt.excluded.url,
+                "label": stmt.excluded.label,
+            },
         )
         await session.execute(stmt)
 
@@ -443,25 +482,23 @@ async def process_candidate_import(
                 seen[(rec["election_id"], rec["full_name"])] = idx
             valid_records = [valid_records[i] for i in sorted(seen.values())]
 
-            # Upsert candidates
-            chunk_inserted, chunk_updated = await _upsert_candidate_batch(session, valid_records)
+            # Upsert candidates and capture resolved IDs from RETURNING clause
+            chunk_inserted, chunk_updated, resolved_ids = await _upsert_candidate_batch(session, valid_records)
             inserted += chunk_inserted
             updated_count += chunk_updated
 
-            # Create candidacy records for each upserted candidate
+            # Build lookup from (election_id, full_name) -> resolved DB id
+            resolved_id_lookup: dict[tuple, uuid.UUID] = {}
+            for rec, resolved_id in zip(valid_records, resolved_ids, strict=True):
+                resolved_id_lookup[(rec["election_id"], rec["full_name"])] = resolved_id
+
+            # Create candidacy records using resolved IDs (no extra queries)
             if valid_records:
                 candidacy_records: list[dict] = []
                 for rec in valid_records:
                     if rec.get("election_id") is None:
                         continue
-                    # Look up the actual candidate ID from DB
-                    cand_result = await session.execute(
-                        select(Candidate.id).where(
-                            Candidate.election_id == rec["election_id"],
-                            Candidate.full_name == rec["full_name"],
-                        )
-                    )
-                    cand_id = cand_result.scalar_one_or_none()
+                    cand_id = resolved_id_lookup.get((rec["election_id"], rec["full_name"]))
                     if cand_id:
                         candidacy_records.append(
                             {
@@ -482,28 +519,21 @@ async def process_candidate_import(
                 if candidacy_records:
                     await _upsert_candidacy_batch(session, candidacy_records)
 
-            # Resolve candidate links (need actual candidate IDs from DB)
+            # Resolve candidate links using the same lookup (no extra queries)
             if pending_links:
+                resolved_links: list[dict] = []
                 for link_info in pending_links:
-                    # Look up the candidate ID by (election_id, full_name)
-                    result = await session.execute(
-                        select(Candidate.id).where(
-                            Candidate.election_id == link_info["election_id"],
-                            Candidate.full_name == link_info["candidate_name"],
+                    cand_id = resolved_id_lookup.get((link_info["election_id"], link_info["candidate_name"]))
+                    if cand_id:
+                        resolved_links.append(
+                            {
+                                "candidate_id": cand_id,
+                                "link_type": link_info["link_type"],
+                                "url": link_info["url"],
+                            }
                         )
-                    )
-                    candidate_id = result.scalar_one_or_none()
-                    if candidate_id:
-                        await _upsert_candidate_links(
-                            session,
-                            [
-                                {
-                                    "candidate_id": candidate_id,
-                                    "link_type": link_info["link_type"],
-                                    "url": link_info["url"],
-                                }
-                            ],
-                        )
+                if resolved_links:
+                    await _upsert_candidate_links(session, resolved_links)
 
             # Update checkpoint and commit batch
             job.last_processed_offset = chunk_idx + 1

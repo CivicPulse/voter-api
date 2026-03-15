@@ -59,3 +59,4 @@ class ConversionResult:
     file_path: Path
     records: list[dict] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    file_type: FileType | None = None

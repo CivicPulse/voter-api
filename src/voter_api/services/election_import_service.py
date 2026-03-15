@@ -9,7 +9,7 @@ from datetime import date
 from typing import Any
 
 from loguru import logger
-from sqlalchemy import literal_column, select
+from sqlalchemy import func, literal_column, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +24,10 @@ _PLACEHOLDER_UUID = "00000000-0000-0000-0000-000000000000"
 
 # Columns excluded from the ON CONFLICT UPDATE set
 _EXCLUDE_COLUMNS = frozenset({"id", "created_at"})
+
+# Curated fields that should not be overwritten by imports — only update
+# if the existing value is NULL (preserves admin-curated data).
+_COALESCE_COLUMNS = frozenset({"election_type", "status"})
 
 
 async def _upsert_election_batch(
@@ -60,9 +64,19 @@ async def _upsert_election_batch(
         batch = normalized_records[i : i + _UPSERT_SUB_BATCH]
 
         stmt = pg_insert(Election).values(batch)
+
+        # Build update set: use COALESCE for curated fields so imports
+        # only fill NULLs without clobbering admin-curated values.
+        update_set: dict = {}
+        for col in update_columns:
+            if col in _COALESCE_COLUMNS:
+                update_set[col] = func.coalesce(Election.__table__.c[col], stmt.excluded[col])
+            else:
+                update_set[col] = stmt.excluded[col]
+
         stmt = stmt.on_conflict_do_update(
             index_elements=["id"],
-            set_={col: stmt.excluded[col] for col in update_columns},
+            set_=update_set,
         )
         stmt = stmt.returning(  # type: ignore[assignment]
             Election.id,

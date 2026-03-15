@@ -86,7 +86,8 @@ class TestParseResultToRecords:
             return None
 
         records = parse_result_to_records(result, mock_resolver)
-        assert len(records) >= 1
+        assert len(records) == 1
+        assert len(records[0].records) == 1
 
     def test_multi_contest_to_multiple_records(self) -> None:
         """Multi-contest ParseResult produces one ElectionJSONL per contest section."""
@@ -120,8 +121,9 @@ class TestParseResultToRecords:
             return "county"
 
         records = parse_result_to_records(result, mock_resolver)
-        # Should produce at least the contest-level records
-        assert len(records) >= 1
+        # One ConversionResult containing one record per contest
+        assert len(records) == 1
+        assert len(records[0].records) == 2
 
     def test_invalid_record_produces_error(self) -> None:
         """Invalid record (missing required fields) produces an error, not an exception."""
