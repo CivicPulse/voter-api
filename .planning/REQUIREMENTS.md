@@ -18,10 +18,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Converter (MD → JSONL)
 
-- [ ] **CNV-01**: Deterministic markdown parser using mistune AST converts election markdown files to JSONL without AI
-- [ ] **CNV-02**: Parsed output is validated against Pydantic models matching the JSONL schema before writing
-- [ ] **CNV-03**: Batch conversion processes an entire election directory (all contests, all counties) in a single command
-- [ ] **CNV-04**: Conversion produces a validation report summarizing what parsed successfully, what failed, and what fields are missing
+- [x] **CNV-01**: Deterministic markdown parser using mistune AST converts election markdown files to JSONL without AI
+- [x] **CNV-02**: Parsed output is validated against Pydantic models matching the JSONL schema before writing
+- [x] **CNV-03**: Batch conversion processes an entire election directory (all contests, all counties) in a single command
+- [x] **CNV-04**: Conversion produces a validation report summarizing what parsed successfully, what failed, and what fields are missing
 
 ### Import Pipeline
 
@@ -88,10 +88,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FMT-04 | Phase 1 | Complete |
 | FMT-05 | Phase 1 | Complete |
 | FMT-06 | Phase 1 | Complete |
-| CNV-01 | Phase 2 | Pending |
-| CNV-02 | Phase 2 | Pending |
-| CNV-03 | Phase 2 | Pending |
-| CNV-04 | Phase 2 | Pending |
+| CNV-01 | Phase 2 | Complete |
+| CNV-02 | Phase 2 | Complete |
+| CNV-03 | Phase 2 | Complete |
+| CNV-04 | Phase 2 | Complete |
 | IMP-01 | Phase 2 | Pending |
 | IMP-02 | Phase 2 | Pending |
 | IMP-03 | Phase 2 | Pending |
