@@ -1,10 +1,11 @@
 ---
 phase: 2
 slug: converter-and-import-pipeline
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-15
+audited: 2026-03-15
 ---
 
 # Phase 2 — Validation Strategy
@@ -38,15 +39,15 @@ created: 2026-03-15
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 02-01-01 | 01 | 1 | IMP-01 | integration | `uv run pytest tests/integration/test_election_event_import.py -x` | ❌ W0 | ⬜ pending |
-| 02-01-02 | 01 | 1 | IMP-02 | integration | `uv run pytest tests/integration/test_candidate_import.py -x` | ❌ W0 | ⬜ pending |
-| 02-02-01 | 02 | 1 | CNV-01 | unit | `uv run pytest tests/unit/lib/test_converter/test_parser.py -x` | ❌ W0 | ⬜ pending |
-| 02-02-02 | 02 | 1 | CNV-02 | unit | `uv run pytest tests/unit/lib/test_converter/test_writer.py -x` | ❌ W0 | ⬜ pending |
-| 02-02-03 | 02 | 1 | CNV-03 | unit + integration | `uv run pytest tests/unit/lib/test_converter/test_directory.py -x` | ❌ W0 | ⬜ pending |
-| 02-02-04 | 02 | 1 | CNV-04 | unit | `uv run pytest tests/unit/lib/test_converter/test_report.py -x` | ❌ W0 | ⬜ pending |
-| 02-03-01 | 03 | 2 | IMP-01 | integration | `uv run pytest tests/integration/test_election_import.py -x` | ❌ W0 | ⬜ pending |
-| 02-03-02 | 03 | 2 | IMP-03 | integration | `uv run pytest tests/integration/ -k "idempotent" -x` | ❌ W0 | ⬜ pending |
-| 02-03-03 | 03 | 2 | IMP-04 | integration | `uv run pytest tests/integration/ -k "dry_run" -x` | ❌ W0 | ⬜ pending |
+| 02-01-01 | 01 | 1 | IMP-01 | integration | `uv run pytest tests/integration/test_election_event_import.py -x` | ✅ | ✅ green |
+| 02-01-02 | 01 | 1 | IMP-02 | integration | `uv run pytest tests/integration/test_candidate_import_service.py -x` | ✅ | ✅ green |
+| 02-02-01 | 02 | 1 | CNV-01 | unit | `uv run pytest tests/unit/lib/test_converter/test_parser.py -x` | ✅ | ✅ green |
+| 02-02-02 | 02 | 1 | CNV-02 | unit | `uv run pytest tests/unit/lib/test_converter/test_writer.py -x` | ✅ | ✅ green |
+| 02-02-03 | 02 | 1 | CNV-03 | unit + integration | `uv run pytest tests/unit/lib/test_converter/test_directory.py -x` | ✅ | ✅ green |
+| 02-02-04 | 02 | 1 | CNV-04 | unit | `uv run pytest tests/unit/lib/test_converter/test_report.py -x` | ✅ | ✅ green |
+| 02-03-01 | 03 | 2 | IMP-01 | integration | `uv run pytest tests/integration/test_election_event_import.py::TestImportElections -x` | ✅ | ✅ green |
+| 02-03-02 | 03 | 2 | IMP-03 | integration | `uv run pytest tests/integration/test_election_event_import.py -k "reimport" -x` | ✅ | ✅ green |
+| 02-03-03 | 03 | 2 | IMP-04 | integration | `uv run pytest tests/integration/test_election_event_import.py -k "dry_run" -x` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -54,17 +55,17 @@ created: 2026-03-15
 
 ## Wave 0 Requirements
 
-- [ ] `tests/unit/lib/test_converter/` — entire test directory for new converter library
-- [ ] `tests/unit/lib/test_converter/test_parser.py` — covers CNV-01 (mistune AST parsing)
-- [ ] `tests/unit/lib/test_converter/test_writer.py` — covers CNV-02 (Pydantic validation)
-- [ ] `tests/unit/lib/test_converter/test_resolver.py` — covers Body/Seat resolution
-- [ ] `tests/unit/lib/test_converter/test_directory.py` — covers CNV-03 (batch processing)
-- [ ] `tests/unit/lib/test_converter/test_report.py` — covers CNV-04 (validation report)
-- [ ] `tests/integration/test_election_event_import.py` — covers IMP-01 (election event import)
-- [ ] `tests/integration/test_election_import.py` — covers IMP-01 (election import)
-- [ ] `tests/integration/test_candidacy_import.py` — covers IMP-02 (candidacy import)
-- [ ] Framework install: `uv add mistune` — mistune not yet in dependencies
-- [ ] E2E tests need seed data updates for new candidacy model after migration
+- [x] `tests/unit/lib/test_converter/` — 50 tests across 5 test files
+- [x] `tests/unit/lib/test_converter/test_parser.py` — 15 tests, covers CNV-01 (mistune AST parsing)
+- [x] `tests/unit/lib/test_converter/test_writer.py` — 7 tests, covers CNV-02 (Pydantic validation)
+- [x] `tests/unit/lib/test_converter/test_resolver.py` — 14 tests, covers Body/Seat resolution
+- [x] `tests/unit/lib/test_converter/test_directory.py` — 7 tests, covers CNV-03 (batch processing)
+- [x] `tests/unit/lib/test_converter/test_report.py` — 7 tests, covers CNV-04 (validation report)
+- [x] `tests/integration/test_election_event_import.py` — 13 tests, covers IMP-01, IMP-03, IMP-04 (election event + election + candidacy imports, idempotency, dry-run)
+- [x] `tests/integration/test_candidate_import_service.py` — 9 tests, covers IMP-02 (candidate import + reimport)
+- [x] Framework install: `uv add mistune` — mistune 3.2.0 installed
+- [x] E2E tests updated with candidacy seed data (CANDIDACY_ID in conftest.py)
+- Note: `test_election_import.py` and `test_candidacy_import.py` were not created as separate files; election and candidacy import tests are bundled in `test_election_event_import.py` (TestImportElections, TestImportCandidacies classes)
 
 ---
 
@@ -79,11 +80,26 @@ created: 2026-03-15
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete
+
+---
+
+## Validation Audit 2026-03-15
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 2 |
+| Resolved | 2 |
+| Escalated | 0 |
+
+**Details:**
+- **IMP-03 (Idempotent reimport)**: Added 3 reimport tests (election_event, election, candidacy) to `test_election_event_import.py`
+- **IMP-04 (Dry-run)**: Added 3 dry-run tests (election, candidacy, candidate-jsonl) to `test_election_event_import.py`
+- Total test count: 50 unit + 22 integration = 72 automated tests covering all 9 requirements
