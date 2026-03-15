@@ -43,9 +43,9 @@ Congressional District 9 includes 12 counties (some counties are split across mu
 
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
-| Andrew S Clyde | Qualified | Yes | Gun Store Owner | 03/03/2026 | andrew@clyde4congress.com | [clyde4congress.com](https://clyde4congress.com) |
+| Andrew S. Clyde | Qualified | Yes | Gun Store Owner | 03/03/2026 | andrew@clyde4congress.com | [clyde4congress.com](https://clyde4congress.com) |
 | Warren Samuel Couvillon | Qualified | No | Insurance | 03/02/2026 | sam@sendsamtocongress.com | [samforhouse.com](https://www.samforhouse.com) |
-| Joel Gregory Poole | Qualified | No | Electrical And Plumbing Contractor | 03/03/2026 | gregg@greggpoole.com | [greggpoole.com](https://greggpoole.com) |
+| Joel Gregory Poole | Qualified | No | Electrical and Plumbing Contractor | 03/03/2026 | gregg@greggpoole.com | [greggpoole.com](https://greggpoole.com) |
 
 ## Democrat Primary
 

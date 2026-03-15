@@ -42,8 +42,8 @@ Voters in Jefferson County will also see the following statewide and district ra
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Gonice C Davis | Qualified | Yes | Retired | 03/02/2026 | — | — |
-| Jeffery W Partridge | Qualified | No | Welding Instructor | 03/02/2026 | — | — |
+| Gonice C. Davis | Qualified | Yes | Retired | 03/02/2026 | — | — |
+| Jeffery W. Partridge | Qualified | No | Welding Instructor | 03/02/2026 | — | — |
 
 ### For County Commission - District 3
 
@@ -51,7 +51,7 @@ Voters in Jefferson County will also see the following statewide and district ra
 |-----------|--------|-----------|------------|-----------|-------|---------|
 | Aurthur Lee Wilcher | Qualified | No | Truck Driver | 03/05/2026 | — | — |
 | David Anthony Hastings | Qualified | No | Retired | 03/06/2026 | — | — |
-| Paul E Arrington | Qualified | No | Electrical Contractor | 03/05/2026 | — | — |
+| Paul E. Arrington | Qualified | No | Electrical Contractor | 03/05/2026 | — | — |
 
 ### Board of Education Member - District 1
 

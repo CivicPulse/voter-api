@@ -204,7 +204,7 @@ All 159 Georgia counties participate in this statewide race.
 
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
-| Josh Mclaurin | Qualified | No | Attorney | 03/02/2026 | josh@joshforgeorgia.com | [joshmclaurin.com](https://www.joshmclaurin.com) |
+| Josh McLaurin | Qualified | No | Attorney | 03/02/2026 | josh@joshforgeorgia.com | [joshmclaurin.com](https://www.joshmclaurin.com) |
 | Nabilah Parkes | Qualified | No | State Senator | 03/05/2026 | info@nabilahparkes.com | [nabilahparkes.com](https://nabilahparkes.com) |
 | Richard N. Wright | Qualified | No | Certified Public Accountant | 03/02/2026 | richard@wrightforgeorgia2026.com | [wrightforgeorgia2026.com](https://wrightforgeorgia2026.com) |
 

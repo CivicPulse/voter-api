@@ -202,7 +202,7 @@ All 159 Georgia counties participate in this statewide race.
 
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
-| Cam Thi Ashling | Qualified | No | Business Owner/Farmer | 03/03/2026 | info@camlovesga.com | [camlovesga.com](https://www.camlovesga.com) |
+| Cam Thi Ashling | Qualified | No | Business Owner/farmer | 03/03/2026 | info@camlovesga.com | [camlovesga.com](https://www.camlovesga.com) |
 | Dana Barrett | Qualified | No | Fulton County Commissioner | 03/05/2026 | dana@electdanabarrett.com | [electdanabarrett.com](https://electdanabarrett.com) |
 | Adrian Consonery Jr | Qualified | No | Voting Rights Advocate | 03/02/2026 | adrianc@aj4ga.org | [aj4ga.org](https://aj4ga.org) |
 | Penny Brown Reynolds | Qualified | No | Attorney | 03/02/2026 | info@pennyforgeorgia.com | [pennyforgeorgia.com](https://pennyforgeorgia.com) |

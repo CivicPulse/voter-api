@@ -64,7 +64,7 @@ PSC District 5 includes 23 counties.
 
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
-| Craig L Cupid | Qualified | No | Attorney | 03/04/2026 | info@cupidforpsc.com | [www.cupidforpsc.com](https://www.cupidforpsc.com) |
+| Craig L. Cupid | Qualified | No | Attorney | 03/04/2026 | info@cupidforpsc.com | [www.cupidforpsc.com](https://www.cupidforpsc.com) |
 | Shelia Edwards | Qualified | No | Business Owner | 03/05/2026 | shelia@electshelia.com | [shelia4psc.com](https://shelia4psc.com) |
 | Angelia Pressley | Qualified | No | Professor | 03/03/2026 | angelia@pressleyforgapsc.com | [pressleyforgapsc.com](https://pressleyforgapsc.com) |
 

@@ -65,10 +65,10 @@ Congressional District 12 includes 24 counties (some counties are split across m
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
 | Traci George | Qualified | No | Educator | 03/02/2026 | donate@traciforga.com | [tracigeorge.net](https://tracigeorge.net) |
-| Tracell Peace-Nichols | Qualified | No | Criminal And Family Law Attorney | 03/06/2026 | — | [peacenichols4congress.com](https://www.peacenichols4congress.com) |
+| Tracell Peace-Nichols | Qualified | No | Criminal and Family Law Attorney | 03/06/2026 | — | [peacenichols4congress.com](https://www.peacenichols4congress.com) |
 | Ceretta Smith | Qualified | No | Retired | 03/02/2026 | ceretta@cerettaforga.com | [cerettaforgeorgia.com](https://cerettaforgeorgia.com) |
 | Chris Stephens | Qualified | No | Self Employed | 03/04/2026 | chris@votechris.org | [votechris.org](https://www.votechris.org) |
-| Brianna Woodson | Qualified | No | Therapist In Residency | 03/04/2026 | bri@briwoodsonforcongress.com | [briwoodsonforcongress.com](https://briwoodsonforcongress.com) |
+| Brianna Woodson | Qualified | No | Therapist in Residency | 03/04/2026 | bri@briwoodsonforcongress.com | [briwoodsonforcongress.com](https://briwoodsonforcongress.com) |
 
 ## Data Source
 

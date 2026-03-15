@@ -69,7 +69,7 @@ Congressional District 2 includes 30 counties (some counties are split across mu
 
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
-| Sanford Dixon Bishop Jr | Qualified | Yes | Member Of Congress | 03/02/2026 | sanfordbishop@sanfordbishop.com | [sanfordbishop.com](https://sanfordbishop.com) |
+| Sanford Dixon Bishop Jr | Qualified | Yes | Member of Congress | 03/02/2026 | sanfordbishop@sanfordbishop.com | [sanfordbishop.com](https://sanfordbishop.com) |
 
 ## Data Source
 

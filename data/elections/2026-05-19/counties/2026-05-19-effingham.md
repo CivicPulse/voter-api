@@ -52,7 +52,7 @@ Voters in Effingham County will also see the following statewide and district ra
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Darlene L Ainsworth | Qualified | No | Retired | 03/04/2026 | — | — |
+| Darlene L. Ainsworth | Qualified | No | Retired | 03/04/2026 | — | — |
 
 ### County Commissioner - District 3
 
@@ -95,14 +95,14 @@ Voters in Effingham County will also see the following statewide and district ra
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Spencer D Tyson | Qualified | Yes | Lawyer | 03/03/2026 | — | — |
+| Spencer D. Tyson | Qualified | Yes | Lawyer | 03/03/2026 | — | — |
 
 ### City Council Post 2 — Guyton
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
 | Hursula Wallace Pelote | Qualified | No | Retired Teacher | 03/05/2026 | — | — |
-| Mary Ellen Connely-Woods | Qualified | No | Homemaker/Pt Retail Mgr | 03/03/2026 | — | — |
+| Mary Ellen Connely-Woods | Qualified | No | Homemaker/pt Retail Mgr | 03/03/2026 | — | — |
 
 ## Data Source
 

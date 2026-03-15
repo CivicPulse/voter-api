@@ -53,7 +53,7 @@ Voters in Habersham County will also see the following statewide and district ra
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Danny Mcclellon | Qualified | No | Retail Sales & Construction | — | dmcclellon@gmail.com | — |
+| Danny McClellon | Qualified | No | Retail Sales & Construction | — | dmcclellon@gmail.com | — |
 | Jason Mark Smith | Qualified | No | Civil Engineer | — | jmsmith@jmsmithengineering.com | — |
 
 ### Special County Commissioner District 3
@@ -62,7 +62,7 @@ Voters in Habersham County will also see the following statewide and district ra
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Danny Mcclellon | Qualified | No | Retail Sales & Construction | — | dmcclellon@gmail.com | — |
+| Danny McClellon | Qualified | No | Retail Sales & Construction | — | dmcclellon@gmail.com | — |
 | Jason Mark Smith | Qualified | No | Civil Engineer | — | jmsmith@jmsmithengineering.com | — |
 
 ### Board of Education District 3

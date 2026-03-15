@@ -54,7 +54,7 @@ Voters in Whitfield County will also see the following statewide and district ra
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
 | Anthony Narong Hulsey | Qualified | No | Retired | 03/05/2026 | — | — |
-| James F Anderson Jr | Qualified | No | Carpenter | 03/02/2026 | indiancreekbuilding@gmail.com | — |
+| James F. Anderson Jr | Qualified | No | Carpenter | 03/02/2026 | indiancreekbuilding@gmail.com | — |
 | John Thomas | Qualified | Yes | Real Estate Agent | 03/02/2026 | — | — |
 
 ### County Board of Education At Large
@@ -88,7 +88,7 @@ Voters in Whitfield County will also see the following statewide and district ra
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Maxine C. "Cindy" Morris | Qualified | Yes | Superior Court Judge | 03/02/2026 | cmorris@whitfieldcountyga.com | — |
+| Maxine C. "cindy" Morris | Qualified | Yes | Superior Court Judge | 03/02/2026 | cmorris@whitfieldcountyga.com | — |
 
 ### Judge of Superior Court, Conasauga Judicial Circuit - Wilbanks
 
@@ -100,7 +100,7 @@ Voters in Whitfield County will also see the following statewide and district ra
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Charles "Charlie" Bethel | Qualified | Yes | Justice of the Supreme Court of Georgia | 03/02/2026 | bethel@rtastrategy.com | [charliebethel.org](https://www.charliebethel.org) |
+| Charles "charlie" Bethel | Qualified | Yes | Justice of the Supreme Court of Georgia | 03/02/2026 | bethel@rtastrategy.com | [charliebethel.org](https://www.charliebethel.org) |
 
 ## Data Source
 

@@ -48,15 +48,15 @@ Voters in Chattahoochee County will also see the following statewide and distric
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Christy H Humber | Qualified | No | Independent Contractor | 03/06/2026 | — | — |
-| Robin D Marion | Qualified | No | Caterer | 03/02/2026 | — | — |
+| Christy H. Humber | Qualified | No | Independent Contractor | 03/06/2026 | — | — |
+| Robin D. Marion | Qualified | No | Caterer | 03/02/2026 | — | — |
 
 ### County Commissioner Post 5
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
 | Damon Albert Hoyte | Qualified | Yes | Electrician | 03/05/2026 | — | — |
-| Melissa J Haymond | Qualified | No | Consultant | 03/06/2026 | — | — |
+| Melissa J. Haymond | Qualified | No | Consultant | 03/06/2026 | — | — |
 
 ### County Board of Education Post 2
 

@@ -43,7 +43,7 @@ Voters in Chattooga County will also see the following statewide and district ra
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Norma J Peterson | Qualified | No | It Service Desk Analyst Ii | 03/02/2026 | — | — |
+| Norma J. Peterson | Qualified | No | IT Service Desk Analyst II | 03/02/2026 | — | — |
 | Tiffany Tarin Lawrence | Qualified | Yes | Master Cosmetologist | 03/06/2026 | — | — |
 
 ### County Board of Education District 3

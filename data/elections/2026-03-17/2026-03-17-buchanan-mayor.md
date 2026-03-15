@@ -2,22 +2,26 @@
 
 ## Metadata
 
-| Field        | Value                                                                        |
-|--------------|------------------------------------------------------------------------------|
-| Election     | [March 17, 2026 — Special Election](2026-03-17-special-election.md)          |
-| Type         | Non-Partisan                                                                 |
-| County       | Haralson                                                                     |
-| Municipality | Buchanan                                                                     |
-| Candidates   | 2 (Mayor: Holcombe vs Byrd — municipal qualifying, not in SOS CSV)           |
-| Purpose      | Former Mayor A.J. Scott convicted of vehicular homicide and removed from office |
-
-> **Note:** This contest does not appear in the SOS qualified candidates CSV. Candidates qualified through the City of Buchanan's municipal qualifying process. A Council seat was also on the ballot.
+| Field | Value |
+|-------|-------|
+| ID | |
+| Format Version | 1 |
+| Election | [March 17, 2026 — Special Election](2026-03-17-special-election.md) |
+| Type | special |
+| Stage | election |
+| Body | buchanan-city-council |
+| Seat | sole |
+| Name (SOS) | N/a — Municipal Qualifying |
+| Purpose | Former Mayor A.J. Scott convicted of vehicular homicide and removed from office |
+| Eligibility | Registered voters in City of Buchanan |
 
 ## Background
 
 Former Buchanan Mayor and ex-Georgia State Patrol Trooper A.J. Scott was convicted of second-degree vehicular homicide on August 27, 2025, in connection with a 2015 crash that killed two teenagers — 17-year-old Kylie Lindsey and 16-year-old Isabella Chinchilla — on Highway 27 near Bremen. Scott was driving approximately 90 mph without lights or sirens activated. He was sentenced to 20 years in prison and removed from office the day after his conviction.
 
 Interim Mayor Steve Holcombe faces Jacob Byrd in the mayoral race. Candidates qualified through the City of Buchanan's municipal qualifying process, separate from the Secretary of State.
+
+> **Note:** This contest does not appear in the SOS qualified candidates CSV. Candidates qualified through the City of Buchanan's municipal qualifying process. A Council seat was also on the ballot.
 
 ## Data Source
 

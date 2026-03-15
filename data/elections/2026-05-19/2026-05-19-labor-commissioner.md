@@ -199,10 +199,10 @@ All 159 Georgia counties participate in this statewide race.
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
 | Brett A. Hulme | Qualified | No | Self-Employed | 03/04/2026 | brett@bretthulme.com | [bretthulme.com](https://bretthulme.com) |
-| Jason Matthew Moon | Qualified | No | Professional Representative for U.S. SBA | 03/03/2026 | — | — |
+| Jason Matthew Moon | Qualified | No | Professional Representative for U.s. Sba | 03/03/2026 | — | — |
 | Nikki Porcher | Qualified | No | Business Woman | 03/05/2026 | info@voteporcher4ga.com | [vote4nikki.com](https://vote4nikki.com) |
 | Michelle Michi Sanchez | Qualified | No | Self Employed | 03/05/2026 | info@michi4ga.com | [michi4ga.com](https://michi4ga.com) |
-| Christian D Smith | Qualified | No | Attorney | 03/03/2026 | — | [wiseforthepeople.com](https://wiseforthepeople.com) |
+| Christian D. Smith | Qualified | No | Attorney | 03/03/2026 | — | [wiseforthepeople.com](https://wiseforthepeople.com) |
 
 > **Withdrawn:** Clarence Blalock (Small Business Owner)
 

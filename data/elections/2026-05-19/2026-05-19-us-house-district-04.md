@@ -41,7 +41,7 @@ Congressional District 4 includes 2 counties (some counties are split across mul
 
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
-| Henry Calvin "Hank" Johnson Jr | Qualified | Yes | Congressman | 03/02/2026 | — | [hankforcongress.com](https://hankforcongress.com) |
+| Henry Calvin "hank" Johnson Jr | Qualified | Yes | Congressman | 03/02/2026 | — | [hankforcongress.com](https://hankforcongress.com) |
 | Ansel Postell | Qualified | No | Entrepreneur | 03/05/2026 | postell4all@yahoo.com | [apostellforcongress.com](https://apostellforcongress.com) |
 | Ben Truman | Qualified | No | Consultant | 03/03/2026 | ben@bentrumanforcongress.com | [bentrumanforcongress.com](https://www.bentrumanforcongress.com) |
 

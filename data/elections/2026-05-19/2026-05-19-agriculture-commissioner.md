@@ -190,7 +190,7 @@ All 159 Georgia counties participate in this statewide race.
 
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
-| Tyler J Harper | Qualified | Yes | Farmer | 03/04/2026 | info@tylerharperga.com | [tylerharperga.com](https://tylerharperga.com) |
+| Tyler J. Harper | Qualified | Yes | Farmer | 03/04/2026 | info@tylerharperga.com | [tylerharperga.com](https://tylerharperga.com) |
 
 ## Democrat Primary
 

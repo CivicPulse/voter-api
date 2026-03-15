@@ -53,7 +53,7 @@ Voters in Oglethorpe County will also see the following statewide and district r
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| David R Clark | Qualified | Yes | Flight Instructor | 03/03/2026 | drclarkdist3@windstream.net | — |
+| David R. Clark | Qualified | Yes | Flight Instructor | 03/03/2026 | drclarkdist3@windstream.net | — |
 
 ### Commissioner-District 5
 
@@ -70,7 +70,7 @@ Voters in Oglethorpe County will also see the following statewide and district r
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Susan H Robinson | Qualified | Yes | Retired | 03/04/2026 | srobinson@oglethorpe.k12.ga.us | — |
+| Susan H. Robinson | Qualified | Yes | Retired | 03/04/2026 | srobinson@oglethorpe.k12.ga.us | — |
 
 ### Board of Education-District 5
 
@@ -78,7 +78,7 @@ Voters in Oglethorpe County will also see the following statewide and district r
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Jennifer Mcduffie Wisham | Qualified | No | Physical Therapist | 03/03/2026 | jennywisham@gmail.com | — |
+| Jennifer McDuffie Wisham | Qualified | No | Physical Therapist | 03/03/2026 | jennywisham@gmail.com | — |
 | Thomas Andrew Carroll | Qualified | No | Physicist | 03/02/2026 | — | — |
 
 ## Data Source

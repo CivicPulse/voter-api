@@ -51,7 +51,7 @@ Voters in Taliaferro County will also see the following statewide and district r
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Cysta V Moore | Qualified | No | Self Employed | 03/11/2026 | — | — |
+| Cysta V. Moore | Qualified | No | Self Employed | 03/11/2026 | — | — |
 | Kirby Mark Beggs Sr. | Qualified | No | Farmer | 03/11/2026 | kirbybeggs@gmail.com | — |
 | Shanece Lasha Mayes | Qualified | No | Para | 03/11/2026 | — | — |
 

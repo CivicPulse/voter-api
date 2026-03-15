@@ -44,8 +44,8 @@ Voters in Jeff Davis County will also see the following statewide and district r
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Darrell Hutto | Qualified | No | Owner of C & H Creative Flooring | 03/05/2026 | — | — |
-| Jerry Wheeler | Qualified | No | GDOT - Hwy Maintenance Tech | 03/05/2026 | — | — |
+| Darrell Hutto | Qualified | No | Owner of C. & H. Creative Flooring | 03/05/2026 | — | — |
+| Jerry Wheeler | Qualified | No | Gdot - Hwy Maintenance Tech | 03/05/2026 | — | — |
 | Veston Hurley | Qualified | No | Walmart Supply Chain Area Manager | 03/06/2026 | — | — |
 
 ### For County Commissioner, District 5
@@ -70,7 +70,7 @@ Voters in Jeff Davis County will also see the following statewide and district r
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Shawn Z. Rowland | Qualified | Yes | Attorney/Judge, State Court | 03/02/2026 | — | — |
+| Shawn Z. Rowland | Qualified | Yes | Attorney/judge, State Court | 03/02/2026 | — | — |
 
 ## Data Source
 

@@ -39,11 +39,11 @@ Congressional District 11 includes 5 counties (some counties are split across mu
 | Robert Allen Adkerson | Qualified | No | Self Employed | 03/02/2026 | — | [voterobadkerson.com](https://voterobadkerson.com) |
 | William Brown | Qualified | No | Attorney | 03/06/2026 | wbrown@tbcsatx.com | [williambrown2026.com](https://williambrown2026.com) |
 | Lisa Anne Carlquist | Qualified | No | Board Member | 03/03/2026 | — | [lisacforcongress.com](https://lisacforcongress.com) |
-| John A Cowan Jr | Qualified | No | Neurosurgeon | 03/02/2026 | drjohncowan@cowanforcongress.com | [cowanforcongress.com](https://www.cowanforcongress.com) |
+| John A. Cowan Jr | Qualified | No | Neurosurgeon | 03/02/2026 | drjohncowan@cowanforcongress.com | [cowanforcongress.com](https://www.cowanforcongress.com) |
 | John Hobbs | Qualified | No | CNC Machinist | 03/06/2026 | johnhobbsforcongress@gmail.com | [johnhobbsforcongress.com](https://johnhobbsforcongress.com) |
 | Uloma Stacy Kama | Qualified | No | Physician | 03/03/2026 | — | [electuloma4uscongress.com](https://www.electuloma4uscongress.com) |
 | Chris Mora | Qualified | No | Telecommunications | 03/02/2026 | campaign@moraforgeorgia.com | [moraforgeorgia.com](https://moraforgeorgia.com) |
-| Tricia R Pridemore | Qualified | No | Public Service Commissioner | 03/03/2026 | — | [triciapridemore.org](https://triciapridemore.org) |
+| Tricia R. Pridemore | Qualified | No | Public Service Commissioner | 03/03/2026 | — | [triciapridemore.org](https://triciapridemore.org) |
 
 ## Democrat Primary
 

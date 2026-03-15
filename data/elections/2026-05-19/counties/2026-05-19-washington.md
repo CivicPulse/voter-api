@@ -76,7 +76,7 @@ Voters in Washington County will also see the following statewide and district r
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| James W Hitchcock Jr | Qualified | Yes | Farmer | 03/06/2026 | — | — |
+| James W. Hitchcock Jr | Qualified | Yes | Farmer | 03/06/2026 | — | — |
 
 ### Board of Education Chairman
 
@@ -91,7 +91,7 @@ Voters in Washington County will also see the following statewide and district r
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
 | Ronald Patrick Freeman | Qualified | No | Retired Educator | 03/06/2026 | — | — |
-| Vickie N Harden | Qualified | No | Retired Superintendent | 03/06/2026 | — | — |
+| Vickie N. Harden | Qualified | No | Retired Superintendent | 03/06/2026 | — | — |
 
 ### Board of Education District 1
 
@@ -108,7 +108,7 @@ Voters in Washington County will also see the following statewide and district r
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Rita J Hunt | Qualified | Yes | Retired School Counselor | 03/05/2026 | — | — |
+| Rita J. Hunt | Qualified | Yes | Retired School Counselor | 03/05/2026 | — | — |
 
 ### Board of Education District 3
 
@@ -124,7 +124,7 @@ Voters in Washington County will also see the following statewide and district r
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Rodney K Walker | Qualified | Yes | Self Employed Truck Driver | 03/05/2026 | — | — |
+| Rodney K. Walker | Qualified | Yes | Self Employed Truck Driver | 03/05/2026 | — | — |
 
 ## Data Source
 

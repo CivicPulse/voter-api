@@ -46,10 +46,10 @@ Congressional District 14 includes 10 counties (some counties are split across m
 | Timothy Beau Brown | Qualified | No | Risk Engineer | 03/06/2026 | info@beaubrownforcongress.com | [beaubrownforcongress.com](https://beaubrownforcongress.com) |
 | Eric Brad Cunningham | Qualified | No | Railroad | 03/04/2026 | ericcunninghamforcongress@gmail.com | [ericcunninghamforcongress.com](https://www.ericcunninghamforcongress.com) |
 | Clay Fuller | Qualified | No | District Attorney | 03/04/2026 | — | [clayfullerforgeorgia.com](https://clayfullerforgeorgia.com) |
-| Thomas J Gray | Qualified | No | Pastor | 03/03/2026 | — | [tomgray.com](https://tomgray.com) |
+| Thomas J. Gray | Qualified | No | Pastor | 03/03/2026 | — | [tomgray.com](https://tomgray.com) |
 | Nicky Lama | Qualified | No | Entrepreneur | 03/02/2026 | nicky@nickylama.com | [nickylama.com](https://nickylama.com) |
-| Colton Moore | Qualified | No | Auctioneer/Truck Driver | 03/03/2026 | colton@coltonmoore.com | [coltonmoore.com](https://coltonmoore.com) |
-| Brian C Stover | Qualified | No | Entrepreneur | 03/02/2026 | info@brianstoverforcongress.com | [brianstoverforcongress.com](https://brianstoverforcongress.com) |
+| Colton Moore | Qualified | No | Auctioneer/truck Driver | 03/03/2026 | colton@coltonmoore.com | [coltonmoore.com](https://coltonmoore.com) |
+| Brian C. Stover | Qualified | No | Entrepreneur | 03/02/2026 | info@brianstoverforcongress.com | [brianstoverforcongress.com](https://brianstoverforcongress.com) |
 | James Edward Tully Jr | Qualified | No | Self Employed | 03/02/2026 | jimt@jimtullyforgeorgia.com | [jimtullyforgeorgia.com](https://jimtullyforgeorgia.com) |
 
 ## Democrat Primary
@@ -58,7 +58,7 @@ Congressional District 14 includes 10 counties (some counties are split across m
 
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
-| Shawn Andre Harris | Qualified | No | Veteran/Cattle Farmer | 03/02/2026 | info@shawnforgeorgia.com | [shawnforgeorgia.com](https://www.shawnforgeorgia.com) |
+| Shawn Andre Harris | Qualified | No | Veteran/cattle Farmer | 03/02/2026 | info@shawnforgeorgia.com | [shawnforgeorgia.com](https://www.shawnforgeorgia.com) |
 
 ## Data Source
 

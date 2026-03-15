@@ -50,7 +50,7 @@ Voters in Meriwether County will also see the following statewide and district r
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| David "Doodlum" Ward Jr | Qualified | No | Self Employed | 03/02/2026 | — | — |
+| David "doodlum" Ward Jr | Qualified | No | Self Employed | 03/02/2026 | — | — |
 | Emmett Collins | Qualified | Yes | Self Employed | 03/02/2026 | — | — |
 
 ### County Commissioner District 5
@@ -59,8 +59,8 @@ Voters in Meriwether County will also see the following statewide and district r
 |-----------|--------|-----------|------------|-----------|-------|---------|
 | Adam Worsley | Qualified | Yes | Director of Operations | 03/02/2026 | — | — |
 | Blake Pearson | Qualified | No | Farm Technician | 03/06/2026 | — | — |
-| Catarsman Bryant | Qualified | No | Retired CSX Transportation | 03/06/2026 | — | — |
-| Chris Mac Mccombs | Qualified | No | Farmer/Forrestry Small Business Owner | 03/03/2026 | webackmac26@gmail.com | — |
+| Catarsman Bryant | Qualified | No | Retired Csx Transportation | 03/06/2026 | — | — |
+| Chris Mac McCombs | Qualified | No | Farmer/forrestry Small Business Owner | 03/03/2026 | webackmac26@gmail.com | — |
 
 ### (C) Board of Education District 3
 

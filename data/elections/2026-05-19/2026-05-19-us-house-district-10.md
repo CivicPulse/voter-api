@@ -61,8 +61,8 @@ Congressional District 10 includes 20 counties (some counties are split across m
 
 | Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
 |-----------|--------|-----------|------------|---------------|-------|---------|
-| Pamela "Pam" Delancy | Qualified | No | Military Retiree | 03/03/2026 | electdelancy@votepamdelancy.com | [votepamdelancy.com](https://votepamdelancy.com) |
-| Alexandra "Lexy" Doherty | Qualified | No | Candidate | 03/02/2026 | campaign@lexydoherty.com | [lexydoherty.com](https://lexydoherty.com) |
+| Pamela "pam" Delancy | Qualified | No | Military Retiree | 03/03/2026 | electdelancy@votepamdelancy.com | [votepamdelancy.com](https://votepamdelancy.com) |
+| Alexandra "lexy" Doherty | Qualified | No | Candidate | 03/02/2026 | campaign@lexydoherty.com | [lexydoherty.com](https://lexydoherty.com) |
 | John B. Dority | Qualified | No | Retired Engineer | 03/06/2026 | — | — |
 
 ## Data Source

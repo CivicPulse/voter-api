@@ -200,7 +200,7 @@ All 159 Georgia counties participate in this statewide race.
 |-----------|--------|-----------|------------|---------------|-------|---------|
 | Clarence Blalock | Qualified | No | Small Business Owner | 03/06/2026 | clarence@clarenceforga.com | [clarenceforga.com](https://clarenceforga.com) |
 | Thomas Gabriel Dean | Qualified | No | Driver | 03/06/2026 | — | — |
-| Ambuj "AJ" Jain | Qualified | No | Entrepreneur | 03/06/2026 | — | — |
+| Ambuj "aj" Jain | Qualified | No | Entrepreneur | 03/06/2026 | — | — |
 | Deandre Bernard Mathis | Qualified | No | Insurance Agent | 03/02/2026 | info@deandreforgeorgia.com | [deandreforgeorgia.com](https://deandreforgeorgia.com) |
 | Keisha Sean Waites | Qualified | No | Former State Legislator | 03/06/2026 | seanwaites@hotmail.com | [keishawaites.org](https://keishawaites.org) |
 

@@ -83,7 +83,7 @@ Voters in Dougherty County will also see the following statewide and district ra
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Norma K Gaines-Heath | Qualified | Yes | Retired Educator | 03/05/2026 | — | — |
+| Norma K. Gaines-Heath | Qualified | Yes | Retired Educator | 03/05/2026 | — | — |
 
 ### Board of Education District 4
 
@@ -100,7 +100,7 @@ Voters in Dougherty County will also see the following statewide and district ra
 
 | Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
 |-----------|--------|-----------|------------|-----------|-------|---------|
-| Dean T Phinazee | Qualified | Yes | Retired | 03/02/2026 | — | — |
+| Dean T. Phinazee | Qualified | Yes | Retired | 03/02/2026 | — | — |
 
 ### Judge of Superior Court, Dougherty Judicial Circuit - Dent
 
