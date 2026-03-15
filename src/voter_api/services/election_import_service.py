@@ -17,6 +17,10 @@ from voter_api.models.election import Election
 # Sub-batch size: ~25 columns * 500 rows = 12,500 params (under 32,767 limit)
 _UPSERT_SUB_BATCH = 500
 
+# Well-known placeholder UUID emitted by the converter when election_event_id
+# cannot be resolved at conversion time. Treat as None to avoid FK violations.
+_PLACEHOLDER_UUID = "00000000-0000-0000-0000-000000000000"
+
 # Columns excluded from the ON CONFLICT UPDATE set
 _EXCLUDE_COLUMNS = frozenset({"id", "created_at"})
 
@@ -104,6 +108,11 @@ def _prepare_record(record: dict[str, Any]) -> dict[str, Any]:
     for uuid_field in ["election_event_id", "boundary_id"]:
         if uuid_field in record and record[uuid_field] is not None:
             val = record[uuid_field]
+            # Skip well-known placeholder UUID (converter emits this when
+            # election_event_id can't be resolved at conversion time)
+            str_val = str(val)
+            if str_val == _PLACEHOLDER_UUID:
+                continue
             db_record[uuid_field] = uuid.UUID(val) if isinstance(val, str) else val
 
     # Enum fields -> string values

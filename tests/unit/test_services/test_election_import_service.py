@@ -7,8 +7,6 @@ and not converted to a uuid.UUID FK reference.
 
 import uuid
 
-import pytest
-
 from voter_api.services.election_import_service import _prepare_record
 
 PLACEHOLDER_UUID = "00000000-0000-0000-0000-000000000000"
