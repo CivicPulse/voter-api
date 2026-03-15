@@ -8,6 +8,7 @@ from voter_api.models.analysis_run import AnalysisRun
 from voter_api.models.audit_log import AuditLog
 from voter_api.models.auth_tokens import PasswordResetToken, UserInvite
 from voter_api.models.boundary import Boundary
+from voter_api.models.candidacy import Candidacy
 from voter_api.models.candidate import Candidate, CandidateLink
 from voter_api.models.county_district import CountyDistrict
 from voter_api.models.county_metadata import CountyMetadata
@@ -44,6 +45,7 @@ __all__ = [
     "AnalysisRun",
     "AuditLog",
     "Boundary",
+    "Candidacy",
     "Candidate",
     "CandidateLink",
     "CountyDistrict",

@@ -20,12 +20,13 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from voter_api.models.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
+    from voter_api.models.candidacy import Candidacy
     from voter_api.models.election import Election
     from voter_api.models.import_job import ImportJob
 
@@ -40,10 +41,10 @@ class Candidate(Base, UUIDMixin, TimestampMixin):
 
     __tablename__ = "candidates"
 
-    election_id: Mapped[uuid.UUID] = mapped_column(
+    election_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("elections.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
     full_name: Mapped[str] = mapped_column(String(200), nullable=False)
     party: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -67,8 +68,16 @@ class Candidate(Base, UUIDMixin, TimestampMixin):
         nullable=True,
     )
 
+    # Cross-system ID mapping (e.g. ballotpedia, open_states, vpap)
+    external_ids: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
     # Relationships
-    election: Mapped["Election"] = relationship(back_populates="candidates")
+    election: Mapped["Election | None"] = relationship(back_populates="candidates")
+    candidacies: Mapped[list["Candidacy"]] = relationship(
+        back_populates="candidate",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
     import_job: Mapped["ImportJob | None"] = relationship("ImportJob", lazy="selectin")
     links: Mapped[list["CandidateLink"]] = relationship(
         back_populates="candidate",

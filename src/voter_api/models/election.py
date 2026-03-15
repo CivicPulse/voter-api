@@ -27,6 +27,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from voter_api.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
 from voter_api.models.boundary import Boundary  # noqa: TC001
+from voter_api.models.candidacy import Candidacy  # noqa: TC001
 from voter_api.models.candidate import Candidate  # noqa: TC001
 from voter_api.models.election_event import ElectionEvent  # noqa: TC001
 
@@ -76,6 +77,9 @@ class Election(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     eligible_county: Mapped[str | None] = mapped_column(String(100), nullable=True)
     eligible_municipality: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
+    # Stage: "election", "runoff", "recount"
+    election_stage: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
     # FK to election_events (parent "election day" grouping)
     election_event_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
@@ -89,6 +93,7 @@ class Election(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     county_results: Mapped[list[ElectionCountyResult]] = relationship(back_populates="election", cascade=_CASCADE)
     boundary: Mapped[Boundary | None] = relationship(foreign_keys=[boundary_id])
     candidates: Mapped[list[Candidate]] = relationship(back_populates="election", cascade=_CASCADE)
+    candidacies: Mapped[list[Candidacy]] = relationship(back_populates="election", cascade=_CASCADE)
 
     __table_args__ = (
         Index(
