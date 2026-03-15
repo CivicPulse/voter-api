@@ -80,7 +80,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Fix placeholder FK issue, prepare markdown files, convert to JSONL, and import all three elections into database
+- [x] 04-01-PLAN.md — Fix placeholder FK issue, prepare markdown files, convert to JSONL, and import all three elections into database
 - [ ] 04-02-PLAN.md — Write pipeline walkthrough document with real terminal output, human-verify checkpoint
 
 ## Progress
@@ -95,4 +95,4 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 | 1. Data Contracts | 3/3 | Complete | 2026-03-14 |
 | 2. Converter and Import Pipeline | 3/3 | Complete   | 2026-03-15 |
 | 3. Claude Code Skills | 4/5 | In Progress|  |
-| 4. End-to-End Demo | 0/2 | Not started | - |
+| 4. End-to-End Demo | 1/2 | In Progress | - |

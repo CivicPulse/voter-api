@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-15T06:02:45.252Z"
-last_activity: 2026-03-15 -- Plan 02-03 import pipeline and file migration complete
+status: in_progress
+stopped_at: "Completed 04-end-to-end-demo 04-01-PLAN.md"
+last_updated: "2026-03-15T07:11:00.000Z"
+last_activity: 2026-03-15 -- Plan 04-01 end-to-end election pipeline complete
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
-  percent: 100
+  total_plans: 13
+  completed_plans: 12
+  percent: 92
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-13)
 
 ## Current Position
 
-Phase: 2 of 4 (Converter and Import Pipeline) -- COMPLETE
-Plan: 3 of 3 in current phase -- COMPLETE
-Status: Phase 02 complete, all 3 plans done
-Last activity: 2026-03-15 -- Plan 02-03 import pipeline and file migration complete
+Phase: 4 of 4 (End-to-End Demo) -- IN PROGRESS
+Plan: 1 of 2 in current phase -- COMPLETE
+Status: Phase 04 in progress, plan 04-01 done
+Last activity: 2026-03-15 -- Plan 04-01 end-to-end election pipeline complete
 
-Progress: [██████████] 100% (6 of 6 plans)
+Progress: [█████████░] 92% (12 of 13 plans)
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [██████████] 100% (6 of 6 plans)
 | Phase 03-claude-code-skills P02 | 14min | 3 tasks | 17 files |
 | Phase 03-claude-code-skills P04 | 3min | 2 tasks | 6 files |
 | Phase 03-claude-code-skills P05 | 13min | 2 tasks | 87 files |
+| Phase 04-end-to-end-demo P01 | 36min | 2 tasks | 241 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,9 @@ Recent decisions affecting current work:
 - [Phase 03-claude-code-skills]: process-election pipeline uses --depth basic for enrichment step to keep completion time reasonable for large elections
 - [Phase 03-claude-code-skills]: Process smallest election first (March 10) to validate skill output before large May 19 batch -- fail-fast ordering
 - [Phase 03-claude-code-skills]: Human-verify checkpoint as blocking gate after automation batch -- data quality requires human sign-off before Phase 4 import
+- [04-01]: Normalized batch upsert column sets using dict.fromkeys(all_keys)|r for uniform PostgreSQL ON CONFLICT DO UPDATE
+- [04-01]: Expanded ElectionType literal in election_tracker/ingester.py to include JSONL pipeline types rather than creating a separate type
+- [04-01]: Candidate links from JSONL imported inline via existing _upsert_candidate_links helper in import_candidates_jsonl
 
 ### Pending Todos
 
@@ -134,6 +138,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-15T06:02:45.246Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-end-to-end-demo/04-CONTEXT.md
+Last session: 2026-03-15T07:11:00.000Z
+Stopped at: Completed 04-end-to-end-demo 04-01-PLAN.md
+Resume file: .planning/phases/04-end-to-end-demo/04-02-PLAN.md
