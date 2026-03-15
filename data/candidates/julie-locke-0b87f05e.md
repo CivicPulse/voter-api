@@ -33,7 +33,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-whitfield.md](../elections/2026-03-10/counties/2026-03-10-whitfield.md) |
 | Party | Non-Partisan |
 | Occupation | Independent Contractor |

@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:lanny.thomas32@gmail.com | lanny.thomas32@gmail.com |
+| email | mailto:lanny.thomas32@gmail.com | lanny.thomas32@gmail.com |
 | website | https://www.lanny53.com | lanny53.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-state-senate-district-53.md](../elections/2026-03-10/2026-03-10-state-senate-district-53.md) |
 | Party | Republican |
 | Occupation | Retired Educator |

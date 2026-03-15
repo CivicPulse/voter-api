@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:meg@megforga.com | meg@megforga.com |
+| email | mailto:meg@megforga.com | meg@megforga.com |
 | website | https://meg4ga.com | meg4ga.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-us-house-district-14.md](../elections/2026-03-10/2026-03-10-us-house-district-14.md) |
 | Party | Republican |
 | Occupation | Travel Consultant Contractor |

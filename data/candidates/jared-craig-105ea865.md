@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:pdc.jbc@gmail.com | pdc.jbc@gmail.com |
+| email | mailto:pdc.jbc@gmail.com | pdc.jbc@gmail.com |
 | website | https://jared4congress.com | jared4congress.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-us-house-district-14.md](../elections/2026-03-10/2026-03-10-us-house-district-14.md) |
 | Party | Republican |
 | Occupation | Attorney |

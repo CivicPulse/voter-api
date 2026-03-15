@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:electlafawn.pinkneymealing@gmail.com | electlafawn.pinkneymealing@gmail.com |
+| email | mailto:electlafawn.pinkneymealing@gmail.com | electlafawn.pinkneymealing@gmail.com |
 | website | https://lafawnforga.com | lafawnforga.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-state-house-district-130.md](../elections/2026-03-10/2026-03-10-state-house-district-130.md) |
 | Party | Democrat |
 | Occupation | Labor Relations Practitioner |

@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:votekautz@gmail.com | votekautz@gmail.com |
+| email | mailto:votekautz@gmail.com | votekautz@gmail.com |
 | website | https://votekautz.com | votekautz.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-state-house-district-94.md](../elections/2026-03-10/2026-03-10-state-house-district-94.md) |
 | Party | Democrat |
 | Occupation | Attorney |

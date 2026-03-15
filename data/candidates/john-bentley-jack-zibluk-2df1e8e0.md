@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:jackzibluk@gmail.com | jackzibluk@gmail.com |
+| email | mailto:jackzibluk@gmail.com | jackzibluk@gmail.com |
 | website | https://jackzforsenate.com | jackzforsenate.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-state-senate-district-53.md](../elections/2026-03-10/2026-03-10-state-senate-district-53.md) |
 | Party | Democrat |
 | Occupation | Professor of Communication |

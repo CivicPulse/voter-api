@@ -34,7 +34,7 @@ Emory University School of Law graduate (2016), admitted to the Georgia Bar in 2
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-17-clayton-probate-judge.md](../elections/2026-03-17/2026-03-17-clayton-probate-judge.md) |
 | Party | Non-Partisan |
 | Occupation | Attorney |

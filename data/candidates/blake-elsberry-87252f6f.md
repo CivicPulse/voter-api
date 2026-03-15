@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:blakeelsberry@elsberryforstatesenate.com | blakeelsberry@elsberryforstatesenate.com |
+| email | mailto:blakeelsberry@elsberryforstatesenate.com | blakeelsberry@elsberryforstatesenate.com |
 | website | https://elsberrryforstatesenate.com | elsberrryforstatesenate.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-state-senate-district-53.md](../elections/2026-03-10/2026-03-10-state-senate-district-53.md) |
 | Party | Republican |
 | Occupation | Regional Director |

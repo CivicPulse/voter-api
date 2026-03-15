@@ -26,7 +26,7 @@ Herzing University graduate (2023, IT, honors). Mother of 8. Life and health coa
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:ulisha84@gmail.com | ulisha84@gmail.com |
+| email | mailto:ulisha84@gmail.com | ulisha84@gmail.com |
 
 ## Elections
 
@@ -34,7 +34,7 @@ Herzing University graduate (2023, IT, honors). Mother of 8. Life and health coa
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-17-bibb-commission-district-5.md](../elections/2026-03-17/2026-03-17-bibb-commission-district-5.md) |
 | Party | Non-Partisan |
 | Occupation | Life and Health Coach |

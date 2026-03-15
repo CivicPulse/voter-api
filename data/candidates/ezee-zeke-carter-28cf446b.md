@@ -33,7 +33,7 @@ Sitting council member (elected November 2023). Military veteran and former Wadl
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-17-wadley-council-member.md](../elections/2026-03-17/2026-03-17-wadley-council-member.md) |
 | Party | Non-Partisan |
 | Occupation | Retired |

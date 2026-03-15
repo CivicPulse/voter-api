@@ -39,9 +39,10 @@ consistent across skill output. Full format specifications live in `docs/formats
 
 ## URL Normalization
 
-- Always use `https://` — add if missing, upgrade `http://` to `https://`
-- Always lowercase the full URL
-- Remove trailing slashes for consistency
+- Always use `https://` for web URLs — add if missing, upgrade `http://` to `https://`
+- Do NOT add `https://` to non-web URL schemes (e.g., `mailto:`, `tel:`)
+- Lowercase scheme and hostname only — preserve path and query parameter casing (some CDNs and sites use case-sensitive paths)
+- Remove trailing slashes (except for root URLs like `https://example.com/`)
 - Validate URL is live (mark as `(dead link)` if not responding)
 
 ## Empty Values

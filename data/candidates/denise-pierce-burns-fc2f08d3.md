@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:denise@deniseforgeorgia.com | denise@deniseforgeorgia.com |
+| email | mailto:denise@deniseforgeorgia.com | denise@deniseforgeorgia.com |
 | website | https://www.deniseforgeorgia.com | deniseforgeorgia.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-state-senate-district-53.md](../elections/2026-03-10/2026-03-10-state-senate-district-53.md) |
 | Party | Republican |
 | Occupation | Homemaker / Home Educator |

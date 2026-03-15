@@ -33,7 +33,7 @@ Lifelong Pleasant Hill resident. Extruder operator at Kumho Tire. Vice president
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-17-bibb-commission-district-5.md](../elections/2026-03-17/2026-03-17-bibb-commission-district-5.md) |
 | Party | Non-Partisan |
 | Occupation | Extruder Operator |

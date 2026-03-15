@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:colton@coltonmoore.com | colton@coltonmoore.com |
+| email | mailto:colton@coltonmoore.com | colton@coltonmoore.com |
 | website | https://coltonmoore.com | coltonmoore.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-us-house-district-14.md](../elections/2026-03-10/2026-03-10-us-house-district-14.md) |
 | Party | Republican |
 | Occupation | Auctioneer, Truck Driver |

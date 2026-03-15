@@ -26,7 +26,7 @@ Lifelong Macon resident. Valdosta State University graduate (biology), J.D. from
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:lajustice3@gmail.com | lajustice3@gmail.com |
+| email | mailto:lajustice3@gmail.com | lajustice3@gmail.com |
 | website | https://childressjustice.com/our-team/landon-justice/ | childressjustice.com |
 
 ## Elections
@@ -35,7 +35,7 @@ Lifelong Macon resident. Valdosta State University graduate (biology), J.D. from
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-17-bibb-commission-district-5.md](../elections/2026-03-17/2026-03-17-bibb-commission-district-5.md) |
 | Party | Non-Partisan |
 | Occupation | Attorney |

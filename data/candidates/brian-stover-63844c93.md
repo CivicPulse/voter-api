@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:info@brianstoverforcongress.com | info@brianstoverforcongress.com |
+| email | mailto:info@brianstoverforcongress.com | info@brianstoverforcongress.com |
 | website | https://brianstoverforcongress.com | brianstoverforcongress.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-us-house-district-14.md](../elections/2026-03-10/2026-03-10-us-house-district-14.md) |
 | Party | Republican |
 | Occupation | Business Development |

@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:venola@venolaforhd94.com | venola@venolaforhd94.com |
+| email | mailto:venola@venolaforhd94.com | venola@venolaforhd94.com |
 | website | https://venolaforhd94.com | venolaforhd94.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-state-house-district-94.md](../elections/2026-03-10/2026-03-10-state-house-district-94.md) |
 | Party | Democrat |
 | Occupation | Education Consultant |

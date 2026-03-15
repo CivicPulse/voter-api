@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:david.carson.ao@gmail.com | david.carson.ao@gmail.com |
+| email | mailto:david.carson.ao@gmail.com | david.carson.ao@gmail.com |
 
 ## Elections
 
@@ -34,7 +34,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-state-house-district-130.md](../elections/2026-03-10/2026-03-10-state-house-district-130.md) |
 | Party | Republican |
 | Occupation | Cyber Security Analyst and Educator |

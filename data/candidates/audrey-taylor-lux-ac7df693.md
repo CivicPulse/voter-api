@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:audrey@audrey4ga.com | audrey@audrey4ga.com |
+| email | mailto:audrey@audrey4ga.com | audrey@audrey4ga.com |
 | website | https://www.audrey4ga.com | audrey4ga.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-state-house-district-94.md](../elections/2026-03-10/2026-03-10-state-house-district-94.md) |
 | Party | Democrat |
 | Occupation | Candidate |

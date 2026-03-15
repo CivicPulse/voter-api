@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:info@clayfullerforgeorgia.com | info@clayfullerforgeorgia.com |
+| email | mailto:info@clayfullerforgeorgia.com | info@clayfullerforgeorgia.com |
 | website | https://clayfullerforgeorgia.com | clayfullerforgeorgia.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-us-house-district-14.md](../elections/2026-03-10/2026-03-10-us-house-district-14.md) |
 | Party | Republican |
 | Occupation | District Attorney |

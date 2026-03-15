@@ -34,7 +34,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-state-house-district-94.md](../elections/2026-03-10/2026-03-10-state-house-district-94.md) |
 | Party | Democrat |
 | Occupation | Self Employed |

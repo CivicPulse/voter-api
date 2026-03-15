@@ -26,7 +26,7 @@ Central High School graduate, attended Morris Brown College (business). Kitchen 
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:achestergibbs2026@gmail.com | achestergibbs2026@gmail.com |
+| email | mailto:achestergibbs2026@gmail.com | achestergibbs2026@gmail.com |
 
 ## Elections
 
@@ -34,7 +34,7 @@ Central High School graduate, attended Morris Brown College (business). Kitchen 
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-17-bibb-commission-district-5.md](../elections/2026-03-17/2026-03-17-bibb-commission-district-5.md) |
 | Party | Non-Partisan |
 | Occupation | Kitchen Designer |

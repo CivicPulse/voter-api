@@ -18,7 +18,7 @@ validated: 2026-03-15
 
 | Property | Value |
 |----------|-------|
-| **Framework** | pytest 7.x + pytest-asyncio |
+| **Framework** | pytest 9.x + pytest-asyncio |
 | **Config file** | `pyproject.toml` ([tool.pytest.ini_options]) |
 | **Quick run command** | `uv run pytest tests/unit/lib/test_converter/ -x` |
 | **Full suite command** | `uv run pytest` |

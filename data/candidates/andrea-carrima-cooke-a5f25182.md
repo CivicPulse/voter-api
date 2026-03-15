@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:cooke4commission@gmail.com | cooke4commission@gmail.com |
+| email | mailto:cooke4commission@gmail.com | cooke4commission@gmail.com |
 | website | https://cooke4commission.org | cooke4commission.org |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-17-bibb-commission-district-5.md](../elections/2026-03-17/2026-03-17-bibb-commission-district-5.md) |
 | Party | Non-Partisan |
 | Occupation | Therapist |

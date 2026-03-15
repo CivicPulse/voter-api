@@ -26,7 +26,7 @@ Associate Probate Judge with approximately a decade of experience on the bench. 
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:pryor4probate@gmail.com | pryor4probate@gmail.com |
+| email | mailto:pryor4probate@gmail.com | pryor4probate@gmail.com |
 
 ## Elections
 
@@ -34,7 +34,7 @@ Associate Probate Judge with approximately a decade of experience on the bench. 
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-17-clayton-probate-judge.md](../elections/2026-03-17/2026-03-17-clayton-probate-judge.md) |
 | Party | Non-Partisan |
 | Occupation | Probate Judge |

@@ -26,7 +26,7 @@ Pleasant Hill resident, Central High School class of 1987. Clinical laboratory s
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:stephanieformacon@gmail.com | stephanieformacon@gmail.com |
+| email | mailto:stephanieformacon@gmail.com | stephanieformacon@gmail.com |
 | website | https://www.stephanieformacon.com | stephanieformacon.com |
 
 ## Elections
@@ -35,7 +35,7 @@ Pleasant Hill resident, Central High School class of 1987. Clinical laboratory s
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-17-bibb-commission-district-5.md](../elections/2026-03-17/2026-03-17-bibb-commission-district-5.md) |
 | Party | Non-Partisan |
 | Occupation | Clinical Laboratory Scientist |

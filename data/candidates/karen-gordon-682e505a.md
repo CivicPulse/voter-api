@@ -26,7 +26,7 @@
 
 | Type | URL | Label |
 |------|-----|-------|
-| email | https://mailto:votekarengordon@gmail.com | votekarengordon@gmail.com |
+| email | mailto:votekarengordon@gmail.com | votekarengordon@gmail.com |
 | website | https://votekarengordon.com | votekarengordon.com |
 
 ## Elections
@@ -35,7 +35,7 @@
 
 | Field | Value |
 |-------|-------|
-| Election ID | |
+| Election ID | — |
 | Contest File | [2026-03-10-state-house-district-130.md](../elections/2026-03-10/2026-03-10-state-house-district-130.md) |
 | Party | Democrat |
 | Occupation | Community Development Consultant |
