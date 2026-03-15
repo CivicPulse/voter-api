@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from voter_api.models.candidacy import Candidacy
 from voter_api.models.candidate import Candidate, CandidateLink
 from voter_api.models.election import ElectionResult
 from voter_api.schemas.candidacy import CandidacySummaryResponse
@@ -60,14 +61,19 @@ async def list_candidates(
     """
     query = (
         select(Candidate)
+        .join(Candidacy, Candidacy.candidate_id == Candidate.id)
         .options(selectinload(Candidate.links), selectinload(Candidate.candidacies))
-        .where(Candidate.election_id == election_id)
+        .where(Candidacy.election_id == election_id)
     )
-    count_query = select(func.count(Candidate.id)).where(Candidate.election_id == election_id)
+    count_query = (
+        select(func.count(Candidate.id))
+        .join(Candidacy, Candidacy.candidate_id == Candidate.id)
+        .where(Candidacy.election_id == election_id)
+    )
 
     if status:
-        query = query.where(Candidate.filing_status == status)
-        count_query = count_query.where(Candidate.filing_status == status)
+        query = query.where(Candidacy.filing_status == status)
+        count_query = count_query.where(Candidacy.filing_status == status)
 
     total_result = await session.execute(count_query)
     total = total_result.scalar_one()
