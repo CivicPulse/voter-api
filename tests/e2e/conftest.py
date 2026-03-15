@@ -28,6 +28,7 @@ from voter_api.main import create_app, lifespan
 from voter_api.models.absentee_ballot import AbsenteeBallotApplication
 from voter_api.models.auth_tokens import UserInvite
 from voter_api.models.boundary import Boundary
+from voter_api.models.candidacy import Candidacy
 from voter_api.models.candidate import Candidate, CandidateLink
 from voter_api.models.elected_official import ElectedOfficial
 from voter_api.models.election import Election
@@ -183,6 +184,7 @@ IMPORT_JOB_ID = uuid.UUID("00000000-0000-0000-0000-000000000060")
 VOTER_HISTORY_ID = uuid.UUID("00000000-0000-0000-0000-000000000061")
 CANDIDATE_ID = uuid.UUID("00000000-0000-0000-0000-000000000070")
 CANDIDATE_LINK_ID = uuid.UUID("00000000-0000-0000-0000-000000000071")
+CANDIDACY_ID = uuid.UUID("00000000-0000-0000-0000-000000000072")
 ABSENTEE_RECORD_ID = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee01")
 ABSENTEE_RECORD_ID_2 = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee02")
 
@@ -399,6 +401,32 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
                 "link_type": stmt.excluded.link_type,
                 "url": stmt.excluded.url,
                 "label": stmt.excluded.label,
+            },
+        )
+        await session.execute(stmt)
+
+        # --- Candidacy (candidate-election junction) -----------------------
+        candidacy_data = {
+            "id": CANDIDACY_ID,
+            "candidate_id": CANDIDATE_ID,
+            "election_id": ELECTION_ID,
+            "party": "Independent",
+            "filing_status": "qualified",
+            "is_incumbent": False,
+            "ballot_order": 1,
+            "contest_name": "E2E Test Contest",
+        }
+        stmt = pg_insert(Candidacy).values(**candidacy_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "candidate_id": stmt.excluded.candidate_id,
+                "election_id": stmt.excluded.election_id,
+                "party": stmt.excluded.party,
+                "filing_status": stmt.excluded.filing_status,
+                "is_incumbent": stmt.excluded.is_incumbent,
+                "ballot_order": stmt.excluded.ballot_order,
+                "contest_name": stmt.excluded.contest_name,
             },
         )
         await session.execute(stmt)
@@ -637,6 +665,7 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         await session.execute(delete(Voter).where(Voter.id == VOTER_ID))
         await session.execute(delete(Boundary).where(Boundary.id == BOUNDARY_ID))
         await session.execute(delete(ImportJob).where(ImportJob.id == IMPORT_JOB_ID))
+        await session.execute(delete(Candidacy).where(Candidacy.id == CANDIDACY_ID))
         await session.execute(delete(CandidateLink).where(CandidateLink.id == CANDIDATE_LINK_ID))
         await session.execute(delete(Candidate).where(Candidate.id == CANDIDATE_ID))
         await session.execute(delete(Election).where(Election.id == ELECTION_ID))

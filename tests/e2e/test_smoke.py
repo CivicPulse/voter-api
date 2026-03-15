@@ -19,6 +19,7 @@ from tests.e2e.conftest import (
     ADMIN_USER_ID,
     ADMIN_USERNAME,
     BOUNDARY_ID,
+    CANDIDACY_ID,
     CANDIDATE_ID,
     ELECTION_ID,
     INVITE_ID,
@@ -620,6 +621,8 @@ class TestElections:
         assert "district_type" in body
         assert "district_identifier" in body
         assert "district_party" in body
+        # Election stage field present (nullable)
+        assert "election_stage" in body
 
     async def test_election_detail_includes_metadata_fields(self, client: httpx.AsyncClient) -> None:
         resp = await client.get(_url(f"/elections/{ELECTION_ID}"))
@@ -737,6 +740,15 @@ class TestCandidates:
         assert body["full_name"] == "E2E Test Candidate"
         assert body["party"] == "Independent"
         assert len(body["links"]) >= 1
+        # Candidacy junction data present
+        assert "candidacies" in body
+        assert len(body["candidacies"]) >= 1
+        candidacy = body["candidacies"][0]
+        assert candidacy["id"] == str(CANDIDACY_ID)
+        assert candidacy["election_id"] == str(ELECTION_ID)
+        assert candidacy["filing_status"] == "qualified"
+        # External IDs field present (nullable)
+        assert "external_ids" in body
 
     async def test_candidate_detail_404(self, client: httpx.AsyncClient) -> None:
         fake_id = "00000000-0000-0000-0000-999999999999"

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.lib.candidate_importer import parse_candidate_import_jsonl
 from voter_api.lib.election_name_normalizer import normalize_election_name
+from voter_api.models.candidacy import Candidacy
 from voter_api.models.candidate import Candidate, CandidateLink
 from voter_api.models.election import Election
 from voter_api.models.import_job import ImportJob
@@ -254,6 +255,45 @@ async def _upsert_candidate_links(
         await session.execute(stmt)
 
 
+async def _upsert_candidacy_batch(
+    session: AsyncSession,
+    records: list[dict],
+) -> None:
+    """Create or update candidacy records for imported candidates.
+
+    Uses the unique constraint on ``(candidate_id, election_id)`` as the
+    conflict target. Contest-specific fields from the candidate import are
+    copied to the candidacy junction table.
+
+    Args:
+        session: Database session.
+        records: List of dicts with candidate_id, election_id, and
+            contest-specific fields.
+    """
+    if not records:
+        return
+
+    for i in range(0, len(records), _UPSERT_SUB_BATCH):
+        batch = records[i : i + _UPSERT_SUB_BATCH]
+
+        stmt = pg_insert(Candidacy).values(batch)
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_candidacy_candidate_election",
+            set_={
+                "party": func.coalesce(stmt.excluded.party, Candidacy.__table__.c.party),
+                "filing_status": stmt.excluded.filing_status,
+                "is_incumbent": stmt.excluded.is_incumbent,
+                "contest_name": func.coalesce(stmt.excluded.contest_name, Candidacy.__table__.c.contest_name),
+                "qualified_date": func.coalesce(stmt.excluded.qualified_date, Candidacy.__table__.c.qualified_date),
+                "occupation": func.coalesce(stmt.excluded.occupation, Candidacy.__table__.c.occupation),
+                "home_county": func.coalesce(stmt.excluded.home_county, Candidacy.__table__.c.home_county),
+                "municipality": func.coalesce(stmt.excluded.municipality, Candidacy.__table__.c.municipality),
+                "import_job_id": stmt.excluded.import_job_id,
+            },
+        )
+        await session.execute(stmt)
+
+
 async def process_candidate_import(
     session: AsyncSession,
     job: ImportJob,
@@ -407,6 +447,40 @@ async def process_candidate_import(
             chunk_inserted, chunk_updated = await _upsert_candidate_batch(session, valid_records)
             inserted += chunk_inserted
             updated_count += chunk_updated
+
+            # Create candidacy records for each upserted candidate
+            if valid_records:
+                candidacy_records: list[dict] = []
+                for rec in valid_records:
+                    if rec.get("election_id") is None:
+                        continue
+                    # Look up the actual candidate ID from DB
+                    cand_result = await session.execute(
+                        select(Candidate.id).where(
+                            Candidate.election_id == rec["election_id"],
+                            Candidate.full_name == rec["full_name"],
+                        )
+                    )
+                    cand_id = cand_result.scalar_one_or_none()
+                    if cand_id:
+                        candidacy_records.append(
+                            {
+                                "id": uuid.uuid4(),
+                                "candidate_id": cand_id,
+                                "election_id": rec["election_id"],
+                                "party": rec.get("party"),
+                                "filing_status": rec.get("filing_status", "qualified"),
+                                "is_incumbent": rec.get("is_incumbent", False),
+                                "contest_name": rec.get("contest_name"),
+                                "qualified_date": rec.get("qualified_date"),
+                                "occupation": rec.get("occupation"),
+                                "home_county": rec.get("home_county"),
+                                "municipality": rec.get("municipality"),
+                                "import_job_id": job.id,
+                            }
+                        )
+                if candidacy_records:
+                    await _upsert_candidacy_batch(session, candidacy_records)
 
             # Resolve candidate links (need actual candidate IDs from DB)
             if pending_links:

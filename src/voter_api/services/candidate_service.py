@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from voter_api.models.candidate import Candidate, CandidateLink
 from voter_api.models.election import ElectionResult
+from voter_api.schemas.candidacy import CandidacySummaryResponse
 from voter_api.schemas.candidate import (
     CandidateCreateRequest,
     CandidateDetailResponse,
@@ -57,7 +58,11 @@ async def list_candidates(
     Returns:
         Tuple of (candidate list, total count).
     """
-    query = select(Candidate).options(selectinload(Candidate.links)).where(Candidate.election_id == election_id)
+    query = (
+        select(Candidate)
+        .options(selectinload(Candidate.links), selectinload(Candidate.candidacies))
+        .where(Candidate.election_id == election_id)
+    )
     count_query = select(func.count(Candidate.id)).where(Candidate.election_id == election_id)
 
     if status:
@@ -91,7 +96,9 @@ async def get_candidate(
         Candidate instance or None if not found.
     """
     result = await session.execute(
-        select(Candidate).options(selectinload(Candidate.links)).where(Candidate.id == candidate_id)
+        select(Candidate)
+        .options(selectinload(Candidate.links), selectinload(Candidate.candidacies))
+        .where(Candidate.id == candidate_id)
     )
     return result.scalar_one_or_none()
 
@@ -147,9 +154,11 @@ async def create_candidate(
 
     await session.commit()
 
-    # Re-fetch with links eagerly loaded
+    # Re-fetch with links and candidacies eagerly loaded
     result = await session.execute(
-        select(Candidate).options(selectinload(Candidate.links)).where(Candidate.id == candidate.id)
+        select(Candidate)
+        .options(selectinload(Candidate.links), selectinload(Candidate.candidacies))
+        .where(Candidate.id == candidate.id)
     )
     return result.scalar_one()
 
@@ -297,6 +306,25 @@ def build_candidate_detail_response(
     Returns:
         CandidateDetailResponse schema instance.
     """
+    # Build candidacy summaries from loaded relationship
+    candidacies = []
+    raw_candidacies = getattr(candidate, "candidacies", None)
+    if raw_candidacies and isinstance(raw_candidacies, list):
+        candidacies = [
+            CandidacySummaryResponse(
+                id=c.id,
+                election_id=c.election_id,
+                party=c.party,
+                filing_status=c.filing_status,
+                contest_name=c.contest_name,
+            )
+            for c in raw_candidacies
+        ]
+
+    # Extract external_ids safely (may be None, dict, or mock)
+    raw_external_ids = getattr(candidate, "external_ids", None)
+    external_ids = raw_external_ids if isinstance(raw_external_ids, dict) else None
+
     return CandidateDetailResponse(
         id=candidate.id,
         election_id=candidate.election_id,
@@ -319,6 +347,8 @@ def build_candidate_detail_response(
             )
             for link in candidate.links
         ],
+        candidacies=candidacies,
+        external_ids=external_ids,
         result_vote_count=result_vote_count,
         result_political_party=result_political_party,
     )

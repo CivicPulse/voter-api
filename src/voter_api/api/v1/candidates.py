@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from voter_api.core.dependencies import get_async_session, require_role
 from voter_api.models.user import User
+from voter_api.schemas.candidacy import CandidacySummaryResponse
 from voter_api.schemas.candidate import (
     CandidateCreateRequest,
     CandidateDetailResponse,
@@ -71,6 +72,17 @@ async def list_candidates(
             filing_status=c.filing_status,
             is_incumbent=c.is_incumbent,
             created_at=c.created_at,
+            candidacies=[
+                CandidacySummaryResponse(
+                    id=cy.id,
+                    election_id=cy.election_id,
+                    party=cy.party,
+                    filing_status=cy.filing_status,
+                    contest_name=cy.contest_name,
+                )
+                for cy in (c.candidacies if hasattr(c, "candidacies") and c.candidacies else [])
+            ],
+            external_ids=getattr(c, "external_ids", None),
         )
         for c in candidates
     ]
