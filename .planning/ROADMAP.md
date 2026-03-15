@@ -45,12 +45,12 @@ Plans:
   3. Running `voter-api import candidates <file.jsonl>` loads candidate records into the database and the candidates appear in API query results
   4. Re-importing the same JSONL file a second time produces no duplicate records, no data changes, and no errors
   5. Running import with `--dry-run` reports what would be imported without writing any records to the database
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
-- [ ] 02-03: TBD
+- [ ] 02-01-PLAN.md — DB migrations and model refactoring (candidacy junction table, ElectionEvent enhancement, API schema updates, E2E test fixes)
+- [ ] 02-02-PLAN.md — Converter library (lib/converter/ with mistune AST parser, JSONL writer, Body/Seat resolver, CLI command, 159 county reference files)
+- [ ] 02-03-PLAN.md — Import pipeline and file migration (4 JSONL import services + CLI commands, pipeline command, file migration script, UUID backfill)
 
 ### Phase 3: Claude Code Skills
 **Goal**: A user working in Claude Code can process raw GA SOS data files into human-reviewable markdown that conforms to the enhanced format spec
@@ -89,6 +89,6 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Contracts | 3/3 | Complete | 2026-03-14 |
-| 2. Converter and Import Pipeline | 0/? | Not started | - |
+| 2. Converter and Import Pipeline | 0/3 | Planned | - |
 | 3. Claude Code Skills | 0/? | Not started | - |
 | 4. End-to-End Demo | 0/? | Not started | - |
