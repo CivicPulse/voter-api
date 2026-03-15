@@ -91,18 +91,23 @@ Plans:
 **Gap Closure**: Closes gaps from v1.0 milestone audit
 **Success Criteria** (what must be TRUE):
   1. REQUIREMENTS.md DEM-01 row shows "Complete" (not "In Progress")
-  2. Walkthrough line 366 accurately describes election_event_id FK behavior (NULL, not "resolved during import")
-  3. Walkthrough branch reference updated for post-merge context
-  4. election_event_id FK resolution is either executed or documented as a separate operational step
-**Plans**: 1 plan
+  2. Walkthrough accurately describes election_event_id FK behavior (NULL after import, resolved by resolve-elections step)
+  3. Walkthrough branch reference removed (assumes pipeline code is on main)
+  4. Walkthrough includes resolve-elections step with real terminal output and API verification
+  5. Full walkthrough reviewed for any other inaccuracies
+  6. Nyquist validation completed for phases 3 and 4 (phases 1 and 2 already validated)
+  7. v1.0 milestone audit artifact committed for traceability
+  8. Phase 3 context artifact committed
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Documentation fixes, traceability updates, and election_event_id FK resolution
+- [ ] 05-01-PLAN.md — Documentation fixes: full walkthrough review, resolve-elections step, REQUIREMENTS.md and ROADMAP.md updates, commit planning artifacts
+- [ ] 05-02-PLAN.md — Nyquist validation for phases 3 and 4
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could theoretically execute in parallel. However, sequential execution is recommended for a solo developer.
 
@@ -112,4 +117,4 @@ Note: Phase 3 depends only on Phase 1 (not Phase 2), so phases 2 and 3 could the
 | 2. Converter and Import Pipeline | 3/3 | Complete   | 2026-03-15 |
 | 3. Claude Code Skills | 5/5 | Complete   | 2026-03-15 |
 | 4. End-to-End Demo | 2/2 | Complete   | 2026-03-15 |
-| 5. Milestone Cleanup | 0/1 | Pending    |  |
+| 5. Milestone Cleanup | 0/2 | Pending    |  |
