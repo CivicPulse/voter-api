@@ -132,14 +132,14 @@ _TYPE_MAPPING: dict[str, str] = {
 _COUNTY_CONTEST_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"^Board of Education At Large-Post (\d+)$", re.I), "{county}-boe", "post-{n}"),
     (re.compile(r"^Board of Education District (\d+)$", re.I), "{county}-boe", "district-{n}"),
-    (re.compile(r"^Civil.*Magistrate Court", re.I), "{county}-civil-magistrate", "sole"),
+    (re.compile(r"^Civil\S*Magistrate Court", re.I), "{county}-civil-magistrate", "sole"),
     (
-        re.compile(r"^Judge of Superior Court.*?-\s*(\w+)\s*$", re.I),
+        re.compile(r"^Judge of Superior Court[^-]*-\s*(\w+)\s*$", re.I),
         "{county}-superior-court",
         "judge-{surname}",
     ),
     (
-        re.compile(r"^State Court Judge\s*(?:\(\w+\))?\s*[-–—]\s*(\w+)\s*$", re.I),
+        re.compile(r"^State Court Judge(?:\s\(\w+\))?\s*[-–—]\s*(\w+)\s*$", re.I),
         "{county}-state-court",
         "judge-{surname}",
     ),
