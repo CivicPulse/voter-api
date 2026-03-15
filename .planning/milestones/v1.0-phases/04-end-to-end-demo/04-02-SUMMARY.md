@@ -96,7 +96,7 @@ None - no external service configuration required.
 ## Next Phase Readiness
 
 - The "Better Imports" milestone (Phase 4) is now complete
-- All 13 plans across 4 phases are done
+- All 15 plans across 5 phases are done
 - The full pipeline from SOS CSV to queryable API is proven, documented, and human-approved
 - The walkthrough at docs/pipeline-walkthrough.md serves as a reproducible reference for future users
 

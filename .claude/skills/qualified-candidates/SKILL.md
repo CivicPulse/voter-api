@@ -182,7 +182,7 @@ For each unprocessed contest group:
 
 **Step 7: Create election overview file**
 - Path: `data/elections/{date}/{date}-{type-slug}.md`
-- Metadata table: ID empty (normalizer fills), Format Version 1, Type, Stage `election`
+- Metadata table: ID `—` (normalizer fills), Format Version 1, Type, Stage `election`
 - Sections: Statewide Races, Federal Races, State Legislative Races, Local Elections (as applicable)
 - Counts per section are derived from the processed contest groups
 
@@ -190,7 +190,7 @@ For each unprocessed contest group:
 - Path: `data/elections/{date}/{date}-{contest-slug}.md`
 - For partisan primaries: group candidates by party into `## Republican Primary` / `## Democrat Primary` sections
 - For non-partisan/special: use single `## Candidates` section
-- Metadata: ID empty, Format Version 1, Election (link to overview), Type, Stage, Body, Seat, Name (SOS)
+- Metadata: ID `—`, Format Version 1, Election (link to overview), Type, Stage, Body, Seat, Name (SOS)
 
 **Step 9: Create county multi-contest files**
 - Path: `data/elections/{date}/counties/{date}-{county}.md`
@@ -202,7 +202,7 @@ For each unprocessed contest group:
 **Step 10: Create candidate stub files**
 - Path: `data/candidates/{name-slug}-00000000.md`
 - One file per unique person (deduplicated across all contests)
-- Stub content: Metadata table (ID empty, Format Version 1, Name, Photo URL `--`, Email from CSV or `--`), Bio section `--`, External IDs table (all `--`), Links table (email + website from CSV), Elections section with this contest
+- Stub content: Metadata table (ID `—`, Format Version 1, Name, Photo URL `—`, Email from CSV or `—`), Bio section `—`, External IDs table (all `—`), Links table (email + website from CSV), Elections section with this contest
 - Placeholder filename uses `00000000` — normalizer renames to real UUID hash
 - If two candidates share the same name slug: append sequence number (`jane-doe-00000000-2.md`)
 

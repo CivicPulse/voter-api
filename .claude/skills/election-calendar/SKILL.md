@@ -53,7 +53,7 @@ type by filename. Correlate extracted dates to the target election (identified b
 
 ## 4. Extraction Fields
 
-Extract these fields from the PDF(s). Leave a field blank in the output if not found; do not
+Extract these fields from the PDF(s). Use `—` in the output if a field is not found; do not
 invent dates.
 
 **Core dates** (from per-election PDF):

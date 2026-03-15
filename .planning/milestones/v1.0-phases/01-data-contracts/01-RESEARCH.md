@@ -434,6 +434,9 @@ Verified patterns from existing project code:
 import enum
 
 class FilingStatus(enum.StrEnum):
+    """Note: `deceased` is intentionally excluded to match the DB CheckConstraint.
+    The Pydantic validator elsewhere allows `deceased` but the DB does not — this
+    enum follows the DB as the authoritative source."""
     QUALIFIED = "qualified"
     WITHDRAWN = "withdrawn"
     DISQUALIFIED = "disqualified"

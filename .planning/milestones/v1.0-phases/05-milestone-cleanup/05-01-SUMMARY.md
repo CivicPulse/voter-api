@@ -69,7 +69,7 @@ Each task was committed atomically:
 ## Files Created/Modified
 - `docs/pipeline-walkthrough.md` - Removed branch ref, fixed election_event_id claim, added resolve-elections step and API verification query
 - `.planning/ROADMAP.md` - Updated Phase 5 success criteria with expanded scope
-- `.planning/v1.0-MILESTONE-AUDIT.md` - Committed existing untracked audit artifact
+- `.planning/milestones/v1.0-MILESTONE-AUDIT.md` - Committed existing untracked audit artifact
 - `.planning/milestones/v1.0-phases/03-claude-code-skills/03-CONTEXT.md` - Committed existing untracked Phase 3 context
 
 ## Decisions Made
