@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 50aeafda-7cac-4d9a-be0a-a0be2901604f |
+| Format Version | 1 |
+| Body | ga-us-house |
+| Seat | district-8 |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 1 Republican, 2 Democrat |
@@ -58,18 +63,18 @@ Congressional District 8 includes 29 counties (some counties are split across mu
 
 **Contest Name (SOS):** U.S House of Representatives, District 8 (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| James Austin Scott | Qualified | Yes | Us Representative | 03/02/2026 | — | [scottforga.com](https://scottforga.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| James Austin Scott | Qualified | Yes | Us Representative | 03/02/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 8 (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Kelly Esti | Qualified | No | Analyst | 03/02/2026 | kellyesti4congress@gmail.com | [kellyesti4congress.com](https://kellyesti4congress.com) |
-| Justin M. Lucas | Qualified | No | Education | 03/06/2026 | jlucasforcongress@gmail.com | [facebook.com/profile.php?id=61586467530528](https://facebook.com/profile.php?id=61586467530528) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Kelly Esti | Qualified | No | Analyst | 03/02/2026 |
+| Justin M. Lucas | Qualified | No | Education | 03/06/2026 |
 
 ## Data Source
 

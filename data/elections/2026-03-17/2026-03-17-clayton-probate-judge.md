@@ -2,22 +2,25 @@
 
 ## Metadata
 
-- **Election:** [March 17, 2026 — Special Election](2026-03-17-special-election.md)
-- **Type:** Non-Partisan
-- **Contest Name (SOS):** Probate Judge
-- **Party:** Non-Partisan
-- **County:** Clayton
-- **District:** [Clayton County](https://voteapi.civpulse.org/api/v1/boundaries/d5051a5d-c82e-4a2d-ba54-b86b7d9554c8)
-- **Candidates:** 2
-- **Purpose:** Retirement of Chief Probate Judge Pamela P. "Pam" Ferguson, who served approximately 20 years on the bench
-- **Eligibility:** Registered voters in Clayton County
+| Field | Value |
+|-------|-------|
+| ID | 2fae3852-e0b2-43e8-9d10-43e553386ea0 |
+| Format Version | 1 |
+| Election | [March 17, 2026 — Special Election](2026-03-17-special-election.md) |
+| Type | special |
+| Stage | election |
+| Body | clayton-probate-court |
+| Seat | sole |
+| Name (SOS) | Probate Judge |
+| Purpose | Retirement of Chief Probate Judge Pamela P. "Pam" Ferguson, who served approximately 20 years on the bench |
+| Eligibility | Registered voters in Clayton County |
 
 ## Candidates
 
-| Candidate | Incumbent | Occupation | Qualified Date | Email | Website |
-|---|---|---|---|---|---|
-| Atha H Pryor | Yes | Probate Judge | 01/21/2026 | pryor4probate@gmail.com | [pryorforprobate.com](https://www.pryorforprobate.com/) |
-| Stephanie Kenecya Sheppard | No | Attorney | 01/23/2026 | — | [sheppard4judge.org](https://sheppard4judge.org/) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+|-----------|--------|-----------|------------|----------------|
+| Atha H. Pryor | Qualified | Yes | Probate Judge | 01/21/2026 |
+| Stephanie Kenecya Sheppard | Qualified | No | Attorney | 01/23/2026 |
 
 ### Candidate Bios
 

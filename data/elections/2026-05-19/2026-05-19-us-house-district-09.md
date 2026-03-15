@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 52f5b7fd-006a-4b16-95d9-ce6b02848efe |
+| Format Version | 1 |
+| Body | ga-us-house |
+| Seat | district-9 |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 3 Republican, 2 Democrat |
@@ -41,20 +46,20 @@ Congressional District 9 includes 12 counties (some counties are split across mu
 
 **Contest Name (SOS):** U.S House of Representatives, District 9 (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Andrew S Clyde | Qualified | Yes | Gun Store Owner | 03/03/2026 | andrew@clyde4congress.com | [clyde4congress.com](https://clyde4congress.com) |
-| Warren Samuel Couvillon | Qualified | No | Insurance | 03/02/2026 | sam@sendsamtocongress.com | [samforhouse.com](https://www.samforhouse.com) |
-| Joel Gregory Poole | Qualified | No | Electrical And Plumbing Contractor | 03/03/2026 | gregg@greggpoole.com | [greggpoole.com](https://greggpoole.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Andrew S. Clyde | Qualified | Yes | Gun Store Owner | 03/03/2026 |
+| Warren Samuel Couvillon | Qualified | No | Insurance | 03/02/2026 |
+| Joel Gregory Poole | Qualified | No | Electrical and Plumbing Contractor | 03/03/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 9 (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Nick Alex | Qualified | No | Retired | 03/02/2026 | info@nickalex2026.com | [nickalex2026.com](https://nickalex2026.com) |
-| Caitlyn Gegen | Qualified | No | Barista | 03/05/2026 | caitlyn@caitlynforgeorgia.com | [caitlynforgeorgia.com](https://www.caitlynforgeorgia.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Nick Alex | Qualified | No | Retired | 03/02/2026 |
+| Caitlyn Gegen | Qualified | No | Barista | 03/05/2026 |
 
 ## Data Source
 

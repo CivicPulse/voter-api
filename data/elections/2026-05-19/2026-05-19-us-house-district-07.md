@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 9569f18e-8097-41a2-b1ed-75612f72a3ed |
+| Format Version | 1 |
+| Body | ga-us-house |
+| Seat | district-7 |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 1 Republican, 4 Democrat |
@@ -35,20 +40,20 @@ Congressional District 7 includes 6 counties (some counties are split across mul
 
 **Contest Name (SOS):** U.S House of Representatives, District 7 (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Richard Dean McCormick | Qualified | Yes | ER Physician | 03/02/2026 | rich@richmccormick.us | [richmccormick.us](https://www.richmccormick.us) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Richard Dean McCormick | Qualified | Yes | Er Physician | 03/02/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 7 (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Tony Kozycki | Qualified | No | Attorney | 03/05/2026 | team@kozyckiforcongress.com | [kozyckiforcongress.com](https://kozyckiforcongress.com) |
-| Larry D Long | Qualified | No | Retired | 03/02/2026 | — | [electlarrylong.com](https://electlarrylong.com) |
-| Case Norton | Qualified | No | Camera Technician | 03/03/2026 | caseforgeorgia@gmail.com | [case4congress.com](https://case4congress.com) |
-| Jayson Toweh | Qualified | No | Environmental Health Scientist | 03/06/2026 | candidate@towehforcongress.com | [towehforcongress.com](https://www.towehforcongress.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Tony Kozycki | Qualified | No | Attorney | 03/05/2026 |
+| Larry D. Long | Qualified | No | Retired | 03/02/2026 |
+| Case Norton | Qualified | No | Camera Technician | 03/03/2026 |
+| Jayson Toweh | Qualified | No | Environmental Health Scientist | 03/06/2026 |
 
 ## Data Source
 

@@ -65,6 +65,23 @@ def _make_session_mock() -> AsyncMock:
     return session
 
 
+def _upsert_side_effect(inserted: int | None = None, updated: int = 0):
+    """Create a side_effect for _upsert_candidate_batch that returns resolved IDs.
+
+    The mock generates a UUID per input record so that
+    ``zip(valid_records, resolved_ids, strict=True)`` succeeds.
+
+    If ``inserted`` is None, it defaults to ``len(records) - updated``.
+    """
+
+    async def _side_effect(_session, records):  # noqa: ANN001
+        ids = [uuid.uuid4() for _ in records]
+        ins = len(records) - updated if inserted is None else inserted
+        return ins, updated, ids
+
+    return _side_effect
+
+
 def _make_candidate_records(count: int = 2) -> list[dict]:
     """Create a list of valid candidate records."""
     records = []
@@ -108,7 +125,7 @@ class TestProcessCandidateImport:
             patch(
                 "voter_api.services.candidate_import_service._upsert_candidate_batch",
                 new_callable=AsyncMock,
-                return_value=(2, 0),
+                side_effect=_upsert_side_effect(2, 0),
             ) as mock_upsert,
         ):
             result = await process_candidate_import(session, job, jsonl_file, batch_size=10)
@@ -153,7 +170,7 @@ class TestProcessCandidateImport:
             patch(
                 "voter_api.services.candidate_import_service._upsert_candidate_batch",
                 new_callable=AsyncMock,
-                return_value=(1, 0),
+                side_effect=_upsert_side_effect(1, 0),
             ),
         ):
             result = await process_candidate_import(session, job, jsonl_file, batch_size=10)
@@ -181,7 +198,7 @@ class TestProcessCandidateImport:
             patch(
                 "voter_api.services.candidate_import_service._upsert_candidate_batch",
                 new_callable=AsyncMock,
-                return_value=(1, 0),
+                side_effect=_upsert_side_effect(1, 0),
             ),
         ):
             await process_candidate_import(session, job, jsonl_file, batch_size=10)
@@ -205,7 +222,7 @@ class TestProcessCandidateImport:
             patch(
                 "voter_api.services.candidate_import_service._upsert_candidate_batch",
                 new_callable=AsyncMock,
-                return_value=(0, 2),  # 0 inserts, 2 updates
+                side_effect=_upsert_side_effect(0, 2),
             ),
         ):
             result = await process_candidate_import(session, job, jsonl_file, batch_size=10)
@@ -272,7 +289,7 @@ class TestProcessCandidateImport:
             patch(
                 "voter_api.services.candidate_import_service._upsert_candidate_batch",
                 new_callable=AsyncMock,
-                return_value=(1, 0),
+                side_effect=_upsert_side_effect(1, 0),
             ),
             patch(
                 "voter_api.services.candidate_import_service._upsert_candidate_links",
@@ -327,7 +344,7 @@ class TestProcessCandidateImport:
             patch(
                 "voter_api.services.candidate_import_service._upsert_candidate_batch",
                 new_callable=AsyncMock,
-                return_value=(1, 0),
+                side_effect=_upsert_side_effect(1, 0),
             ),
         ):
             await process_candidate_import(session, proxy_job, jsonl_file, batch_size=10)  # type: ignore[arg-type]
@@ -363,7 +380,7 @@ class TestProcessCandidateImport:
             patch(
                 "voter_api.services.candidate_import_service._upsert_candidate_batch",
                 new_callable=AsyncMock,
-                side_effect=[(10, 0), (10, 0), (5, 0)],
+                side_effect=_upsert_side_effect(),
             ) as mock_upsert,
         ):
             result = await process_candidate_import(session, job, jsonl_file, batch_size=10)

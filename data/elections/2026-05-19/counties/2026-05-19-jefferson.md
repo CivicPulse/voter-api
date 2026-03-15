@@ -4,6 +4,8 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 5656ea88-caed-4d9c-a347-429507696c49 |
+| Format Version | 1 |
 | Election | [May 19, 2026 — General and Primary Election](../2026-05-19-general-primary.md) |
 | Type | Local Races |
 | Contests | 5 |
@@ -40,36 +42,46 @@ Voters in Jefferson County will also see the following statewide and district ra
 
 ### For County Commission - District 1
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Gonice C Davis | Qualified | Yes | Retired | 03/02/2026 | — | — |
-| Jeffery W Partridge | Qualified | No | Welding Instructor | 03/02/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Gonice C. Davis | Qualified | Yes | Retired | 03/02/2026 |
+| Jeffery W. Partridge | Qualified | No | Welding Instructor | 03/02/2026 |
 
 ### For County Commission - District 3
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Aurthur Lee Wilcher | Qualified | No | Truck Driver | 03/05/2026 | — | — |
-| David Anthony Hastings | Qualified | No | Retired | 03/06/2026 | — | — |
-| Paul E Arrington | Qualified | No | Electrical Contractor | 03/05/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Aurthur Lee Wilcher | Qualified | No | Truck Driver | 03/05/2026 |
+| David Anthony Hastings | Qualified | No | Retired | 03/06/2026 |
+| Paul E. Arrington | Qualified | No | Electrical Contractor | 03/05/2026 |
 
 ### Board of Education Member - District 1
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Barbara Ann Jordan | Qualified | Yes | Retired | 03/02/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Barbara Ann Jordan | Qualified | Yes | Retired | 03/02/2026 |
 
 ### Board of Education Member - District 3
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Johnnie Steve Norton | Qualified | Yes | Retired | 03/02/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Johnnie Steve Norton | Qualified | Yes | Retired | 03/02/2026 |
 
 ### For Chairman Board of Education
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| James Eben Fleming Jr | Qualified | Yes | Retired Pharmacist | 03/03/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| James Eben Fleming Jr | Qualified | Yes | Retired Pharmacist | 03/03/2026 |
 
 ## Data Source
 

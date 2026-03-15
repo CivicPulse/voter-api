@@ -1,0 +1,1303 @@
+{
+  "total_files": 185,
+  "succeeded": 185,
+  "failed": 0,
+  "files": [
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-agriculture-commissioner.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-attorney-general.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-general-primary.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-governor.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-insurance-commissioner.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-labor-commissioner.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-lieutenant-governor.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-psc-district-3.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-psc-district-5.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-secretary-of-state.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-state-school-superintendent.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-01.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-02.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-03.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-04.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-05.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-06.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-07.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-08.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-09.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-10.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-11.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-12.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-13.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-house-district-14.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/2026-05-19-us-senate.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-appling.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-atkinson.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-bacon.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-baker.md",
+      "status": "success",
+      "record_count": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-baldwin.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-banks.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-barrow.md",
+      "status": "success",
+      "record_count": 10,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-bartow.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-benhill.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-berrien.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-bibb.md",
+      "status": "success",
+      "record_count": 12,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-bleckley.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-brantley.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-brooks.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-bryan.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-bulloch.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-burke.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-butts.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-calhoun.md",
+      "status": "success",
+      "record_count": 3,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-camden.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-candler.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-carroll.md",
+      "status": "success",
+      "record_count": 10,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-catoosa.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-charlton.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-chatham.md",
+      "status": "success",
+      "record_count": 15,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-chattahoochee.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-chattooga.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-cherokee.md",
+      "status": "success",
+      "record_count": 10,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-clarke.md",
+      "status": "success",
+      "record_count": 13,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-clay.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-clayton.md",
+      "status": "success",
+      "record_count": 11,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-clinch.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-cobb.md",
+      "status": "success",
+      "record_count": 14,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-coffee.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-colquitt.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-columbia.md",
+      "status": "success",
+      "record_count": 9,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-cook.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-coweta.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-crawford.md",
+      "status": "success",
+      "record_count": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-crisp.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-dade.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-dawson.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-decatur.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-dekalb.md",
+      "status": "success",
+      "record_count": 14,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-dodge.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-dooly.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-dougherty.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-douglas.md",
+      "status": "success",
+      "record_count": 10,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-early.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-echols.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-effingham.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-elbert.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-emanuel.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-evans.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-fannin.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-fayette.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-floyd.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-forsyth.md",
+      "status": "success",
+      "record_count": 9,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-franklin.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-fulton.md",
+      "status": "success",
+      "record_count": 25,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-gilmer.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-glascock.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-glynn.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-gordon.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-grady.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-greene.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-gwinnett.md",
+      "status": "success",
+      "record_count": 12,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-habersham.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-hall.md",
+      "status": "success",
+      "record_count": 12,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-hancock.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-haralson.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-harris.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-hart.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-heard.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-henry.md",
+      "status": "success",
+      "record_count": 11,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-houston.md",
+      "status": "success",
+      "record_count": 9,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-irwin.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-jackson.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-jasper.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-jeffdavis.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-jefferson.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-jenkins.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-johnson.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-jones.md",
+      "status": "success",
+      "record_count": 3,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-lamar.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-lanier.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-laurens.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-lee.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-liberty.md",
+      "status": "success",
+      "record_count": 9,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-lincoln.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-long.md",
+      "status": "success",
+      "record_count": 2,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-lowndes.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-lumpkin.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-macon.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-madison.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-marion.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-mcduffie.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-mcintosh.md",
+      "status": "success",
+      "record_count": 9,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-meriwether.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-miller.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-mitchell.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-monroe.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-montgomery.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-morgan.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-murray.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-muscogee.md",
+      "status": "success",
+      "record_count": 15,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-newton.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-oconee.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-oglethorpe.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-paulding.md",
+      "status": "success",
+      "record_count": 10,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-peach.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-pickens.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-pierce.md",
+      "status": "success",
+      "record_count": 9,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-pike.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-polk.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-pulaski.md",
+      "status": "success",
+      "record_count": 3,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-putnam.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-quitman.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-rabun.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-randolph.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-richmond.md",
+      "status": "success",
+      "record_count": 11,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-rockdale.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-schley.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-screven.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-seminole.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-spalding.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-stephens.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-stewart.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-sumter.md",
+      "status": "success",
+      "record_count": 3,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-talbot.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-taliaferro.md",
+      "status": "success",
+      "record_count": 3,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-tattnall.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-taylor.md",
+      "status": "success",
+      "record_count": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-telfair.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-terrell.md",
+      "status": "success",
+      "record_count": 3,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-thomas.md",
+      "status": "success",
+      "record_count": 11,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-tift.md",
+      "status": "success",
+      "record_count": 11,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-toombs.md",
+      "status": "success",
+      "record_count": 9,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-towns.md",
+      "status": "success",
+      "record_count": 3,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-treutlen.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-troup.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-turner.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-twiggs.md",
+      "status": "success",
+      "record_count": 3,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-union.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-upson.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-walker.md",
+      "status": "success",
+      "record_count": 5,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-walton.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-ware.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-warren.md",
+      "status": "success",
+      "record_count": 2,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-washington.md",
+      "status": "success",
+      "record_count": 9,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-wayne.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-webster.md",
+      "status": "success",
+      "record_count": 4,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-wheeler.md",
+      "status": "success",
+      "record_count": 3,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-white.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-whitfield.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-wilcox.md",
+      "status": "success",
+      "record_count": 6,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-wilkes.md",
+      "status": "success",
+      "record_count": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-wilkinson.md",
+      "status": "success",
+      "record_count": 7,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-05-19/counties/2026-05-19-worth.md",
+      "status": "success",
+      "record_count": 8,
+      "errors": [],
+      "warnings": []
+    }
+  ],
+  "errors": []
+}

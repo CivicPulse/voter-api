@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 466dfbb4-b51c-43f4-8029-fe887cde7a38 |
+| Format Version | 1 |
+| Body | ga-us-house |
+| Seat | district-12 |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 2 Republican, 5 Democrat |
@@ -53,22 +58,22 @@ Congressional District 12 includes 24 counties (some counties are split across m
 
 **Contest Name (SOS):** U.S House of Representatives, District 12 (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Richard Allen | Qualified | Yes | General Contractor | 03/03/2026 | — | [rickwallen.com](https://rickwallen.com) |
-| Tori Brett Branum | Qualified | No | Firearms Trainer | 03/04/2026 | toribranum15ga@gmail.com | [toriforgeorgia.com](https://www.toriforgeorgia.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Richard Allen | Qualified | Yes | General Contractor | 03/03/2026 |
+| Tori Brett Branum | Qualified | No | Firearms Trainer | 03/04/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 12 (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Traci George | Qualified | No | Educator | 03/02/2026 | donate@traciforga.com | [tracigeorge.net](https://tracigeorge.net) |
-| Tracell Peace-Nichols | Qualified | No | Criminal And Family Law Attorney | 03/06/2026 | — | [peacenichols4congress.com](https://www.peacenichols4congress.com) |
-| Ceretta Smith | Qualified | No | Retired | 03/02/2026 | ceretta@cerettaforga.com | [cerettaforgeorgia.com](https://cerettaforgeorgia.com) |
-| Chris Stephens | Qualified | No | Self Employed | 03/04/2026 | chris@votechris.org | [votechris.org](https://www.votechris.org) |
-| Brianna Woodson | Qualified | No | Therapist In Residency | 03/04/2026 | bri@briwoodsonforcongress.com | [briwoodsonforcongress.com](https://briwoodsonforcongress.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Traci George | Qualified | No | Educator | 03/02/2026 |
+| Tracell Peace-Nichols | Qualified | No | Criminal and Family Law Attorney | 03/06/2026 |
+| Ceretta Smith | Qualified | No | Retired | 03/02/2026 |
+| Chris Stephens | Qualified | No | Self Employed | 03/04/2026 |
+| Brianna Woodson | Qualified | No | Therapist in Residency | 03/04/2026 |
 
 ## Data Source
 

@@ -4,6 +4,8 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 415780e0-5e74-43ce-a500-7a30374d4df2 |
+| Format Version | 1 |
 | Election | [May 19, 2026 — General and Primary Election](../2026-05-19-general-primary.md) |
 | Type | Local Races |
 | Contests | 8 |
@@ -40,67 +42,83 @@ Voters in Whitfield County will also see the following statewide and district ra
 
 ### County Commission District 1
 
+**Body:** whitfield-commission | **Seat:** district-1
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Mike B. Kinsey | Qualified | No | Retired | 03/02/2026 | — | — |
-| Philip King | Qualified | No | Teacher | 03/02/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Mike B. Kinsey | Qualified | No | Retired | 03/02/2026 |
+| Philip King | Qualified | No | Teacher | 03/02/2026 |
 
 ### County Commission District 3
 
+**Body:** whitfield-commission | **Seat:** district-3
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Anthony Narong Hulsey | Qualified | No | Retired | 03/05/2026 | — | — |
-| James F Anderson Jr | Qualified | No | Carpenter | 03/02/2026 | indiancreekbuilding@gmail.com | — |
-| John Thomas | Qualified | Yes | Real Estate Agent | 03/02/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Anthony Narong Hulsey | Qualified | No | Retired | 03/05/2026 |
+| James F. Anderson Jr | Qualified | No | Carpenter | 03/02/2026 |
+| John Thomas | Qualified | Yes | Real Estate Agent | 03/02/2026 |
 
 ### County Board of Education At Large
 
+**Body:**  | **Seat:** 
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Bill Worley | Qualified | Yes | Sales | 03/06/2026 | — | — |
-| James Dawson Harper | Qualified | No | Fire Protection Engineer Project Manager | 03/06/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Bill Worley | Qualified | Yes | Sales | 03/06/2026 |
+| James Dawson Harper | Qualified | No | Fire Protection Engineer Project Manager | 03/06/2026 |
 
 ### County Board of Education, District 2
 
+**Body:**  | **Seat:** 
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Danial Alt | Qualified | No | Systems Engineer | 03/10/2026 | — | — |
-| Karen Crow Roark | Qualified | No | Retired Teacher / Part Time Teacher in Murray County | 03/09/2026 | — | — |
-| Kenneth Jeffery Lynn | Qualified | No | Heatset Creeler | 03/10/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Danial Alt | Qualified | No | Systems Engineer | 03/10/2026 |
+| Karen Crow Roark | Qualified | No | Retired Teacher / Part Time Teacher in Murray County | 03/09/2026 |
+| Kenneth Jeffery Lynn | Qualified | No | Heatset Creeler | 03/10/2026 |
 
 ### County Board of Education, District 4
 
+**Body:**  | **Seat:** 
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Brent Rollins | Qualified | Yes | VP Business Development | 03/06/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Brent Rollins | Qualified | Yes | VP Business Development | 03/06/2026 |
 
 ### Judge of Superior Court, Conasauga Judicial Circuit - Morris
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Maxine C. "Cindy" Morris | Qualified | Yes | Superior Court Judge | 03/02/2026 | cmorris@whitfieldcountyga.com | — |
+**Body:** whitfield-superior-court | **Seat:** judge-morris
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Maxine C. "cindy" Morris | Qualified | Yes | Superior Court Judge | 03/02/2026 |
 
 ### Judge of Superior Court, Conasauga Judicial Circuit - Wilbanks
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| George Jason Souther | Qualified | No | Juvenile Court Judge | 03/02/2026 | — | — |
+**Body:** whitfield-superior-court | **Seat:** judge-wilbanks
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| George Jason Souther | Qualified | No | Juvenile Court Judge | 03/02/2026 |
 
 ### Justice of Supreme Court - Bethel
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Charles "Charlie" Bethel | Qualified | Yes | Justice of the Supreme Court of Georgia | 03/02/2026 | bethel@rtastrategy.com | [charliebethel.org](https://www.charliebethel.org) |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Charles "charlie" Bethel | Qualified | Yes | Justice of the Supreme Court of Georgia | 03/02/2026 |
 
 ## Data Source
 

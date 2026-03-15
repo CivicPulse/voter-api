@@ -4,6 +4,8 @@
 
 | Field | Value |
 |-------|-------|
+| ID | e5401902-07c2-4a49-bf3f-e6a8309cc63d |
+| Format Version | 1 |
 | Election | [May 19, 2026 — General and Primary Election](../2026-05-19-general-primary.md) |
 | Type | Local Races |
 | Contests | 7 |
@@ -40,60 +42,74 @@ Voters in Habersham County will also see the following statewide and district ra
 
 ### County Commissioner District 2
 
+**Body:**  | **Seat:** 
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Andrea Harper | Qualified | No | Retired | — | andreaharper2026@gmail.com | — |
-| Shelley A. Tullis | Qualified | No | Business Owner | — | tullisforhabersham@gmail.com | [tullisforhabersham.org](https://tullisforhabersham.org) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Andrea Harper | Qualified | No | Retired | — |
+| Shelley A. Tullis | Qualified | No | Business Owner | — |
 
 ### County Commissioner District 3
 
+**Body:**  | **Seat:** 
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Danny Mcclellon | Qualified | No | Retail Sales & Construction | — | dmcclellon@gmail.com | — |
-| Jason Mark Smith | Qualified | No | Civil Engineer | — | jmsmith@jmsmithengineering.com | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Danny McClellon | Qualified | No | Retail Sales & Construction | — |
+| Jason Mark Smith | Qualified | No | Civil Engineer | — |
 
 ### Special County Commissioner District 3
 
+**Body:**  | **Seat:** 
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Danny Mcclellon | Qualified | No | Retail Sales & Construction | — | dmcclellon@gmail.com | — |
-| Jason Mark Smith | Qualified | No | Civil Engineer | — | jmsmith@jmsmithengineering.com | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Danny McClellon | Qualified | No | Retail Sales & Construction | — |
+| Jason Mark Smith | Qualified | No | Civil Engineer | — |
 
 ### Board of Education District 3
 
+**Body:** habersham-boe | **Seat:** district-3
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Russell H. Nelson III | Qualified | Yes | Retired | — | rnelson@habershamschools.com | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Russell H. Nelson III | Qualified | Yes | Retired | — |
 
 ### Board of Education District 4
 
+**Body:** habersham-boe | **Seat:** district-4
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Darlene T. Hudson | Qualified | Yes | Retired Principal | — | dhudson@habershamschools.com | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Darlene T. Hudson | Qualified | Yes | Retired Principal | — |
 
 ### Board of Education District 5
 
+**Body:** habersham-boe | **Seat:** district-5
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Joseph Lee Duncan | Qualified | Yes | Certified Public Accountant | — | jduncan@duncankitchens.com | [www.dkrcpas.com](https://www.dkrcpas.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Joseph Lee Duncan | Qualified | Yes | Certified Public Accountant | — |
 
 ### Judge of Superior Court, Mountain Judicial Circuit - Carswell
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Bambi Nichole Carswell | Qualified | Yes | Superior Court Judge | — | — | — |
+**Body:** habersham-superior-court | **Seat:** judge-carswell
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Bambi Nichole Carswell | Qualified | Yes | Superior Court Judge | — |
 
 ## Data Source
 

@@ -112,6 +112,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         Returns:
             Response, or 429 if rate limited.
         """
+        if self.requests_per_minute <= 0:
+            return await call_next(request)
+
         client_ip = get_client_ip(request, self.trusted_proxy_headers)
         now = time.time()
         window_start = now - 60.0

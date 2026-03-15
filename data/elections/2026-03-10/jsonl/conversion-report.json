@@ -1,0 +1,50 @@
+{
+  "total_files": 6,
+  "succeeded": 6,
+  "failed": 0,
+  "files": [
+    {
+      "path": "data/elections/2026-03-10/2026-03-10-special-election.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "data/elections/2026-03-10/2026-03-10-state-house-district-130.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "data/elections/2026-03-10/2026-03-10-state-house-district-94.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "data/elections/2026-03-10/2026-03-10-state-senate-district-53.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "data/elections/2026-03-10/2026-03-10-us-house-district-14.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "data/elections/2026-03-10/counties/2026-03-10-whitfield.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    }
+  ],
+  "errors": []
+}

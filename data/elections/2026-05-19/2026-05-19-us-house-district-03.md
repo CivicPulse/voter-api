@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | b2f5bae5-c989-4ea5-8930-941099a89372 |
+| Format Version | 1 |
+| Body | ga-us-house |
+| Seat | district-3 |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 1 Republican, 2 Democrat |
@@ -44,18 +49,18 @@ Congressional District 3 includes 15 counties (some counties are split across mu
 
 **Contest Name (SOS):** U.S House of Representatives, District 3 (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Brian Timothy Jack | Qualified | Yes | United States Representative | 03/02/2026 | — | [brianjack.com](https://brianjack.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Brian Timothy Jack | Qualified | Yes | United States Representative | 03/02/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 3 (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| George Melville Johnson | Qualified | No | Attorney | 03/04/2026 | gjohnson@melvillejohnson.com | — |
-| Maura Kathleen Keller | Qualified | No | Retired Army | 03/02/2026 | maura@maurakeller.com | [maurakeller.com](https://maurakeller.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| George Melville Johnson | Qualified | No | Attorney | 03/04/2026 |
+| Maura Kathleen Keller | Qualified | No | Retired Army | 03/02/2026 |
 
 ## Data Source
 

@@ -9,6 +9,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
+from voter_api.schemas.candidacy import CandidacySummaryResponse
 from voter_api.schemas.common import PaginationMeta
 
 
@@ -110,7 +111,7 @@ class CandidateSummaryResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     id: uuid.UUID
-    election_id: uuid.UUID
+    election_id: uuid.UUID | None = None
     full_name: str
     party: str | None = None
     photo_url: str | None = None
@@ -120,6 +121,8 @@ class CandidateSummaryResponse(BaseModel):
     created_at: datetime
     contest_name: str | None = None
     home_county: str | None = None
+    candidacies: list[CandidacySummaryResponse] = Field(default_factory=list)
+    external_ids: dict | None = None
 
 
 class CandidateDetailResponse(CandidateSummaryResponse):

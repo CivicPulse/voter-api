@@ -142,7 +142,9 @@ jobs:
           REPO: ${{ github.repository }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}   # replaces anthropic_api_key
+          # OAuth token is preferred; API key is fallback if OAuth isn't configured
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           allowed_tools: "bash"
           direct_prompt: |
@@ -272,12 +274,6 @@ jobs:
               recategorize it as SKIP — it's too risky for autonomous application.
             - Do not leave comments on the PR. Just fix, push, and resolve.
 
-          allowed_tools: "bash"
-          # Pass the API key and GitHub token as action inputs rather than
-          # environment variables — the action reads these from `with:` inputs,
-          # not from the environment, so env-only won't work.
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       # After Claude has run, post a transparency comment summarizing outcomes.
       # This helps the PR author understand what the bot did so they can verify

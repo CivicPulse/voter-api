@@ -97,6 +97,7 @@ class ElectionSummary(BaseModel):
     district: str
     status: ElectionStatus
     source: str
+    election_stage: str | None = None
     last_refreshed_at: datetime | None = None
     precincts_reporting: int | None = None
     precincts_participating: int | None = None

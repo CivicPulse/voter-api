@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | bbd90f52-0de5-4e1b-97e5-f1e16cfe2bff |
+| Format Version | 1 |
+| Body | ga-us-house |
+| Seat | district-10 |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 3 Republican, 3 Democrat |
@@ -49,21 +54,21 @@ Congressional District 10 includes 20 counties (some counties are split across m
 
 **Contest Name (SOS):** U.S House of Representatives, District 10 (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Jeffrey Dwayne Baker | Qualified | No | Plumber | 03/04/2026 | — | [jeffbakerforcongress.com](https://www.jeffbakerforcongress.com) |
-| Houston Gaines | Qualified | No | Small Business Development | 03/02/2026 | info@houstongaines.com | [houstongaines.com](https://houstongaines.com) |
-| Ryan Christopher Millsap | Qualified | No | Entrepreneur | 03/04/2026 | ryan@ryanmillsapforcongress.com | [ryanmillsapforcongress.com](https://www.ryanmillsapforcongress.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Jeffrey Dwayne Baker | Qualified | No | Plumber | 03/04/2026 |
+| Houston Gaines | Qualified | No | Small Business Development | 03/02/2026 |
+| Ryan Christopher Millsap | Qualified | No | Entrepreneur | 03/04/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 10 (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Pamela "Pam" Delancy | Qualified | No | Military Retiree | 03/03/2026 | electdelancy@votepamdelancy.com | [votepamdelancy.com](https://votepamdelancy.com) |
-| Alexandra "Lexy" Doherty | Qualified | No | Candidate | 03/02/2026 | campaign@lexydoherty.com | [lexydoherty.com](https://lexydoherty.com) |
-| John B. Dority | Qualified | No | Retired Engineer | 03/06/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Pamela "pam" Delancy | Qualified | No | Military Retiree | 03/03/2026 |
+| Alexandra "lexy" Doherty | Qualified | No | Candidate | 03/02/2026 |
+| John B. Dority | Qualified | No | Retired Engineer | 03/06/2026 |
 
 ## Data Source
 

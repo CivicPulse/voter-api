@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | d343c3c2-dbbc-4546-a299-1bb90cb2e7de |
+| Format Version | 1 |
+| Body | ga-us-house |
+| Seat | district-6 |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 2 Republican, 1 Democrat |
@@ -33,18 +38,18 @@ Congressional District 6 includes 4 counties (some counties are split across mul
 
 **Contest Name (SOS):** U.S House of Representatives, District 6 (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Kevin Eugene Martin | Qualified | No | Controller | 03/02/2026 | committee2electkem@gmail.com | — |
-| Justin Lee Pinker | Qualified | No | Pest Control Tech | 03/05/2026 | justin@justinpinkerforcongress.com | [justinpinkerforcongress.com](https://www.justinpinkerforcongress.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Kevin Eugene Martin | Qualified | No | Controller | 03/02/2026 |
+| Justin Lee Pinker | Qualified | No | Pest Control Tech | 03/05/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** U.S House of Representatives, District 6 (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Lucy McBath | Qualified | Yes | Congresswoman | 03/02/2026 | info@lucyforcongress.com | [lucyforcongress.com](https://lucyforcongress.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Lucy McBath | Qualified | Yes | Congresswoman | 03/02/2026 |
 
 ## Data Source
 

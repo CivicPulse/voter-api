@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | e4a14c1a-284e-4c90-adc4-dba80c3b7eb0 |
+| Format Version | 1 |
+| Body | ga-insurance |
+| Seat | sole |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 1 Republican, 5 Democrat |
@@ -188,21 +193,21 @@ All 159 Georgia counties participate in this statewide race.
 
 **Contest Name (SOS):** Insurance and Fire Safety Commissioner (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| John Franklin King | Qualified | Yes | Commissioner | 03/02/2026 | info@votejohnking.com | [www.votejohnking.com](https://www.votejohnking.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| John Franklin King | Qualified | Yes | Commissioner | 03/02/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** Insurance and Fire Safety Commissioner (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Clarence Blalock | Qualified | No | Small Business Owner | 03/06/2026 | clarence@clarenceforga.com | [clarenceforga.com](https://clarenceforga.com) |
-| Thomas Gabriel Dean | Qualified | No | Driver | 03/06/2026 | — | — |
-| Ambuj "AJ" Jain | Qualified | No | Entrepreneur | 03/06/2026 | — | — |
-| Deandre Bernard Mathis | Qualified | No | Insurance Agent | 03/02/2026 | info@deandreforgeorgia.com | [deandreforgeorgia.com](https://deandreforgeorgia.com) |
-| Keisha Sean Waites | Qualified | No | Former State Legislator | 03/06/2026 | seanwaites@hotmail.com | [keishawaites.org](https://keishawaites.org) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Clarence Blalock | Qualified | No | Small Business Owner | 03/06/2026 |
+| Thomas Gabriel Dean | Qualified | No | Driver | 03/06/2026 |
+| Ambuj "aj" Jain | Qualified | No | Entrepreneur | 03/06/2026 |
+| Deandre Bernard Mathis | Qualified | No | Insurance Agent | 03/02/2026 |
+| Keisha Sean Waites | Qualified | No | Former State Legislator | 03/06/2026 |
 
 ## Data Source
 

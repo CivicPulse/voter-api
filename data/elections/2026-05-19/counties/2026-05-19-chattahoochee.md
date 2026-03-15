@@ -4,6 +4,8 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 6ae50399-8b98-408b-9a70-ddce3dd8fbc9 |
+| Format Version | 1 |
 | Election | [May 19, 2026 — General and Primary Election](../2026-05-19-general-primary.md) |
 | Type | Local Races |
 | Contests | 5 |
@@ -40,35 +42,45 @@ Voters in Chattahoochee County will also see the following statewide and distric
 
 ### County Commissioner Post 3
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Jason Neel Frost | Qualified | Yes | Sr. Director Client Services | 03/03/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Jason Neel Frost | Qualified | Yes | Sr. Director Client Services | 03/03/2026 |
 
 ### County Commissioner Post 4
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Christy H Humber | Qualified | No | Independent Contractor | 03/06/2026 | — | — |
-| Robin D Marion | Qualified | No | Caterer | 03/02/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Christy H. Humber | Qualified | No | Independent Contractor | 03/06/2026 |
+| Robin D. Marion | Qualified | No | Caterer | 03/02/2026 |
 
 ### County Commissioner Post 5
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Damon Albert Hoyte | Qualified | Yes | Electrician | 03/05/2026 | — | — |
-| Melissa J Haymond | Qualified | No | Consultant | 03/06/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Damon Albert Hoyte | Qualified | Yes | Electrician | 03/05/2026 |
+| Melissa J. Haymond | Qualified | No | Consultant | 03/06/2026 |
 
 ### County Board of Education Post 2
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Teresa Lynn Smith | Qualified | Yes | Accounting Clerk | 03/04/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Teresa Lynn Smith | Qualified | Yes | Accounting Clerk | 03/04/2026 |
 
 ### County Board of Education Post 4
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Shirley Spivey Jones | Qualified | Yes | Board Member | 03/04/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Shirley Spivey Jones | Qualified | Yes | Board Member | 03/04/2026 |
 
 ## Data Source
 

@@ -4,6 +4,17 @@
 **Type:** General and Primary Election
 **Qualified Candidates:** 2,319 (plus 14 withdrawn, 3 disqualified)
 
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| ID | c830ca32-6b6b-4687-b6f7-7ef573ae05bf |
+| Format Version | 1 |
+| Name (SOS) | |
+| Type | general_primary |
+| Stage | election |
+
 ## Election Calendar
 
 | Field | Date | Source |

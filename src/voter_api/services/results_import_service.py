@@ -17,6 +17,7 @@ from voter_api.lib.results_importer import (
     load_results_file,
     validate_results_file,
 )
+from voter_api.models.candidacy import Candidacy
 from voter_api.models.candidate import Candidate
 from voter_api.models.election import Election
 from voter_api.models.import_job import ImportJob
@@ -263,8 +264,10 @@ async def _upsert_candidates(
     for c in ctx.candidates:
         if c.party or c.is_incumbent:
             existing = await session.execute(
-                select(Candidate).where(
-                    Candidate.election_id == election_id,
+                select(Candidate)
+                .join(Candidacy, Candidacy.candidate_id == Candidate.id)
+                .where(
+                    Candidacy.election_id == election_id,
                     Candidate.full_name == c.full_name,
                 )
             )

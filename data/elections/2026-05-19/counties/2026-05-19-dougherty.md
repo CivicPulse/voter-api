@@ -4,6 +4,8 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 513a62a9-765b-40a8-8dcf-5e11d8a6e364 |
+| Format Version | 1 |
 | Election | [May 19, 2026 — General and Primary Election](../2026-05-19-general-primary.md) |
 | Type | Local Races |
 | Contests | 8 |
@@ -40,73 +42,89 @@ Voters in Dougherty County will also see the following statewide and district ra
 
 ### County Commission Chairman
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Henry Mathis | Qualified | No | Adjunct Professor | 03/05/2026 | — | — |
-| Lorenzo L. Heard | Qualified | Yes | Pastor | 03/02/2026 | — | — |
+**Body:**  | **Seat:** 
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Henry Mathis | Qualified | No | Adjunct Professor | 03/05/2026 |
+| Lorenzo L. Heard | Qualified | Yes | Pastor | 03/02/2026 |
 
 ### County Commissioner District 2
 
+**Body:**  | **Seat:** 
+
 **Democrat Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Victor Edwards | Qualified | Yes | Self Employed | 03/03/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Victor Edwards | Qualified | Yes | Self Employed | 03/03/2026 |
 
 ### County Commissioner District 4
 
+**Body:**  | **Seat:** 
+
 **Republican Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Russell Burton Gray | Qualified | Yes | Operations Manager | 03/02/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Russell Burton Gray | Qualified | Yes | Operations Manager | 03/02/2026 |
 
 **Democrat Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Al Wynn | Qualified | No | Local Business Developer | 03/04/2026 | — | — |
-| Anthony Patterson | Qualified | No | Pest Control Technician | 03/02/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Al Wynn | Qualified | No | Local Business Developer | 03/04/2026 |
+| Anthony Patterson | Qualified | No | Pest Control Technician | 03/02/2026 |
 
 ### County Commissioner District 6
 
+**Body:**  | **Seat:** 
+
 **Democrat Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Anthony Jones | Qualified | Yes | Retired | 03/02/2026 | — | — |
-| Willie Roy Martin | Qualified | No | Retired | 03/02/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Anthony Jones | Qualified | Yes | Retired | 03/02/2026 |
+| Willie Roy Martin | Qualified | No | Retired | 03/02/2026 |
 
 ### Board of Education District 2
 
+**Body:** dougherty-boe | **Seat:** district-2
+
 **Democrat Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Norma K Gaines-Heath | Qualified | Yes | Retired Educator | 03/05/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Norma K. Gaines-Heath | Qualified | Yes | Retired Educator | 03/05/2026 |
 
 ### Board of Education District 4
 
+**Body:** dougherty-boe | **Seat:** district-4
+
 **Democrat Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Adam Inyang | Qualified | No | Artist | 03/06/2026 | — | — |
-| Melissa Strother | Qualified | Yes | Graphic Designer | 03/05/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Adam Inyang | Qualified | No | Artist | 03/06/2026 |
+| Melissa Strother | Qualified | Yes | Graphic Designer | 03/05/2026 |
 
 ### Board of Education District 6
 
+**Body:** dougherty-boe | **Seat:** district-6
+
 **Democrat Primary**
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Dean T Phinazee | Qualified | Yes | Retired | 03/02/2026 | — | — |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Dean T. Phinazee | Qualified | Yes | Retired | 03/02/2026 |
 
 ### Judge of Superior Court, Dougherty Judicial Circuit - Dent
 
-| Candidate | Status | Incumbent | Occupation | Qualified | Email | Website |
-|-----------|--------|-----------|------------|-----------|-------|---------|
-| Joseph West Dent | Qualified | Yes | Superior Court Judge | 03/02/2026 | joedentlaw@gmail.com | [electjoedent.com](https://www.electjoedent.com) |
+**Body:** dougherty-superior-court | **Seat:** judge-dent
+
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | ----------- |
+| Joseph West Dent | Qualified | Yes | Superior Court Judge | 03/02/2026 |
 
 ## Data Source
 

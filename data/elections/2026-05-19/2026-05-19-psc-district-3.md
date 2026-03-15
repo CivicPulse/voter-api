@@ -4,6 +4,11 @@
 
 | Field | Value |
 |-------|-------|
+| ID | 79f0561f-6d51-42ac-857f-8bcfeae04576 |
+| Format Version | 1 |
+| Body | ga-psc |
+| Seat | district-3 |
+| Stage | election |
 | Election | [May 19, 2026 — General and Primary Election](2026-05-19-general-primary.md) |
 | Type | Partisan Primary |
 | Candidates | 2 Republican, 1 Democrat |
@@ -33,18 +38,18 @@ PSC District 3 includes 4 counties.
 
 **Contest Name (SOS):** Public Service Commissioner, District 3 (R)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Terrell Fitz Johnson Sr | Qualified | No | Entrepreneur | 03/03/2026 | fitz@friendsforfitz.com | [friendsforfitz.com](https://friendsforfitz.com) |
-| Brandon Lynn Martin | Qualified | No | Purchasing | 03/05/2026 | — | [votebrandonmartin.com](https://votebrandonmartin.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Terrell Fitz Johnson Sr | Qualified | No | Entrepreneur | 03/03/2026 |
+| Brandon Lynn Martin | Qualified | No | Purchasing | 03/05/2026 |
 
 ## Democrat Primary
 
 **Contest Name (SOS):** Public Service Commissioner, District 3 (D)
 
-| Candidate | Status | Incumbent | Occupation | Qualified Date | Email | Website |
-|-----------|--------|-----------|------------|---------------|-------|---------|
-| Peter Jacob Hubbard | Qualified | Yes | Commissioner | 03/02/2026 | peter@peterforgeorgia.com | [peterforgeorgia.com](https://peterforgeorgia.com) |
+| Candidate | Status | Incumbent | Occupation | Qualified Date |
+| ----------- | -------- | ----------- | ------------ | --------------- |
+| Peter Jacob Hubbard | Qualified | Yes | Commissioner | 03/02/2026 |
 
 ## Data Source
 

@@ -1,0 +1,43 @@
+{
+  "total_files": 5,
+  "succeeded": 5,
+  "failed": 0,
+  "files": [
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-03-17/2026-03-17-bibb-commission-district-5.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-03-17/2026-03-17-buchanan-mayor.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-03-17/2026-03-17-clayton-probate-judge.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-03-17/2026-03-17-special-election.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "path": "/home/kwhatcher/projects/civpulse/voter-api/.claude/worktrees/better-imports/data/elections/2026-03-17/2026-03-17-wadley-council-member.md",
+      "status": "success",
+      "record_count": 1,
+      "errors": [],
+      "warnings": []
+    }
+  ],
+  "errors": []
+}
