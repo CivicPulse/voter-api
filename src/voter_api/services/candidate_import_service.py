@@ -544,3 +544,166 @@ async def process_candidate_import(
         raise
 
     return job
+
+
+# --- JSONL person-entity import (new pipeline) ---
+
+
+_CANDIDATE_JSONL_COALESCE = [
+    "bio",
+    "photo_url",
+    "email",
+    "home_county",
+    "municipality",
+]
+
+
+def _prepare_candidate_jsonl_record(record: dict) -> dict:
+    """Prepare a validated CandidateJSONL record for DB insertion.
+
+    Maps person-level JSONL fields to the Candidate model columns.
+    Contest-specific fields are NOT present -- those live on CandidacyJSONL.
+
+    Args:
+        record: Validated record dict from Pydantic model_dump().
+
+    Returns:
+        Dict suitable for pg_insert().values().
+    """
+    db_record: dict = {}
+
+    # UUID
+    val = record.get("id")
+    if val is not None:
+        db_record["id"] = uuid.UUID(val) if isinstance(val, str) else val
+
+    # String fields
+    for field in ["full_name", "bio", "photo_url", "email", "home_county", "municipality"]:
+        if field in record and record[field] is not None:
+            db_record[field] = record[field]
+
+    # External IDs (JSONB)
+    if "external_ids" in record and record["external_ids"]:
+        db_record["external_ids"] = record["external_ids"]
+
+    return db_record
+
+
+async def _upsert_candidate_jsonl_batch(
+    session: AsyncSession,
+    records: list[dict],
+) -> tuple[int, int]:
+    """Bulk upsert candidate person records by UUID primary key.
+
+    This is for the new JSONL pipeline where candidates are person entities
+    without election_id. Uses conflict on the 'id' column (PK).
+
+    Args:
+        session: Database session.
+        records: Prepared candidate record dicts.
+
+    Returns:
+        Tuple of (inserted_count, updated_count).
+    """
+    if not records:
+        return 0, 0
+
+    total_inserted = 0
+    total_updated = 0
+
+    # Always-overwrite fields
+    overwrite_fields = ["full_name"]
+    # COALESCE fields: preserve richer existing data
+    coalesce_fields = _CANDIDATE_JSONL_COALESCE
+
+    for i in range(0, len(records), _UPSERT_SUB_BATCH):
+        batch = records[i : i + _UPSERT_SUB_BATCH]
+
+        stmt = pg_insert(Candidate).values(batch)
+        update_set: dict = {}
+        for col in overwrite_fields:
+            if col in batch[0]:
+                update_set[col] = stmt.excluded[col]
+        for col in coalesce_fields:
+            if col in batch[0]:
+                update_set[col] = func.coalesce(stmt.excluded[col], Candidate.__table__.c[col])
+        # external_ids: merge via COALESCE
+        if "external_ids" in batch[0]:
+            update_set["external_ids"] = func.coalesce(stmt.excluded.external_ids, Candidate.__table__.c.external_ids)
+
+        if not update_set:
+            continue
+
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_=update_set,
+        )
+        stmt = stmt.returning(  # type: ignore[assignment]
+            Candidate.__table__.c.id,
+            literal_column("(xmax = 0)::int").label("is_insert"),
+        )
+
+        result = await session.execute(stmt)
+        rows = result.all()
+
+        batch_inserted = sum(row.is_insert for row in rows)
+        total_inserted += batch_inserted
+        total_updated += len(rows) - batch_inserted
+
+    return total_inserted, total_updated
+
+
+async def import_candidates_jsonl(
+    session: AsyncSession,
+    records: list[dict],
+    *,
+    dry_run: bool = False,
+) -> dict:
+    """Import candidate person-entity records from validated CandidateJSONL data.
+
+    This is distinct from process_candidate_import which handles the legacy
+    preprocessed JSONL format with election resolution. This function handles
+    the new JSONL pipeline where candidates are person entities with UUIDs.
+
+    Args:
+        session: Database session.
+        records: List of validated record dicts (from read_jsonl).
+        dry_run: If True, report what would happen without writing.
+
+    Returns:
+        Summary dict with inserted/updated/errors counts.
+    """
+    prepared = []
+    errors: list[dict] = []
+
+    for record in records:
+        try:
+            db_record = _prepare_candidate_jsonl_record(record)
+            prepared.append(db_record)
+        except Exception as e:
+            errors.append({"id": str(record.get("id", "unknown")), "error": str(e)})
+
+    if dry_run:
+        record_ids = [r["id"] for r in prepared]
+        existing_result = await session.execute(select(Candidate.id).where(Candidate.id.in_(record_ids)))
+        existing_ids = set(existing_result.scalars().all())
+
+        would_insert = sum(1 for r in prepared if r["id"] not in existing_ids)
+        would_update = sum(1 for r in prepared if r["id"] in existing_ids)
+
+        return {
+            "would_insert": would_insert,
+            "would_update": would_update,
+            "errors": errors,
+        }
+
+    inserted, updated = await _upsert_candidate_jsonl_batch(session, prepared)
+    await session.commit()
+
+    logger.info(f"Candidates JSONL import: {inserted} inserted, {updated} updated, {len(errors)} errors")
+    return {
+        "inserted": inserted,
+        "updated": updated,
+        "skipped": 0,
+        "errors": errors,
+    }

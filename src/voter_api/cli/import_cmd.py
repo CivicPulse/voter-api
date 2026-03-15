@@ -1050,3 +1050,293 @@ async def _build_crosswalk() -> None:
                 )
     finally:
         await dispose_engine()
+
+
+# ── JSONL Import Commands (New Pipeline) ──────────────────────────────────
+
+
+@import_app.command("election-events")
+def import_election_events_cmd(
+    file: Path = typer.Argument(..., help="Path to election-events JSONL file", exists=True),  # noqa: B008
+    dry_run: bool = typer.Option(False, "--dry-run", help="Validate without writing"),  # noqa: B008
+    batch_size: int = typer.Option(500, "--batch-size", help=_BATCH_SIZE_HELP),  # noqa: B008
+    fail_fast: bool = typer.Option(False, "--fail-fast", help="Stop on first validation error"),  # noqa: B008
+) -> None:
+    """Import election events from a JSONL file."""
+    asyncio.run(_import_election_events(file, dry_run, batch_size, fail_fast))
+
+
+async def _import_election_events(file_path: Path, dry_run: bool, batch_size: int, fail_fast: bool) -> None:
+    """Async implementation of election-events import."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.schemas.jsonl.election_event import ElectionEventJSONL
+    from voter_api.services.election_event_import_service import import_election_events
+    from voter_api.services.jsonl_reader import read_jsonl
+
+    valid_records, read_errors = read_jsonl(file_path, ElectionEventJSONL)
+    if read_errors:
+        typer.echo(f"Validation errors: {len(read_errors)}")
+        for err in read_errors[:10]:
+            typer.echo(f"  Line {err['line']}: {err['error'][:120]}")
+        if fail_fast:
+            raise typer.Exit(code=1)
+
+    if not valid_records:
+        typer.echo("No valid records found.")
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            if dry_run:
+                typer.echo("DRY RUN -- no changes will be made")
+            result = await import_election_events(session, valid_records, dry_run=dry_run)
+            _print_jsonl_import_summary("Election Events", result, dry_run)
+    finally:
+        await dispose_engine()
+
+
+@import_app.command("elections")
+def import_elections_cmd(
+    file: Path = typer.Argument(..., help="Path to elections JSONL file", exists=True),  # noqa: B008
+    dry_run: bool = typer.Option(False, "--dry-run", help="Validate without writing"),  # noqa: B008
+    batch_size: int = typer.Option(500, "--batch-size", help=_BATCH_SIZE_HELP),  # noqa: B008
+    fail_fast: bool = typer.Option(False, "--fail-fast", help="Stop on first validation error"),  # noqa: B008
+) -> None:
+    """Import elections from a JSONL file."""
+    asyncio.run(_import_elections(file, dry_run, batch_size, fail_fast))
+
+
+async def _import_elections(file_path: Path, dry_run: bool, batch_size: int, fail_fast: bool) -> None:
+    """Async implementation of elections import."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.schemas.jsonl.election import ElectionJSONL
+    from voter_api.services.election_import_service import import_elections
+    from voter_api.services.jsonl_reader import read_jsonl
+
+    valid_records, read_errors = read_jsonl(file_path, ElectionJSONL)
+    if read_errors:
+        typer.echo(f"Validation errors: {len(read_errors)}")
+        for err in read_errors[:10]:
+            typer.echo(f"  Line {err['line']}: {err['error'][:120]}")
+        if fail_fast:
+            raise typer.Exit(code=1)
+
+    if not valid_records:
+        typer.echo("No valid records found.")
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            if dry_run:
+                typer.echo("DRY RUN -- no changes will be made")
+            result = await import_elections(session, valid_records, dry_run=dry_run)
+            _print_jsonl_import_summary("Elections", result, dry_run)
+    finally:
+        await dispose_engine()
+
+
+@import_app.command("candidacies")
+def import_candidacies_cmd(
+    file: Path = typer.Argument(..., help="Path to candidacies JSONL file", exists=True),  # noqa: B008
+    dry_run: bool = typer.Option(False, "--dry-run", help="Validate without writing"),  # noqa: B008
+    batch_size: int = typer.Option(500, "--batch-size", help=_BATCH_SIZE_HELP),  # noqa: B008
+    fail_fast: bool = typer.Option(False, "--fail-fast", help="Stop on first validation error"),  # noqa: B008
+) -> None:
+    """Import candidacies from a JSONL file."""
+    asyncio.run(_import_candidacies(file, dry_run, batch_size, fail_fast))
+
+
+async def _import_candidacies(file_path: Path, dry_run: bool, batch_size: int, fail_fast: bool) -> None:
+    """Async implementation of candidacies import."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.schemas.jsonl.candidacy import CandidacyJSONL
+    from voter_api.services.candidacy_import_service import import_candidacies
+    from voter_api.services.jsonl_reader import read_jsonl
+
+    valid_records, read_errors = read_jsonl(file_path, CandidacyJSONL)
+    if read_errors:
+        typer.echo(f"Validation errors: {len(read_errors)}")
+        for err in read_errors[:10]:
+            typer.echo(f"  Line {err['line']}: {err['error'][:120]}")
+        if fail_fast:
+            raise typer.Exit(code=1)
+
+    if not valid_records:
+        typer.echo("No valid records found.")
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            if dry_run:
+                typer.echo("DRY RUN -- no changes will be made")
+            result = await import_candidacies(session, valid_records, dry_run=dry_run)
+            _print_jsonl_import_summary("Candidacies", result, dry_run)
+    finally:
+        await dispose_engine()
+
+
+@import_app.command("candidates-jsonl")
+def import_candidates_jsonl_cmd(
+    file: Path = typer.Argument(..., help="Path to candidates JSONL file", exists=True),  # noqa: B008
+    dry_run: bool = typer.Option(False, "--dry-run", help="Validate without writing"),  # noqa: B008
+    batch_size: int = typer.Option(500, "--batch-size", help=_BATCH_SIZE_HELP),  # noqa: B008
+    fail_fast: bool = typer.Option(False, "--fail-fast", help="Stop on first validation error"),  # noqa: B008
+) -> None:
+    """Import candidates (person entities) from a JSONL file."""
+    asyncio.run(_import_candidates_jsonl(file, dry_run, batch_size, fail_fast))
+
+
+async def _import_candidates_jsonl(file_path: Path, dry_run: bool, batch_size: int, fail_fast: bool) -> None:
+    """Async implementation of candidates-jsonl import."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.schemas.jsonl.candidate import CandidateJSONL
+    from voter_api.services.candidate_import_service import import_candidates_jsonl
+    from voter_api.services.jsonl_reader import read_jsonl
+
+    valid_records, read_errors = read_jsonl(file_path, CandidateJSONL)
+    if read_errors:
+        typer.echo(f"Validation errors: {len(read_errors)}")
+        for err in read_errors[:10]:
+            typer.echo(f"  Line {err['line']}: {err['error'][:120]}")
+        if fail_fast:
+            raise typer.Exit(code=1)
+
+    if not valid_records:
+        typer.echo("No valid records found.")
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            if dry_run:
+                typer.echo("DRY RUN -- no changes will be made")
+            result = await import_candidates_jsonl(session, valid_records, dry_run=dry_run)
+            _print_jsonl_import_summary("Candidates", result, dry_run)
+    finally:
+        await dispose_engine()
+
+
+@import_app.command("election-data")
+def import_election_data_cmd(
+    directory: Path = typer.Argument(..., help="Directory containing JSONL files", exists=True),  # noqa: B008
+    dry_run: bool = typer.Option(False, "--dry-run", help="Validate without writing"),  # noqa: B008
+) -> None:
+    """Import all election data from a directory in FK dependency order.
+
+    Looks for election-events.jsonl, elections.jsonl, candidates.jsonl,
+    and candidacies.jsonl. Imports in order, stops on first failure.
+    """
+    asyncio.run(_import_election_data(directory, dry_run))
+
+
+async def _import_election_data(directory: Path, dry_run: bool) -> None:
+    """Async implementation of election-data pipeline import."""
+    from voter_api.core.config import get_settings
+    from voter_api.core.database import dispose_engine, get_session_factory, init_engine
+    from voter_api.schemas.jsonl.candidacy import CandidacyJSONL
+    from voter_api.schemas.jsonl.candidate import CandidateJSONL
+    from voter_api.schemas.jsonl.election import ElectionJSONL
+    from voter_api.schemas.jsonl.election_event import ElectionEventJSONL
+    from voter_api.services.candidacy_import_service import import_candidacies
+    from voter_api.services.candidate_import_service import import_candidates_jsonl
+    from voter_api.services.election_event_import_service import import_election_events
+    from voter_api.services.election_import_service import import_elections
+    from voter_api.services.jsonl_reader import read_jsonl
+
+    # Define the import pipeline in FK dependency order
+    pipeline: list[tuple[str, type, Any]] = [
+        ("election-events.jsonl", ElectionEventJSONL, import_election_events),
+        ("elections.jsonl", ElectionJSONL, import_elections),
+        ("candidates.jsonl", CandidateJSONL, import_candidates_jsonl),
+        ("candidacies.jsonl", CandidacyJSONL, import_candidacies),
+    ]
+
+    if dry_run:
+        typer.echo("DRY RUN -- no changes will be made\n")
+
+    settings = get_settings()
+    init_engine(settings.database_url, schema=settings.database_schema)
+
+    succeeded: list[str] = []
+    try:
+        factory = get_session_factory()
+
+        for filename, model_class, import_fn in pipeline:
+            file_path = directory / filename
+            if not file_path.exists():
+                typer.echo(f"Skipping {filename} (not found)")
+                continue
+
+            typer.echo(f"\nImporting {filename}...")
+            valid_records, read_errors = read_jsonl(file_path, model_class)
+            if read_errors:
+                typer.echo(f"  Validation errors: {len(read_errors)}")
+                for err in read_errors[:5]:
+                    typer.echo(f"    Line {err['line']}: {err['error'][:120]}")
+
+            if not valid_records:
+                typer.echo(f"  No valid records in {filename}. Stopping pipeline.")
+                _print_pipeline_summary(succeeded, filename)
+                raise typer.Exit(code=1)
+
+            try:
+                async with factory() as session:
+                    result = await import_fn(session, valid_records, dry_run=dry_run)
+                    _print_jsonl_import_summary(filename, result, dry_run)
+                    succeeded.append(filename)
+            except typer.Exit:
+                raise
+            except Exception as e:
+                typer.echo(f"  FAILED: {e}")
+                _print_pipeline_summary(succeeded, filename)
+                raise typer.Exit(code=1) from None
+
+    finally:
+        await dispose_engine()
+
+    _print_pipeline_summary(succeeded, None)
+
+
+def _print_jsonl_import_summary(label: str, result: dict, dry_run: bool) -> None:
+    """Print a summary of a JSONL import result."""
+    if dry_run:
+        typer.echo(
+            f"  {label}: would insert {result.get('would_insert', 0)}, would update {result.get('would_update', 0)}"
+        )
+    else:
+        typer.echo(
+            f"  {label}: {result.get('inserted', 0)} inserted, "
+            f"{result.get('updated', 0)} updated, "
+            f"{len(result.get('errors', []))} errors"
+        )
+
+
+def _print_pipeline_summary(succeeded: list[str], failed_at: str | None) -> None:
+    """Print a summary of the pipeline import."""
+    typer.echo("\n" + "=" * 60)
+    typer.echo("PIPELINE SUMMARY")
+    typer.echo("=" * 60)
+    for name in succeeded:
+        typer.echo(f"  [OK]   {name}")
+    if failed_at:
+        typer.echo(f"  [FAIL] {failed_at}")
+    typer.echo("=" * 60)
