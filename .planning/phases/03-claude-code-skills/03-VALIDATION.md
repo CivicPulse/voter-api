@@ -1,10 +1,11 @@
 ---
 phase: 3
 slug: claude-code-skills
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-15
+validated: 2026-03-15
 ---
 
 # Phase 3 — Validation Strategy
@@ -38,14 +39,14 @@ created: 2026-03-15
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 03-01-01 | 01 | 1 | SKL-02 | unit | `uv run pytest tests/unit/lib/test_normalizer/test_title_case.py -x` | ❌ W0 | ⬜ pending |
-| 03-01-02 | 01 | 1 | SKL-02 | unit | `uv run pytest tests/unit/lib/test_normalizer/test_rules.py -x` | ❌ W0 | ⬜ pending |
-| 03-01-03 | 01 | 1 | SKL-02 | unit (golden) | `uv run pytest tests/unit/lib/test_normalizer/test_golden_files.py -x` | ❌ W0 | ⬜ pending |
-| 03-01-04 | 01 | 1 | SKL-02 | unit (property) | `uv run pytest tests/unit/lib/test_normalizer/test_idempotency.py -x` | ❌ W0 | ⬜ pending |
-| 03-01-05 | 01 | 1 | SKL-02 | integration | `uv run voter-api normalize elections data/elections/2026-05-19/ --dry-run` | ❌ W0 | ⬜ pending |
-| 03-02-01 | 02 | 2 | SKL-01 | integration (pipeline) | `uv run voter-api normalize elections data/elections/2026-05-19/ --dry-run` | ❌ W0 | ⬜ pending |
-| 03-02-02 | 02 | 2 | SKL-03 | integration (pipeline) | `uv run voter-api normalize elections data/elections/2026-05-19/ --dry-run` | ❌ W0 | ⬜ pending |
-| 03-02-03 | 02 | 2 | SKL-04 | manual | Inspect enriched candidate files, run normalizer | N/A | ⬜ pending |
+| 03-01-01 | 01 | 1 | SKL-02 | unit | `uv run pytest tests/unit/lib/test_normalizer/test_title_case.py -x` | [x] | ✅ green |
+| 03-01-02 | 01 | 1 | SKL-02 | unit | `uv run pytest tests/unit/lib/test_normalizer/test_rules.py -x` | [x] | ✅ green |
+| 03-01-03 | 01 | 1 | SKL-02 | unit (golden) | `uv run pytest tests/unit/lib/test_normalizer/test_golden_files.py -x` | [x] | ✅ green |
+| 03-01-04 | 01 | 1 | SKL-02 | unit (property) | `uv run pytest tests/unit/lib/test_normalizer/test_idempotency.py -x` | [x] | ✅ green |
+| 03-01-05 | 01 | 1 | SKL-02 | integration | `uv run voter-api normalize elections data/elections/2026-05-19/ --dry-run` | [x] | ✅ green |
+| 03-02-01 | 02 | 2 | SKL-01 | integration (pipeline) | `uv run voter-api normalize elections data/elections/2026-05-19/ --dry-run` | [x] | ✅ green |
+| 03-02-02 | 02 | 2 | SKL-03 | integration (pipeline) | `uv run voter-api normalize elections data/elections/2026-05-19/ --dry-run` | [x] | ✅ green |
+| 03-02-03 | 02 | 2 | SKL-04 | manual | Inspect enriched candidate files, run normalizer | N/A | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -53,14 +54,14 @@ created: 2026-03-15
 
 ## Wave 0 Requirements
 
-- [ ] `tests/unit/lib/test_normalizer/__init__.py` — package init
-- [ ] `tests/unit/lib/test_normalizer/test_title_case.py` — smart title case rules
-- [ ] `tests/unit/lib/test_normalizer/test_rules.py` — URL, date, occupation rules
-- [ ] `tests/unit/lib/test_normalizer/test_golden_files.py` — before/after fixtures
-- [ ] `tests/unit/lib/test_normalizer/test_idempotency.py` — Hypothesis property tests
-- [ ] `tests/fixtures/normalizer/` — golden file fixtures directory
-- [ ] `tests/fixtures/normalizer/synthetic.csv` — synthetic SOS CSV fixture
-- [ ] Hypothesis dev dependency: `uv add --dev hypothesis`
+- [x] `tests/unit/lib/test_normalizer/__init__.py` — package init
+- [x] `tests/unit/lib/test_normalizer/test_title_case.py` — smart title case rules
+- [x] `tests/unit/lib/test_normalizer/test_rules.py` — URL, date, occupation rules
+- [x] `tests/unit/lib/test_normalizer/test_golden_files.py` — before/after fixtures
+- [x] `tests/unit/lib/test_normalizer/test_idempotency.py` — Hypothesis property tests
+- [x] `tests/fixtures/normalizer/` — golden file fixtures directory
+- [x] `tests/fixtures/normalizer/synthetic.csv` — synthetic SOS CSV fixture
+- [x] Hypothesis dev dependency: `uv add --dev hypothesis`
 
 ---
 
@@ -76,11 +77,11 @@ created: 2026-03-15
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved (2026-03-15)
