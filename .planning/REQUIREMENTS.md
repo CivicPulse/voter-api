@@ -25,10 +25,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Import Pipeline
 
-- [ ] **IMP-01**: CLI command `voter-api import elections <file.jsonl>` loads election records into the database
-- [ ] **IMP-02**: CLI command `voter-api import candidates <file.jsonl>` loads candidate records into the database
-- [ ] **IMP-03**: Import is idempotent — re-importing the same JSONL file produces no duplicate records or data changes
-- [ ] **IMP-04**: Import supports dry-run mode that validates the JSONL against the database without writing any records
+- [x] **IMP-01**: CLI command `voter-api import elections <file.jsonl>` loads election records into the database
+- [x] **IMP-02**: CLI command `voter-api import candidates <file.jsonl>` loads candidate records into the database
+- [x] **IMP-03**: Import is idempotent — re-importing the same JSONL file produces no duplicate records or data changes
+- [x] **IMP-04**: Import supports dry-run mode that validates the JSONL against the database without writing any records
 
 ### Claude Code Skills
 
@@ -92,10 +92,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CNV-02 | Phase 2 | Complete |
 | CNV-03 | Phase 2 | Complete |
 | CNV-04 | Phase 2 | Complete |
-| IMP-01 | Phase 2 | Pending |
-| IMP-02 | Phase 2 | Pending |
-| IMP-03 | Phase 2 | Pending |
-| IMP-04 | Phase 2 | Pending |
+| IMP-01 | Phase 2 | Complete |
+| IMP-02 | Phase 2 | Complete |
+| IMP-03 | Phase 2 | Complete |
+| IMP-04 | Phase 2 | Complete |
 | SKL-01 | Phase 3 | Pending |
 | SKL-02 | Phase 3 | Pending |
 | SKL-03 | Phase 3 | Pending |
