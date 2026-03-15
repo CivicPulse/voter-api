@@ -1,10 +1,11 @@
 ---
 phase: 4
 slug: end-to-end-demo
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-15
+validated: 2026-03-15
 ---
 
 # Phase 4 — Validation Strategy
@@ -38,9 +39,9 @@ created: 2026-03-15
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 04-01-01 | 01 | 1 | DEM-01 | manual | Walkthrough execution (format migration + normalize) | N/A | ⬜ pending |
-| 04-01-02 | 01 | 1 | DEM-01 | manual | Walkthrough execution (convert + import + query) | N/A | ⬜ pending |
-| 04-01-03 | 01 | 1 | DEM-01 | manual | Walkthrough execution (documentation at `docs/pipeline-walkthrough.md`) | N/A | ⬜ pending |
+| 04-01-01 | 01 | 1 | DEM-01 | manual | Walkthrough execution (format migration + normalize) | N/A | ✅ green |
+| 04-01-02 | 01 | 1 | DEM-01 | manual | Walkthrough execution (convert + import + query) | N/A | ✅ green |
+| 04-01-03 | 01 | 1 | DEM-01 | manual | Walkthrough execution (documentation at `docs/pipeline-walkthrough.md`) | N/A | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -70,11 +71,11 @@ No new test stubs needed for Wave 0.
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved (2026-03-15)
