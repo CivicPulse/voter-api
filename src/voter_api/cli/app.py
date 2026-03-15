@@ -42,6 +42,7 @@ def serve(
 def _register_subcommands() -> None:
     """Register all CLI subcommand groups."""
     from voter_api.cli.analyze_cmd import analyze_app
+    from voter_api.cli.convert_cmd import convert_app
     from voter_api.cli.db_cmd import db_app
     from voter_api.cli.deploy_check_cmd import deploy_check
     from voter_api.cli.election_cmd import election_app
@@ -54,6 +55,7 @@ def _register_subcommands() -> None:
     from voter_api.cli.seed_cmd import seed
     from voter_api.cli.user_cmd import user_app
 
+    app.add_typer(convert_app, name="convert", help="Markdown to JSONL conversion")
     app.add_typer(db_app, name="db", help="Database migration commands")
     app.add_typer(user_app, name="user", help="User management commands")
     app.add_typer(import_app, name="import", help="Data import commands")
