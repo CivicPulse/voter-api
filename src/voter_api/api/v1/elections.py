@@ -26,6 +26,7 @@ from voter_api.lib.election_tracker import FetchError
 from voter_api.models.user import User
 from voter_api.schemas.common import PaginationMeta
 from voter_api.schemas.election import (
+    CapabilitiesResponse,
     ElectionCreateRequest,
     ElectionDetailResponse,
     ElectionLinkRequest,
@@ -89,6 +90,19 @@ async def list_elections(
             page_size=page_size,
             total_pages=max(1, math.ceil(total / page_size)) if total > 0 else 0,
         ),
+    )
+
+
+# --- Capabilities discovery ---
+
+
+@elections_router.get("/capabilities", response_model=CapabilitiesResponse)
+async def get_capabilities(response: Response) -> CapabilitiesResponse:
+    """Discover supported filter parameters and endpoints. Public endpoint."""
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return CapabilitiesResponse(
+        supported_filters=["q", "race_category", "county", "district", "election_date"],
+        endpoints={"filter_options": True},
     )
 
 

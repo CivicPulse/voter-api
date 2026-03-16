@@ -135,6 +135,13 @@ class PaginatedElectionListResponse(BaseModel):
     pagination: PaginationMeta
 
 
+class CapabilitiesResponse(BaseModel):
+    """Capabilities discovery response for the elections API."""
+
+    supported_filters: list[str] = Field(description="Filter parameter names accepted by GET /elections")
+    endpoints: dict[str, bool] = Field(description="Available sub-endpoints and their status")
+
+
 class VoteMethodResult(BaseModel):
     """Vote method breakdown."""
 
