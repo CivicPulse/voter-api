@@ -28,7 +28,7 @@ from voter_api.schemas.voter_history import (
     ParticipationSummary,
     PrecinctBreakdown,
 )
-from voter_api.services.voter_history_service import VoterLookupResult
+from voter_api.services.voter_history_service import MismatchFilterError, VoterLookupResult
 
 # ---------------------------------------------------------------------------
 # Mock helpers
@@ -781,3 +781,151 @@ class TestGetParticipationStats:
         assert data["by_county"] == []
         assert data["by_ballot_style"] == []
         assert data["by_precinct"] == []
+
+
+# ---------------------------------------------------------------------------
+# Mismatch filter: 422 paths, response metadata, stats enrichment
+# ---------------------------------------------------------------------------
+
+
+class TestMismatchFilter:
+    """Tests for context-aware has_district_mismatch filter behavior."""
+
+    @pytest.mark.asyncio
+    async def test_participation_mismatch_null_district_type_422(self, analyst_client: AsyncClient) -> None:
+        """422 when election has no district_type and has_district_mismatch is requested."""
+        eid = uuid.uuid4()
+        with patch(
+            "voter_api.services.voter_history_service.list_election_participants",
+            new_callable=AsyncMock,
+            side_effect=MismatchFilterError(
+                "has_district_mismatch filter requires an election with a known district_type"
+            ),
+        ):
+            resp = await analyst_client.get(f"/api/v1/elections/{eid}/participation?has_district_mismatch=true")
+
+        assert resp.status_code == 422
+        assert "known district_type" in resp.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_participation_mismatch_unknown_district_type_422(self, analyst_client: AsyncClient) -> None:
+        """422 when election district_type is not supported for mismatch filtering."""
+        eid = uuid.uuid4()
+        with patch(
+            "voter_api.services.voter_history_service.list_election_participants",
+            new_callable=AsyncMock,
+            side_effect=MismatchFilterError(
+                "has_district_mismatch filter is not supported for district_type 'nonexistent'"
+            ),
+        ):
+            resp = await analyst_client.get(f"/api/v1/elections/{eid}/participation?has_district_mismatch=true")
+
+        assert resp.status_code == 422
+        assert "not supported" in resp.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_participation_mismatch_district_type_in_response(self, analyst_client: AsyncClient) -> None:
+        """mismatch_district_type field in response equals the election's district_type."""
+        eid = uuid.uuid4()
+        with (
+            patch(
+                "voter_api.services.voter_history_service.list_election_participants",
+                new_callable=AsyncMock,
+                return_value=([], 0, False, "state_senate"),
+            ),
+            patch(
+                "voter_api.services.voter_history_service.lookup_voter_details",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
+        ):
+            resp = await analyst_client.get(f"/api/v1/elections/{eid}/participation?has_district_mismatch=true")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["mismatch_district_type"] == "state_senate"
+
+    @pytest.mark.asyncio
+    async def test_participation_no_mismatch_filter_null_district_type_field(self, analyst_client: AsyncClient) -> None:
+        """Without has_district_mismatch filter, mismatch_district_type is null in response."""
+        eid = uuid.uuid4()
+        with (
+            patch(
+                "voter_api.services.voter_history_service.list_election_participants",
+                new_callable=AsyncMock,
+                return_value=([], 0, False, None),
+            ),
+            patch(
+                "voter_api.services.voter_history_service.lookup_voter_details",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
+        ):
+            resp = await analyst_client.get(f"/api/v1/elections/{eid}/participation")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["mismatch_district_type"] is None
+
+    @pytest.mark.asyncio
+    async def test_participation_stats_mismatch_count(self, analyst_client: AsyncClient) -> None:
+        """participation/stats response contains mismatch_count field."""
+        eid = uuid.uuid4()
+        stats = ParticipationStatsResponse(
+            election_id=eid,
+            total_participants=50,
+            mismatch_count=5,
+            by_county=[],
+            by_ballot_style=[],
+            by_precinct=[],
+        )
+        with patch(
+            "voter_api.services.voter_history_service.get_participation_stats",
+            new_callable=AsyncMock,
+            return_value=stats,
+        ):
+            resp = await analyst_client.get(f"/api/v1/elections/{eid}/participation/stats")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "mismatch_count" in data
+        assert data["mismatch_count"] == 5
+
+    @pytest.mark.asyncio
+    async def test_participation_stats_mismatch_count_null_when_no_district(self, analyst_client: AsyncClient) -> None:
+        """mismatch_count is null in stats when election has no district_type."""
+        eid = uuid.uuid4()
+        stats = ParticipationStatsResponse(
+            election_id=eid,
+            total_participants=50,
+            mismatch_count=None,
+            by_county=[],
+            by_ballot_style=[],
+            by_precinct=[],
+        )
+        with patch(
+            "voter_api.services.voter_history_service.get_participation_stats",
+            new_callable=AsyncMock,
+            return_value=stats,
+        ):
+            resp = await analyst_client.get(f"/api/v1/elections/{eid}/participation/stats")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["mismatch_count"] is None
+
+    @pytest.mark.asyncio
+    async def test_participation_mismatch_false_422_null_district_type(self, analyst_client: AsyncClient) -> None:
+        """422 also raised for has_district_mismatch=false when election has no district_type."""
+        eid = uuid.uuid4()
+        with patch(
+            "voter_api.services.voter_history_service.list_election_participants",
+            new_callable=AsyncMock,
+            side_effect=MismatchFilterError(
+                "has_district_mismatch filter requires an election with a known district_type"
+            ),
+        ):
+            resp = await analyst_client.get(f"/api/v1/elections/{eid}/participation?has_district_mismatch=false")
+
+        assert resp.status_code == 422
+        assert "known district_type" in resp.json()["detail"]

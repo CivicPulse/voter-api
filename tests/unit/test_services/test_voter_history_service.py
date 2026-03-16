@@ -10,13 +10,16 @@ from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy import ClauseElement
 
 from voter_api.models.election import Election
 from voter_api.models.voter_history import VoterHistory
 from voter_api.schemas.voter_history import ParticipationFilters
 from voter_api.services.voter_history_service import (
+    MismatchFilterError,
     VoterLookupResult,
     _build_election_match_conditions,
+    _build_mismatch_filter,
     _get_election_or_raise,
     _replace_previous_import,
     get_participation_stats,
@@ -352,6 +355,147 @@ class TestListElectionParticipants:
         assert records == []
         assert voter_details_included is True
         assert district_type_used == "state_senate"
+
+    async def test_mismatch_filter_error_null_district_type(self) -> None:
+        """MismatchFilterError raised when election has no district_type."""
+        election = _mock_election(district_type=None)
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        session.execute.return_value = election_result
+
+        with pytest.raises(MismatchFilterError, match="known district_type"):
+            await list_election_participants(
+                session,
+                election.id,
+                filters=ParticipationFilters(has_district_mismatch=True),
+            )
+
+    async def test_mismatch_filter_error_unknown_district_type(self) -> None:
+        """MismatchFilterError raised when election district_type is not in BOUNDARY_TYPE_TO_VOTER_FIELD."""
+        election = _mock_election(district_type="nonexistent_type")
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        session.execute.return_value = election_result
+
+        with pytest.raises(MismatchFilterError, match="not supported for district_type"):
+            await list_election_participants(
+                session,
+                election.id,
+                filters=ParticipationFilters(has_district_mismatch=True),
+            )
+
+    async def test_mismatch_filter_false_also_errors_on_null_district_type(self) -> None:
+        """MismatchFilterError raised for has_district_mismatch=False when district_type is null."""
+        election = _mock_election(district_type=None)
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        session.execute.return_value = election_result
+
+        with pytest.raises(MismatchFilterError, match="known district_type"):
+            await list_election_participants(
+                session,
+                election.id,
+                filters=ParticipationFilters(has_district_mismatch=False),
+            )
+
+    async def test_mismatch_filter_omitted_returns_none_district_type(self) -> None:
+        """When has_district_mismatch is not set, district_type_used is None (no analysis JOIN)."""
+        election = _mock_election(district_type="state_senate")
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        has_resolved_result = MagicMock()
+        has_resolved_result.scalar_one.return_value = False
+        match_count_result = MagicMock()
+        match_count_result.scalar_one.return_value = 1
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 0
+        records_result = MagicMock()
+        records_mock = MagicMock()
+        records_mock.all.return_value = []
+        records_result.scalars.return_value = records_mock
+        session.execute.side_effect = [
+            election_result,
+            has_resolved_result,
+            match_count_result,
+            count_result,
+            records_result,
+        ]
+
+        _records, _total, _voter_details_included, district_type_used = await list_election_participants(
+            session,
+            election.id,
+            filters=ParticipationFilters(),
+        )
+
+        assert district_type_used is None
+
+    async def test_mismatch_filter_true_returns_district_type(self) -> None:
+        """When has_district_mismatch=True with valid district_type, district_type_used is set."""
+        election = _mock_election(district_type="state_senate")
+        session = _mock_join_session(election)
+
+        _records, _total, _voter_details_included, district_type_used = await list_election_participants(
+            session,
+            election.id,
+            filters=ParticipationFilters(has_district_mismatch=True),
+        )
+
+        assert district_type_used == "state_senate"
+
+    async def test_mismatch_filter_false_returns_district_type(self) -> None:
+        """When has_district_mismatch=False with valid district_type, district_type_used is set."""
+        election = _mock_election(district_type="state_senate")
+        session = _mock_join_session(election)
+
+        _records, _total, _voter_details_included, district_type_used = await list_election_participants(
+            session,
+            election.id,
+            filters=ParticipationFilters(has_district_mismatch=False),
+        )
+
+        assert district_type_used == "state_senate"
+
+
+# ---------------------------------------------------------------------------
+# _build_mismatch_filter
+# ---------------------------------------------------------------------------
+
+
+class TestBuildMismatchFilter:
+    """Tests for the _build_mismatch_filter helper function."""
+
+    def test_build_mismatch_filter_true_returns_clause_element(self) -> None:
+        """_build_mismatch_filter(True) returns a SQLAlchemy clause element."""
+        result = _build_mismatch_filter("state_senate", True)
+        assert result is not None
+        assert isinstance(result, ClauseElement)
+
+    def test_build_mismatch_filter_false_returns_clause_element(self) -> None:
+        """_build_mismatch_filter(False) returns a SQLAlchemy clause element."""
+        result = _build_mismatch_filter("state_senate", False)
+        assert result is not None
+        assert isinstance(result, ClauseElement)
+
+    def test_build_mismatch_filter_different_types(self) -> None:
+        """_build_mismatch_filter works for all valid boundary types."""
+        from voter_api.lib.analyzer.comparator import BOUNDARY_TYPE_TO_VOTER_FIELD
+
+        for district_type in BOUNDARY_TYPE_TO_VOTER_FIELD:
+            result_true = _build_mismatch_filter(district_type, True)
+            result_false = _build_mismatch_filter(district_type, False)
+            assert result_true is not None
+            assert result_false is not None
+
+    def test_build_mismatch_filter_true_and_false_are_different(self) -> None:
+        """True and False filters produce structurally different expressions."""
+        result_true = _build_mismatch_filter("congressional", True)
+        result_false = _build_mismatch_filter("congressional", False)
+        # They should be different expressions (one contains, one is OR'd)
+        assert str(result_true) != str(result_false)
 
 
 # ---------------------------------------------------------------------------
