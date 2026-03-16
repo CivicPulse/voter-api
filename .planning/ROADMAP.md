@@ -34,7 +34,7 @@
   1. `GET /api/v1/elections/capabilities` returns a JSON response listing all supported filter parameters, search fields, and their semantics
   2. The capabilities endpoint responds correctly at `/elections/capabilities` without being swallowed by the `/{election_id}` path parameter route (route ordering is correct)
   3. All existing election endpoints continue to work identically after the new route is added
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 - [ ] 06-01: Capabilities endpoint with route ordering
