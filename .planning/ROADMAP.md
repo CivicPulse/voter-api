@@ -49,10 +49,11 @@ Plans:
   3. `GET /api/v1/elections?race_category=federal` returns only elections whose `district_type` maps to the federal category; invalid category values return a validation error
   4. `GET /api/v1/elections?county=Bibb` returns elections with matching `eligible_county` (case-insensitive); `?election_date=2026-05-19` returns elections on that exact date
   5. All new filters combine with each other and with existing filters (`district`, `date_from`, `date_to`, `status`) using AND logic; omitting all new params returns the same results as before
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 07-01: Search and filter extensions
+- [ ] 07-01-PLAN.md — Service layer filter logic, escape utility, route handler params, and unit tests
+- [ ] 07-02-PLAN.md — Integration tests for all search and filter parameters
 
 ### Phase 8: Filter Options and E2E
 **Goal**: API consumers can fetch valid filter values for dynamic dropdowns, and all new functionality has E2E test coverage
@@ -81,5 +82,5 @@ Phases execute in numeric order: 6 -> 7 -> 8
 | 4. End-to-End Demo | v1.0 | 2/2 | Complete | 2026-03-15 |
 | 5. Milestone Cleanup | v1.0 | 2/2 | Complete | 2026-03-15 |
 | 6. Capabilities Discovery | v1.1 | 0/1 | Not started | - |
-| 7. Search and Filters | v1.1 | 0/1 | Not started | - |
+| 7. Search and Filters | v1.1 | 0/2 | Not started | - |
 | 8. Filter Options and E2E | v1.1 | 0/1 | Not started | - |
