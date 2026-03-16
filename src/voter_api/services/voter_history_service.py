@@ -644,6 +644,7 @@ async def list_election_participants(
             filters,
             q_terms,
             district_type=election.district_type if mismatch_filter_active else None,
+            latest_ar=latest_ar if mismatch_filter_active else None,
         )
     else:
         # Default path: query voter_history only
@@ -686,12 +687,14 @@ def _latest_analysis_subquery() -> Any:
 
 
 def _build_mismatch_filter(
+    latest_ar: Any,
     district_type: str,
     has_district_mismatch: bool,
 ) -> ColumnElement[bool]:
     """Build a SQLAlchemy WHERE clause for context-aware mismatch filtering.
 
     Args:
+        latest_ar: The latest analysis result subquery alias (from _latest_analysis_subquery()).
         district_type: The election's district type (e.g. "state_senate").
         has_district_mismatch: True to find mismatched voters, False for non-mismatched.
 
@@ -701,13 +704,13 @@ def _build_mismatch_filter(
     target_value = [{"boundary_type": district_type}]
     if has_district_mismatch:
         # Voter HAS a mismatch for this specific district type
-        return AnalysisResult.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE))
+        return latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE))
     # Voter does NOT have a mismatch for this type.
     # mismatch_details IS NULL means "matched on all boundaries" -> no mismatch.
     # NOT contains(...) means "has analysis but no mismatch on this type".
     return or_(
-        AnalysisResult.mismatch_details.is_(None),
-        ~AnalysisResult.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE)),
+        latest_ar.c.mismatch_details.is_(None),
+        ~latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE)),
     )
 
 
@@ -717,6 +720,7 @@ def _apply_voter_filters(
     filters: ParticipationFilters,
     q_terms: list[str],
     district_type: str | None = None,
+    latest_ar: Any = None,
 ) -> tuple[Any, Any]:
     """Apply voter-table filters and q search to query and count_query.
 
@@ -726,6 +730,7 @@ def _apply_voter_filters(
         filters: Participation filters bundle.
         q_terms: Pre-tokenized search terms (empty list if no search).
         district_type: Election district_type for context-aware mismatch filtering.
+        latest_ar: The latest_ar subquery alias for mismatch filter (None when mismatch filter inactive).
 
     Returns:
         Tuple of (query, count_query) with filters applied.
@@ -758,8 +763,8 @@ def _apply_voter_filters(
             query = query.where(column == value)
             count_query = count_query.where(column == value)
 
-    if filters.has_district_mismatch is not None and district_type:
-        mismatch_cond = _build_mismatch_filter(district_type, filters.has_district_mismatch)
+    if filters.has_district_mismatch is not None and district_type and latest_ar is not None:
+        mismatch_cond = _build_mismatch_filter(latest_ar, district_type, filters.has_district_mismatch)
         query = query.where(mismatch_cond)
         count_query = count_query.where(mismatch_cond)
 
