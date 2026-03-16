@@ -28,7 +28,7 @@ Requirements for Election Search milestone. Each maps to roadmap phases.
 
 - [x] **INTG-01**: New endpoints (`/capabilities`, `/filter-options`) use correct FastAPI route ordering (registered before `/{election_id}` catch-all)
 - [x] **INTG-02**: Existing election list endpoint behavior is unchanged for current consumers (backward compatible, no breaking changes to `district` partial match)
-- [ ] **INTG-03**: E2E tests cover all new endpoints and filter parameters with seed data that exercises `eligible_county` and `district_type`
+- [x] **INTG-03**: E2E tests cover all new endpoints and filter parameters with seed data that exercises `eligible_county` and `district_type`
 
 ## Future Requirements
 
@@ -70,7 +70,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FILT-04 | Phase 7 | Complete |
 | INTG-01 | Phase 6 | Complete |
 | INTG-02 | Phase 7 | Complete |
-| INTG-03 | Phase 8 | Pending |
+| INTG-03 | Phase 8 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 11 total
