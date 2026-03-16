@@ -8,11 +8,12 @@ A Python/FastAPI REST API for managing Georgia Secretary of State voter and elec
 
 Georgia election and voter data is accurately maintained and queryable — from raw SOS sources through human-reviewable pipelines into a searchable, filterable API that powers civic engagement tools.
 
-## Current State
+## Current Milestone: v1.2 Context-Aware District Mismatch
 
-Shipped v1.1 Election Search on 2026-03-16. Next milestone not yet planned.
+**Goal:** When filtering election participation by `has_district_mismatch`, only flag voters whose mismatch is on the district type relevant to that specific election.
 
-**Recent milestone:** v1.1 added election search, filtering, and discovery capabilities — capabilities endpoint, free-text search, race category/county/date filters, and filter-options endpoint for dynamic dropdowns. All backward-compatible.
+**Target features:**
+- Context-aware mismatch filtering on the participation endpoint (JOIN to analysis_results, scope by election's district_type)
 
 ## Requirements
 
@@ -46,7 +47,7 @@ Shipped v1.1 Election Search on 2026-03-16. Next milestone not yet planned.
 
 ### Active
 
-(No active requirements — next milestone not yet planned)
+- [ ] Participation endpoint `has_district_mismatch` filter scoped to election's district_type via analysis_results JOIN
 
 ### Backlog
 
@@ -111,4 +112,4 @@ Known remaining items: R2 upload and procrastinate job queue deferred to backlog
 | ILIKE wildcard escaping | Escape %, _, \ in user search input to prevent SQL wildcard injection | ✓ Good — safe text search without full-text search overhead |
 
 ---
-*Last updated: 2026-03-16 after v1.1 milestone*
+*Last updated: 2026-03-16 after v1.2 milestone start*
