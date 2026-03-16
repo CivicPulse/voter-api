@@ -57,6 +57,7 @@ Plans:
 **Depends on**: Phase 9
 **Requirements**: MISMATCH-01
 **Gap Closure:** Closes gaps from audit (v1.2-MILESTONE-AUDIT.md)
+**Plans:** 1 plan
 **Success Criteria** (what must be TRUE):
   1. `_build_mismatch_filter()` uses `latest_ar.c.mismatch_details` (subquery alias) instead of `AnalysisResult.mismatch_details` (ORM column)
   2. Compiled SQL for participation queries contains no implicit `FROM analysis_results` — only the `DISTINCT ON` subquery alias
@@ -64,7 +65,7 @@ Plans:
   4. E2E test with multiple analysis runs per voter verifies deduplication (only latest analysis result used)
 
 Plans:
-- [ ] 10-01-PLAN.md — Fix SQL defect and harden tests
+- [ ] 10-01-PLAN.md — Fix SQL defect, compile-and-assert unit tests, E2E deduplication test, GIN index migration
 
 ## Progress
 
