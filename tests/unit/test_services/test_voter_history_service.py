@@ -10,9 +10,11 @@ from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy import ClauseElement
+from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 
 from voter_api.models.election import Election
+from voter_api.models.voter import Voter
 from voter_api.models.voter_history import VoterHistory
 from voter_api.schemas.voter_history import ParticipationFilters
 from voter_api.services.voter_history_service import (
@@ -21,6 +23,7 @@ from voter_api.services.voter_history_service import (
     _build_election_match_conditions,
     _build_mismatch_filter,
     _get_election_or_raise,
+    _latest_analysis_subquery,
     _replace_previous_import,
     get_participation_stats,
     get_participation_summary,
@@ -33,6 +36,11 @@ from voter_api.services.voter_history_service import (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _compile_query(query) -> str:
+    """Compile a SQLAlchemy query to PostgreSQL SQL string for structural inspection."""
+    return str(query.compile(dialect=postgresql.dialect()))
 
 
 def _mock_session_with_scalars(
@@ -466,36 +474,67 @@ class TestListElectionParticipants:
 
 
 class TestBuildMismatchFilter:
-    """Tests for the _build_mismatch_filter helper function."""
+    """Tests for _build_mismatch_filter — compile-and-assert SQL correctness."""
 
-    def test_build_mismatch_filter_true_returns_clause_element(self) -> None:
-        """_build_mismatch_filter(True) returns a SQLAlchemy clause element."""
-        result = _build_mismatch_filter("state_senate", True)
-        assert result is not None
-        assert isinstance(result, ClauseElement)
+    def _build_joined_query(self, latest_ar, district_type: str, has_mismatch: bool):
+        """Build a representative joined query mirroring list_election_participants."""
+        return (
+            select(VoterHistory)
+            .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+            .join(latest_ar, latest_ar.c.voter_id == Voter.id)
+            .where(_build_mismatch_filter(latest_ar, district_type, has_mismatch))
+        )
 
-    def test_build_mismatch_filter_false_returns_clause_element(self) -> None:
-        """_build_mismatch_filter(False) returns a SQLAlchemy clause element."""
-        result = _build_mismatch_filter("state_senate", False)
-        assert result is not None
-        assert isinstance(result, ClauseElement)
+    def test_mismatch_true_uses_subquery_alias_not_orm_table(self) -> None:
+        """Compiled SQL references latest_ar, not raw analysis_results in WHERE."""
+        latest_ar = _latest_analysis_subquery()
+        query = self._build_joined_query(latest_ar, "state_senate", True)
+        sql = _compile_query(query)
+        assert "latest_ar" in sql, f"Expected 'latest_ar' in compiled SQL: {sql}"
+        # analysis_results appears once (inside subquery def), not in WHERE
+        where_portion = sql[sql.lower().find("where"):]
+        assert "analysis_results" not in where_portion, (
+            f"Implicit cross join detected — 'analysis_results' found after WHERE: {where_portion}"
+        )
 
-    def test_build_mismatch_filter_different_types(self) -> None:
-        """_build_mismatch_filter works for all valid boundary types."""
+    def test_mismatch_false_uses_subquery_alias_not_orm_table(self) -> None:
+        """Compiled SQL for has_mismatch=False also uses subquery alias."""
+        latest_ar = _latest_analysis_subquery()
+        query = self._build_joined_query(latest_ar, "state_senate", False)
+        sql = _compile_query(query)
+        assert "latest_ar" in sql
+        where_portion = sql[sql.lower().find("where"):]
+        assert "analysis_results" not in where_portion, (
+            f"Implicit cross join detected — 'analysis_results' found after WHERE: {where_portion}"
+        )
+
+    def test_no_duplicate_from_analysis_results(self) -> None:
+        """analysis_results appears exactly once in FROM (inside subquery only)."""
+        latest_ar = _latest_analysis_subquery()
+        query = self._build_joined_query(latest_ar, "congressional", True)
+        sql = _compile_query(query).lower()
+        count = sql.count("from analysis_results")
+        assert count == 1, (
+            f"Expected 'from analysis_results' exactly once (in subquery), found {count} times"
+        )
+
+    def test_all_boundary_types_produce_valid_clauses(self) -> None:
+        """All valid boundary types produce compilable filter clauses."""
         from voter_api.lib.analyzer.comparator import BOUNDARY_TYPE_TO_VOTER_FIELD
 
+        latest_ar = _latest_analysis_subquery()
         for district_type in BOUNDARY_TYPE_TO_VOTER_FIELD:
-            result_true = _build_mismatch_filter(district_type, True)
-            result_false = _build_mismatch_filter(district_type, False)
-            assert result_true is not None
-            assert result_false is not None
+            for has_mismatch in (True, False):
+                query = self._build_joined_query(latest_ar, district_type, has_mismatch)
+                sql = _compile_query(query)
+                assert "latest_ar" in sql
 
-    def test_build_mismatch_filter_true_and_false_are_different(self) -> None:
-        """True and False filters produce structurally different expressions."""
-        result_true = _build_mismatch_filter("congressional", True)
-        result_false = _build_mismatch_filter("congressional", False)
-        # They should be different expressions (one contains, one is OR'd)
-        assert str(result_true) != str(result_false)
+    def test_true_and_false_produce_different_sql(self) -> None:
+        """True and False filters produce structurally different SQL."""
+        latest_ar = _latest_analysis_subquery()
+        sql_true = _compile_query(self._build_joined_query(latest_ar, "state_senate", True))
+        sql_false = _compile_query(self._build_joined_query(latest_ar, "state_senate", False))
+        assert sql_true != sql_false
 
 
 # ---------------------------------------------------------------------------
