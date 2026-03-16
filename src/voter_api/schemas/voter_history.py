@@ -87,6 +87,7 @@ class PaginatedElectionParticipationResponse(BaseModel):
 
     items: list[ElectionParticipationRecord]
     pagination: PaginationMeta
+    mismatch_district_type: str | None = None
 
 
 class CountyBreakdown(BaseModel):
@@ -122,6 +123,7 @@ class ParticipationStatsResponse(BaseModel):
 
     election_id: UUID
     total_participants: int
+    mismatch_count: int | None = None
     total_eligible_voters: int | None = None
     turnout_percentage: float | None = None
     by_county: list[CountyBreakdown] = Field(default_factory=list)

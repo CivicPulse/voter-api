@@ -33,6 +33,15 @@ from voter_api.schemas.voter_history import (
     PrecinctBreakdown,
 )
 
+
+class MismatchFilterError(ValueError):
+    """Raised when has_district_mismatch filter cannot be applied to this election."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
 # Sub-batch size for voter history upsert: 11 columns * 2000 rows = 22,000 params (under 32,767 limit)
 _UPSERT_SUB_BATCH = 2000
 
