@@ -4,6 +4,7 @@
 
 - ✅ **v1.0 Better Imports** — Phases 1-5 (shipped 2026-03-15)
 - ✅ **v1.1 Election Search** — Phases 6-8 (shipped 2026-03-16)
+- 🚧 **v1.2 Context-Aware District Mismatch** — Phase 9 (in progress)
 
 ## Phases
 
@@ -27,6 +28,28 @@
 
 </details>
 
+### 🚧 v1.2 Context-Aware District Mismatch (In Progress)
+
+**Milestone Goal:** When filtering election participation by `has_district_mismatch`, only flag voters whose mismatch is on the district type relevant to that specific election.
+
+- [ ] **Phase 9: Context-Aware Mismatch Filter** - Scope `has_district_mismatch` on the participation endpoint to the election's own `district_type` via `analysis_results` JSONB lookup
+
+## Phase Details
+
+### Phase 9: Context-Aware Mismatch Filter
+**Goal**: API callers can filter election participation by district mismatch scoped to the election's own district type — not a blanket mismatch flag across all district types
+**Depends on**: Phase 8
+**Requirements**: MISMATCH-01
+**Success Criteria** (what must be TRUE):
+  1. `GET /elections/{id}/participation?has_district_mismatch=true` returns only voters who have a mismatch on that election's `district_type` (looked up from `analysis_results.mismatch_details` JSONB)
+  2. Voters with mismatches on a different district type than the election's are excluded from `has_district_mismatch=true` results
+  3. `has_district_mismatch=false` and omitting the filter entirely continue to return correct voter sets without regression
+  4. The filter behaves correctly across elections with different district types (e.g., `state_senate`, `county_commission`, `us_house`)
+**Plans**: TBD
+
+Plans:
+- [ ] 09-01: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -39,3 +62,4 @@
 | 6. Capabilities Discovery | v1.1 | 1/1 | Complete | 2026-03-16 |
 | 7. Search and Filters | v1.1 | 2/2 | Complete | 2026-03-16 |
 | 8. Filter Options and E2E | v1.1 | 2/2 | Complete | 2026-03-16 |
+| 9. Context-Aware Mismatch Filter | v1.2 | 0/? | Not started | - |

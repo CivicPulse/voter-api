@@ -48,13 +48,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MISMATCH-01 | — | Pending |
+| MISMATCH-01 | Phase 9 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 1 total
-- Mapped to phases: 0
-- Unmapped: 1 ⚠️
+- Mapped to phases: 1
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-16 after initial definition*
+*Last updated: 2026-03-16 after roadmap creation*
