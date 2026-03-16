@@ -1,262 +1,209 @@
-# Technology Stack
+# Stack Research
 
-**Project:** Better Imports (Three-Stage Data Import Pipeline)
-**Researched:** 2026-03-13
+**Domain:** Election search/filter API capabilities for existing FastAPI + SQLAlchemy + PostgreSQL/PostGIS REST API
+**Researched:** 2026-03-16
+**Confidence:** HIGH
 
-## Recommended Stack
+## Verdict: No New Dependencies Required
 
-This covers only NEW dependencies needed for the import pipeline. The existing stack (FastAPI, SQLAlchemy 2.x async, asyncpg, Pydantic v2, boto3, Alembic) is retained as-is.
+Every capability needed for v1.1 Election Search is achievable with the existing stack. The codebase already has all the patterns and technologies required. This is a feature-layer change, not a stack change.
 
-### Stage 1: AI-Assisted SOS Data Processing (Claude Code Skills)
+## Existing Stack (Relevant Subset)
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| Claude Code Skills | current | Slash commands that process raw SOS CSVs/PDFs into structured markdown | Already the user's primary workflow tool; skills are markdown files with YAML frontmatter in `.claude/skills/`; no runtime dependency -- skills are prompt instructions, not code |
-| `$ARGUMENTS` substitution | current | Pass file paths and parameters to skills | Built-in string substitution in skill content; `$0`, `$1` syntax for positional args |
+| Technology | Version | Role in This Milestone |
+|------------|---------|----------------------|
+| PostgreSQL 15 / PostGIS 3.4 | 15-3.4 (Docker image) | ILIKE, DISTINCT, COUNT aggregation -- all built-in |
+| SQLAlchemy 2.x async | >=2.0.0 | Query building with `.ilike()`, `func.count()`, `func.distinct()` |
+| FastAPI | >=0.115.0 | New endpoints, Query parameter validation |
+| Pydantic v2 | >=2.0.0 | New request/response schemas, Literal types for enums |
 
-**Confidence:** HIGH -- verified via official Claude Code docs at code.claude.com/docs/en/skills
+## Capability-by-Capability Analysis
 
-**Rationale:** Skills are the right fit because Stage 1 is inherently interactive and AI-assisted. The user runs `/process-sos-data data/new/candidates.csv` in Claude Code, reviews the generated markdown, and commits it to git. No server-side library needed. Skills support:
+### 1. Free-Text Search (`q` parameter)
 
-- `disable-model-invocation: true` to prevent auto-triggering
-- Supporting files (templates, format specs, validation scripts) in the skill directory
-- `!`command`` syntax for dynamic context injection (e.g., reading existing format specs)
-- `allowed-tools` to restrict file operations
+**Recommendation: ILIKE across `name` + `district` columns. Do NOT use PostgreSQL full-text search.**
 
-**Skill structure:**
-```
-.claude/skills/
-  process-sos-candidates/
-    SKILL.md                    # Main instructions
-    templates/county.md         # Template for county files
-    examples/sample-output.md   # Example output
-  process-sos-elections/
-    SKILL.md
-    templates/overview.md
-```
+**Why ILIKE, not tsvector:**
 
-**Not using custom commands (`.claude/commands/`)** -- skills supersede commands and add frontmatter control, supporting files, and subagent execution. Existing commands in the project still work but new work should use skills.
+| Factor | ILIKE | Full-Text Search (tsvector) |
+|--------|-------|---------------------------|
+| Data scale | ~34 elections, growing to maybe hundreds | Designed for thousands-to-millions of documents |
+| Setup cost | Zero -- one WHERE clause | Migration for generated column + GIN index |
+| Query complexity | `OR(name.ilike(...), district.ilike(...))` | `to_tsvector`, `plainto_tsquery`, `@@` operator, ranking |
+| Partial word match | Works naturally ("Spe" matches "Special") | Does NOT match partial words without `prefix:*` syntax |
+| User expectation | Typing "bibb" finds "Bibb County" | Stemming would match "running" for "run" -- overkill for election names |
+| Performance | Seq scan on <1000 rows: <1ms | GIN index overhead not justified at this scale |
 
-### Stage 2: Markdown to JSONL Conversion
+The codebase already has a full-text search implementation on `agenda_items` (see `src/voter_api/models/agenda_item.py` lines 69-77 and `src/voter_api/services/meeting_search_service.py`). That pattern exists if scale ever demands it, but election names are proper nouns and district identifiers -- not prose text that benefits from stemming and ranking.
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| mistune | >= 3.2.0 | Parse structured markdown into AST | Zero external dependencies, fast (3.6s vs 9s for markdown-it-py in benchmarks), AST renderer mode gives dict-based token tree, table plugin built-in, actively maintained (v3.2.0 released Dec 2025) |
-| Pydantic v2 | >= 2.0.0 (existing) | Validate JSONL records against DB model schemas | Already in stack; `model_validate_json()` for per-line validation; Rust core gives 5-50x v1 performance |
-
-**Confidence:** HIGH for mistune (verified via PyPI, official docs). HIGH for Pydantic (already in stack).
-
-**Rationale for mistune over alternatives:**
-
-| Library | Why Not |
-|---------|---------|
-| markdown-it-py | 2.5x slower than mistune in benchmarks; CommonMark compliance is irrelevant for our deterministic format |
-| python-markdown | Extension-based architecture adds complexity; no native AST mode |
-| marko | Less mature ecosystem; fewer downloads |
-| regex/manual parsing | Fragile; markdown edge cases in links, em-dashes, pipes within cells |
-
-**How mistune AST works for our tables:**
+**Implementation pattern (already in codebase):**
 ```python
-import mistune
+# From election_service.py line 625 -- existing ILIKE on district
+filters.append(Election.district.ilike(f"%{district}%"))
 
-md = mistune.create_markdown(renderer='ast')
-tokens = md(content)
-# Walk tokens looking for type='table'
-# table -> table_head (cells with attrs['head']=True)
-# table -> table_body -> table_row -> table_cell
-# Each cell has children with type='text' containing raw values
+# New: search across name AND district
+if q:
+    escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    pattern = f"%{escaped}%"
+    filters.append(
+        or_(Election.name.ilike(pattern), Election.district.ilike(pattern))
+    )
 ```
 
-The AST gives us typed dict tokens with `type`, `children`, and `attrs` fields. Table cells include alignment info via `attrs['align']`. This is deterministic -- same input always produces same AST, which is exactly what Stage 2 requires.
+The wildcard-escaping pattern is already used in `voter_service.py` (lines 82-89) and `meeting_search_service.py` (lines 81-82). Follow that same pattern.
 
-**JSONL output format:** One JSON object per line, fields mirror DB model columns 1:1. Each line validated by a Pydantic model before writing. Standard library `json.dumps()` for serialization -- no extra dependency needed.
+**Confidence: HIGH** -- ILIKE on small tables is a well-understood PostgreSQL pattern. The existing `idx_elections_*` B-tree indexes won't help ILIKE with leading wildcards, but at <1000 rows sequential scan is faster than any index lookup anyway.
 
-### Stage 3a: File Upload (Cloudflare R2 Signed URLs)
+### 2. Race Category Mapping (`race_category` filter)
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| boto3 | >= 1.42.47 (existing) | Generate presigned PUT URLs for R2 | Already in stack for R2 publishing; `generate_presigned_url('put_object', ...)` works with R2's S3-compatible API |
-| botocore | (transitive via boto3) | S3 client configuration | Handles SigV4 signing; `request_checksum_calculation="when_required"` already configured in `create_r2_client()` |
+**Recommendation: Pure Python dict mapping in the service layer. No new column, no migration.**
 
-**Confidence:** HIGH -- existing `lib/publisher/storage.py` already has a working R2 client factory. Presigned URLs are standard S3 API, verified via Cloudflare R2 docs.
+The `district_type` column already contains values like `us_house`, `state_senate`, `state_house`, `county_commission`, etc. The `race_category` parameter is a frontend-friendly grouping:
 
-**Rationale:** No new library needed. The existing `create_r2_client()` returns a boto3 S3 client that supports `generate_presigned_url()`. The upload endpoint generates a presigned PUT URL, the client uploads directly to R2, then notifies the API that the upload is complete.
-
-**Key constraints from R2 docs:**
-- Max presigned URL expiry: 7 days (604,800 seconds); use 1 hour for uploads
-- Presigned URLs only work on S3 API domain (`<ACCOUNT_ID>.r2.cloudflarestorage.com`), NOT custom domains
-- PUT supported; POST multipart form NOT supported by R2 presigned URLs
-- If `ContentType` is specified in signing, client MUST send matching `Content-Type` header or get 403
-- Presigned URLs are bearer tokens -- anyone with the URL can upload until expiry
-
-**Implementation pattern:**
 ```python
-# API endpoint: POST /api/v1/imports/upload-url
-url = client.generate_presigned_url(
-    'put_object',
-    Params={
-        'Bucket': settings.r2_bucket,
-        'Key': f'imports/{job_id}/{filename}',
-        'ContentType': 'application/x-ndjson',
-    },
-    ExpiresIn=3600,  # 1 hour
+RACE_CATEGORY_MAP: dict[str, list[str]] = {
+    "federal": ["us_senate", "us_house", "president"],
+    "state": ["governor", "state_senate", "state_house", "secretary_of_state", ...],
+    "county": ["county_commission", "sheriff", "tax_commissioner", ...],
+    "municipal": ["mayor", "city_council", ...],
+    "judicial": ["superior_court", "magistrate", ...],
+    "school_board": ["school_board"],
+    "special": ["special_purpose"],
+}
+```
+
+**Why a dict, not a DB column or enum:**
+- The mapping is a presentation concern, not a data concern
+- `district_type` is the authoritative field -- race_category is derived
+- Adding a column means a migration + backfill for zero data benefit
+- The mapping can evolve without migrations as new district types appear
+- At query time: `Election.district_type.in_(RACE_CATEGORY_MAP[race_category])`
+
+**Confidence: HIGH** -- This is the PROJECT.md's stated approach ("race_category maps to district_type").
+
+### 3. County Filter (`county` parameter)
+
+**Recommendation: Exact case-insensitive match on `eligible_county` column.**
+
+```python
+if county:
+    filters.append(func.lower(Election.eligible_county) == county.lower())
+```
+
+The `eligible_county` column already exists (model line 77) with an index (`idx_elections_eligible_county`, model line 117). This is a straightforward exact-match filter.
+
+**Statewide election inclusion is explicitly deferred** per PROJECT.md backlog: "Statewide election inclusion in county filter (geospatial boundary logic)." First version does simple matching only.
+
+**Confidence: HIGH** -- Column and index already exist.
+
+### 4. Exact Date Filter (`election_date` parameter)
+
+**Recommendation: Direct equality on `election_date` column.**
+
+```python
+if election_date:
+    filters.append(Election.election_date == election_date)
+```
+
+Complementary to existing `date_from`/`date_to` range filters. The `idx_elections_election_date` B-tree index already covers this.
+
+**Confidence: HIGH** -- Trivial addition.
+
+### 5. Capabilities Endpoint (`GET /elections/capabilities`)
+
+**Recommendation: Static Pydantic response model, no database query.**
+
+This endpoint tells the frontend which filters are available, what values they accept, and which are currently active. It is a contract/discovery mechanism, not a data query.
+
+```python
+class ElectionCapabilities(BaseModel):
+    filters: list[FilterCapability]
+    search: SearchCapability
+    sort_options: list[str]
+    version: str  # e.g., "1.0"
+```
+
+No new dependencies. Pure schema definition + a static handler that returns the hardcoded capabilities object.
+
+**Confidence: HIGH** -- Standard progressive disclosure pattern.
+
+### 6. Filter Options Endpoint (`GET /elections/filter-options`)
+
+**Recommendation: SQLAlchemy `func.distinct()` + `func.count()` aggregation queries against the elections table.**
+
+```python
+# Example: distinct district_type values with counts
+stmt = (
+    select(
+        Election.district_type,
+        func.count(Election.id).label("count"),
+    )
+    .where(Election.deleted_at.is_(None))
+    .group_by(Election.district_type)
+    .order_by(func.count(Election.id).desc())
 )
-# Return URL + job_id to client
-# Client uploads directly to R2
-# Client calls POST /api/v1/imports/{job_id}/complete to trigger processing
 ```
 
-### Stage 3b: PostgreSQL Job Queue
+Run one query per filter dimension (district_type, eligible_county, election_type, status, source, election_date). At <1000 rows, all queries complete in <5ms total. Combine results into a single response.
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| procrastinate | >= 3.7.2 | Persistent async job queue for JSONL import processing | PostgreSQL-native (no Redis); async-first with psycopg v3; retries, locks, periodic tasks built-in; MIT licensed; actively maintained (v3.7.2 Jan 2026) |
-| psycopg[pool] | >= 3.3.2 | Async PostgreSQL driver for procrastinate | Required by procrastinate's PsycopgConnector; provides AsyncConnectionPool |
+For race_category options, aggregate in Python after fetching district_type counts (reverse the RACE_CATEGORY_MAP to group counts).
 
-**Confidence:** MEDIUM -- procrastinate is well-documented and actively maintained, but introducing psycopg alongside asyncpg adds a second PostgreSQL driver. This is architecturally acceptable because procrastinate manages its own connection pool independently of SQLAlchemy.
+**No caching needed** at this data scale. If scale grows to >10K elections, consider `Cache-Control: max-age=300` headers or in-memory TTL cache.
 
-**Rationale for procrastinate over alternatives:**
+**Confidence: HIGH** -- Standard SQL aggregation, already used throughout the codebase.
 
-| Library | Why Not |
-|---------|---------|
-| PGQueuer | Younger project (fewer releases); less documentation; no Django/framework integration to reference |
-| Celery + Redis | Adds Redis infrastructure dependency; overkill for this use case; violates "PostgreSQL-native" constraint |
-| ARQ + Redis | Same Redis problem as Celery |
-| asyncio.create_task (existing) | No persistence, no retries, no crash recovery; lost on server restart; semaphore-limited to 2; adequate for current imports but insufficient for pipeline |
-| Dramatiq + Redis/RabbitMQ | External broker dependency |
+## What NOT to Add
 
-**Integration architecture:**
-
-1. **Separate connection pool**: Procrastinate uses `PsycopgConnector` with its own `AsyncConnectionPool` connecting to the SAME PostgreSQL database. This is a separate pool from SQLAlchemy's asyncpg pool. Both connect to the same DB, but through different drivers.
-
-2. **Schema management**: Procrastinate creates its own tables (`procrastinate_jobs`, `procrastinate_events`, `procrastinate_periodic_defers`). Initial schema applied via `procrastinate schema --apply` or wrapped in an Alembic migration using raw SQL (`op.execute()`). Future procrastinate schema updates are pure SQL scripts that can be wrapped in Alembic migrations.
-
-3. **FastAPI lifespan integration**:
-```python
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    async with procrastinate_app.open_async():
-        worker_task = asyncio.create_task(
-            procrastinate_app.run_worker_async(install_signal_handlers=False)
-        )
-        yield
-        worker_task.cancel()
-```
-
-4. **Custom schema support**: Procrastinate supports PostgreSQL `search_path` via connector options (`-c search_path=myschema`), which aligns with the existing `DATABASE_SCHEMA` env var for PR preview environments.
-
-**Why two PostgreSQL drivers is acceptable:**
-- procrastinate requires psycopg v3 -- it has no asyncpg connector
-- asyncpg remains the SQLAlchemy driver for all ORM/application queries
-- psycopg is only used by procrastinate for job queue operations
-- The two pools are independent; no connection sharing needed
-- This is a common pattern in Python projects that mix ORMs with specialized PostgreSQL tooling
-
-### Stage 3c: JSONL Processing and Bulk Database Loading
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| SQLAlchemy 2.x async | >= 2.0.0 (existing) | Bulk UPSERT via `insert().on_conflict_do_update()` | Already proven in `import_service.py` for voter imports; dialect-specific `pg_insert` supports `RETURNING` |
-| asyncpg | >= 0.30.0 (existing) | Async PostgreSQL driver for SQLAlchemy | Already in stack; 32,767 parameter limit drives sub-batch sizing |
-| Pydantic v2 | >= 2.0.0 (existing) | Per-record validation during JSONL ingestion | `model_validate_json()` for streaming line-by-line validation |
-
-**Confidence:** HIGH -- this is the exact pattern already used in the existing voter import pipeline.
-
-**No new dependencies needed.** The existing bulk UPSERT pattern from `import_service.py` is directly reusable:
-
-```python
-# Existing proven pattern:
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-
-stmt = pg_insert(Election).values(records)
-stmt = stmt.on_conflict_do_update(
-    index_elements=["id"],
-    set_={col: stmt.excluded[col] for col in update_columns},
-)
-result = await session.execute(stmt)
-```
-
-**JSONL processing pattern:**
-```python
-# Stream JSONL line-by-line (memory efficient)
-async with aiofiles.open(jsonl_path) as f:
-    batch = []
-    async for line in f:
-        record = ElectionJsonlSchema.model_validate_json(line)
-        batch.append(record.model_dump())
-        if len(batch) >= BATCH_SIZE:
-            await _upsert_batch(session, batch)
-            batch.clear()
-    if batch:
-        await _upsert_batch(session, batch)
-```
-
-**Sub-batch sizing:** asyncpg's 32,767 parameter limit means `floor(32767 / num_columns)` records per sub-batch. Election records (~20 columns) allow ~1,600 per sub-batch; candidate records (~15 columns) allow ~2,100. Use 500 as a safe default (matching existing voter import).
+| Avoid | Why | What to Do Instead |
+|-------|-----|-------------------|
+| PostgreSQL full-text search (tsvector) for elections | Overkill for <1000 rows of proper-noun data; adds migration complexity; partial-word matching (which users expect) requires extra `tsquery` syntax | ILIKE with wildcard escaping |
+| Elasticsearch / Meilisearch / Typesense | External service dependency for a table with 34 rows | ILIKE |
+| pg_trgm extension | Trigram indexes help ILIKE performance at scale; not needed at <1000 rows | Sequential scan is faster |
+| New Python packages | No library gaps exist | Use existing SQLAlchemy, Pydantic, FastAPI |
+| Redis/memcached for filter options | Caching adds operational complexity; queries are <5ms | Direct DB queries; add Cache-Control headers if needed |
+| New database columns | `race_category` is derived from `district_type`; no new data to store | Python dict mapping in service layer |
+| New Alembic migrations | No schema changes needed for search/filter features | All columns and indexes already exist |
 
 ## Alternatives Considered
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| Markdown parser | mistune 3.2.0 | markdown-it-py | 2.5x slower; CommonMark compliance unnecessary for our deterministic format |
-| Markdown parser | mistune 3.2.0 | regex/manual | Fragile with markdown edge cases (pipes in cells, links, em-dashes) |
-| Job queue | procrastinate 3.7.2 | PGQueuer | Less mature; fewer releases; less documentation |
-| Job queue | procrastinate 3.7.2 | Celery | Requires Redis; violates PostgreSQL-only constraint |
-| Job queue | procrastinate 3.7.2 | InProcessTaskRunner (existing) | No persistence, retries, or crash recovery |
-| R2 upload | boto3 (existing) | r2-upload-lib or custom | boto3 already works with R2; presigned URLs are standard S3 API |
-| JSONL validation | Pydantic v2 (existing) | jsonschema | Pydantic already in stack; faster (Rust core); better DX with model classes |
-| AI skills | Claude Code Skills | LangChain/custom scripts | Skills integrate directly into user's Claude Code workflow; no runtime dependency |
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| ILIKE for search | PostgreSQL tsvector + GIN | When elections table exceeds ~5,000 rows AND users need linguistic matching (stemming, ranking). The codebase already has this pattern in `agenda_items` -- can be ported if needed. |
+| Python dict for race_category mapping | Database enum or lookup table | If race categories need to be user-configurable at runtime (admin CRUD). Currently they are a fixed taxonomy. |
+| Direct DB queries for filter options | Materialized view | When filter option queries take >100ms (would require >100K elections). Not foreseeable. |
+| No caching | In-memory TTL cache (e.g., `cachetools`) | If filter-options endpoint gets >100 req/sec. Add `cachetools` (already in Python stdlib-adjacent, 3KB package) with 60s TTL. |
 
 ## Installation
 
 ```bash
-# New dependencies only (3 packages)
-uv add "mistune>=3.2.0"
-uv add "procrastinate>=3.7.2"
-uv add "psycopg[pool]>=3.3.2"
-
-# No new dev dependencies needed
-# Existing test infrastructure (pytest, moto, aiosqlite) covers all new code
+# No new dependencies needed for v1.1 Election Search
+# All functionality uses existing packages
 ```
 
-**Total new dependencies: 3** (mistune, procrastinate, psycopg with pool extra). All other functionality uses existing dependencies.
+## Stack Patterns for This Milestone
 
-## Configuration (New Environment Variables)
+**Pattern: Filter builder with OR-search**
+The existing `list_elections()` in `election_service.py` uses a `filters: list[ColumnElement[bool]]` accumulator pattern (lines 619-648). All new filters follow this same pattern. The `q` search parameter adds an `or_()` clause to the same list.
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `R2_UPLOAD_BUCKET` | No | Same as `R2_BUCKET` | Bucket for import uploads (can reuse existing publishing bucket) |
-| `R2_UPLOAD_PREFIX` | No | `imports/` | Key prefix for uploaded JSONL files |
-| `R2_UPLOAD_URL_EXPIRY` | No | `3600` | Presigned URL expiry in seconds |
-| `PROCRASTINATE_MAX_JOBS` | No | `4` | Max concurrent procrastinate workers |
+**Pattern: Aggregation service function**
+The filter-options endpoint introduces a new pattern: queries that return aggregated metadata rather than entity lists. Implement as a separate service function (`get_filter_options()`) that returns a typed dict or Pydantic model, not as part of `list_elections()`.
 
-Procrastinate connects to the same `DATABASE_URL` (rewriting `asyncpg` to `postgresql` in the connection string for psycopg compatibility).
+**Pattern: Static capability declaration**
+The capabilities endpoint is a new pattern for this codebase: a schema-only endpoint with no database interaction. Implement as a module-level constant (frozen Pydantic model instance) that gets returned directly.
 
-## Dependency Risk Assessment
+## Version Compatibility
 
-| Dependency | Risk | Mitigation |
-|------------|------|------------|
-| mistune | LOW -- zero external deps, 14+ years old, actively maintained | Pure parser; easy to swap if needed |
-| procrastinate | MEDIUM -- adds psycopg driver alongside asyncpg | Well-established (4+ years); separate connection pools; can fall back to InProcessTaskRunner if needed |
-| psycopg[pool] | LOW -- official PostgreSQL adapter for Python | Only used by procrastinate; does not touch SQLAlchemy layer |
+No version concerns. All features use core PostgreSQL 15 capabilities (ILIKE, DISTINCT, COUNT, GROUP BY) and existing SQLAlchemy 2.x APIs. No new packages to version-check.
 
 ## Sources
 
-- [Procrastinate GitHub](https://github.com/procrastinate-org/procrastinate) -- v3.7.2, Jan 2026
-- [Procrastinate Docs -- Connectors](https://procrastinate.readthedocs.io/en/stable/howto/basics/connector.html) -- PsycopgConnector, AiopgConnector
-- [Procrastinate Docs -- Worker](https://procrastinate.readthedocs.io/en/stable/howto/basics/worker.html) -- FastAPI lifespan integration
-- [Procrastinate Docs -- Schema](https://procrastinate.readthedocs.io/en/stable/howto/production/schema.html) -- Custom PG schema support
-- [Procrastinate Docs -- Migrations](https://procrastinate.readthedocs.io/en/stable/howto/production/migrations.html) -- Pure SQL migration scripts
-- [Procrastinate PyPI](https://pypi.org/project/procrastinate/) -- v3.7.2 released Jan 22, 2026
-- [Mistune PyPI](https://pypi.org/project/mistune/) -- v3.2.0 released Dec 23, 2025
-- [Mistune Docs -- Guide](https://mistune.lepture.com/en/latest/guide.html) -- AST renderer mode
-- [Mistune Docs -- Advanced](https://mistune.lepture.com/en/latest/advanced.html) -- Table AST token structure
-- [Claude Code Skills Docs](https://code.claude.com/docs/en/skills) -- Skill creation, frontmatter, subagents
-- [Cloudflare R2 Presigned URLs](https://developers.cloudflare.com/r2/api/s3/presigned-urls/) -- 7-day max expiry, S3 domain only
-- [Cloudflare R2 boto3 Examples](https://developers.cloudflare.com/r2/examples/aws/boto3/) -- Client configuration
-- [PGQueuer GitHub](https://github.com/janbjorge/pgqueuer) -- Alternative considered
-- [SQLAlchemy 2.0 Async Docs](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html) -- Async bulk operations
-- [Pydantic Docs -- File Validation](https://docs.pydantic.dev/latest/examples/files/) -- JSONL validation patterns
+- `src/voter_api/services/election_service.py` lines 616-695 -- existing filter/query pattern (direct code inspection)
+- `src/voter_api/models/election.py` lines 37-126 -- Election model with existing columns and indexes (direct code inspection)
+- `src/voter_api/models/agenda_item.py` lines 69-77 -- existing tsvector pattern for reference (direct code inspection)
+- `src/voter_api/services/meeting_search_service.py` -- existing full-text search + ILIKE hybrid (direct code inspection)
+- `src/voter_api/services/voter_service.py` lines 82-109 -- existing ILIKE wildcard-escape pattern (direct code inspection)
+- `.planning/PROJECT.md` -- milestone scope and key decisions (direct inspection)
 
 ---
-
-*Stack research: 2026-03-13*
+*Stack research for: v1.1 Election Search*
+*Researched: 2026-03-16*
