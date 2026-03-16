@@ -1,5 +1,25 @@
 # Milestones
 
+## v1.1 Election Search (Shipped: 2026-03-16)
+
+**Phases completed:** 3 phases, 5 plans, 10 tasks
+**Files modified:** 29 | **Lines:** +4,193 / -53
+**Timeline:** 1 day (2026-03-16)
+**Git range:** `0edf183..02a97dd`
+
+**Delivered:** Election search, filtering, and discovery capabilities on the elections API — capabilities endpoint, free-text search, race category/county/date filters, and dynamic filter-options endpoint, all backward-compatible with existing consumers.
+
+**Key accomplishments:**
+1. Static capabilities endpoint (`GET /elections/capabilities`) with route ordering pattern and 1-hour cache
+2. Free-text search, race category, county, and exact date filters with ILIKE wildcard escaping
+3. 22 integration tests verifying all search/filter params via mock service pattern
+4. Dynamic filter-options endpoint (`GET /elections/filter-options`) with soft-delete exclusion and 5-minute cache
+5. 19 new E2E tests covering all three endpoints with diverse seed data (185 total E2E, up from 166)
+
+**Tests:** 42 new unit + 22 integration + 19 E2E (185 E2E total)
+
+---
+
 ## v1.0 Better Imports (Shipped: 2026-03-15)
 
 **Phases completed:** 5 phases, 15 plans
