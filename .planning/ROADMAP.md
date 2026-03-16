@@ -64,10 +64,11 @@ Plans:
   2. Filter-options response excludes soft-deleted elections and only returns values that have at least one matching election
   3. E2E tests cover all three new endpoints (`/capabilities`, filter params `q`/`race_category`/`county`/`election_date`, `/filter-options`) with seed data that exercises `eligible_county` and `district_type` fields
   4. All existing E2E tests continue to pass alongside the new tests
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 08-01: Filter options endpoint and E2E tests
+- [ ] 08-01-PLAN.md — Filter options endpoint (schema, service, route handler) and unit tests
+- [ ] 08-02-PLAN.md — E2E seed data expansion and comprehensive E2E tests for capabilities, search/filters, and filter-options
 
 ## Progress
 
@@ -83,4 +84,4 @@ Phases execute in numeric order: 6 -> 7 -> 8
 | 5. Milestone Cleanup | v1.0 | 2/2 | Complete | 2026-03-15 |
 | 6. Capabilities Discovery | v1.1 | 0/1 | Not started | - |
 | 7. Search and Filters | 2/2 | Complete   | 2026-03-16 | - |
-| 8. Filter Options and E2E | v1.1 | 0/1 | Not started | - |
+| 8. Filter Options and E2E | v1.1 | 0/2 | Not started | - |
