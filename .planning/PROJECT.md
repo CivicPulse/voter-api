@@ -1,12 +1,23 @@
-# Better Imports
+# CivPulse Voter API
 
 ## What This Is
 
-A three-stage data import pipeline for Georgia Secretary of State election data: AI-assisted skills produce human-reviewable markdown files from raw SOS data (CSVs, PDFs), a deterministic converter transforms markdown to validated JSONL, and an idempotent import pipeline loads JSONL into the voter-api database. Proven end-to-end with three Georgia 2026 elections (May 19 general primary, March 17 special, March 10 special). The markdown layer is the human-auditable, git-tracked source of truth.
+A Python/FastAPI REST API for managing Georgia Secretary of State voter and election data with geospatial capabilities. Features a three-stage election data pipeline (SOS→Markdown→JSONL→DB) with AI-assisted skills, voter registration import, boundary/shapefile import, and geocoding. Proven with three Georgia 2026 elections. Now adding election search and filtering capabilities to support the voter-web frontend.
 
 ## Core Value
 
-Election and candidate data flows reliably from raw SOS sources into the database through a pipeline where every intermediate step is human-reviewable, version-controlled, and reproducible.
+Georgia election and voter data is accurately maintained and queryable — from raw SOS sources through human-reviewable pipelines into a searchable, filterable API that powers civic engagement tools.
+
+## Current Milestone: v1.1 Election Search
+
+**Goal:** Add search, filtering, and discovery capabilities to the elections API so the voter-web frontend can present elections in a browsable, filterable interface.
+
+**Target features:**
+- Capabilities endpoint for progressive feature discovery
+- Free-text search across election name and district
+- Race category, county, district, and exact-date filters
+- Filter options endpoint for dynamic dropdown population
+- All backward-compatible with existing API consumers
 
 ## Requirements
 
@@ -33,12 +44,24 @@ Election and candidate data flows reliably from raw SOS sources into the databas
 
 ### Active
 
+- [ ] Capabilities endpoint (`GET /elections/capabilities`) for progressive filter discovery
+- [ ] Free-text search (`q`) across election name and district fields
+- [ ] Race category filter (`race_category`) mapping to existing `district_type`
+- [ ] County filter (`county`) matching `eligible_county`
+- [ ] Exact date filter (`election_date`) complementing existing date range
+- [ ] Filter options endpoint (`GET /elections/filter-options`) for dropdown values
+- [ ] Keep existing `district` filter as partial match (no breaking change)
+
+### Backlog
+
 - [ ] Cloudflare R2 signed URL upload endpoint (handle large files without passing through API)
 - [ ] Background job processing via procrastinate or equivalent (PostgreSQL-native, async-compatible)
 - [ ] API import endpoints (POST /api/v1/imports/elections, POST /api/v1/imports/candidates)
 - [ ] JSONL schema and import pipeline for voter registration data
 - [ ] JSONL schema and import pipeline for voter history data
 - [ ] Historical election backfill (2024-2025)
+- [ ] Statewide election inclusion in county filter (geospatial boundary logic)
+- [ ] Scoped filter options (context-sensitive dropdown values)
 
 ### Out of Scope
 
@@ -82,5 +105,10 @@ Known remaining items from v1.0: R2 upload and procrastinate job queue were desc
 | Body/Seat reference system | County reference files define governing body structures for district linkage resolution | ✓ Good — 159 county files cover all GA counties |
 | Placeholder UUID for election_event_id | Converter can't know election_event_id at conversion time; resolved during import | ⚠️ Revisit — NULL FK after import requires separate resolve step |
 
+| `race_category` maps to `district_type` | Avoid new column; `district_type` already populated during import | — Pending |
+| Keep `district` as partial match | Changing to exact match is a breaking change for existing consumers | — Pending |
+| County filter without statewide inclusion | Geospatial boundary logic is complex; simple `eligible_county` match first | — Pending |
+| Unscoped filter options first | Scoped options add combinatorial query complexity; fast-follow if needed | — Pending |
+
 ---
-*Last updated: 2026-03-15 after v1.0 milestone*
+*Last updated: 2026-03-16 after v1.1 milestone start*
