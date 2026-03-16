@@ -14,9 +14,9 @@ Static capabilities endpoint (`GET /api/v1/elections/capabilities`) that lets AP
 ## Implementation Decisions
 
 ### Response shape
-- Minimal response: version field, flat list of filter names, endpoint flags
-- Ship the full filter list from day one (all 5 filters + filter_options: true) with version: 1
-- Phases 7-8 implement the actual filter logic behind these names; version stays at 1 until new filters are added
+- Minimal response: flat list of filter names, endpoint flags (no version field — contract document omits it)
+- Ship the full filter list from day one (all 5 filters + filter_options: true)
+- Phases 7-8 implement the actual filter logic behind these names
 - No formal additive-only guarantee — the response may change; frontend should re-fetch on session start
 
 ### Response schema
