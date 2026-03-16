@@ -242,11 +242,14 @@ class TestListElectionParticipants:
             records_result,
         ]
 
-        result_records, total, voter_details_included = await list_election_participants(session, election.id)
+        result_records, total, voter_details_included, district_type_used = await list_election_participants(
+            session, election.id
+        )
 
         assert total == 1
         assert len(result_records) == 1
         assert voter_details_included is False
+        assert district_type_used is None
 
     async def test_election_not_found_raises(self) -> None:
         """Raises ValueError when election does not exist."""
@@ -283,7 +286,7 @@ class TestListElectionParticipants:
             records_result,
         ]
 
-        records, total, voter_details_included = await list_election_participants(
+        records, total, voter_details_included, district_type_used = await list_election_participants(
             session,
             election.id,
             filters=ParticipationFilters(
@@ -298,6 +301,7 @@ class TestListElectionParticipants:
         assert total == 0
         assert records == []
         assert voter_details_included is False
+        assert district_type_used is None
         # 5 execute calls: election lookup + has_resolved + match count + count + records
         assert session.execute.await_count == 5
 
@@ -306,7 +310,7 @@ class TestListElectionParticipants:
         election = _mock_election()
         session = _mock_join_session(election)
 
-        records, total, voter_details_included = await list_election_participants(
+        records, total, voter_details_included, district_type_used = await list_election_participants(
             session,
             election.id,
             filters=ParticipationFilters(county_precinct="HA2"),
@@ -315,13 +319,14 @@ class TestListElectionParticipants:
         assert total == 0
         assert records == []
         assert voter_details_included is True
+        assert district_type_used is None
 
     async def test_q_param_triggers_join_path(self) -> None:
         """The q search parameter triggers the JOIN path."""
         election = _mock_election()
         session = _mock_join_session(election)
 
-        records, total, voter_details_included = await list_election_participants(
+        records, total, voter_details_included, district_type_used = await list_election_participants(
             session,
             election.id,
             filters=ParticipationFilters(q="Smith"),
@@ -330,13 +335,14 @@ class TestListElectionParticipants:
         assert total == 0
         assert records == []
         assert voter_details_included is True
+        assert district_type_used is None
 
     async def test_has_district_mismatch_triggers_join_path(self) -> None:
-        """has_district_mismatch filter triggers the JOIN path."""
-        election = _mock_election()
+        """has_district_mismatch filter triggers the JSONB JOIN path."""
+        election = _mock_election(district_type="state_senate")
         session = _mock_join_session(election)
 
-        records, total, voter_details_included = await list_election_participants(
+        records, total, voter_details_included, district_type_used = await list_election_participants(
             session,
             election.id,
             filters=ParticipationFilters(has_district_mismatch=True),
@@ -345,6 +351,7 @@ class TestListElectionParticipants:
         assert total == 0
         assert records == []
         assert voter_details_included is True
+        assert district_type_used == "state_senate"
 
 
 # ---------------------------------------------------------------------------
@@ -882,11 +889,14 @@ class TestBuildElectionMatchConditions:
             records_result,
         ]
 
-        result_records, total, voter_details_included = await list_election_participants(session, election.id)
+        result_records, total, voter_details_included, district_type_used = await list_election_participants(
+            session, election.id
+        )
 
         assert total == 1
         assert len(result_records) == 1
         assert voter_details_included is False
+        assert district_type_used is None
 
 
 # ---------------------------------------------------------------------------

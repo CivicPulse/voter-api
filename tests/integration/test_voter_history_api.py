@@ -478,7 +478,7 @@ class TestListElectionParticipants:
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
                 new_callable=AsyncMock,
-                return_value=(records, 2, False),
+                return_value=(records, 2, False, None),
             ),
             patch(
                 "voter_api.services.voter_history_service.lookup_voter_details",
@@ -520,7 +520,7 @@ class TestListElectionParticipants:
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
                 new_callable=AsyncMock,
-                return_value=(records, 1, False),
+                return_value=(records, 1, False, None),
             ),
             patch(
                 "voter_api.services.voter_history_service.lookup_voter_details",
@@ -545,7 +545,7 @@ class TestListElectionParticipants:
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
                 new_callable=AsyncMock,
-                return_value=([], 0, False),
+                return_value=([], 0, False, None),
             ) as mock_svc,
             patch(
                 "voter_api.services.voter_history_service.lookup_voter_details",
@@ -566,7 +566,7 @@ class TestListElectionParticipants:
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
                 new_callable=AsyncMock,
-                return_value=([], 0, False),
+                return_value=([], 0, False, None),
             ) as mock_svc,
             patch(
                 "voter_api.services.voter_history_service.lookup_voter_details",
@@ -587,7 +587,7 @@ class TestListElectionParticipants:
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
                 new_callable=AsyncMock,
-                return_value=([], 0, False),
+                return_value=([], 0, False, None),
             ) as mock_svc,
             patch(
                 "voter_api.services.voter_history_service.lookup_voter_details",
@@ -609,7 +609,7 @@ class TestListElectionParticipants:
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
                 new_callable=AsyncMock,
-                return_value=([], 0, True),
+                return_value=([], 0, True, None),
             ) as mock_svc,
         ):
             eid = uuid.uuid4()
@@ -632,7 +632,7 @@ class TestListElectionParticipants:
             patch(
                 "voter_api.services.voter_history_service.list_election_participants",
                 new_callable=AsyncMock,
-                return_value=([], 0, True),
+                return_value=([], 0, True, None),
             ) as mock_svc,
         ):
             eid = uuid.uuid4()
@@ -659,7 +659,7 @@ class TestListElectionParticipants:
         with patch(
             "voter_api.services.voter_history_service.list_election_participants",
             new_callable=AsyncMock,
-            return_value=(rows, 1, True),
+            return_value=(rows, 1, True, None),
         ):
             eid = uuid.uuid4()
             resp = await analyst_client.get(f"/api/v1/elections/{eid}/participation?q=Jane")
