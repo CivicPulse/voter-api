@@ -10,7 +10,7 @@ Requirements for Election Search milestone. Each maps to roadmap phases.
 ### Discovery
 
 - [x] **DISC-01**: API consumer can discover which filter parameters are currently supported via a capabilities endpoint (`GET /elections/capabilities`)
-- [ ] **DISC-02**: API consumer can fetch valid values for race category, county, and election date dropdown filters via a filter-options endpoint (`GET /elections/filter-options`)
+- [x] **DISC-02**: API consumer can fetch valid values for race category, county, and election date dropdown filters via a filter-options endpoint (`GET /elections/filter-options`)
 
 ### Search
 
@@ -61,7 +61,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | DISC-01 | Phase 6 | Complete |
-| DISC-02 | Phase 8 | Pending |
+| DISC-02 | Phase 8 | Complete |
 | SRCH-01 | Phase 7 | Complete |
 | SRCH-02 | Phase 7 | Complete |
 | FILT-01 | Phase 7 | Complete |
