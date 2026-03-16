@@ -33,6 +33,7 @@
 **Milestone Goal:** When filtering election participation by `has_district_mismatch`, only flag voters whose mismatch is on the district type relevant to that specific election.
 
 - [x] **Phase 9: Context-Aware Mismatch Filter** - Scope `has_district_mismatch` on the participation endpoint to the election's own `district_type` via `analysis_results` JSONB lookup (completed 2026-03-16)
+- [ ] **Phase 10: Fix Mismatch Filter SQL Defect** - Fix ORM column reference in `_build_mismatch_filter` to use subquery alias, harden tests for compiled SQL correctness
 
 ## Phase Details
 
@@ -51,6 +52,20 @@ Plans:
 - [ ] 09-01-PLAN.md — Implement context-aware JSONB mismatch filter in service layer, schemas, and route handler
 - [ ] 09-02-PLAN.md — Add unit, integration, and E2E tests for mismatch filter
 
+### Phase 10: Fix Mismatch Filter SQL Defect
+**Goal**: Fix the structural SQL defect in `_build_mismatch_filter()` where ORM column references cause an implicit cross join, and harden tests to assert compiled SQL correctness
+**Depends on**: Phase 9
+**Requirements**: MISMATCH-01
+**Gap Closure:** Closes gaps from audit (v1.2-MILESTONE-AUDIT.md)
+**Success Criteria** (what must be TRUE):
+  1. `_build_mismatch_filter()` uses `latest_ar.c.mismatch_details` (subquery alias) instead of `AnalysisResult.mismatch_details` (ORM column)
+  2. Compiled SQL for participation queries contains no implicit `FROM analysis_results` — only the `DISTINCT ON` subquery alias
+  3. Unit tests compile the full query in joined context and assert correct FROM clauses
+  4. E2E test with multiple analysis runs per voter verifies deduplication (only latest analysis result used)
+
+Plans:
+- [ ] 10-01-PLAN.md — Fix SQL defect and harden tests
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -63,4 +78,5 @@ Plans:
 | 6. Capabilities Discovery | v1.1 | 1/1 | Complete | 2026-03-16 |
 | 7. Search and Filters | v1.1 | 2/2 | Complete | 2026-03-16 |
 | 8. Filter Options and E2E | v1.1 | 2/2 | Complete | 2026-03-16 |
-| 9. Context-Aware Mismatch Filter | 2/2 | Complete   | 2026-03-16 | - |
+| 9. Context-Aware Mismatch Filter | v1.2 | 2/2 | Complete | 2026-03-16 |
+| 10. Fix Mismatch Filter SQL Defect | v1.2 | 0/1 | Pending | - |

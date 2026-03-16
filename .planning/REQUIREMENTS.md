@@ -9,7 +9,7 @@ Requirements for v1.2 Context-Aware District Mismatch. Each maps to roadmap phas
 
 ### Participation Mismatch
 
-- [x] **MISMATCH-01**: Participation endpoint `has_district_mismatch=true` only returns voters whose mismatch is on the election's `district_type` (via `analysis_results.mismatch_details` JSONB lookup)
+- [ ] **MISMATCH-01**: Participation endpoint `has_district_mismatch=true` only returns voters whose mismatch is on the election's `district_type` (via `analysis_results.mismatch_details` JSONB lookup)
 
 ## Future Requirements
 
@@ -48,7 +48,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MISMATCH-01 | Phase 9 | Complete |
+| MISMATCH-01 | Phase 10 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 1 total
