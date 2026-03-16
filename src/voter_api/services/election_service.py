@@ -9,7 +9,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -52,6 +52,28 @@ from voter_api.schemas.election import (
     RefreshResponse,
     VoteMethodResult,
 )
+
+RACE_CATEGORY_MAP: dict[str, list[str]] = {
+    "federal": ["congressional"],
+    "state_senate": ["state_senate"],
+    "state_house": ["state_house"],
+}
+_NON_LOCAL_TYPES = [t for types in RACE_CATEGORY_MAP.values() for t in types]
+
+
+def escape_ilike_wildcards(value: str) -> str:
+    """Escape SQL ILIKE wildcard characters for literal matching.
+
+    Escapes %, _, and \\ so they are treated as literal characters
+    in ILIKE patterns. Backslash is escaped first to avoid double-escaping.
+
+    Args:
+        value: Raw search input string.
+
+    Returns:
+        Escaped string safe for ILIKE pattern use.
+    """
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 class DuplicateElectionError(ValueError):
@@ -591,6 +613,10 @@ async def list_elections(
     district_type: str | None = None,
     district_identifier: str | None = None,
     source: str | None = None,
+    q: str | None = None,
+    race_category: str | None = None,
+    county: str | None = None,
+    election_date: date | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[ElectionSummary], int]:
@@ -607,6 +633,11 @@ async def list_elections(
         early_voting_active: If True, only elections currently in early voting window.
         district_type: Filter by parsed district type (exact match).
         district_identifier: Filter by parsed district identifier (exact match).
+        source: Filter by data source (sos_feed, manual, linked).
+        q: Free-text search across name and district (case-insensitive).
+        race_category: Filter by race category (federal, state_senate, state_house, local).
+        county: Filter by eligible county (case-insensitive exact match).
+        election_date: Filter by exact election date; overrides date_from/date_to.
         page: Page number (1-indexed).
         page_size: Results per page.
 
@@ -623,10 +654,13 @@ async def list_elections(
         filters.append(Election.election_type == election_type)
     if district:
         filters.append(Election.district.ilike(f"%{district}%"))
-    if date_from:
-        filters.append(Election.election_date >= date_from)
-    if date_to:
-        filters.append(Election.election_date <= date_to)
+    if election_date:
+        filters.append(Election.election_date == election_date)
+    else:
+        if date_from:
+            filters.append(Election.election_date >= date_from)
+        if date_to:
+            filters.append(Election.election_date <= date_to)
     if registration_open is True:
         filters.append(Election.registration_deadline >= func.current_date())
     if early_voting_active is True:
@@ -642,6 +676,28 @@ async def list_elections(
         filters.append(Election.district_identifier == district_identifier)
     if source:
         filters.append(Election.source == source)
+
+    # Free-text search (SRCH-01, SRCH-02)
+    if q:
+        escaped = escape_ilike_wildcards(q)
+        pattern = f"%{escaped}%"
+        filters.append(or_(Election.name.ilike(pattern), Election.district.ilike(pattern)))
+
+    # Race category filter (FILT-01)
+    if race_category:
+        if race_category == "local":
+            filters.append(
+                or_(
+                    Election.district_type.notin_(_NON_LOCAL_TYPES),
+                    Election.district_type.is_(None),
+                )
+            )
+        else:
+            filters.append(Election.district_type.in_(RACE_CATEGORY_MAP[race_category]))
+
+    # County filter (FILT-02)
+    if county:
+        filters.append(func.lower(Election.eligible_county) == county.strip().lower())
 
     if filters:
         query = query.where(and_(*filters))
