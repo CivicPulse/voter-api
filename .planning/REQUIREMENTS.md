@@ -9,7 +9,7 @@ Requirements for Election Search milestone. Each maps to roadmap phases.
 
 ### Discovery
 
-- [ ] **DISC-01**: API consumer can discover which filter parameters are currently supported via a capabilities endpoint (`GET /elections/capabilities`)
+- [x] **DISC-01**: API consumer can discover which filter parameters are currently supported via a capabilities endpoint (`GET /elections/capabilities`)
 - [ ] **DISC-02**: API consumer can fetch valid values for race category, county, and election date dropdown filters via a filter-options endpoint (`GET /elections/filter-options`)
 
 ### Search
@@ -26,7 +26,7 @@ Requirements for Election Search milestone. Each maps to roadmap phases.
 
 ### Integration
 
-- [ ] **INTG-01**: New endpoints (`/capabilities`, `/filter-options`) use correct FastAPI route ordering (registered before `/{election_id}` catch-all)
+- [x] **INTG-01**: New endpoints (`/capabilities`, `/filter-options`) use correct FastAPI route ordering (registered before `/{election_id}` catch-all)
 - [ ] **INTG-02**: Existing election list endpoint behavior is unchanged for current consumers (backward compatible, no breaking changes to `district` partial match)
 - [ ] **INTG-03**: E2E tests cover all new endpoints and filter parameters with seed data that exercises `eligible_county` and `district_type`
 
@@ -60,7 +60,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DISC-01 | Phase 6 | Pending |
+| DISC-01 | Phase 6 | Complete |
 | DISC-02 | Phase 8 | Pending |
 | SRCH-01 | Phase 7 | Pending |
 | SRCH-02 | Phase 7 | Pending |
@@ -68,7 +68,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FILT-02 | Phase 7 | Pending |
 | FILT-03 | Phase 7 | Pending |
 | FILT-04 | Phase 7 | Pending |
-| INTG-01 | Phase 6 | Pending |
+| INTG-01 | Phase 6 | Complete |
 | INTG-02 | Phase 7 | Pending |
 | INTG-03 | Phase 8 | Pending |
 
