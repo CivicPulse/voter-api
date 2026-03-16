@@ -28,7 +28,7 @@
 
 </details>
 
-### 🚧 v1.2 Context-Aware District Mismatch (In Progress)
+### v1.2 Context-Aware District Mismatch (In Progress)
 
 **Milestone Goal:** When filtering election participation by `has_district_mismatch`, only flag voters whose mismatch is on the district type relevant to that specific election.
 
@@ -45,10 +45,11 @@
   2. Voters with mismatches on a different district type than the election's are excluded from `has_district_mismatch=true` results
   3. `has_district_mismatch=false` and omitting the filter entirely continue to return correct voter sets without regression
   4. The filter behaves correctly across elections with different district types (e.g., `state_senate`, `county_commission`, `us_house`)
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 09-01: TBD
+- [ ] 09-01-PLAN.md — Implement context-aware JSONB mismatch filter in service layer, schemas, and route handler
+- [ ] 09-02-PLAN.md — Add unit, integration, and E2E tests for mismatch filter
 
 ## Progress
 
@@ -62,4 +63,4 @@ Plans:
 | 6. Capabilities Discovery | v1.1 | 1/1 | Complete | 2026-03-16 |
 | 7. Search and Filters | v1.1 | 2/2 | Complete | 2026-03-16 |
 | 8. Filter Options and E2E | v1.1 | 2/2 | Complete | 2026-03-16 |
-| 9. Context-Aware Mismatch Filter | v1.2 | 0/? | Not started | - |
+| 9. Context-Aware Mismatch Filter | v1.2 | 0/2 | Not started | - |
