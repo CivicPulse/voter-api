@@ -492,7 +492,7 @@ class TestBuildMismatchFilter:
         sql = _compile_query(query)
         assert "latest_ar" in sql, f"Expected 'latest_ar' in compiled SQL: {sql}"
         # analysis_results appears once (inside subquery def), not in WHERE
-        where_portion = sql[sql.lower().find("where"):]
+        where_portion = sql[sql.lower().find("where") :]
         assert "analysis_results" not in where_portion, (
             f"Implicit cross join detected — 'analysis_results' found after WHERE: {where_portion}"
         )
@@ -503,7 +503,7 @@ class TestBuildMismatchFilter:
         query = self._build_joined_query(latest_ar, "state_senate", False)
         sql = _compile_query(query)
         assert "latest_ar" in sql
-        where_portion = sql[sql.lower().find("where"):]
+        where_portion = sql[sql.lower().find("where") :]
         assert "analysis_results" not in where_portion, (
             f"Implicit cross join detected — 'analysis_results' found after WHERE: {where_portion}"
         )
@@ -514,9 +514,7 @@ class TestBuildMismatchFilter:
         query = self._build_joined_query(latest_ar, "congressional", True)
         sql = _compile_query(query).lower()
         count = sql.count("from analysis_results")
-        assert count == 1, (
-            f"Expected 'from analysis_results' exactly once (in subquery), found {count} times"
-        )
+        assert count == 1, f"Expected 'from analysis_results' exactly once (in subquery), found {count} times"
 
     def test_all_boundary_types_produce_valid_clauses(self) -> None:
         """All valid boundary types produce compilable filter clauses."""
