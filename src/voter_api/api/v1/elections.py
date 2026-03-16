@@ -35,6 +35,7 @@ from voter_api.schemas.election import (
     FeedImportPreviewResponse,
     FeedImportRequest,
     FeedImportResponse,
+    FilterOptionsResponse,
     PaginatedElectionListResponse,
     RawElectionResultsResponse,
     RefreshResponse,
@@ -127,6 +128,20 @@ async def get_capabilities(response: Response) -> CapabilitiesResponse:
         supported_filters=["q", "race_category", "county", "district", "election_date"],
         endpoints={"filter_options": True},
     )
+
+
+# --- Filter options ---
+
+
+@elections_router.get("/filter-options", response_model=FilterOptionsResponse)
+async def get_filter_options(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    response: Response,
+) -> FilterOptionsResponse:
+    """Return valid filter values for election search dropdowns. Public endpoint."""
+    response.headers["Cache-Control"] = "public, max-age=300"
+    options = await election_service.get_filter_options(session)
+    return FilterOptionsResponse(**options)
 
 
 # --- US4: Admin create ---
