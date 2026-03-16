@@ -33,7 +33,7 @@
 **Milestone Goal:** When filtering election participation by `has_district_mismatch`, only flag voters whose mismatch is on the district type relevant to that specific election.
 
 - [x] **Phase 9: Context-Aware Mismatch Filter** - Scope `has_district_mismatch` on the participation endpoint to the election's own `district_type` via `analysis_results` JSONB lookup (completed 2026-03-16)
-- [ ] **Phase 10: Fix Mismatch Filter SQL Defect** - Fix ORM column reference in `_build_mismatch_filter` to use subquery alias, harden tests for compiled SQL correctness
+- [x] **Phase 10: Fix Mismatch Filter SQL Defect** - Fix ORM column reference in `_build_mismatch_filter` to use subquery alias, harden tests for compiled SQL correctness (completed 2026-03-16)
 
 ## Phase Details
 
@@ -57,7 +57,7 @@ Plans:
 **Depends on**: Phase 9
 **Requirements**: MISMATCH-01
 **Gap Closure:** Closes gaps from audit (v1.2-MILESTONE-AUDIT.md)
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 **Success Criteria** (what must be TRUE):
   1. `_build_mismatch_filter()` uses `latest_ar.c.mismatch_details` (subquery alias) instead of `AnalysisResult.mismatch_details` (ORM column)
   2. Compiled SQL for participation queries contains no implicit `FROM analysis_results` — only the `DISTINCT ON` subquery alias
@@ -80,4 +80,4 @@ Plans:
 | 7. Search and Filters | v1.1 | 2/2 | Complete | 2026-03-16 |
 | 8. Filter Options and E2E | v1.1 | 2/2 | Complete | 2026-03-16 |
 | 9. Context-Aware Mismatch Filter | v1.2 | 2/2 | Complete | 2026-03-16 |
-| 10. Fix Mismatch Filter SQL Defect | v1.2 | 0/1 | Pending | - |
+| 10. Fix Mismatch Filter SQL Defect | 1/1 | Complete   | 2026-03-16 | - |
