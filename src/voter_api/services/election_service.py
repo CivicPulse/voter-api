@@ -76,6 +76,63 @@ def escape_ilike_wildcards(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+async def get_filter_options(session: AsyncSession) -> dict:
+    """Return distinct filter values from active elections for dropdown population.
+
+    Queries DISTINCT values for race categories, counties, and dates,
+    excluding soft-deleted elections. Counties are title-case normalized.
+    Race categories are mapped from raw district_type values via RACE_CATEGORY_MAP.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        Dict with race_categories (sorted alpha), counties (sorted alpha, title-case),
+        election_dates (sorted desc), and total_elections count.
+    """
+    from sqlalchemy import distinct
+
+    base = Election.deleted_at.is_(None)
+
+    # District types -> race categories
+    dt_result = await session.execute(select(distinct(Election.district_type)).where(base))
+    district_types = {row for (row,) in dt_result.all()}
+
+    categories: list[str] = []
+    for cat, types in RACE_CATEGORY_MAP.items():
+        if any(t in district_types for t in types):
+            categories.append(cat)
+    # "local" if NULL or unrecognized types exist
+    if (None in district_types or (district_types - set(_NON_LOCAL_TYPES))) and "local" not in categories:
+        categories.append("local")
+    categories.sort()
+
+    # Counties (non-null, title-cased, sorted)
+    county_result = await session.execute(
+        select(distinct(Election.eligible_county))
+        .where(base, Election.eligible_county.isnot(None))
+        .order_by(Election.eligible_county)
+    )
+    counties = [row.title() for (row,) in county_result.all()]
+
+    # Election dates (descending)
+    date_result = await session.execute(
+        select(distinct(Election.election_date)).where(base).order_by(Election.election_date.desc())
+    )
+    dates = [row for (row,) in date_result.all()]
+
+    # Total count
+    count_result = await session.execute(select(func.count(Election.id)).where(base))
+    total = count_result.scalar_one()
+
+    return {
+        "race_categories": categories,
+        "counties": counties,
+        "election_dates": dates,
+        "total_elections": total,
+    }
+
+
 class DuplicateElectionError(ValueError):
     """Raised when attempting to create an election that already exists."""
 
