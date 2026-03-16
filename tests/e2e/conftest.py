@@ -187,6 +187,11 @@ CANDIDATE_LINK_ID = uuid.UUID("00000000-0000-0000-0000-000000000071")
 CANDIDACY_ID = uuid.UUID("00000000-0000-0000-0000-000000000072")
 ABSENTEE_RECORD_ID = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee01")
 ABSENTEE_RECORD_ID_2 = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee02")
+ELECTION_FEDERAL_ID = uuid.UUID("00000000-0000-0000-0000-000000000011")
+ELECTION_STATE_SENATE_ID = uuid.UUID("00000000-0000-0000-0000-000000000012")
+ELECTION_STATE_HOUSE_ID = uuid.UUID("00000000-0000-0000-0000-000000000013")
+ELECTION_LOCAL_ID = uuid.UUID("00000000-0000-0000-0000-000000000014")
+ELECTION_DELETED_ID = uuid.UUID("00000000-0000-0000-0000-000000000015")
 
 TOTP_USERNAME = "e2e_totp_user"
 INVITE_EMAIL = "e2e_invite@test.com"
@@ -358,6 +363,88 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
             },
         )
         await session.execute(stmt)
+
+        # --- Additional elections (diverse seed for filter-options E2E) ------
+        additional_elections = [
+            {
+                "id": ELECTION_FEDERAL_ID,
+                "name": "E2E US House District 5",
+                "election_date": date(2024, 11, 5),
+                "election_type": "general",
+                "district": "US House District 5",
+                "district_type": "congressional",
+                "eligible_county": "FULTON",
+                "status": "active",
+                "source": "manual",
+                "refresh_interval_seconds": 120,
+            },
+            {
+                "id": ELECTION_STATE_SENATE_ID,
+                "name": "E2E State Senate District 34",
+                "election_date": date(2024, 11, 5),
+                "election_type": "general",
+                "district": "State Senate District 34",
+                "district_type": "state_senate",
+                "eligible_county": "BIBB",
+                "status": "active",
+                "source": "manual",
+                "refresh_interval_seconds": 120,
+            },
+            {
+                "id": ELECTION_STATE_HOUSE_ID,
+                "name": "E2E State House District 60",
+                "election_date": date(2025, 5, 20),
+                "election_type": "primary",
+                "district": "State House District 60",
+                "district_type": "state_house",
+                "eligible_county": "CHATHAM",
+                "status": "active",
+                "source": "manual",
+                "refresh_interval_seconds": 120,
+            },
+            {
+                "id": ELECTION_LOCAL_ID,
+                "name": "E2E Macon City Council Ward 3",
+                "election_date": date(2025, 11, 4),
+                "election_type": "general",
+                "district": "Macon City Council Ward 3",
+                "district_type": None,
+                "eligible_county": "BIBB",
+                "status": "active",
+                "source": "manual",
+                "refresh_interval_seconds": 120,
+            },
+            {
+                "id": ELECTION_DELETED_ID,
+                "name": "E2E Deleted Primary",
+                "election_date": date(2023, 5, 1),
+                "election_type": "primary",
+                "district": "Statewide",
+                "district_type": "congressional",
+                "eligible_county": "CHATHAM",
+                "status": "active",
+                "source": "manual",
+                "refresh_interval_seconds": 120,
+                "deleted_at": datetime.now(UTC),
+            },
+        ]
+        for elec_data in additional_elections:
+            set_dict = {
+                "name": elec_data["name"],
+                "election_date": elec_data["election_date"],
+                "election_type": elec_data["election_type"],
+                "district": elec_data["district"],
+                "district_type": elec_data["district_type"],
+                "eligible_county": elec_data["eligible_county"],
+                "status": elec_data["status"],
+                "source": elec_data["source"],
+                "refresh_interval_seconds": elec_data["refresh_interval_seconds"],
+            }
+            if "deleted_at" in elec_data:
+                set_dict["deleted_at"] = elec_data["deleted_at"]
+            stmt = pg_insert(Election).values(**elec_data)
+            stmt = stmt.on_conflict_do_update(index_elements=["id"], set_=set_dict)
+            await session.execute(stmt)
 
         # --- Candidate (for seeded election) --------------------------------
         # election_id is intentionally omitted here; the candidate-election
@@ -669,6 +756,19 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         await session.execute(delete(Candidacy).where(Candidacy.id == CANDIDACY_ID))
         await session.execute(delete(CandidateLink).where(CandidateLink.id == CANDIDATE_LINK_ID))
         await session.execute(delete(Candidate).where(Candidate.id == CANDIDATE_ID))
+        await session.execute(
+            delete(Election).where(
+                Election.id.in_(
+                    [
+                        ELECTION_FEDERAL_ID,
+                        ELECTION_STATE_SENATE_ID,
+                        ELECTION_STATE_HOUSE_ID,
+                        ELECTION_LOCAL_ID,
+                        ELECTION_DELETED_ID,
+                    ]
+                )
+            )
+        )
         await session.execute(delete(Election).where(Election.id == ELECTION_ID))
         await session.execute(
             delete(User).where(User.id.in_([ADMIN_USER_ID, ANALYST_USER_ID, VIEWER_USER_ID, TOTP_USER_ID]))
