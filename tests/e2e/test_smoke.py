@@ -22,6 +22,8 @@ from tests.e2e.conftest import (
     CANDIDACY_ID,
     CANDIDATE_ID,
     ELECTION_ID,
+    ELECTION_LOCAL_ID,
+    ELECTION_STATE_SENATE_ID,
     INVITE_ID,
     OFFICIAL_ID,
     TOTP_USER_ID,
@@ -1836,6 +1838,31 @@ class TestVoterHistory:
         assert "by_precinct" in body
         assert "total_eligible_voters" in body
         assert "turnout_percentage" in body
+
+    async def test_participation_mismatch_filter_422_no_district_type(self, analyst_client: httpx.AsyncClient) -> None:
+        """422 when has_district_mismatch requested on election with no district_type."""
+        resp = await analyst_client.get(
+            _url(f"/elections/{ELECTION_LOCAL_ID}/participation?has_district_mismatch=true")
+        )
+        assert resp.status_code == 422
+
+    async def test_participation_mismatch_filter_returns_district_type(self, analyst_client: httpx.AsyncClient) -> None:
+        """Participation response includes mismatch_district_type matching the election's district_type."""
+        resp = await analyst_client.get(
+            _url(f"/elections/{ELECTION_STATE_SENATE_ID}/participation?has_district_mismatch=true")
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "mismatch_district_type" in body
+        assert body["mismatch_district_type"] == "state_senate"
+
+    async def test_participation_stats_has_mismatch_count(self, analyst_client: httpx.AsyncClient) -> None:
+        """Participation stats response contains mismatch_count field (int or null)."""
+        resp = await analyst_client.get(_url(f"/elections/{ELECTION_STATE_SENATE_ID}/participation/stats"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "mismatch_count" in body
+        assert body["mismatch_count"] is None or isinstance(body["mismatch_count"], int)
 
 
 # ── Absentee Ballot Applications ──────────────────────────────────────────
