@@ -26,6 +26,8 @@ from voter_api.core.database import get_engine
 from voter_api.core.security import create_access_token, hash_password
 from voter_api.main import create_app, lifespan
 from voter_api.models.absentee_ballot import AbsenteeBallotApplication
+from voter_api.models.analysis_result import AnalysisResult
+from voter_api.models.analysis_run import AnalysisRun
 from voter_api.models.auth_tokens import UserInvite
 from voter_api.models.boundary import Boundary
 from voter_api.models.candidacy import Candidacy
@@ -192,6 +194,12 @@ ELECTION_STATE_SENATE_ID = uuid.UUID("00000000-0000-0000-0000-000000000012")
 ELECTION_STATE_HOUSE_ID = uuid.UUID("00000000-0000-0000-0000-000000000013")
 ELECTION_LOCAL_ID = uuid.UUID("00000000-0000-0000-0000-000000000014")
 ELECTION_DELETED_ID = uuid.UUID("00000000-0000-0000-0000-000000000015")
+ELECTION_STATE_SENATE_FULTON_ID = uuid.UUID("00000000-0000-0000-0000-000000000016")
+ANALYSIS_RUN_ID_OLD = uuid.UUID("00000000-0000-0000-0000-000000000080")
+ANALYSIS_RUN_ID_NEW = uuid.UUID("00000000-0000-0000-0000-000000000081")
+ANALYSIS_RESULT_ID_OLD = uuid.UUID("00000000-0000-0000-0000-000000000082")
+ANALYSIS_RESULT_ID_NEW = uuid.UUID("00000000-0000-0000-0000-000000000083")
+VOTER_HISTORY_ID_SENATE = uuid.UUID("00000000-0000-0000-0000-000000000062")
 
 TOTP_USERNAME = "e2e_totp_user"
 INVITE_EMAIL = "e2e_invite@test.com"
@@ -446,6 +454,26 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
             stmt = stmt.on_conflict_do_update(index_elements=["id"], set_=set_dict)
             await session.execute(stmt)
 
+        # --- State Senate election scoped to FULTON (for deduplication E2E) --
+        dedup_election_data = {
+            "id": ELECTION_STATE_SENATE_FULTON_ID,
+            "name": "E2E State Senate District 34 Fulton",
+            "election_date": date(2024, 11, 5),
+            "election_type": "general",
+            "district": "State Senate District 34",
+            "district_type": "state_senate",
+            "eligible_county": "FULTON",
+            "status": "active",
+            "source": "manual",
+            "refresh_interval_seconds": 120,
+        }
+        stmt = pg_insert(Election).values(**dedup_election_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={k: dedup_election_data[k] for k in dedup_election_data if k != "id"},
+        )
+        await session.execute(stmt)
+
         # --- Candidate (for seeded election) --------------------------------
         # election_id is intentionally omitted here; the candidate-election
         # relationship is represented by the Candidacy row below (single
@@ -645,6 +673,104 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         )
         await session.execute(stmt)
 
+        # --- VoterHistory for deduplication test (links voter to Fulton state senate) --
+        await session.execute(
+            delete(VoterHistory).where(
+                VoterHistory.voter_registration_number == "E2E000001",
+                VoterHistory.election_id == ELECTION_STATE_SENATE_FULTON_ID,
+            )
+        )
+        vh_senate_data = {
+            "id": VOTER_HISTORY_ID_SENATE,
+            "voter_registration_number": "E2E000001",
+            "county": "FULTON",
+            "election_date": date(2024, 11, 5),
+            "election_type": "General Election",
+            "normalized_election_type": "general",
+            "party": None,
+            "ballot_style": "FULTON-01",
+            "absentee": False,
+            "provisional": False,
+            "supplemental": False,
+            "election_id": ELECTION_STATE_SENATE_FULTON_ID,
+            "import_job_id": IMPORT_JOB_ID,
+        }
+        stmt = pg_insert(VoterHistory).values(**vh_senate_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "election_id": stmt.excluded.election_id,
+                "county": stmt.excluded.county,
+            },
+        )
+        await session.execute(stmt)
+
+        # --- Analysis Runs for deduplication test ---
+        now = datetime.now(UTC)
+        for run_id, run_status, run_count in [
+            (ANALYSIS_RUN_ID_OLD, "completed", 1),
+            (ANALYSIS_RUN_ID_NEW, "completed", 1),
+        ]:
+            run_data = {
+                "id": run_id,
+                "triggered_by": ADMIN_USER_ID,
+                "status": run_status,
+                "total_voters_analyzed": run_count,
+                "match_count": run_count if run_id == ANALYSIS_RUN_ID_NEW else 0,
+                "mismatch_count": 0 if run_id == ANALYSIS_RUN_ID_NEW else run_count,
+            }
+            stmt = pg_insert(AnalysisRun).values(**run_data)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["id"],
+                set_={"status": stmt.excluded.status},
+            )
+            await session.execute(stmt)
+
+        # --- Analysis Results for deduplication test ---
+        # OLD result: state_senate mismatch (voter registered in wrong district)
+        old_result_data = {
+            "id": ANALYSIS_RESULT_ID_OLD,
+            "analysis_run_id": ANALYSIS_RUN_ID_OLD,
+            "voter_id": VOTER_ID,
+            "determined_boundaries": {"state_senate": "34"},
+            "registered_boundaries": {"state_senate": "99"},
+            "match_status": "mismatch",
+            "mismatch_details": [{"boundary_type": "state_senate"}],
+            "analyzed_at": now - timedelta(hours=2),
+        }
+        stmt = pg_insert(AnalysisResult).values(**old_result_data)
+        stmt = stmt.on_conflict_do_update(
+            constraint="ix_result_run_voter",
+            set_={
+                "match_status": stmt.excluded.match_status,
+                "mismatch_details": stmt.excluded.mismatch_details,
+                "analyzed_at": stmt.excluded.analyzed_at,
+            },
+        )
+        await session.execute(stmt)
+
+        # NEW result: no mismatch (voter moved to correct district)
+        new_result_data = {
+            "id": ANALYSIS_RESULT_ID_NEW,
+            "analysis_run_id": ANALYSIS_RUN_ID_NEW,
+            "voter_id": VOTER_ID,
+            "determined_boundaries": {"state_senate": "34"},
+            "registered_boundaries": {"state_senate": "34"},
+            "match_status": "match",
+            "mismatch_details": None,
+            "analyzed_at": now,
+        }
+        stmt = pg_insert(AnalysisResult).values(**new_result_data)
+        stmt = stmt.on_conflict_do_update(
+            constraint="ix_result_run_voter",
+            set_={
+                "match_status": stmt.excluded.match_status,
+                "mismatch_details": stmt.excluded.mismatch_details,
+                "analyzed_at": stmt.excluded.analyzed_at,
+            },
+        )
+        await session.execute(stmt)
+
         # --- Elected Official ---------------------------------------------
         official_data = {
             "id": OFFICIAL_ID,
@@ -746,6 +872,13 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
                 AbsenteeBallotApplication.id.in_([ABSENTEE_RECORD_ID, ABSENTEE_RECORD_ID_2])
             )
         )
+        # Cleanup analysis results and runs (before voter/election cleanup)
+        await session.execute(
+            delete(AnalysisResult).where(AnalysisResult.id.in_([ANALYSIS_RESULT_ID_OLD, ANALYSIS_RESULT_ID_NEW]))
+        )
+        await session.execute(delete(AnalysisRun).where(AnalysisRun.id.in_([ANALYSIS_RUN_ID_OLD, ANALYSIS_RUN_ID_NEW])))
+        # Cleanup deduplication VoterHistory
+        await session.execute(delete(VoterHistory).where(VoterHistory.id == VOTER_HISTORY_ID_SENATE))
         await session.execute(delete(VoterHistory).where(VoterHistory.id == VOTER_HISTORY_ID))
         await session.execute(delete(UserInvite).where(UserInvite.id == INVITE_ID))
         await session.execute(delete(TOTPCredential).where(TOTPCredential.user_id == TOTP_USER_ID))
@@ -765,6 +898,7 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
                         ELECTION_STATE_HOUSE_ID,
                         ELECTION_LOCAL_ID,
                         ELECTION_DELETED_ID,
+                        ELECTION_STATE_SENATE_FULTON_ID,
                     ]
                 )
             )

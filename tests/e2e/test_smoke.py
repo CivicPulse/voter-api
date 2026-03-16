@@ -23,6 +23,7 @@ from tests.e2e.conftest import (
     CANDIDATE_ID,
     ELECTION_ID,
     ELECTION_LOCAL_ID,
+    ELECTION_STATE_SENATE_FULTON_ID,
     ELECTION_STATE_SENATE_ID,
     INVITE_ID,
     OFFICIAL_ID,
@@ -1863,6 +1864,37 @@ class TestVoterHistory:
         body = resp.json()
         assert "mismatch_count" in body
         assert body["mismatch_count"] is None or isinstance(body["mismatch_count"], int)
+
+    async def test_participation_mismatch_deduplication_latest_result_used(
+        self, analyst_client: httpx.AsyncClient
+    ) -> None:
+        """Mismatch filter uses ONLY the latest analysis result per voter.
+
+        Seed data: voter has two analysis results for state_senate —
+        older result has mismatch, newer result has no mismatch.
+        The filter should use the newer result (no mismatch), so:
+        - has_district_mismatch=true should NOT include this voter
+        - has_district_mismatch=false SHOULD include this voter
+        """
+        base_url = f"/elections/{ELECTION_STATE_SENATE_FULTON_ID}/participation"
+
+        # has_district_mismatch=true — voter's LATEST result has no mismatch
+        resp_true = await analyst_client.get(_url(f"{base_url}?has_district_mismatch=true"))
+        assert resp_true.status_code == 200
+        body_true = resp_true.json()
+        true_reg_numbers = [item["voter_registration_number"] for item in body_true["items"]]
+        assert "E2E000001" not in true_reg_numbers, (
+            "Voter should NOT appear with has_district_mismatch=true — latest result has no mismatch"
+        )
+
+        # has_district_mismatch=false — voter's LATEST result is a match
+        resp_false = await analyst_client.get(_url(f"{base_url}?has_district_mismatch=false"))
+        assert resp_false.status_code == 200
+        body_false = resp_false.json()
+        false_reg_numbers = [item["voter_registration_number"] for item in body_false["items"]]
+        assert "E2E000001" in false_reg_numbers, (
+            "Voter SHOULD appear with has_district_mismatch=false — latest result is a match"
+        )
 
 
 # ── Absentee Ballot Applications ──────────────────────────────────────────
