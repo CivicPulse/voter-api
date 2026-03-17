@@ -10,7 +10,7 @@ def _mock_execute_results(results: list) -> AsyncMock:
     """Create a mock Result object that returns the given rows."""
     mock_result = MagicMock()
     mock_result.all.return_value = results
-    mock_result.scalar_one.return_value = len(results) if results else 0
+    mock_result.scalar_one.return_value = results[0][0] if results else 0
     return mock_result
 
 
