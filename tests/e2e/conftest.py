@@ -700,8 +700,13 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         stmt = stmt.on_conflict_do_update(
             index_elements=["id"],
             set_={
-                "election_id": stmt.excluded.election_id,
+                "voter_registration_number": stmt.excluded.voter_registration_number,
                 "county": stmt.excluded.county,
+                "election_date": stmt.excluded.election_date,
+                "election_type": stmt.excluded.election_type,
+                "normalized_election_type": stmt.excluded.normalized_election_type,
+                "election_id": stmt.excluded.election_id,
+                "import_job_id": stmt.excluded.import_job_id,
             },
         )
         await session.execute(stmt)
@@ -875,7 +880,7 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         )
         # Cleanup analysis results and runs (before voter/election cleanup)
         await session.execute(
-            delete(AnalysisResult).where(AnalysisResult.id.in_([ANALYSIS_RESULT_ID_OLD, ANALYSIS_RESULT_ID_NEW]))
+            delete(AnalysisResult).where(AnalysisResult.analysis_run_id.in_([ANALYSIS_RUN_ID_OLD, ANALYSIS_RUN_ID_NEW]))
         )
         await session.execute(delete(AnalysisRun).where(AnalysisRun.id.in_([ANALYSIS_RUN_ID_OLD, ANALYSIS_RUN_ID_NEW])))
         # Cleanup deduplication VoterHistory

@@ -1,7 +1,7 @@
 ---
 phase: 8
 slug: filter-options-and-e2e
-status: draft
+status: complete
 nyquist_compliant: false
 wave_0_complete: false
 created: 2026-03-16

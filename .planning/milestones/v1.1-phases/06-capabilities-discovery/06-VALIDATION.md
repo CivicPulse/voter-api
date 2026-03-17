@@ -1,7 +1,7 @@
 ---
 phase: 6
 slug: capabilities-discovery
-status: draft
+status: complete
 nyquist_compliant: false
 wave_0_complete: false
 created: 2026-03-16

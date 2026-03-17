@@ -49,8 +49,8 @@
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 09-01-PLAN.md — Implement context-aware JSONB mismatch filter in service layer, schemas, and route handler
-- [ ] 09-02-PLAN.md — Add unit, integration, and E2E tests for mismatch filter
+- [x] 09-01-PLAN.md — Implement context-aware JSONB mismatch filter in service layer, schemas, and route handler
+- [x] 09-02-PLAN.md — Add unit, integration, and E2E tests for mismatch filter
 
 ### Phase 10: Fix Mismatch Filter SQL Defect
 **Goal**: Fix the structural SQL defect in `_build_mismatch_filter()` where ORM column references cause an implicit cross join, and harden tests to assert compiled SQL correctness
@@ -65,7 +65,7 @@ Plans:
   4. E2E test with multiple analysis runs per voter verifies deduplication (only latest analysis result used)
 
 Plans:
-- [ ] 10-01-PLAN.md — Fix SQL defect, compile-and-assert unit tests, E2E deduplication test, GIN index migration
+- [x] 10-01-PLAN.md — Fix SQL defect, compile-and-assert unit tests, E2E deduplication test, GIN index migration
 
 ## Progress
 
@@ -80,4 +80,4 @@ Plans:
 | 7. Search and Filters | v1.1 | 2/2 | Complete | 2026-03-16 |
 | 8. Filter Options and E2E | v1.1 | 2/2 | Complete | 2026-03-16 |
 | 9. Context-Aware Mismatch Filter | v1.2 | 2/2 | Complete | 2026-03-16 |
-| 10. Fix Mismatch Filter SQL Defect | 1/1 | Complete    | 2026-03-16 | - |
+| 10. Fix Mismatch Filter SQL Defect | v1.2 | 1/1 | Complete | 2026-03-16 |

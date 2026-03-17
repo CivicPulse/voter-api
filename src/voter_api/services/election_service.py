@@ -107,11 +107,11 @@ async def get_filter_options(session: AsyncSession) -> dict:
         categories.append("local")
     categories.sort()
 
-    # Counties (non-null, title-cased, sorted)
+    # Counties (non-null, lower-normalized for DISTINCT, then title-cased for display)
     county_result = await session.execute(
-        select(distinct(Election.eligible_county))
+        select(distinct(func.lower(Election.eligible_county)))
         .where(base, Election.eligible_county.isnot(None))
-        .order_by(Election.eligible_county)
+        .order_by(func.lower(Election.eligible_county))
     )
     counties = [row.title() for (row,) in county_result.all()]
 

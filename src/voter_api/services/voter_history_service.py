@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 from loguru import logger
-from sqlalchemy import ColumnElement, Row, and_, delete, exists, func, or_, select, text, type_coerce
+from sqlalchemy import ColumnElement, Row, Subquery, and_, delete, exists, func, or_, select, text, type_coerce
 from sqlalchemy.dialects.postgresql import JSONB as JSONB_TYPE
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -601,22 +601,27 @@ async def list_election_participants(
         if mismatch_filter_active:
             # JOIN path with analysis_results for context-aware JSONB filter
             latest_ar = _latest_analysis_subquery()
+            target_value = [{"boundary_type": election.district_type}]
+            context_mismatch = (
+                latest_ar.c.mismatch_details.isnot(None)
+                & latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE))
+            ).label("has_district_mismatch")
             query = (
                 select(
                     VoterHistory,
                     Voter.id.label("voter_id"),
                     Voter.first_name,
                     Voter.last_name,
-                    Voter.has_district_mismatch,
+                    context_mismatch,
                 )
                 .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
-                .join(latest_ar, latest_ar.c.voter_id == Voter.id)
+                .outerjoin(latest_ar, latest_ar.c.voter_id == Voter.id)
                 .where(*match_conditions)
             )
             count_query = (
                 select(func.count(VoterHistory.id))
                 .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
-                .join(latest_ar, latest_ar.c.voter_id == Voter.id)
+                .outerjoin(latest_ar, latest_ar.c.voter_id == Voter.id)
                 .where(*match_conditions)
             )
         else:
@@ -669,17 +674,18 @@ async def list_election_participants(
     return records, total, False, district_type_used
 
 
-def _latest_analysis_subquery() -> Any:
+def _latest_analysis_subquery() -> Subquery:
     """Build a subquery returning the latest analysis result per voter.
 
     Uses DISTINCT ON (voter_id) + ORDER BY analyzed_at DESC to pick
-    the most recent analysis run's result for each voter.
+    the most recent analysis run's result for each voter. Only projects
+    the columns needed downstream to keep the DISTINCT sort narrow.
 
     Returns:
-        A SQLAlchemy subquery alias selecting from analysis_results.
+        A SQLAlchemy subquery alias selecting voter_id and mismatch_details.
     """
     return (
-        select(AnalysisResult)
+        select(AnalysisResult.voter_id, AnalysisResult.mismatch_details, AnalysisResult.analyzed_at)
         .distinct(AnalysisResult.voter_id)
         .order_by(AnalysisResult.voter_id, AnalysisResult.analyzed_at.desc())
         .subquery("latest_ar")
@@ -687,7 +693,7 @@ def _latest_analysis_subquery() -> Any:
 
 
 def _build_mismatch_filter(
-    latest_ar: Any,
+    latest_ar: Subquery,
     district_type: str,
     has_district_mismatch: bool,
 ) -> ColumnElement[bool]:
@@ -704,13 +710,15 @@ def _build_mismatch_filter(
     target_value = [{"boundary_type": district_type}]
     if has_district_mismatch:
         # Voter HAS a mismatch for this specific district type
-        return latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE))  # type: ignore[no-any-return]
-    # Voter does NOT have a mismatch for this type.
+        return latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE))
+    # Voter does NOT have a mismatch for this type (or has no analysis record).
+    # latest_ar.c.voter_id IS NULL means no analysis record at all -> no mismatch.
     # mismatch_details IS NULL means "matched on all boundaries" -> no mismatch.
     # NOT contains(...) means "has analysis but no mismatch on this type".
     return or_(
+        latest_ar.c.voter_id.is_(None),
         latest_ar.c.mismatch_details.is_(None),
-        ~latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE)),  # type: ignore[no-any-return]
+        ~latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE)),
     )
 
 

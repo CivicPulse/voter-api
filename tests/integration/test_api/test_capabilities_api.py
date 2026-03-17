@@ -29,13 +29,11 @@ async def client(app):
 class TestCapabilitiesEndpoint:
     """Tests for the capabilities discovery endpoint."""
 
-    @pytest.mark.asyncio
     async def test_capabilities_returns_200(self, client):
         """GET /capabilities returns 200 OK."""
         resp = await client.get("/api/v1/elections/capabilities")
         assert resp.status_code == 200
 
-    @pytest.mark.asyncio
     async def test_capabilities_response_body(self, client):
         """Response body matches contract: supported_filters + endpoints."""
         resp = await client.get("/api/v1/elections/capabilities")
@@ -49,13 +47,11 @@ class TestCapabilitiesEndpoint:
         ]
         assert data["endpoints"] == {"filter_options": True}
 
-    @pytest.mark.asyncio
     async def test_capabilities_cache_control(self, client):
         """Response has Cache-Control: public, max-age=3600."""
         resp = await client.get("/api/v1/elections/capabilities")
         assert resp.headers.get("cache-control") == "public, max-age=3600"
 
-    @pytest.mark.asyncio
     async def test_capabilities_not_shadowed_by_election_id(self, client):
         """
         /capabilities must NOT return 422 (UUID validation error).
@@ -70,7 +66,6 @@ class TestCapabilitiesEndpoint:
 class TestExistingEndpointsUnchanged:
     """Regression tests: existing election endpoints still work after /capabilities is added."""
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "method,path,expected_status",
         [
