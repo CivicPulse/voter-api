@@ -704,13 +704,13 @@ def _build_mismatch_filter(
     target_value = [{"boundary_type": district_type}]
     if has_district_mismatch:
         # Voter HAS a mismatch for this specific district type
-        return latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE))
+        return latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE))  # type: ignore[no-any-return]
     # Voter does NOT have a mismatch for this type.
     # mismatch_details IS NULL means "matched on all boundaries" -> no mismatch.
     # NOT contains(...) means "has analysis but no mismatch on this type".
     return or_(
         latest_ar.c.mismatch_details.is_(None),
-        ~latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE)),
+        ~latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE)),  # type: ignore[no-any-return]
     )
 
 

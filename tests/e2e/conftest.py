@@ -677,7 +677,8 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         await session.execute(
             delete(VoterHistory).where(
                 VoterHistory.voter_registration_number == "E2E000001",
-                VoterHistory.election_id == ELECTION_STATE_SENATE_FULTON_ID,
+                VoterHistory.election_date == date(2024, 11, 5),
+                VoterHistory.election_type == "State Senate Special",
             )
         )
         vh_senate_data = {
@@ -685,8 +686,8 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
             "voter_registration_number": "E2E000001",
             "county": "FULTON",
             "election_date": date(2024, 11, 5),
-            "election_type": "General Election",
-            "normalized_election_type": "general",
+            "election_type": "State Senate Special",
+            "normalized_election_type": "special",
             "party": None,
             "ballot_style": "FULTON-01",
             "absentee": False,
