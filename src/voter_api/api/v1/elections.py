@@ -15,7 +15,7 @@ POST /elections/{id}/refresh — manual refresh (US4)
 import math
 import uuid
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import JSONResponse
@@ -26,6 +26,7 @@ from voter_api.lib.election_tracker import FetchError
 from voter_api.models.user import User
 from voter_api.schemas.common import PaginationMeta
 from voter_api.schemas.election import (
+    CapabilitiesResponse,
     ElectionCreateRequest,
     ElectionDetailResponse,
     ElectionLinkRequest,
@@ -34,6 +35,7 @@ from voter_api.schemas.election import (
     FeedImportPreviewResponse,
     FeedImportRequest,
     FeedImportResponse,
+    FilterOptionsResponse,
     PaginatedElectionListResponse,
     RawElectionResultsResponse,
     RefreshResponse,
@@ -62,6 +64,25 @@ async def list_elections(
     district_type: str | None = Query(default=None, description="Filter by parsed district type"),
     district_identifier: str | None = Query(default=None, description="Filter by parsed district identifier"),
     source: Annotated[str | None, Query(description="Filter by source type (sos_feed, manual, linked)")] = None,
+    q: str | None = Query(
+        default=None,
+        min_length=2,
+        max_length=200,
+        description="Search elections by name or district (case-insensitive partial match)",
+    ),
+    race_category: Literal["federal", "state_senate", "state_house", "local"] | None = Query(
+        default=None,
+        description="Filter by race category (maps to district_type values)",
+    ),
+    county: str | None = Query(
+        default=None,
+        description="Filter by eligible county (case-insensitive exact match)",
+    ),
+    election_date_exact: date | None = Query(
+        default=None,
+        alias="election_date",
+        description="Filter by exact election date (YYYY-MM-DD); overrides date_from/date_to when provided",
+    ),
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Results per page"),
 ) -> PaginatedElectionListResponse:
@@ -78,6 +99,10 @@ async def list_elections(
         district_type=district_type,
         district_identifier=district_identifier,
         source=source,
+        q=q,
+        race_category=race_category,
+        county=county,
+        election_date=election_date_exact,
         page=page,
         page_size=page_size,
     )
@@ -90,6 +115,33 @@ async def list_elections(
             total_pages=max(1, math.ceil(total / page_size)) if total > 0 else 0,
         ),
     )
+
+
+# --- Capabilities discovery ---
+
+
+@elections_router.get("/capabilities", response_model=CapabilitiesResponse)
+async def get_capabilities(response: Response) -> CapabilitiesResponse:
+    """Discover supported filter parameters and endpoints. Public endpoint."""
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return CapabilitiesResponse(
+        supported_filters=["q", "race_category", "county", "district", "election_date"],
+        endpoints={"filter_options": True},
+    )
+
+
+# --- Filter options ---
+
+
+@elections_router.get("/filter-options", response_model=FilterOptionsResponse)
+async def get_filter_options(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    response: Response,
+) -> FilterOptionsResponse:
+    """Return valid filter values for election search dropdowns. Public endpoint."""
+    response.headers["Cache-Control"] = "public, max-age=300"
+    options = await election_service.get_filter_options(session)
+    return FilterOptionsResponse(**options)
 
 
 # --- US4: Admin create ---

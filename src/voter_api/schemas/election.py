@@ -135,6 +135,26 @@ class PaginatedElectionListResponse(BaseModel):
     pagination: PaginationMeta
 
 
+class CapabilitiesResponse(BaseModel):
+    """Capabilities discovery response for the elections API."""
+
+    model_config = {"from_attributes": True}
+
+    supported_filters: list[str] = Field(description="Filter parameter names accepted by GET /elections")
+    endpoints: dict[str, bool] = Field(description="Available sub-endpoints and their status")
+
+
+class FilterOptionsResponse(BaseModel):
+    """Valid filter values for election search dropdowns."""
+
+    model_config = {"from_attributes": True}
+
+    race_categories: list[str] = Field(default_factory=list)
+    counties: list[str] = Field(default_factory=list)
+    election_dates: list[date] = Field(default_factory=list)
+    total_elections: int = 0
+
+
 class VoteMethodResult(BaseModel):
     """Vote method breakdown."""
 

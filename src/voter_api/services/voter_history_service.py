@@ -10,16 +10,19 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 from loguru import logger
-from sqlalchemy import ColumnElement, Row, and_, delete, exists, func, or_, select, text
+from sqlalchemy import ColumnElement, Row, Subquery, and_, delete, exists, func, or_, select, text, type_coerce
+from sqlalchemy.dialects.postgresql import JSONB as JSONB_TYPE
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from voter_api.core.database import get_engine
 from voter_api.core.utils import _mask_vrn
+from voter_api.lib.analyzer.comparator import BOUNDARY_TYPE_TO_VOTER_FIELD
 from voter_api.lib.voter_history import (
     parse_voter_history_chunks,
 )
+from voter_api.models.analysis_result import AnalysisResult
 from voter_api.models.election import Election
 from voter_api.models.import_job import ImportJob
 from voter_api.models.voter import Voter
@@ -32,6 +35,15 @@ from voter_api.schemas.voter_history import (
     ParticipationSummary,
     PrecinctBreakdown,
 )
+
+
+class MismatchFilterError(ValueError):
+    """Raised when has_district_mismatch filter cannot be applied to this election."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
 
 # Sub-batch size for voter history upsert: 11 columns * 2000 rows = 22,000 params (under 32,767 limit)
 _UPSERT_SUB_BATCH = 2000
@@ -511,7 +523,7 @@ async def list_election_participants(
     filters: ParticipationFilters | None = None,
     page: int = 1,
     page_size: int = 20,
-) -> tuple[list[VoterHistory] | list[Row[Any]], int, bool]:
+) -> tuple[list[VoterHistory] | list[Row[Any]], int, bool, str | None]:
     """List voters who participated in an election.
 
     Looks up the election by ID to get (date, type), then queries
@@ -521,6 +533,10 @@ async def list_election_participants(
     voter_status, has_district_mismatch), JOINs to the voters table and
     returns rows with voter details included (3rd element is True).
 
+    When has_district_mismatch filter is active, also JOINs to the latest
+    analysis_results per voter and applies a JSONB containment check scoped
+    to the election's district_type.
+
     Args:
         session: Database session.
         election_id: Election UUID.
@@ -529,12 +545,16 @@ async def list_election_participants(
         page_size: Items per page.
 
     Returns:
-        Tuple of (records, total count, voter_details_included).
+        Tuple of (records, total count, voter_details_included, district_type_used).
         When voter_details_included is True, each record is a tuple of
         (VoterHistory, voter_id, first_name, last_name, has_district_mismatch).
+        district_type_used is the election's district_type when the mismatch
+        filter is active, else None.
 
     Raises:
         ValueError: If election not found.
+        MismatchFilterError: If has_district_mismatch is set but the election
+            has no valid district_type.
     """
     if filters is None:
         filters = ParticipationFilters()
@@ -548,6 +568,17 @@ async def list_election_participants(
         stripped = filters.q.strip()
         q_terms = [w for w in re.split(r"[\s,;.]+", stripped) if w]
 
+    mismatch_filter_active = filters.has_district_mismatch is not None
+
+    # Validate mismatch filter before building queries
+    if mismatch_filter_active:
+        if not election.district_type:
+            raise MismatchFilterError("has_district_mismatch filter requires an election with a known district_type")
+        if election.district_type not in BOUNDARY_TYPE_TO_VOTER_FIELD:
+            raise MismatchFilterError(
+                f"has_district_mismatch filter is not supported for district_type '{election.district_type}'"
+            )
+
     # Determine if we need to JOIN to voters table
     voter_filters_active = any(
         [
@@ -559,7 +590,7 @@ async def list_election_participants(
             filters.county_commission_district,
             filters.school_board_district,
             filters.voter_status,
-            filters.has_district_mismatch is not None,
+            mismatch_filter_active,
         ]
     )
 
@@ -567,25 +598,59 @@ async def list_election_participants(
     count_query: Any
 
     if voter_filters_active:
-        # JOIN path: query voter_history + voters in one query
-        query = (
-            select(
-                VoterHistory,
-                Voter.id.label("voter_id"),
-                Voter.first_name,
-                Voter.last_name,
-                Voter.has_district_mismatch,
+        if mismatch_filter_active:
+            # JOIN path with analysis_results for context-aware JSONB filter
+            latest_ar = _latest_analysis_subquery()
+            target_value = [{"boundary_type": election.district_type}]
+            context_mismatch = (
+                latest_ar.c.mismatch_details.isnot(None)
+                & latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE))
+            ).label("has_district_mismatch")
+            query = (
+                select(
+                    VoterHistory,
+                    Voter.id.label("voter_id"),
+                    Voter.first_name,
+                    Voter.last_name,
+                    context_mismatch,
+                )
+                .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+                .outerjoin(latest_ar, latest_ar.c.voter_id == Voter.id)
+                .where(*match_conditions)
             )
-            .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
-            .where(*match_conditions)
-        )
-        count_query = (
-            select(func.count(VoterHistory.id))
-            .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
-            .where(*match_conditions)
-        )
+            count_query = (
+                select(func.count(VoterHistory.id))
+                .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+                .outerjoin(latest_ar, latest_ar.c.voter_id == Voter.id)
+                .where(*match_conditions)
+            )
+        else:
+            # Original JOIN path (no analysis_results needed)
+            query = (
+                select(
+                    VoterHistory,
+                    Voter.id.label("voter_id"),
+                    Voter.first_name,
+                    Voter.last_name,
+                    Voter.has_district_mismatch,
+                )
+                .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+                .where(*match_conditions)
+            )
+            count_query = (
+                select(func.count(VoterHistory.id))
+                .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+                .where(*match_conditions)
+            )
 
-        query, count_query = _apply_voter_filters(query, count_query, filters, q_terms)
+        query, count_query = _apply_voter_filters(
+            query,
+            count_query,
+            filters,
+            q_terms,
+            district_type=election.district_type if mismatch_filter_active else None,
+            latest_ar=latest_ar if mismatch_filter_active else None,
+        )
     else:
         # Default path: query voter_history only
         query = select(VoterHistory).where(*match_conditions)
@@ -599,12 +664,62 @@ async def list_election_participants(
     query = query.order_by(VoterHistory.voter_registration_number).offset(offset).limit(page_size)
     result = await session.execute(query)
 
+    district_type_used = election.district_type if mismatch_filter_active else None
+
     if voter_filters_active:
         rows = list(result.all())
-        return rows, total, True
+        return rows, total, True, district_type_used
 
     records = list(result.scalars().all())
-    return records, total, False
+    return records, total, False, district_type_used
+
+
+def _latest_analysis_subquery() -> Subquery:
+    """Build a subquery returning the latest analysis result per voter.
+
+    Uses DISTINCT ON (voter_id) + ORDER BY analyzed_at DESC to pick
+    the most recent analysis run's result for each voter. Only projects
+    the columns needed downstream to keep the DISTINCT sort narrow.
+
+    Returns:
+        A SQLAlchemy subquery alias selecting voter_id and mismatch_details.
+    """
+    return (
+        select(AnalysisResult.voter_id, AnalysisResult.mismatch_details, AnalysisResult.analyzed_at)
+        .distinct(AnalysisResult.voter_id)
+        .order_by(AnalysisResult.voter_id, AnalysisResult.analyzed_at.desc())
+        .subquery("latest_ar")
+    )
+
+
+def _build_mismatch_filter(
+    latest_ar: Subquery,
+    district_type: str,
+    has_district_mismatch: bool,
+) -> ColumnElement[bool]:
+    """Build a SQLAlchemy WHERE clause for context-aware mismatch filtering.
+
+    Args:
+        latest_ar: The latest analysis result subquery alias (from _latest_analysis_subquery()).
+        district_type: The election's district type (e.g. "state_senate").
+        has_district_mismatch: True to find mismatched voters, False for non-mismatched.
+
+    Returns:
+        A SQLAlchemy boolean expression to use in .where().
+    """
+    target_value = [{"boundary_type": district_type}]
+    if has_district_mismatch:
+        # Voter HAS a mismatch for this specific district type
+        return latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE))
+    # Voter does NOT have a mismatch for this type (or has no analysis record).
+    # latest_ar.c.voter_id IS NULL means no analysis record at all -> no mismatch.
+    # mismatch_details IS NULL means "matched on all boundaries" -> no mismatch.
+    # NOT contains(...) means "has analysis but no mismatch on this type".
+    return or_(
+        latest_ar.c.voter_id.is_(None),
+        latest_ar.c.mismatch_details.is_(None),
+        ~latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE)),
+    )
 
 
 def _apply_voter_filters(
@@ -612,6 +727,8 @@ def _apply_voter_filters(
     count_query: Any,
     filters: ParticipationFilters,
     q_terms: list[str],
+    district_type: str | None = None,
+    latest_ar: Any = None,
 ) -> tuple[Any, Any]:
     """Apply voter-table filters and q search to query and count_query.
 
@@ -620,6 +737,8 @@ def _apply_voter_filters(
         count_query: The COUNT query.
         filters: Participation filters bundle.
         q_terms: Pre-tokenized search terms (empty list if no search).
+        district_type: Election district_type for context-aware mismatch filtering.
+        latest_ar: The latest_ar subquery alias for mismatch filter (None when mismatch filter inactive).
 
     Returns:
         Tuple of (query, count_query) with filters applied.
@@ -652,9 +771,10 @@ def _apply_voter_filters(
             query = query.where(column == value)
             count_query = count_query.where(column == value)
 
-    if filters.has_district_mismatch is not None:
-        query = query.where(Voter.has_district_mismatch == filters.has_district_mismatch)
-        count_query = count_query.where(Voter.has_district_mismatch == filters.has_district_mismatch)
+    if filters.has_district_mismatch is not None and district_type and latest_ar is not None:
+        mismatch_cond = _build_mismatch_filter(latest_ar, district_type, filters.has_district_mismatch)
+        query = query.where(mismatch_cond)
+        count_query = count_query.where(mismatch_cond)
 
     return query, count_query
 
@@ -749,6 +869,22 @@ async def get_participation_stats(
         PrecinctBreakdown(precinct=row[0], precinct_name=row[1], count=row[2]) for row in precinct_result.all()
     ]
 
+    # Context-aware mismatch count
+    mismatch_count: int | None = None
+    if election.district_type and election.district_type in BOUNDARY_TYPE_TO_VOTER_FIELD:
+        latest_ar = _latest_analysis_subquery()
+        target_value = [{"boundary_type": election.district_type}]
+        mismatch_result = await session.execute(
+            select(func.count(VoterHistory.id))
+            .join(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+            .join(latest_ar, latest_ar.c.voter_id == Voter.id)
+            .where(
+                *base_where,
+                latest_ar.c.mismatch_details.contains(type_coerce(target_value, JSONB_TYPE)),
+            )
+        )
+        mismatch_count = mismatch_result.scalar_one()
+
     # Compute eligible voters and turnout percentage from voter registration data
     total_eligible_voters: int | None = None
     turnout_percentage: float | None = None
@@ -777,6 +913,7 @@ async def get_participation_stats(
     return ParticipationStatsResponse(
         election_id=election_id,
         total_participants=total_participants,
+        mismatch_count=mismatch_count,
         total_eligible_voters=total_eligible_voters,
         turnout_percentage=turnout_percentage,
         by_county=by_county,

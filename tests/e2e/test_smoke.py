@@ -22,6 +22,9 @@ from tests.e2e.conftest import (
     CANDIDACY_ID,
     CANDIDATE_ID,
     ELECTION_ID,
+    ELECTION_LOCAL_ID,
+    ELECTION_STATE_SENATE_FULTON_ID,
+    ELECTION_STATE_SENATE_ID,
     INVITE_ID,
     OFFICIAL_ID,
     TOTP_USER_ID,
@@ -717,6 +720,213 @@ class TestElections:
         assert resp.status_code == 200
         body = resp.json()
         assert isinstance(body, dict)
+
+
+# ── Filter Options ────────────────────────────────────────────────────────
+
+
+class TestFilterOptions:
+    """GET /api/v1/elections/filter-options -- public, dynamic dropdown values."""
+
+    async def test_filter_options_returns_200(self, client: httpx.AsyncClient) -> None:
+        """Filter options returns expected shape with seeded data."""
+        resp = await client.get(_url("/elections/filter-options"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "race_categories" in body
+        assert "counties" in body
+        assert "election_dates" in body
+        assert "total_elections" in body
+        assert isinstance(body["race_categories"], list)
+        assert isinstance(body["counties"], list)
+        assert isinstance(body["election_dates"], list)
+        assert isinstance(body["total_elections"], int)
+        assert body["total_elections"] >= 5  # At least the 5 active seeded elections
+
+    async def test_filter_options_race_categories(self, client: httpx.AsyncClient) -> None:
+        """Race categories include all seeded types."""
+        resp = await client.get(_url("/elections/filter-options"))
+        body = resp.json()
+        cats = body["race_categories"]
+        assert "federal" in cats
+        assert "state_senate" in cats
+        assert "state_house" in cats
+        assert "local" in cats
+
+    async def test_filter_options_counties(self, client: httpx.AsyncClient) -> None:
+        """Counties are title-case and include seeded values."""
+        resp = await client.get(_url("/elections/filter-options"))
+        body = resp.json()
+        counties = body["counties"]
+        # Seeded counties: FULTON, BIBB, CHATHAM (title-cased)
+        assert "Fulton" in counties
+        assert "Bibb" in counties
+        assert "Chatham" in counties
+
+    async def test_filter_options_dates_descending(self, client: httpx.AsyncClient) -> None:
+        """Election dates are sorted newest-first."""
+        resp = await client.get(_url("/elections/filter-options"))
+        body = resp.json()
+        dates = body["election_dates"]
+        assert len(dates) >= 2
+        assert dates == sorted(dates, reverse=True)
+
+    async def test_filter_options_excludes_soft_deleted(self, client: httpx.AsyncClient) -> None:
+        """Soft-deleted election's date (2023-05-01) excluded from results."""
+        resp = await client.get(_url("/elections/filter-options"))
+        body = resp.json()
+        # The soft-deleted election has date 2023-05-01 and county CHATHAM.
+        # But CHATHAM also appears on the active state_house election,
+        # so we check total_elections doesn't count the deleted one.
+        # The deleted election's unique date (2023-05-01) should NOT appear
+        # IF no other active election shares that date.
+        assert "2023-05-01" not in body["election_dates"]
+
+    async def test_filter_options_inline_soft_delete_exclusion(
+        self, admin_client: httpx.AsyncClient, client: httpx.AsyncClient
+    ) -> None:
+        """Create and soft-delete an election, verify exclusion from filter-options."""
+        # Create a unique election
+        create_resp = await admin_client.post(
+            _url("/elections"),
+            json={
+                "name": "E2E Inline Delete Test",
+                "election_date": "2099-12-31",
+                "election_type": "general",
+                "district": "Test District Inline",
+                "source": "manual",
+                "boundary_id": str(BOUNDARY_ID),
+            },
+        )
+        assert create_resp.status_code == 201
+        election_id = create_resp.json()["id"]
+
+        # Verify it appears in filter-options
+        resp = await client.get(_url("/elections/filter-options"))
+        assert "2099-12-31" in resp.json()["election_dates"]
+
+        # Soft-delete it
+        del_resp = await admin_client.delete(_url(f"/elections/{election_id}"))
+        assert del_resp.status_code in (200, 204)
+
+        # Verify it no longer appears
+        resp = await client.get(_url("/elections/filter-options"))
+        assert "2099-12-31" not in resp.json()["election_dates"]
+
+    async def test_filter_options_cache_header(self, client: httpx.AsyncClient) -> None:
+        """Response includes 5-minute cache header."""
+        resp = await client.get(_url("/elections/filter-options"))
+        assert resp.status_code == 200
+        assert resp.headers.get("cache-control") == "public, max-age=300"
+
+
+# ── Capabilities ──────────────────────────────────────────────────────────
+
+
+class TestCapabilities:
+    """GET /api/v1/elections/capabilities -- public, static discovery."""
+
+    async def test_capabilities_returns_200(self, client: httpx.AsyncClient) -> None:
+        """Capabilities endpoint returns expected shape."""
+        resp = await client.get(_url("/elections/capabilities"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "supported_filters" in body
+        assert "endpoints" in body
+
+    async def test_capabilities_supported_filters(self, client: httpx.AsyncClient) -> None:
+        """Supported filters include all Phase 7 filter params."""
+        resp = await client.get(_url("/elections/capabilities"))
+        filters = resp.json()["supported_filters"]
+        assert "q" in filters
+        assert "race_category" in filters
+        assert "county" in filters
+        assert "election_date" in filters
+        assert "district" in filters
+
+    async def test_capabilities_endpoints(self, client: httpx.AsyncClient) -> None:
+        """Endpoints section indicates filter_options is available."""
+        resp = await client.get(_url("/elections/capabilities"))
+        endpoints = resp.json()["endpoints"]
+        assert endpoints.get("filter_options") is True
+
+    async def test_capabilities_cache_header(self, client: httpx.AsyncClient) -> None:
+        """Capabilities has 1-hour cache (different from filter-options 5-min)."""
+        resp = await client.get(_url("/elections/capabilities"))
+        assert resp.headers.get("cache-control") == "public, max-age=3600"
+
+
+# ── Election Search Filters ──────────────────────────────────────────────
+
+
+class TestElectionSearchFilters:
+    """GET /api/v1/elections with search and filter params -- Phase 7 E2E coverage."""
+
+    async def test_search_q_param(self, client: httpx.AsyncClient) -> None:
+        """q param returns matching elections (case-insensitive partial match)."""
+        resp = await client.get(_url("/elections"), params={"q": "House"})
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert len(items) >= 1
+        # All returned items should contain "House" in name or district
+        for item in items:
+            combined = (item["name"] + " " + item["district"]).lower()
+            assert "house" in combined
+
+    async def test_search_q_min_length(self, client: httpx.AsyncClient) -> None:
+        """q param rejects single-character input."""
+        resp = await client.get(_url("/elections"), params={"q": "a"})
+        assert resp.status_code == 422
+
+    async def test_filter_race_category_federal(self, client: httpx.AsyncClient) -> None:
+        """race_category=federal returns only congressional district_type elections."""
+        resp = await client.get(_url("/elections"), params={"race_category": "federal"})
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert len(items) >= 1
+        for item in items:
+            assert item["district_type"] == "congressional"
+
+    async def test_filter_race_category_local(self, client: httpx.AsyncClient) -> None:
+        """race_category=local returns elections with NULL or non-standard district_type."""
+        resp = await client.get(_url("/elections"), params={"race_category": "local"})
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert len(items) >= 1
+
+    async def test_filter_race_category_invalid(self, client: httpx.AsyncClient) -> None:
+        """Invalid race_category returns 422 validation error."""
+        resp = await client.get(_url("/elections"), params={"race_category": "invalid"})
+        assert resp.status_code == 422
+
+    async def test_filter_county(self, client: httpx.AsyncClient) -> None:
+        """county param filters by eligible_county (case-insensitive)."""
+        resp = await client.get(_url("/elections"), params={"county": "bibb"})
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert len(items) >= 1
+
+    async def test_filter_election_date(self, client: httpx.AsyncClient) -> None:
+        """election_date param filters to exact date."""
+        resp = await client.get(_url("/elections"), params={"election_date": "2024-11-05"})
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert len(items) >= 1
+        for item in items:
+            assert item["election_date"] == "2024-11-05"
+
+    async def test_combined_filters(self, client: httpx.AsyncClient) -> None:
+        """Multiple filters combine with AND logic."""
+        resp = await client.get(
+            _url("/elections"),
+            params={"race_category": "federal", "election_date": "2024-11-05"},
+        )
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert len(items) >= 1
+        for item in items:
+            assert item["district_type"] == "congressional"
+            assert item["election_date"] == "2024-11-05"
 
 
 # ── Candidates ────────────────────────────────────────────────────────────
@@ -1629,6 +1839,62 @@ class TestVoterHistory:
         assert "by_precinct" in body
         assert "total_eligible_voters" in body
         assert "turnout_percentage" in body
+
+    async def test_participation_mismatch_filter_422_no_district_type(self, analyst_client: httpx.AsyncClient) -> None:
+        """422 when has_district_mismatch requested on election with no district_type."""
+        resp = await analyst_client.get(
+            _url(f"/elections/{ELECTION_LOCAL_ID}/participation?has_district_mismatch=true")
+        )
+        assert resp.status_code == 422
+
+    async def test_participation_mismatch_filter_returns_district_type(self, analyst_client: httpx.AsyncClient) -> None:
+        """Participation response includes mismatch_district_type matching the election's district_type."""
+        resp = await analyst_client.get(
+            _url(f"/elections/{ELECTION_STATE_SENATE_ID}/participation?has_district_mismatch=true")
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "mismatch_district_type" in body
+        assert body["mismatch_district_type"] == "state_senate"
+
+    async def test_participation_stats_has_mismatch_count(self, analyst_client: httpx.AsyncClient) -> None:
+        """Participation stats response contains mismatch_count field (int or null)."""
+        resp = await analyst_client.get(_url(f"/elections/{ELECTION_STATE_SENATE_ID}/participation/stats"))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "mismatch_count" in body
+        assert body["mismatch_count"] is None or isinstance(body["mismatch_count"], int)
+
+    async def test_participation_mismatch_deduplication_latest_result_used(
+        self, analyst_client: httpx.AsyncClient
+    ) -> None:
+        """Mismatch filter uses ONLY the latest analysis result per voter.
+
+        Seed data: voter has two analysis results for state_senate —
+        older result has mismatch, newer result has no mismatch.
+        The filter should use the newer result (no mismatch), so:
+        - has_district_mismatch=true should NOT include this voter
+        - has_district_mismatch=false SHOULD include this voter
+        """
+        base_url = f"/elections/{ELECTION_STATE_SENATE_FULTON_ID}/participation"
+
+        # has_district_mismatch=true — voter's LATEST result has no mismatch
+        resp_true = await analyst_client.get(_url(f"{base_url}?has_district_mismatch=true"))
+        assert resp_true.status_code == 200
+        body_true = resp_true.json()
+        true_reg_numbers = [item["voter_registration_number"] for item in body_true["items"]]
+        assert "E2E000001" not in true_reg_numbers, (
+            "Voter should NOT appear with has_district_mismatch=true — latest result has no mismatch"
+        )
+
+        # has_district_mismatch=false — voter's LATEST result is a match
+        resp_false = await analyst_client.get(_url(f"{base_url}?has_district_mismatch=false"))
+        assert resp_false.status_code == 200
+        body_false = resp_false.json()
+        false_reg_numbers = [item["voter_registration_number"] for item in body_false["items"]]
+        assert "E2E000001" in false_reg_numbers, (
+            "Voter SHOULD appear with has_district_mismatch=false — latest result is a match"
+        )
 
 
 # ── Absentee Ballot Applications ──────────────────────────────────────────

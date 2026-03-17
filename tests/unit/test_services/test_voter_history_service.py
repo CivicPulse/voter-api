@@ -10,14 +10,20 @@ from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 
 from voter_api.models.election import Election
+from voter_api.models.voter import Voter
 from voter_api.models.voter_history import VoterHistory
 from voter_api.schemas.voter_history import ParticipationFilters
 from voter_api.services.voter_history_service import (
+    MismatchFilterError,
     VoterLookupResult,
     _build_election_match_conditions,
+    _build_mismatch_filter,
     _get_election_or_raise,
+    _latest_analysis_subquery,
     _replace_previous_import,
     get_participation_stats,
     get_participation_summary,
@@ -30,6 +36,11 @@ from voter_api.services.voter_history_service import (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _compile_query(query) -> str:
+    """Compile a SQLAlchemy query to PostgreSQL SQL string for structural inspection."""
+    return str(query.compile(dialect=postgresql.dialect()))
 
 
 def _mock_session_with_scalars(
@@ -242,11 +253,14 @@ class TestListElectionParticipants:
             records_result,
         ]
 
-        result_records, total, voter_details_included = await list_election_participants(session, election.id)
+        result_records, total, voter_details_included, district_type_used = await list_election_participants(
+            session, election.id
+        )
 
         assert total == 1
         assert len(result_records) == 1
         assert voter_details_included is False
+        assert district_type_used is None
 
     async def test_election_not_found_raises(self) -> None:
         """Raises ValueError when election does not exist."""
@@ -283,7 +297,7 @@ class TestListElectionParticipants:
             records_result,
         ]
 
-        records, total, voter_details_included = await list_election_participants(
+        records, total, voter_details_included, district_type_used = await list_election_participants(
             session,
             election.id,
             filters=ParticipationFilters(
@@ -298,6 +312,7 @@ class TestListElectionParticipants:
         assert total == 0
         assert records == []
         assert voter_details_included is False
+        assert district_type_used is None
         # 5 execute calls: election lookup + has_resolved + match count + count + records
         assert session.execute.await_count == 5
 
@@ -306,7 +321,7 @@ class TestListElectionParticipants:
         election = _mock_election()
         session = _mock_join_session(election)
 
-        records, total, voter_details_included = await list_election_participants(
+        records, total, voter_details_included, district_type_used = await list_election_participants(
             session,
             election.id,
             filters=ParticipationFilters(county_precinct="HA2"),
@@ -315,13 +330,14 @@ class TestListElectionParticipants:
         assert total == 0
         assert records == []
         assert voter_details_included is True
+        assert district_type_used is None
 
     async def test_q_param_triggers_join_path(self) -> None:
         """The q search parameter triggers the JOIN path."""
         election = _mock_election()
         session = _mock_join_session(election)
 
-        records, total, voter_details_included = await list_election_participants(
+        records, total, voter_details_included, district_type_used = await list_election_participants(
             session,
             election.id,
             filters=ParticipationFilters(q="Smith"),
@@ -330,13 +346,14 @@ class TestListElectionParticipants:
         assert total == 0
         assert records == []
         assert voter_details_included is True
+        assert district_type_used is None
 
     async def test_has_district_mismatch_triggers_join_path(self) -> None:
-        """has_district_mismatch filter triggers the JOIN path."""
-        election = _mock_election()
+        """has_district_mismatch filter triggers the JSONB JOIN path."""
+        election = _mock_election(district_type="state_senate")
         session = _mock_join_session(election)
 
-        records, total, voter_details_included = await list_election_participants(
+        records, total, voter_details_included, district_type_used = await list_election_participants(
             session,
             election.id,
             filters=ParticipationFilters(has_district_mismatch=True),
@@ -345,6 +362,177 @@ class TestListElectionParticipants:
         assert total == 0
         assert records == []
         assert voter_details_included is True
+        assert district_type_used == "state_senate"
+
+    async def test_mismatch_filter_error_null_district_type(self) -> None:
+        """MismatchFilterError raised when election has no district_type."""
+        election = _mock_election(district_type=None)
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        session.execute.return_value = election_result
+
+        with pytest.raises(MismatchFilterError, match="known district_type"):
+            await list_election_participants(
+                session,
+                election.id,
+                filters=ParticipationFilters(has_district_mismatch=True),
+            )
+
+    async def test_mismatch_filter_error_unknown_district_type(self) -> None:
+        """MismatchFilterError raised when election district_type is not in BOUNDARY_TYPE_TO_VOTER_FIELD."""
+        election = _mock_election(district_type="nonexistent_type")
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        session.execute.return_value = election_result
+
+        with pytest.raises(MismatchFilterError, match="not supported for district_type"):
+            await list_election_participants(
+                session,
+                election.id,
+                filters=ParticipationFilters(has_district_mismatch=True),
+            )
+
+    async def test_mismatch_filter_false_also_errors_on_null_district_type(self) -> None:
+        """MismatchFilterError raised for has_district_mismatch=False when district_type is null."""
+        election = _mock_election(district_type=None)
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        session.execute.return_value = election_result
+
+        with pytest.raises(MismatchFilterError, match="known district_type"):
+            await list_election_participants(
+                session,
+                election.id,
+                filters=ParticipationFilters(has_district_mismatch=False),
+            )
+
+    async def test_mismatch_filter_omitted_returns_none_district_type(self) -> None:
+        """When has_district_mismatch is not set, district_type_used is None (no analysis JOIN)."""
+        election = _mock_election(district_type="state_senate")
+        session = AsyncMock()
+        election_result = MagicMock()
+        election_result.scalar_one_or_none.return_value = election
+        has_resolved_result = MagicMock()
+        has_resolved_result.scalar_one.return_value = False
+        match_count_result = MagicMock()
+        match_count_result.scalar_one.return_value = 1
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 0
+        records_result = MagicMock()
+        records_mock = MagicMock()
+        records_mock.all.return_value = []
+        records_result.scalars.return_value = records_mock
+        session.execute.side_effect = [
+            election_result,
+            has_resolved_result,
+            match_count_result,
+            count_result,
+            records_result,
+        ]
+
+        _records, _total, _voter_details_included, district_type_used = await list_election_participants(
+            session,
+            election.id,
+            filters=ParticipationFilters(),
+        )
+
+        assert district_type_used is None
+
+    async def test_mismatch_filter_true_returns_district_type(self) -> None:
+        """When has_district_mismatch=True with valid district_type, district_type_used is set."""
+        election = _mock_election(district_type="state_senate")
+        session = _mock_join_session(election)
+
+        _records, _total, _voter_details_included, district_type_used = await list_election_participants(
+            session,
+            election.id,
+            filters=ParticipationFilters(has_district_mismatch=True),
+        )
+
+        assert district_type_used == "state_senate"
+
+    async def test_mismatch_filter_false_returns_district_type(self) -> None:
+        """When has_district_mismatch=False with valid district_type, district_type_used is set."""
+        election = _mock_election(district_type="state_senate")
+        session = _mock_join_session(election)
+
+        _records, _total, _voter_details_included, district_type_used = await list_election_participants(
+            session,
+            election.id,
+            filters=ParticipationFilters(has_district_mismatch=False),
+        )
+
+        assert district_type_used == "state_senate"
+
+
+# ---------------------------------------------------------------------------
+# _build_mismatch_filter
+# ---------------------------------------------------------------------------
+
+
+class TestBuildMismatchFilter:
+    """Tests for _build_mismatch_filter — compile-and-assert SQL correctness."""
+
+    def _build_joined_query(self, latest_ar, district_type: str, has_mismatch: bool):
+        """Build a representative joined query mirroring list_election_participants."""
+        return (
+            select(VoterHistory)
+            .outerjoin(Voter, VoterHistory.voter_registration_number == Voter.voter_registration_number)
+            .join(latest_ar, latest_ar.c.voter_id == Voter.id)
+            .where(_build_mismatch_filter(latest_ar, district_type, has_mismatch))
+        )
+
+    def test_mismatch_true_uses_subquery_alias_not_orm_table(self) -> None:
+        """Compiled SQL references latest_ar, not raw analysis_results in WHERE."""
+        latest_ar = _latest_analysis_subquery()
+        query = self._build_joined_query(latest_ar, "state_senate", True)
+        sql = _compile_query(query)
+        assert "latest_ar" in sql, f"Expected 'latest_ar' in compiled SQL: {sql}"
+        # analysis_results appears once (inside subquery def), not in WHERE
+        where_portion = sql[sql.lower().find("where") :]
+        assert "analysis_results" not in where_portion, (
+            f"Implicit cross join detected — 'analysis_results' found after WHERE: {where_portion}"
+        )
+
+    def test_mismatch_false_uses_subquery_alias_not_orm_table(self) -> None:
+        """Compiled SQL for has_mismatch=False also uses subquery alias."""
+        latest_ar = _latest_analysis_subquery()
+        query = self._build_joined_query(latest_ar, "state_senate", False)
+        sql = _compile_query(query)
+        assert "latest_ar" in sql
+        where_portion = sql[sql.lower().find("where") :]
+        assert "analysis_results" not in where_portion, (
+            f"Implicit cross join detected — 'analysis_results' found after WHERE: {where_portion}"
+        )
+
+    def test_no_duplicate_from_analysis_results(self) -> None:
+        """analysis_results appears exactly once in FROM (inside subquery only)."""
+        latest_ar = _latest_analysis_subquery()
+        query = self._build_joined_query(latest_ar, "congressional", True)
+        sql = _compile_query(query).lower()
+        count = sql.count("from analysis_results")
+        assert count == 1, f"Expected 'from analysis_results' exactly once (in subquery), found {count} times"
+
+    def test_all_boundary_types_produce_valid_clauses(self) -> None:
+        """All valid boundary types produce compilable filter clauses."""
+        from voter_api.lib.analyzer.comparator import BOUNDARY_TYPE_TO_VOTER_FIELD
+
+        latest_ar = _latest_analysis_subquery()
+        for district_type in BOUNDARY_TYPE_TO_VOTER_FIELD:
+            for has_mismatch in (True, False):
+                query = self._build_joined_query(latest_ar, district_type, has_mismatch)
+                sql = _compile_query(query)
+                assert "latest_ar" in sql
+
+    def test_true_and_false_produce_different_sql(self) -> None:
+        """True and False filters produce structurally different SQL."""
+        latest_ar = _latest_analysis_subquery()
+        sql_true = _compile_query(self._build_joined_query(latest_ar, "state_senate", True))
+        sql_false = _compile_query(self._build_joined_query(latest_ar, "state_senate", False))
+        assert sql_true != sql_false
 
 
 # ---------------------------------------------------------------------------
@@ -882,11 +1070,14 @@ class TestBuildElectionMatchConditions:
             records_result,
         ]
 
-        result_records, total, voter_details_included = await list_election_participants(session, election.id)
+        result_records, total, voter_details_included, district_type_used = await list_election_participants(
+            session, election.id
+        )
 
         assert total == 1
         assert len(result_records) == 1
         assert voter_details_included is False
+        assert district_type_used is None
 
 
 # ---------------------------------------------------------------------------

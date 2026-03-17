@@ -26,6 +26,8 @@ from voter_api.core.database import get_engine
 from voter_api.core.security import create_access_token, hash_password
 from voter_api.main import create_app, lifespan
 from voter_api.models.absentee_ballot import AbsenteeBallotApplication
+from voter_api.models.analysis_result import AnalysisResult
+from voter_api.models.analysis_run import AnalysisRun
 from voter_api.models.auth_tokens import UserInvite
 from voter_api.models.boundary import Boundary
 from voter_api.models.candidacy import Candidacy
@@ -187,6 +189,17 @@ CANDIDATE_LINK_ID = uuid.UUID("00000000-0000-0000-0000-000000000071")
 CANDIDACY_ID = uuid.UUID("00000000-0000-0000-0000-000000000072")
 ABSENTEE_RECORD_ID = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee01")
 ABSENTEE_RECORD_ID_2 = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee02")
+ELECTION_FEDERAL_ID = uuid.UUID("00000000-0000-0000-0000-000000000011")
+ELECTION_STATE_SENATE_ID = uuid.UUID("00000000-0000-0000-0000-000000000012")
+ELECTION_STATE_HOUSE_ID = uuid.UUID("00000000-0000-0000-0000-000000000013")
+ELECTION_LOCAL_ID = uuid.UUID("00000000-0000-0000-0000-000000000014")
+ELECTION_DELETED_ID = uuid.UUID("00000000-0000-0000-0000-000000000015")
+ELECTION_STATE_SENATE_FULTON_ID = uuid.UUID("00000000-0000-0000-0000-000000000016")
+ANALYSIS_RUN_ID_OLD = uuid.UUID("00000000-0000-0000-0000-000000000080")
+ANALYSIS_RUN_ID_NEW = uuid.UUID("00000000-0000-0000-0000-000000000081")
+ANALYSIS_RESULT_ID_OLD = uuid.UUID("00000000-0000-0000-0000-000000000082")
+ANALYSIS_RESULT_ID_NEW = uuid.UUID("00000000-0000-0000-0000-000000000083")
+VOTER_HISTORY_ID_SENATE = uuid.UUID("00000000-0000-0000-0000-000000000062")
 
 TOTP_USERNAME = "e2e_totp_user"
 INVITE_EMAIL = "e2e_invite@test.com"
@@ -356,6 +369,108 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
                 "status": stmt.excluded.status,
                 "refresh_interval_seconds": stmt.excluded.refresh_interval_seconds,
             },
+        )
+        await session.execute(stmt)
+
+        # --- Additional elections (diverse seed for filter-options E2E) ------
+        additional_elections = [
+            {
+                "id": ELECTION_FEDERAL_ID,
+                "name": "E2E US House District 5",
+                "election_date": date(2024, 11, 5),
+                "election_type": "general",
+                "district": "US House District 5",
+                "district_type": "congressional",
+                "eligible_county": "FULTON",
+                "status": "active",
+                "source": "manual",
+                "refresh_interval_seconds": 120,
+            },
+            {
+                "id": ELECTION_STATE_SENATE_ID,
+                "name": "E2E State Senate District 34",
+                "election_date": date(2024, 11, 5),
+                "election_type": "general",
+                "district": "State Senate District 34",
+                "district_type": "state_senate",
+                "eligible_county": "BIBB",
+                "status": "active",
+                "source": "manual",
+                "refresh_interval_seconds": 120,
+            },
+            {
+                "id": ELECTION_STATE_HOUSE_ID,
+                "name": "E2E State House District 60",
+                "election_date": date(2025, 5, 20),
+                "election_type": "primary",
+                "district": "State House District 60",
+                "district_type": "state_house",
+                "eligible_county": "CHATHAM",
+                "status": "active",
+                "source": "manual",
+                "refresh_interval_seconds": 120,
+            },
+            {
+                "id": ELECTION_LOCAL_ID,
+                "name": "E2E Macon City Council Ward 3",
+                "election_date": date(2025, 11, 4),
+                "election_type": "general",
+                "district": "Macon City Council Ward 3",
+                "district_type": None,
+                "eligible_county": "BIBB",
+                "status": "active",
+                "source": "manual",
+                "refresh_interval_seconds": 120,
+            },
+            {
+                "id": ELECTION_DELETED_ID,
+                "name": "E2E Deleted Primary",
+                "election_date": date(2023, 5, 1),
+                "election_type": "primary",
+                "district": "Statewide",
+                "district_type": "congressional",
+                "eligible_county": "CHATHAM",
+                "status": "active",
+                "source": "manual",
+                "refresh_interval_seconds": 120,
+                "deleted_at": datetime.now(UTC),
+            },
+        ]
+        for elec_data in additional_elections:
+            set_dict = {
+                "name": elec_data["name"],
+                "election_date": elec_data["election_date"],
+                "election_type": elec_data["election_type"],
+                "district": elec_data["district"],
+                "district_type": elec_data["district_type"],
+                "eligible_county": elec_data["eligible_county"],
+                "status": elec_data["status"],
+                "source": elec_data["source"],
+                "refresh_interval_seconds": elec_data["refresh_interval_seconds"],
+            }
+            if "deleted_at" in elec_data:
+                set_dict["deleted_at"] = elec_data["deleted_at"]
+            stmt = pg_insert(Election).values(**elec_data)
+            stmt = stmt.on_conflict_do_update(index_elements=["id"], set_=set_dict)
+            await session.execute(stmt)
+
+        # --- State Senate election scoped to FULTON (for deduplication E2E) --
+        dedup_election_data = {
+            "id": ELECTION_STATE_SENATE_FULTON_ID,
+            "name": "E2E State Senate District 34 Fulton",
+            "election_date": date(2024, 11, 5),
+            "election_type": "general",
+            "district": "State Senate District 34",
+            "district_type": "state_senate",
+            "eligible_county": "FULTON",
+            "status": "active",
+            "source": "manual",
+            "refresh_interval_seconds": 120,
+        }
+        stmt = pg_insert(Election).values(**dedup_election_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={k: dedup_election_data[k] for k in dedup_election_data if k != "id"},
         )
         await session.execute(stmt)
 
@@ -558,6 +673,110 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         )
         await session.execute(stmt)
 
+        # --- VoterHistory for deduplication test (links voter to Fulton state senate) --
+        await session.execute(
+            delete(VoterHistory).where(
+                VoterHistory.voter_registration_number == "E2E000001",
+                VoterHistory.election_date == date(2024, 11, 5),
+                VoterHistory.election_type == "State Senate Special",
+            )
+        )
+        vh_senate_data = {
+            "id": VOTER_HISTORY_ID_SENATE,
+            "voter_registration_number": "E2E000001",
+            "county": "FULTON",
+            "election_date": date(2024, 11, 5),
+            "election_type": "State Senate Special",
+            "normalized_election_type": "special",
+            "party": None,
+            "ballot_style": "FULTON-01",
+            "absentee": False,
+            "provisional": False,
+            "supplemental": False,
+            "election_id": ELECTION_STATE_SENATE_FULTON_ID,
+            "import_job_id": IMPORT_JOB_ID,
+        }
+        stmt = pg_insert(VoterHistory).values(**vh_senate_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "voter_registration_number": stmt.excluded.voter_registration_number,
+                "county": stmt.excluded.county,
+                "election_date": stmt.excluded.election_date,
+                "election_type": stmt.excluded.election_type,
+                "normalized_election_type": stmt.excluded.normalized_election_type,
+                "election_id": stmt.excluded.election_id,
+                "import_job_id": stmt.excluded.import_job_id,
+            },
+        )
+        await session.execute(stmt)
+
+        # --- Analysis Runs for deduplication test ---
+        now = datetime.now(UTC)
+        for run_id, run_status, run_count in [
+            (ANALYSIS_RUN_ID_OLD, "completed", 1),
+            (ANALYSIS_RUN_ID_NEW, "completed", 1),
+        ]:
+            run_data = {
+                "id": run_id,
+                "triggered_by": ADMIN_USER_ID,
+                "status": run_status,
+                "total_voters_analyzed": run_count,
+                "match_count": run_count if run_id == ANALYSIS_RUN_ID_NEW else 0,
+                "mismatch_count": 0 if run_id == ANALYSIS_RUN_ID_NEW else run_count,
+            }
+            stmt = pg_insert(AnalysisRun).values(**run_data)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["id"],
+                set_={"status": stmt.excluded.status},
+            )
+            await session.execute(stmt)
+
+        # --- Analysis Results for deduplication test ---
+        # OLD result: state_senate mismatch (voter registered in wrong district)
+        old_result_data = {
+            "id": ANALYSIS_RESULT_ID_OLD,
+            "analysis_run_id": ANALYSIS_RUN_ID_OLD,
+            "voter_id": VOTER_ID,
+            "determined_boundaries": {"state_senate": "34"},
+            "registered_boundaries": {"state_senate": "99"},
+            "match_status": "mismatch",
+            "mismatch_details": [{"boundary_type": "state_senate"}],
+            "analyzed_at": now - timedelta(hours=2),
+        }
+        stmt = pg_insert(AnalysisResult).values(**old_result_data)
+        stmt = stmt.on_conflict_do_update(
+            constraint="ix_result_run_voter",
+            set_={
+                "match_status": stmt.excluded.match_status,
+                "mismatch_details": stmt.excluded.mismatch_details,
+                "analyzed_at": stmt.excluded.analyzed_at,
+            },
+        )
+        await session.execute(stmt)
+
+        # NEW result: no mismatch (voter moved to correct district)
+        new_result_data = {
+            "id": ANALYSIS_RESULT_ID_NEW,
+            "analysis_run_id": ANALYSIS_RUN_ID_NEW,
+            "voter_id": VOTER_ID,
+            "determined_boundaries": {"state_senate": "34"},
+            "registered_boundaries": {"state_senate": "34"},
+            "match_status": "match",
+            "mismatch_details": None,
+            "analyzed_at": now,
+        }
+        stmt = pg_insert(AnalysisResult).values(**new_result_data)
+        stmt = stmt.on_conflict_do_update(
+            constraint="ix_result_run_voter",
+            set_={
+                "match_status": stmt.excluded.match_status,
+                "mismatch_details": stmt.excluded.mismatch_details,
+                "analyzed_at": stmt.excluded.analyzed_at,
+            },
+        )
+        await session.execute(stmt)
+
         # --- Elected Official ---------------------------------------------
         official_data = {
             "id": OFFICIAL_ID,
@@ -659,6 +878,13 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
                 AbsenteeBallotApplication.id.in_([ABSENTEE_RECORD_ID, ABSENTEE_RECORD_ID_2])
             )
         )
+        # Cleanup analysis results and runs (before voter/election cleanup)
+        await session.execute(
+            delete(AnalysisResult).where(AnalysisResult.analysis_run_id.in_([ANALYSIS_RUN_ID_OLD, ANALYSIS_RUN_ID_NEW]))
+        )
+        await session.execute(delete(AnalysisRun).where(AnalysisRun.id.in_([ANALYSIS_RUN_ID_OLD, ANALYSIS_RUN_ID_NEW])))
+        # Cleanup deduplication VoterHistory
+        await session.execute(delete(VoterHistory).where(VoterHistory.id == VOTER_HISTORY_ID_SENATE))
         await session.execute(delete(VoterHistory).where(VoterHistory.id == VOTER_HISTORY_ID))
         await session.execute(delete(UserInvite).where(UserInvite.id == INVITE_ID))
         await session.execute(delete(TOTPCredential).where(TOTPCredential.user_id == TOTP_USER_ID))
@@ -669,6 +895,20 @@ async def seed_database(app: FastAPI, settings: Settings) -> AsyncGenerator[None
         await session.execute(delete(Candidacy).where(Candidacy.id == CANDIDACY_ID))
         await session.execute(delete(CandidateLink).where(CandidateLink.id == CANDIDATE_LINK_ID))
         await session.execute(delete(Candidate).where(Candidate.id == CANDIDATE_ID))
+        await session.execute(
+            delete(Election).where(
+                Election.id.in_(
+                    [
+                        ELECTION_FEDERAL_ID,
+                        ELECTION_STATE_SENATE_ID,
+                        ELECTION_STATE_HOUSE_ID,
+                        ELECTION_LOCAL_ID,
+                        ELECTION_DELETED_ID,
+                        ELECTION_STATE_SENATE_FULTON_ID,
+                    ]
+                )
+            )
+        )
         await session.execute(delete(Election).where(Election.id == ELECTION_ID))
         await session.execute(
             delete(User).where(User.id.in_([ADMIN_USER_ID, ANALYST_USER_ID, VIEWER_USER_ID, TOTP_USER_ID]))

@@ -126,13 +126,23 @@ async def list_election_participants(
         has_district_mismatch=has_district_mismatch,
     )
     try:
-        results, total, voter_details_included = await voter_history_service.list_election_participants(
+        (
+            results,
+            total,
+            voter_details_included,
+            district_type_used,
+        ) = await voter_history_service.list_election_participants(
             session,
             election_id,
             filters=filters,
             page=page,
             page_size=page_size,
         )
+    except voter_history_service.MismatchFilterError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -175,6 +185,7 @@ async def list_election_participants(
             page_size=page_size,
             total_pages=max(1, math.ceil(total / page_size)),
         ),
+        mismatch_district_type=district_type_used,
     )
 
 

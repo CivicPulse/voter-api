@@ -9,7 +9,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -52,6 +52,85 @@ from voter_api.schemas.election import (
     RefreshResponse,
     VoteMethodResult,
 )
+
+RACE_CATEGORY_MAP: dict[str, list[str]] = {
+    "federal": ["congressional"],
+    "state_senate": ["state_senate"],
+    "state_house": ["state_house"],
+}
+_NON_LOCAL_TYPES = [t for types in RACE_CATEGORY_MAP.values() for t in types]
+
+
+def escape_ilike_wildcards(value: str) -> str:
+    """Escape SQL ILIKE wildcard characters for literal matching.
+
+    Escapes %, _, and \\ so they are treated as literal characters
+    in ILIKE patterns. Backslash is escaped first to avoid double-escaping.
+
+    Args:
+        value: Raw search input string.
+
+    Returns:
+        Escaped string safe for ILIKE pattern use.
+    """
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+async def get_filter_options(session: AsyncSession) -> dict:
+    """Return distinct filter values from active elections for dropdown population.
+
+    Queries DISTINCT values for race categories, counties, and dates,
+    excluding soft-deleted elections. Counties are title-case normalized.
+    Race categories are mapped from raw district_type values via RACE_CATEGORY_MAP.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        Dict with race_categories (sorted alpha), counties (sorted alpha, title-case),
+        election_dates (sorted desc), and total_elections count.
+    """
+    from sqlalchemy import distinct
+
+    base = Election.deleted_at.is_(None)
+
+    # District types -> race categories
+    dt_result = await session.execute(select(distinct(Election.district_type)).where(base))
+    district_types = {row for (row,) in dt_result.all()}
+
+    categories: list[str] = []
+    for cat, types in RACE_CATEGORY_MAP.items():
+        if any(t in district_types for t in types):
+            categories.append(cat)
+    # "local" if NULL or unrecognized types exist
+    if (None in district_types or (district_types - set(_NON_LOCAL_TYPES))) and "local" not in categories:
+        categories.append("local")
+    categories.sort()
+
+    # Counties (non-null, lower-normalized for DISTINCT, then title-cased for display)
+    county_result = await session.execute(
+        select(distinct(func.lower(Election.eligible_county)))
+        .where(base, Election.eligible_county.isnot(None))
+        .order_by(func.lower(Election.eligible_county))
+    )
+    counties = [row.title() for (row,) in county_result.all()]
+
+    # Election dates (descending)
+    date_result = await session.execute(
+        select(distinct(Election.election_date)).where(base).order_by(Election.election_date.desc())
+    )
+    dates = [row for (row,) in date_result.all()]
+
+    # Total count
+    count_result = await session.execute(select(func.count(Election.id)).where(base))
+    total = count_result.scalar_one()
+
+    return {
+        "race_categories": categories,
+        "counties": counties,
+        "election_dates": dates,
+        "total_elections": total,
+    }
 
 
 class DuplicateElectionError(ValueError):
@@ -591,6 +670,10 @@ async def list_elections(
     district_type: str | None = None,
     district_identifier: str | None = None,
     source: str | None = None,
+    q: str | None = None,
+    race_category: str | None = None,
+    county: str | None = None,
+    election_date: date | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[ElectionSummary], int]:
@@ -607,6 +690,11 @@ async def list_elections(
         early_voting_active: If True, only elections currently in early voting window.
         district_type: Filter by parsed district type (exact match).
         district_identifier: Filter by parsed district identifier (exact match).
+        source: Filter by data source (sos_feed, manual, linked).
+        q: Free-text search across name and district (case-insensitive).
+        race_category: Filter by race category (federal, state_senate, state_house, local).
+        county: Filter by eligible county (case-insensitive exact match).
+        election_date: Filter by exact election date; overrides date_from/date_to.
         page: Page number (1-indexed).
         page_size: Results per page.
 
@@ -623,10 +711,13 @@ async def list_elections(
         filters.append(Election.election_type == election_type)
     if district:
         filters.append(Election.district.ilike(f"%{district}%"))
-    if date_from:
-        filters.append(Election.election_date >= date_from)
-    if date_to:
-        filters.append(Election.election_date <= date_to)
+    if election_date:
+        filters.append(Election.election_date == election_date)
+    else:
+        if date_from:
+            filters.append(Election.election_date >= date_from)
+        if date_to:
+            filters.append(Election.election_date <= date_to)
     if registration_open is True:
         filters.append(Election.registration_deadline >= func.current_date())
     if early_voting_active is True:
@@ -642,6 +733,33 @@ async def list_elections(
         filters.append(Election.district_identifier == district_identifier)
     if source:
         filters.append(Election.source == source)
+
+    # Free-text search (SRCH-01, SRCH-02)
+    if q:
+        escaped = escape_ilike_wildcards(q)
+        pattern = f"%{escaped}%"
+        filters.append(
+            or_(
+                Election.name.ilike(pattern, escape="\\"),
+                Election.district.ilike(pattern, escape="\\"),
+            )
+        )
+
+    # Race category filter (FILT-01)
+    if race_category:
+        if race_category == "local":
+            filters.append(
+                or_(
+                    Election.district_type.notin_(_NON_LOCAL_TYPES),
+                    Election.district_type.is_(None),
+                )
+            )
+        else:
+            filters.append(Election.district_type.in_(RACE_CATEGORY_MAP[race_category]))
+
+    # County filter (FILT-02)
+    if county:
+        filters.append(func.lower(Election.eligible_county) == county.strip().lower())
 
     if filters:
         query = query.where(and_(*filters))
