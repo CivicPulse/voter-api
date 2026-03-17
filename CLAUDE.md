@@ -217,117 +217,68 @@ Follow these rules whenever you add, modify, or remove API endpoints:
 
 <!-- MANUAL ADDITIONS START -->
 
-## Deployment (Piku)
+## Deployment (Kubernetes / ArgoCD)
 
-**Dev URL**: `https://voteapi-dev.hatchtech.dev` (piku app: `voter-api-dev`)
-**Production URL**: `https://voteapi.civpulse.org` (piku app: `voter-api`)
+**Dev URL**: `https://voteapi-dev.civpulse.org` (namespace: `civpulse-dev`)
+**Production URL**: `https://voteapi.civpulse.org` (namespace: `civpulse-prod`)
 **Legacy URL**: `https://voteapi.kerryhatcher.com` (still functional via CORS regex)
 
-Both environments deploy to the same piku server (`hatchweb`). Three git remotes are configured:
-
-- `origin` — GitHub (`CivicPulse/voter-api`)
-- `piku` — dev (`piku@hatchweb.tailb56d83.ts.net:voter-api-dev`)
-- `piku-prod` — prod (`piku@hatchweb.tailb56d83.ts.net:voter-api`)
-
-Deploy commands:
-```bash
-git push piku main          # deploy to dev
-git push piku-prod main     # deploy to prod
-```
-
-### Configuration files
-
-- **`Procfile`** — defines `release` (Alembic migrations) and `web` (uvicorn ASGI) workers
-- **`ENV`** — piku/nginx settings and non-secret environment variables; committed to the repo. Contains **prod defaults** (hostname, logging, etc.). Dev overrides (hostname, log level) and secrets are set via `piku config:set` on the server (see Secrets below).
-
-### Secrets
-
-Set secrets on the server via `piku config:set` — never commit them in `ENV`.
-
-**Dev app** (secrets + ENV overrides for dev hostname and logging):
-```bash
-ssh piku@hatchweb.tailb56d83.ts.net -- config:set voter-api-dev \
-  DATABASE_URL=postgresql+asyncpg://... \
-  JWT_SECRET_KEY=... \
-  UV_PYTHON_DOWNLOADS=auto \
-  NGINX_SERVER_NAME=voteapi-dev.hatchtech.dev \
-  LOG_LEVEL=DEBUG
-```
-
-**Prod app** (secrets only — ENV file already has prod defaults):
-```bash
-ssh piku@hatchweb.tailb56d83.ts.net -- config:set voter-api \
-  DATABASE_URL=postgresql+asyncpg://... \
-  JWT_SECRET_KEY=... \
-  UV_PYTHON_DOWNLOADS=auto
-```
-
-`config:set` values override anything in the `ENV` file.
-
-### Ingress: Cloudflare Tunnel
-
-External traffic reaches the app via a Cloudflare Tunnel (`hatchweb`), not direct port exposure:
-
-- **Domains**: `voteapi-dev.hatchtech.dev` (dev), `voteapi.civpulse.org` (prod), `voteapi.kerryhatcher.com` (legacy) — all DNS managed by Cloudflare
-- **Tunnel route**: `HTTP://localhost:80` (Cloudflare terminates TLS at the edge)
-- **SSL disabled on piku**: Cloudflare handles TLS termination, so SSL was removed from piku entirely. Two changes were made on the server:
-  1. `acme.sh` renamed to `acme.sh.disabled` (`~/.acme.sh/acme.sh.disabled`) — prevents Let's Encrypt cert issuance
-  2. `piku.py` patched to remove SSL listen/cert directives from `NGINX_COMMON_FRAGMENT` — nginx configs only listen on port 80
-  - To re-enable SSL: `mv ~/.acme.sh/acme.sh.disabled ~/.acme.sh/acme.sh` and revert the piku.py patch, then redeploy all apps
-  - These patches will be lost if piku is updated — re-apply after any `piku update` (same as the uv sync patch)
-
-### Server prerequisites (one-time setup)
-
-These were required on the piku server beyond the standard `piku setup`:
-
-1. **uv**: Must be installed at `~/.local/bin/uv` with PATH including that directory. Without `uv` in PATH, piku falls through to "Generic app" and skips dependency installation.
-
-2. **piku.py patch**: Piku's source hardcodes `--python-preference only-system` in its `uv sync` call (line ~779 of `piku.py`). The server has Python 3.12 but the project requires 3.13. The flag was removed via `sed -i "s/uv sync --python-preference only-system/uv sync/" /home/piku/piku.py` so uv auto-downloads Python 3.13. This patch will be lost if piku is updated — re-apply after any `piku update`.
-
-3. **nginx include**: Piku writes nginx configs to `/home/piku/.piku/nginx/` but the system nginx doesn't include that directory by default. Created `/etc/nginx/sites-enabled/piku.conf` containing:
-   ```
-   include /home/piku/.piku/nginx/*.conf;
-   ```
-
-4. **uwsgi emperor service**: Piku generates uwsgi worker configs in `/home/piku/.piku/uwsgi-enabled/` but the system uwsgi service watches `/etc/uwsgi/apps-enabled/`. Symlinks break on every deploy because piku deletes and recreates the .ini files. Instead, a dedicated systemd service runs uwsgi in emperor mode watching piku's directory:
-   ```
-   # /etc/systemd/system/piku-uwsgi.service
-   [Service]
-   User=piku
-   Group=www-data
-   ExecStart=/usr/bin/uwsgi --emperor /home/piku/.piku/uwsgi-enabled
-   Restart=always
-   Type=notify
-   ```
-   This service (`piku-uwsgi`) survives deploys and automatically picks up new piku apps.
-
-5. **nginx path watcher**: Piku writes new nginx configs on each deploy with a fresh port, but doesn't reload nginx. The `piku-nginx.path` systemd unit watches `/home/piku/.piku/nginx/` and triggers `piku-nginx.service` (which runs `systemctl reload nginx`) on changes. Installed from the piku repo's `piku-nginx.{path,service}` files.
+The app runs on k3s (bare metal) and is deployed via ArgoCD GitOps. Docker images are built and pushed to GHCR; ArgoCD watches the k8s manifests in `k8s/` and syncs changes to the cluster automatically.
 
 ### Deploy flow
 
-On `git push piku main` (dev) or `git push piku-prod main` (prod), piku runs:
-1. `uv sync` — installs dependencies into `/home/piku/.piku/envs/<app>`
-2. Writes new nginx config (with a fresh random port) and uwsgi worker config
-3. `release` worker — runs `voter-api db upgrade` (Alembic migrations)
-4. `web` worker — spawns `uvicorn --factory voter_api.main:create_app` via uwsgi `attach-daemon`
+Deploys are triggered automatically on every merge to `main`:
 
-Piku picks a new random port on each deploy. The `piku-uwsgi` emperor auto-restarts the vassal, and the `piku-nginx.path` systemd path watcher detects config changes and auto-reloads nginx. No manual intervention needed after `git push`.
+1. **CI passes** — `.github/workflows/ci.yml` runs tests and lint
+2. **Build & push** — `.github/workflows/build-push.yaml` builds the Docker image and pushes to `ghcr.io/civicpulse/voter-api:sha-<SHORT_SHA>`
+3. **Manifest update** — The same workflow commits the new image tag back to `k8s/apps/voter-api-dev/deployment.yaml` and `k8s/apps/voter-api-prod/deployment.yaml`
+4. **ArgoCD sync** — ArgoCD detects the manifest change and rolls out the new image to both namespaces
+5. **Migrations** — An init container (`voter-api db upgrade`) runs Alembic migrations before the main container starts on each rollout
+
+No manual deploy command is needed — merging to `main` is sufficient.
+
+### Kubernetes manifests
+
+Manifests live in `k8s/apps/`:
+
+| Path | Namespace | Purpose |
+|---|---|---|
+| `k8s/apps/voter-api-dev/` | `civpulse-dev` | Dev environment |
+| `k8s/apps/voter-api-prod/` | `civpulse-prod` | Production environment |
+
+Each directory contains `deployment.yaml`, `service.yaml`, `ingress.yaml`, and `voter-api-secret.yaml.example`.
+
+### Secrets
+
+Secrets are managed as a Kubernetes Secret named `voter-api-secret` in each namespace. Use the example file as a template:
+
+```
+k8s/apps/voter-api-prod/voter-api-secret.yaml.example
+k8s/apps/voter-api-dev/voter-api-secret.yaml.example
+```
+
+Apply with `kubectl apply -f` — never commit filled-in secrets to the repo.
+
+### Ingress
+
+Traffic path: **Cloudflare → cloudflared (`civpulse-infra`) → Traefik → voter-api Service**
+
+Defined as a Traefik `IngressRoute` resource in each app's `ingress.yaml`.
 
 ### Verification
 
 ```bash
-uv run voter-api deploy-check --url https://voteapi-dev.hatchtech.dev   # dev
-uv run voter-api deploy-check                                            # prod (default URL)
+uv run voter-api deploy-check --url https://voteapi-dev.civpulse.org  # dev
+uv run voter-api deploy-check                                           # prod (default URL)
 ```
 
 ### Troubleshooting
 
-- **502 Bad Gateway after deploy**: Check `systemctl status piku-nginx.path` (should be `active (waiting)`) and `systemctl status piku-uwsgi` (should be `active (running)`). If either is down, restart it. Also check if uvicorn is running: `ssh piku@... -- ps <app>`
-- **"Generic app" on deploy**: `uv` is not in PATH on the server
-- **"No interpreter found for Python 3.13"**: The piku.py patch was lost (re-apply after `piku update`)
-- **Stale venv errors**: Remove and redeploy: `ssh piku@... -- run <app> -- rm -rf /home/piku/.piku/envs/<app>` then `ssh piku@... -- deploy <app>`
-- **View dev logs**: `ssh piku@hatchweb.tailb56d83.ts.net -- logs voter-api-dev`
-- **View prod logs**: `ssh piku@hatchweb.tailb56d83.ts.net -- logs voter-api`
+- **View logs**: `kubectl logs -n civpulse-prod deploy/voter-api` (or `civpulse-dev`)
+- **Check rollout status**: `kubectl rollout status -n civpulse-prod deploy/voter-api`
+- **ArgoCD sync status**: Check ArgoCD UI or `argocd app get voter-api-prod`
+- **Migration failures**: `kubectl logs -n civpulse-prod -l app=voter-api -c migrate`
+- **Restart the pod**: `kubectl rollout restart -n civpulse-prod deploy/voter-api`
 
 <!-- MANUAL ADDITIONS END -->
 
