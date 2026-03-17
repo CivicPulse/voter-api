@@ -40,11 +40,9 @@ class TestGetFilterOptions:
         assert set(result.keys()) == {"race_categories", "counties", "election_dates", "total_elections"}
 
     async def test_soft_deleted_excluded(self) -> None:
-        """Soft-deleted elections (deleted_at not None) should be excluded from results.
+        """Soft-deleted elections are excluded — verified by inspecting compiled SQL predicates."""
+        from sqlalchemy.dialects import postgresql
 
-        This is verified by checking that the SQL queries use the deleted_at IS NULL filter.
-        We verify it indirectly: the mock session returns data only for active elections.
-        """
         count_mock = _mock_execute_results([])
         count_mock.scalar_one.return_value = 1
         session = _make_session(
@@ -58,9 +56,14 @@ class TestGetFilterOptions:
 
         result = await get_filter_options(session)
 
-        # Verify session.execute was called 4 times (all queries filter by deleted_at IS NULL)
-        assert session.execute.call_count == 4
         assert result["total_elections"] == 1
+
+        # Every query passed to session.execute must include the soft-delete predicate.
+        dialect = postgresql.dialect()
+        for call in session.execute.call_args_list:
+            stmt = call.args[0]
+            compiled = str(stmt.compile(dialect=dialect))
+            assert "deleted_at IS NULL" in compiled, f"Expected 'deleted_at IS NULL' in compiled SQL:\n{compiled}"
 
     async def test_counties_title_case_normalized(self) -> None:
         """Counties are title-case normalized: 'FULTON' -> 'Fulton', 'DE KALB' -> 'De Kalb'."""

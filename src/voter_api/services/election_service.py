@@ -738,7 +738,12 @@ async def list_elections(
     if q:
         escaped = escape_ilike_wildcards(q)
         pattern = f"%{escaped}%"
-        filters.append(or_(Election.name.ilike(pattern), Election.district.ilike(pattern)))
+        filters.append(
+            or_(
+                Election.name.ilike(pattern, escape="\\"),
+                Election.district.ilike(pattern, escape="\\"),
+            )
+        )
 
     # Race category filter (FILT-01)
     if race_category:
