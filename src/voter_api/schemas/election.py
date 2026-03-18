@@ -5,7 +5,7 @@ Request/response models per contracts/openapi.yaml.
 
 import uuid
 from datetime import date, datetime
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, Field, HttpUrl, computed_field, model_validator
 
@@ -80,6 +80,41 @@ class ElectionLinkRequest(BaseModel):
 
     data_source_url: HttpUrl
     ballot_item_id: str | None = Field(default=None, min_length=1, max_length=50)
+
+
+class ManualVoteMethodResult(BaseModel):
+    """Vote method breakdown for manual result submission."""
+
+    group_name: str = Field(min_length=1, max_length=100)
+    vote_count: int = Field(ge=0)
+
+
+class ManualCandidateResult(BaseModel):
+    """Candidate result for manual result submission."""
+
+    name: str = Field(min_length=1, max_length=200)
+    political_party: str = Field(default="", max_length=100)
+    ballot_order: int = Field(ge=1)
+    vote_count: int = Field(ge=0)
+    group_results: list[ManualVoteMethodResult] = Field(default_factory=list, max_length=20)
+
+
+class ManualResultSubmitRequest(BaseModel):
+    """Request body for submitting manual election results."""
+
+    precincts_participating: int | None = Field(default=None, ge=0)
+    precincts_reporting: int | None = Field(default=None, ge=0)
+    candidates: list[ManualCandidateResult] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def _check_precincts(self) -> Self:
+        if (
+            self.precincts_participating is not None
+            and self.precincts_reporting is not None
+            and self.precincts_reporting > self.precincts_participating
+        ):
+            raise ValueError("precincts_reporting cannot exceed precincts_participating")
+        return self
 
 
 # --- Response schemas ---

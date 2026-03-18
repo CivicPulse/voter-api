@@ -4,12 +4,14 @@ Orchestrates election CRUD, result fetching, and data assembly.
 """
 
 import asyncio
+import re
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -44,6 +46,7 @@ from voter_api.schemas.election import (
     FeedImportRequest,
     FeedImportResponse,
     FeedRaceSummary,
+    ManualResultSubmitRequest,
     PrecinctCandidateResult,
     PrecinctElectionResultFeature,
     PrecinctElectionResultFeatureCollection,
@@ -135,6 +138,14 @@ async def get_filter_options(session: AsyncSession) -> dict:
 
 class DuplicateElectionError(ValueError):
     """Raised when attempting to create an election that already exists."""
+
+
+class ManualResultConflictError(ValueError):
+    """Raised when manual results cannot be submitted for a non-manual election."""
+
+
+class ElectionNotFoundError(ValueError):
+    """Raised when an election is not found."""
 
 
 def _ballot_option_to_candidate(opt: dict) -> CandidateResult:
@@ -527,6 +538,97 @@ async def get_raw_election_results(
         statewide_results=statewide_results,
         county_results=county_results,
     )
+
+
+async def submit_manual_results(
+    session: AsyncSession,
+    election_id: uuid.UUID,
+    request: ManualResultSubmitRequest,
+) -> tuple[ElectionResultsResponse, bool]:
+    """Submit manual election results for a non-SOS-feed election.
+
+    Args:
+        session: Async database session.
+        election_id: The election UUID.
+        request: Manual result submission data.
+
+    Returns:
+        ElectionResultsResponse with the submitted results.
+
+    Raises:
+        ElectionNotFoundError: If election not found.
+        ManualResultConflictError: If election source is not manual.
+    """
+    election = await get_election_by_id(session, election_id)
+    if election is None:
+        raise ElectionNotFoundError("Election not found.")
+
+    if election.source != "manual":
+        raise ManualResultConflictError(f"Cannot submit manual results for a '{election.source}' election.")
+
+    # Build JSONB results in the same format used by SOS feed ingestion
+    results_data: list[dict] = []
+    for candidate in request.candidates:
+        slug = re.sub(r"[^a-z0-9]+", "-", candidate.name.lower()).strip("-")
+        candidate_id = f"{slug}-{candidate.ballot_order}"
+        results_data.append(
+            {
+                "id": candidate_id,
+                "name": candidate.name,
+                "politicalParty": candidate.political_party,
+                "ballotOrder": candidate.ballot_order,
+                "voteCount": candidate.vote_count,
+                "groupResults": [
+                    {"groupName": gr.group_name, "voteCount": gr.vote_count} for gr in candidate.group_results
+                ],
+            }
+        )
+
+    now = datetime.now(UTC)
+
+    # Upsert statewide result with SELECT ... FOR UPDATE to prevent race conditions
+    existing_result = await session.execute(
+        select(ElectionResult).where(ElectionResult.election_id == election_id).with_for_update()
+    )
+    result_row = existing_result.scalar_one_or_none()
+    is_update = result_row is not None
+
+    if result_row is None:
+        result_row = ElectionResult(
+            election_id=election_id,
+            precincts_participating=request.precincts_participating,
+            precincts_reporting=request.precincts_reporting,
+            results_data=results_data,
+            fetched_at=now,
+        )
+        session.add(result_row)
+    else:
+        result_row.precincts_participating = request.precincts_participating
+        result_row.precincts_reporting = request.precincts_reporting
+        result_row.results_data = results_data
+        result_row.fetched_at = now
+
+    election.last_refreshed_at = now
+
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise ManualResultConflictError("Concurrent result submission detected. Please retry.") from exc
+
+    # Build response directly from in-memory data to avoid redundant DB round-trip
+    candidates = [_ballot_option_to_candidate(opt) for opt in results_data]
+    return ElectionResultsResponse(
+        election_id=election.id,
+        election_name=election.name,
+        election_date=election.election_date,
+        status=election.status,
+        last_refreshed_at=now,
+        precincts_participating=request.precincts_participating,
+        precincts_reporting=request.precincts_reporting,
+        candidates=candidates,
+        county_results=[],
+    ), is_update
 
 
 async def persist_ingestion_result(

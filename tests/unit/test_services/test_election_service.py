@@ -26,6 +26,8 @@ from voter_api.schemas.election import (
 )
 from voter_api.services.election_service import (
     DuplicateElectionError,
+    ElectionNotFoundError,
+    ManualResultConflictError,
     _ballot_option_to_candidate,
     _transpose_precinct_results,
     build_detail_response,
@@ -39,6 +41,7 @@ from voter_api.services.election_service import (
     persist_ingestion_result,
     refresh_all_active_elections,
     refresh_single_election,
+    submit_manual_results,
     update_election,
 )
 
@@ -1320,3 +1323,161 @@ class TestGetElectionPrecinctResultsGeoJSON:
         ) as mock_lookup:
             await get_election_precinct_results_geojson(session, election.id)
             mock_lookup.assert_awaited_once_with(session, "Houston", ["P01"], {"P01": "Precinct 1"})
+
+
+# --- Manual result submission ---
+
+
+class TestSubmitManualResults:
+    """Unit tests for submit_manual_results service function."""
+
+    @pytest.mark.asyncio
+    async def test_not_found_raises_election_not_found_error(self):
+        session = AsyncMock()
+        with (
+            patch(
+                "voter_api.services.election_service.get_election_by_id",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            pytest.raises(ElectionNotFoundError, match="not found"),
+        ):
+            await submit_manual_results(session, uuid.uuid4(), MagicMock())
+
+    @pytest.mark.asyncio
+    async def test_sos_feed_raises_conflict_error(self):
+        election = _mock_election(source="sos_feed")
+        session = AsyncMock()
+        with (
+            patch(
+                "voter_api.services.election_service.get_election_by_id",
+                new_callable=AsyncMock,
+                return_value=election,
+            ),
+            pytest.raises(ManualResultConflictError, match="sos_feed"),
+        ):
+            await submit_manual_results(session, election.id, MagicMock())
+
+    @pytest.mark.asyncio
+    async def test_linked_raises_conflict_error(self):
+        election = _mock_election(source="linked")
+        session = AsyncMock()
+        with (
+            patch(
+                "voter_api.services.election_service.get_election_by_id",
+                new_callable=AsyncMock,
+                return_value=election,
+            ),
+            pytest.raises(ManualResultConflictError, match="linked"),
+        ):
+            await submit_manual_results(session, election.id, MagicMock())
+
+    @pytest.mark.asyncio
+    async def test_manual_source_succeeds(self):
+        from voter_api.schemas.election import (
+            ManualCandidateResult,
+            ManualResultSubmitRequest,
+        )
+
+        election = _mock_election(source="manual")
+        request = ManualResultSubmitRequest(
+            precincts_participating=6,
+            precincts_reporting=6,
+            candidates=[
+                ManualCandidateResult(name="John Smith", ballot_order=1, vote_count=100),
+                ManualCandidateResult(name="Jane Doe", ballot_order=2, vote_count=50),
+            ],
+        )
+        session = AsyncMock()
+        # Mock the SELECT ... FOR UPDATE returning no existing row
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        session.execute = AsyncMock(return_value=mock_result)
+        session.commit = AsyncMock()
+        session.add = MagicMock()
+
+        with patch(
+            "voter_api.services.election_service.get_election_by_id",
+            new_callable=AsyncMock,
+            return_value=election,
+        ):
+            result, is_update = await submit_manual_results(session, election.id, request)
+
+        assert not is_update
+        assert result.precincts_reporting == 6
+        assert len(result.candidates) == 2
+        assert result.candidates[0].name == "John Smith"
+        assert result.candidates[0].id == "john-smith-1"
+        assert result.candidates[1].id == "jane-doe-2"
+        session.add.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_slug_handles_special_characters(self):
+        from voter_api.schemas.election import (
+            ManualCandidateResult,
+            ManualResultSubmitRequest,
+        )
+
+        election = _mock_election(source="manual")
+        request = ManualResultSubmitRequest(
+            candidates=[
+                ManualCandidateResult(
+                    name="O'Brien-Smith, Jr.",
+                    ballot_order=1,
+                    vote_count=10,
+                ),
+            ],
+        )
+        session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        session.execute = AsyncMock(return_value=mock_result)
+        session.commit = AsyncMock()
+        session.add = MagicMock()
+
+        with patch(
+            "voter_api.services.election_service.get_election_by_id",
+            new_callable=AsyncMock,
+            return_value=election,
+        ):
+            result, _ = await submit_manual_results(session, election.id, request)
+
+        # Slug should not contain apostrophes, commas, or dots
+        candidate_id = result.candidates[0].id
+        assert "'" not in candidate_id
+        assert "," not in candidate_id
+        assert candidate_id == "o-brien-smith-jr-1"
+
+    @pytest.mark.asyncio
+    async def test_upsert_updates_existing_row(self):
+        from voter_api.schemas.election import (
+            ManualCandidateResult,
+            ManualResultSubmitRequest,
+        )
+
+        election = _mock_election(source="manual")
+        request = ManualResultSubmitRequest(
+            precincts_participating=10,
+            precincts_reporting=8,
+            candidates=[
+                ManualCandidateResult(name="Test", ballot_order=1, vote_count=50),
+            ],
+        )
+        session = AsyncMock()
+        existing_row = MagicMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = existing_row
+        session.execute = AsyncMock(return_value=mock_result)
+        session.commit = AsyncMock()
+
+        with patch(
+            "voter_api.services.election_service.get_election_by_id",
+            new_callable=AsyncMock,
+            return_value=election,
+        ):
+            result, is_update = await submit_manual_results(session, election.id, request)
+
+        assert is_update
+        assert existing_row.precincts_reporting == 8
+        assert existing_row.precincts_participating == 10
+        session.add.assert_not_called()
