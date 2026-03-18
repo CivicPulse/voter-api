@@ -11,6 +11,7 @@ from httpx import ASGITransport, AsyncClient
 from voter_api.api.v1.elections import elections_router
 from voter_api.core.dependencies import get_async_session, get_current_user
 from voter_api.models.election import Election, ElectionCountyResult, ElectionResult
+from voter_api.services.election_service import ElectionNotFoundError, ManualResultConflictError
 
 
 def _make_election(**overrides) -> Election:
@@ -141,6 +142,16 @@ def mock_viewer_user():
 
 
 @pytest.fixture
+def mock_analyst_user():
+    user = MagicMock()
+    user.role = "analyst"
+    user.id = "analyst-user-id"
+    user.username = "analyst"
+    user.is_active = True
+    return user
+
+
+@pytest.fixture
 def app(mock_session) -> FastAPI:
     """Minimal FastAPI app with elections router (no auth by default)."""
     app = FastAPI()
@@ -160,6 +171,26 @@ def admin_app(mock_session, mock_admin_user) -> FastAPI:
 
 
 @pytest.fixture
+def viewer_app(mock_session, mock_viewer_user) -> FastAPI:
+    """FastAPI app with viewer auth."""
+    app = FastAPI()
+    app.include_router(elections_router, prefix="/api/v1")
+    app.dependency_overrides[get_async_session] = lambda: mock_session
+    app.dependency_overrides[get_current_user] = lambda: mock_viewer_user
+    return app
+
+
+@pytest.fixture
+def analyst_app(mock_session, mock_analyst_user) -> FastAPI:
+    """FastAPI app with analyst auth."""
+    app = FastAPI()
+    app.include_router(elections_router, prefix="/api/v1")
+    app.dependency_overrides[get_async_session] = lambda: mock_session
+    app.dependency_overrides[get_current_user] = lambda: mock_analyst_user
+    return app
+
+
+@pytest.fixture
 def client(app: FastAPI) -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="https://test")
 
@@ -167,6 +198,16 @@ def client(app: FastAPI) -> AsyncClient:
 @pytest.fixture
 def admin_client(admin_app: FastAPI) -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=admin_app), base_url="https://test")
+
+
+@pytest.fixture
+def viewer_client(viewer_app: FastAPI) -> AsyncClient:
+    return AsyncClient(transport=ASGITransport(app=viewer_app), base_url="https://test")
+
+
+@pytest.fixture
+def analyst_client(analyst_app: FastAPI) -> AsyncClient:
+    return AsyncClient(transport=ASGITransport(app=analyst_app), base_url="https://test")
 
 
 # --- US1: GET /elections/{id} ---
@@ -967,7 +1008,7 @@ class TestSubmitManualResults:
             precincts_reporting=6,
             candidates=[
                 CandidateResult(
-                    id="andrea-c-cooke",
+                    id="andrea-c-cooke-1",
                     name="Andrea C. Cooke",
                     political_party="",
                     ballot_order=1,
@@ -983,7 +1024,7 @@ class TestSubmitManualResults:
         with patch(
             "voter_api.services.election_service.submit_manual_results",
             new_callable=AsyncMock,
-            return_value=mock_response,
+            return_value=(mock_response, False),
         ):
             resp = await admin_client.post(
                 f"/api/v1/elections/{mock_response.election_id}/results",
@@ -997,11 +1038,64 @@ class TestSubmitManualResults:
         assert data["candidates"][0]["name"] == "Andrea C. Cooke"
 
     @pytest.mark.asyncio
+    async def test_submit_results_update_returns_200(self, admin_client):
+        from voter_api.schemas.election import (
+            CandidateResult,
+            ElectionResultsResponse,
+        )
+
+        mock_response = ElectionResultsResponse(
+            election_id=uuid.uuid4(),
+            election_name="Test",
+            election_date=date(2026, 3, 17),
+            status="active",
+            last_refreshed_at=datetime.now(UTC),
+            precincts_participating=6,
+            precincts_reporting=6,
+            candidates=[
+                CandidateResult(
+                    id="test-1",
+                    name="Test",
+                    political_party="",
+                    ballot_order=1,
+                    vote_count=100,
+                ),
+            ],
+            county_results=[],
+        )
+
+        with patch(
+            "voter_api.services.election_service.submit_manual_results",
+            new_callable=AsyncMock,
+            return_value=(mock_response, True),
+        ):
+            resp = await admin_client.post(
+                f"/api/v1/elections/{mock_response.election_id}/results",
+                json=_MANUAL_RESULTS_BODY,
+            )
+
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
     async def test_submit_results_sos_feed_returns_409(self, admin_client):
         with patch(
             "voter_api.services.election_service.submit_manual_results",
             new_callable=AsyncMock,
-            side_effect=ValueError("Cannot submit manual results for an SOS feed election."),
+            side_effect=ManualResultConflictError("Cannot submit manual results for a 'sos_feed' election."),
+        ):
+            resp = await admin_client.post(
+                f"/api/v1/elections/{uuid.uuid4()}/results",
+                json=_MANUAL_RESULTS_BODY,
+            )
+
+        assert resp.status_code == 409
+
+    @pytest.mark.asyncio
+    async def test_submit_results_linked_returns_409(self, admin_client):
+        with patch(
+            "voter_api.services.election_service.submit_manual_results",
+            new_callable=AsyncMock,
+            side_effect=ManualResultConflictError("Cannot submit manual results for a 'linked' election."),
         ):
             resp = await admin_client.post(
                 f"/api/v1/elections/{uuid.uuid4()}/results",
@@ -1015,7 +1109,7 @@ class TestSubmitManualResults:
         with patch(
             "voter_api.services.election_service.submit_manual_results",
             new_callable=AsyncMock,
-            side_effect=ValueError("Election not found."),
+            side_effect=ElectionNotFoundError("Election not found."),
         ):
             resp = await admin_client.post(
                 f"/api/v1/elections/{uuid.uuid4()}/results",
@@ -1033,9 +1127,68 @@ class TestSubmitManualResults:
         assert resp.status_code == 401
 
     @pytest.mark.asyncio
+    async def test_submit_results_viewer_returns_403(self, viewer_client):
+        resp = await viewer_client.post(
+            f"/api/v1/elections/{uuid.uuid4()}/results",
+            json=_MANUAL_RESULTS_BODY,
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_submit_results_analyst_returns_403(self, analyst_client):
+        resp = await analyst_client.post(
+            f"/api/v1/elections/{uuid.uuid4()}/results",
+            json=_MANUAL_RESULTS_BODY,
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
     async def test_submit_results_empty_candidates_returns_422(self, admin_client):
         resp = await admin_client.post(
             f"/api/v1/elections/{uuid.uuid4()}/results",
             json={"candidates": []},
+        )
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_submit_results_negative_vote_count_returns_422(self, admin_client):
+        resp = await admin_client.post(
+            f"/api/v1/elections/{uuid.uuid4()}/results",
+            json={
+                "candidates": [{"name": "Test", "ballot_order": 1, "vote_count": -1}],
+            },
+        )
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_submit_results_reporting_exceeds_participating_returns_422(self, admin_client):
+        resp = await admin_client.post(
+            f"/api/v1/elections/{uuid.uuid4()}/results",
+            json={
+                "precincts_participating": 5,
+                "precincts_reporting": 10,
+                "candidates": [{"name": "Test", "ballot_order": 1, "vote_count": 1}],
+            },
+        )
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_submit_results_negative_precincts_returns_422(self, admin_client):
+        resp = await admin_client.post(
+            f"/api/v1/elections/{uuid.uuid4()}/results",
+            json={
+                "precincts_participating": -1,
+                "candidates": [{"name": "Test", "ballot_order": 1, "vote_count": 1}],
+            },
+        )
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_submit_results_ballot_order_zero_returns_422(self, admin_client):
+        resp = await admin_client.post(
+            f"/api/v1/elections/{uuid.uuid4()}/results",
+            json={
+                "candidates": [{"name": "Test", "ballot_order": 0, "vote_count": 1}],
+            },
         )
         assert resp.status_code == 422

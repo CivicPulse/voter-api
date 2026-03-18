@@ -4,12 +4,14 @@ Orchestrates election CRUD, result fetching, and data assembly.
 """
 
 import asyncio
+import re
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -136,6 +138,14 @@ async def get_filter_options(session: AsyncSession) -> dict:
 
 class DuplicateElectionError(ValueError):
     """Raised when attempting to create an election that already exists."""
+
+
+class ManualResultConflictError(ValueError):
+    """Raised when manual results cannot be submitted for a non-manual election."""
+
+
+class ElectionNotFoundError(ValueError):
+    """Raised when an election is not found."""
 
 
 def _ballot_option_to_candidate(opt: dict) -> CandidateResult:
@@ -546,24 +556,24 @@ async def submit_manual_results(
         ElectionResultsResponse with the submitted results.
 
     Raises:
-        ValueError: If election not found or source is sos_feed.
+        ElectionNotFoundError: If election not found.
+        ManualResultConflictError: If election source is not manual.
     """
     election = await get_election_by_id(session, election_id)
     if election is None:
-        msg = "Election not found."
-        raise ValueError(msg)
+        raise ElectionNotFoundError("Election not found.")
 
-    if election.source == "sos_feed":
-        msg = "Cannot submit manual results for an SOS feed election. Use the refresh endpoint instead."
-        raise ValueError(msg)
+    if election.source != "manual":
+        raise ManualResultConflictError(f"Cannot submit manual results for a '{election.source}' election.")
 
     # Build JSONB results in the same format used by SOS feed ingestion
     results_data: list[dict] = []
     for candidate in request.candidates:
-        slug = candidate.name.lower().replace(" ", "-").replace(".", "")
+        slug = re.sub(r"[^a-z0-9]+", "-", candidate.name.lower()).strip("-")
+        candidate_id = f"{slug}-{candidate.ballot_order}"
         results_data.append(
             {
-                "id": slug,
+                "id": candidate_id,
                 "name": candidate.name,
                 "politicalParty": candidate.political_party,
                 "ballotOrder": candidate.ballot_order,
@@ -576,9 +586,12 @@ async def submit_manual_results(
 
     now = datetime.now(UTC)
 
-    # Upsert statewide result
-    existing_result = await session.execute(select(ElectionResult).where(ElectionResult.election_id == election_id))
+    # Upsert statewide result with SELECT ... FOR UPDATE to prevent race conditions
+    existing_result = await session.execute(
+        select(ElectionResult).where(ElectionResult.election_id == election_id).with_for_update()
+    )
     result_row = existing_result.scalar_one_or_none()
+    is_update = result_row is not None
 
     if result_row is None:
         result_row = ElectionResult(
@@ -596,10 +609,26 @@ async def submit_manual_results(
         result_row.fetched_at = now
 
     election.last_refreshed_at = now
-    await session.commit()
 
-    # Return via existing response builder
-    return await get_election_results(session, election_id)
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise ManualResultConflictError("Concurrent result submission detected. Please retry.") from exc
+
+    # Build response directly from in-memory data to avoid redundant DB round-trip
+    candidates = [_ballot_option_to_candidate(opt) for opt in results_data]
+    return ElectionResultsResponse(
+        election_id=election.id,
+        election_name=election.name,
+        election_date=election.election_date,
+        status=election.status,
+        last_refreshed_at=now,
+        precincts_participating=request.precincts_participating,
+        precincts_reporting=request.precincts_reporting,
+        candidates=candidates,
+        county_results=[],
+    ), is_update
 
 
 async def persist_ingestion_result(

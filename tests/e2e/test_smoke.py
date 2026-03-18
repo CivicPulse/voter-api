@@ -714,8 +714,15 @@ class TestElections:
                 await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))
                 await db_session.commit()
 
-    async def test_submit_manual_results(self, admin_client: httpx.AsyncClient) -> None:
-        """Submit manual results to a manual-source election and verify via GET."""
+    async def test_submit_manual_results(
+        self,
+        admin_client: httpx.AsyncClient,
+        client: httpx.AsyncClient,
+        db_session: AsyncSession,
+    ) -> None:
+        """Submit manual results to a manual-source election, verify via GET, then clean up."""
+        from voter_api.models.election import ElectionResult
+
         payload = {
             "precincts_participating": 6,
             "precincts_reporting": 6,
@@ -737,22 +744,78 @@ class TestElections:
             ],
         }
         # ELECTION_LOCAL_ID is source=manual
-        submit_resp = await admin_client.post(_url(f"/elections/{ELECTION_LOCAL_ID}/results"), json=payload)
-        assert submit_resp.status_code == 201
-        body = submit_resp.json()
-        assert body["precincts_reporting"] == 6
-        assert body["precincts_participating"] == 6
-        assert len(body["candidates"]) == 2
-        assert body["candidates"][0]["name"] == "Test Candidate A"
-        assert body["candidates"][0]["vote_count"] == 100
+        try:
+            submit_resp = await admin_client.post(_url(f"/elections/{ELECTION_LOCAL_ID}/results"), json=payload)
+            assert submit_resp.status_code == 201
+            body = submit_resp.json()
+            assert body["precincts_reporting"] == 6
+            assert body["precincts_participating"] == 6
+            assert len(body["candidates"]) == 2
+            assert body["candidates"][0]["name"] == "Test Candidate A"
+            assert body["candidates"][0]["vote_count"] == 100
+
+            # Verify round-trip via GET
+            get_resp = await client.get(_url(f"/elections/{ELECTION_LOCAL_ID}/results"))
+            assert get_resp.status_code == 200
+            get_body = get_resp.json()
+            assert get_body["precincts_reporting"] == 6
+            assert len(get_body["candidates"]) == 2
+        finally:
+            # Clean up the ElectionResult row
+            await db_session.execute(delete(ElectionResult).where(ElectionResult.election_id == ELECTION_LOCAL_ID))
+            await db_session.commit()
+
+    async def test_submit_manual_results_idempotent(
+        self,
+        admin_client: httpx.AsyncClient,
+        db_session: AsyncSession,
+    ) -> None:
+        """Submitting results twice replaces (not appends) and returns 200 on update."""
+        from voter_api.models.election import ElectionResult
+
+        payload = {
+            "precincts_participating": 6,
+            "precincts_reporting": 6,
+            "candidates": [
+                {"name": "Candidate A", "ballot_order": 1, "vote_count": 100},
+            ],
+        }
+        try:
+            first = await admin_client.post(_url(f"/elections/{ELECTION_LOCAL_ID}/results"), json=payload)
+            assert first.status_code == 201
+
+            # Second submit with updated data
+            payload["candidates"][0]["vote_count"] = 200
+            second = await admin_client.post(_url(f"/elections/{ELECTION_LOCAL_ID}/results"), json=payload)
+            assert second.status_code == 200
+            assert second.json()["candidates"][0]["vote_count"] == 200
+        finally:
+            await db_session.execute(delete(ElectionResult).where(ElectionResult.election_id == ELECTION_LOCAL_ID))
+            await db_session.commit()
 
     async def test_submit_manual_results_sos_feed_409(self, admin_client: httpx.AsyncClient) -> None:
         """Submitting results to an SOS feed election returns 409."""
         payload = {
-            "candidates": [{"name": "Test", "vote_count": 1}],
+            "candidates": [{"name": "Test", "ballot_order": 1, "vote_count": 1}],
         }
         resp = await admin_client.post(_url(f"/elections/{ELECTION_ID}/results"), json=payload)
         assert resp.status_code == 409
+
+    async def test_submit_manual_results_viewer_403(self, viewer_client: httpx.AsyncClient) -> None:
+        """Viewer cannot submit manual results."""
+        payload = {
+            "candidates": [{"name": "Test", "ballot_order": 1, "vote_count": 1}],
+        }
+        resp = await viewer_client.post(_url(f"/elections/{ELECTION_LOCAL_ID}/results"), json=payload)
+        assert resp.status_code == 403
+
+    async def test_submit_manual_results_analyst_403(self, analyst_client: httpx.AsyncClient) -> None:
+        """Analyst cannot submit manual results."""
+        payload = {
+            "candidates": [{"name": "Test", "ballot_order": 1, "vote_count": 1}],
+        }
+        resp = await analyst_client.post(_url(f"/elections/{ELECTION_LOCAL_ID}/results"), json=payload)
+        assert resp.status_code == 403
 
     async def test_get_election_results_empty(self, client: httpx.AsyncClient) -> None:
         """Results endpoint returns 200 with empty data when no results ingested yet."""

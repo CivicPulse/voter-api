@@ -42,7 +42,12 @@ from voter_api.schemas.election import (
     RefreshResponse,
 )
 from voter_api.services import election_service
-from voter_api.services.election_service import DuplicateElectionError, soft_delete_election
+from voter_api.services.election_service import (
+    DuplicateElectionError,
+    ElectionNotFoundError,
+    ManualResultConflictError,
+    soft_delete_election,
+)
 
 elections_router = APIRouter(prefix="/elections", tags=["elections"])
 
@@ -308,26 +313,28 @@ async def link_election(
 @elections_router.post(
     "/{election_id}/results",
     response_model=ElectionResultsResponse,
-    status_code=201,
     responses={
+        200: {"description": "Results updated (upsert)"},
+        201: {"description": "Results created"},
         404: {"description": "Election not found"},
-        409: {"description": "Cannot submit manual results for SOS feed election"},
+        409: {"description": "Cannot submit manual results for non-manual election"},
     },
 )
 async def submit_election_results(
     election_id: uuid.UUID,
     request: ManualResultSubmitRequest,
+    response: Response,
     session: Annotated[AsyncSession, Depends(get_async_session)],
     _current_user: Annotated[User, Depends(require_role("admin"))],
 ) -> ElectionResultsResponse:
-    """Submit manual election results for a non-SOS-feed election. Admin-only."""
+    """Submit manual election results for a manual-source election. Admin-only."""
     try:
-        result = await election_service.submit_manual_results(session, election_id, request)
-    except ValueError as e:
-        detail = str(e)
-        if "not found" in detail.lower():
-            raise HTTPException(status_code=404, detail=detail) from e
-        raise HTTPException(status_code=409, detail=detail) from e
+        result, is_update = await election_service.submit_manual_results(session, election_id, request)
+    except ElectionNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except ManualResultConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    response.status_code = 200 if is_update else 201
     return result
 
 
