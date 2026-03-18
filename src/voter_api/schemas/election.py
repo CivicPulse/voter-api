@@ -82,6 +82,31 @@ class ElectionLinkRequest(BaseModel):
     ballot_item_id: str | None = Field(default=None, min_length=1, max_length=50)
 
 
+class ManualVoteMethodResult(BaseModel):
+    """Vote method breakdown for manual result submission."""
+
+    group_name: str
+    vote_count: int = Field(ge=0)
+
+
+class ManualCandidateResult(BaseModel):
+    """Candidate result for manual result submission."""
+
+    name: str
+    political_party: str = ""
+    ballot_order: int = 1
+    vote_count: int = Field(ge=0)
+    group_results: list[ManualVoteMethodResult] = Field(default_factory=list)
+
+
+class ManualResultSubmitRequest(BaseModel):
+    """Request body for submitting manual election results."""
+
+    precincts_participating: int | None = None
+    precincts_reporting: int | None = None
+    candidates: list[ManualCandidateResult] = Field(min_length=1)
+
+
 # --- Response schemas ---
 
 

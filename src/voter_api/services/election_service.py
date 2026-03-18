@@ -44,6 +44,7 @@ from voter_api.schemas.election import (
     FeedImportRequest,
     FeedImportResponse,
     FeedRaceSummary,
+    ManualResultSubmitRequest,
     PrecinctCandidateResult,
     PrecinctElectionResultFeature,
     PrecinctElectionResultFeatureCollection,
@@ -527,6 +528,78 @@ async def get_raw_election_results(
         statewide_results=statewide_results,
         county_results=county_results,
     )
+
+
+async def submit_manual_results(
+    session: AsyncSession,
+    election_id: uuid.UUID,
+    request: ManualResultSubmitRequest,
+) -> ElectionResultsResponse:
+    """Submit manual election results for a non-SOS-feed election.
+
+    Args:
+        session: Async database session.
+        election_id: The election UUID.
+        request: Manual result submission data.
+
+    Returns:
+        ElectionResultsResponse with the submitted results.
+
+    Raises:
+        ValueError: If election not found or source is sos_feed.
+    """
+    election = await get_election_by_id(session, election_id)
+    if election is None:
+        msg = "Election not found."
+        raise ValueError(msg)
+
+    if election.source == "sos_feed":
+        msg = "Cannot submit manual results for an SOS feed election. Use the refresh endpoint instead."
+        raise ValueError(msg)
+
+    # Build JSONB results in the same format used by SOS feed ingestion
+    results_data: list[dict] = []
+    for candidate in request.candidates:
+        slug = candidate.name.lower().replace(" ", "-").replace(".", "")
+        results_data.append(
+            {
+                "id": slug,
+                "name": candidate.name,
+                "politicalParty": candidate.political_party,
+                "ballotOrder": candidate.ballot_order,
+                "voteCount": candidate.vote_count,
+                "groupResults": [
+                    {"groupName": gr.group_name, "voteCount": gr.vote_count} for gr in candidate.group_results
+                ],
+            }
+        )
+
+    now = datetime.now(UTC)
+
+    # Upsert statewide result
+    existing_result = await session.execute(select(ElectionResult).where(ElectionResult.election_id == election_id))
+    result_row = existing_result.scalar_one_or_none()
+
+    if result_row is None:
+        result_row = ElectionResult(
+            election_id=election_id,
+            precincts_participating=request.precincts_participating,
+            precincts_reporting=request.precincts_reporting,
+            results_data=results_data,
+            fetched_at=now,
+        )
+        session.add(result_row)
+    else:
+        result_row.precincts_participating = request.precincts_participating
+        result_row.precincts_reporting = request.precincts_reporting
+        result_row.results_data = results_data
+        result_row.fetched_at = now
+
+    election.last_refreshed_at = now
+    await session.commit()
+
+    # Return via existing response builder
+    return await get_election_results(session, election_id)
 
 
 async def persist_ingestion_result(

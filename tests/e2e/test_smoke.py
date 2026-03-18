@@ -714,6 +714,46 @@ class TestElections:
                 await db_session.execute(delete(Election).where(Election.id == uuid.UUID(election_id)))
                 await db_session.commit()
 
+    async def test_submit_manual_results(self, admin_client: httpx.AsyncClient) -> None:
+        """Submit manual results to a manual-source election and verify via GET."""
+        payload = {
+            "precincts_participating": 6,
+            "precincts_reporting": 6,
+            "candidates": [
+                {
+                    "name": "Test Candidate A",
+                    "ballot_order": 1,
+                    "vote_count": 100,
+                    "group_results": [
+                        {"group_name": "Election Day", "vote_count": 60},
+                        {"group_name": "Advance Voting", "vote_count": 40},
+                    ],
+                },
+                {
+                    "name": "Test Candidate B",
+                    "ballot_order": 2,
+                    "vote_count": 50,
+                },
+            ],
+        }
+        # ELECTION_LOCAL_ID is source=manual
+        submit_resp = await admin_client.post(_url(f"/elections/{ELECTION_LOCAL_ID}/results"), json=payload)
+        assert submit_resp.status_code == 201
+        body = submit_resp.json()
+        assert body["precincts_reporting"] == 6
+        assert body["precincts_participating"] == 6
+        assert len(body["candidates"]) == 2
+        assert body["candidates"][0]["name"] == "Test Candidate A"
+        assert body["candidates"][0]["vote_count"] == 100
+
+    async def test_submit_manual_results_sos_feed_409(self, admin_client: httpx.AsyncClient) -> None:
+        """Submitting results to an SOS feed election returns 409."""
+        payload = {
+            "candidates": [{"name": "Test", "vote_count": 1}],
+        }
+        resp = await admin_client.post(_url(f"/elections/{ELECTION_ID}/results"), json=payload)
+        assert resp.status_code == 409
+
     async def test_get_election_results_empty(self, client: httpx.AsyncClient) -> None:
         """Results endpoint returns 200 with empty data when no results ingested yet."""
         resp = await client.get(_url(f"/elections/{ELECTION_ID}/results"))

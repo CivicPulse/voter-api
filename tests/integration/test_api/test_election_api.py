@@ -920,3 +920,122 @@ class TestImportFeed:
             )
 
         assert resp.status_code == 502
+
+
+# --- POST /elections/{id}/results (manual result submission) ---
+
+
+_MANUAL_RESULTS_BODY = {
+    "precincts_participating": 6,
+    "precincts_reporting": 6,
+    "candidates": [
+        {
+            "name": "Andrea C. Cooke",
+            "ballot_order": 1,
+            "vote_count": 458,
+            "group_results": [
+                {"group_name": "Election Day", "vote_count": 271},
+                {"group_name": "Advance Voting", "vote_count": 181},
+                {"group_name": "Absentee by Mail", "vote_count": 6},
+            ],
+        },
+        {
+            "name": "Edward C. Foster",
+            "ballot_order": 2,
+            "vote_count": 167,
+        },
+    ],
+}
+
+
+class TestSubmitManualResults:
+    @pytest.mark.asyncio
+    async def test_submit_results_returns_201(self, admin_client):
+        from voter_api.schemas.election import (
+            CandidateResult,
+            ElectionResultsResponse,
+            VoteMethodResult,
+        )
+
+        mock_response = ElectionResultsResponse(
+            election_id=uuid.uuid4(),
+            election_name="Bibb County Commission District 5",
+            election_date=date(2026, 3, 17),
+            status="active",
+            last_refreshed_at=datetime.now(UTC),
+            precincts_participating=6,
+            precincts_reporting=6,
+            candidates=[
+                CandidateResult(
+                    id="andrea-c-cooke",
+                    name="Andrea C. Cooke",
+                    political_party="",
+                    ballot_order=1,
+                    vote_count=458,
+                    group_results=[
+                        VoteMethodResult(group_name="Election Day", vote_count=271),
+                    ],
+                ),
+            ],
+            county_results=[],
+        )
+
+        with patch(
+            "voter_api.services.election_service.submit_manual_results",
+            new_callable=AsyncMock,
+            return_value=mock_response,
+        ):
+            resp = await admin_client.post(
+                f"/api/v1/elections/{mock_response.election_id}/results",
+                json=_MANUAL_RESULTS_BODY,
+            )
+
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["precincts_reporting"] == 6
+        assert len(data["candidates"]) == 1
+        assert data["candidates"][0]["name"] == "Andrea C. Cooke"
+
+    @pytest.mark.asyncio
+    async def test_submit_results_sos_feed_returns_409(self, admin_client):
+        with patch(
+            "voter_api.services.election_service.submit_manual_results",
+            new_callable=AsyncMock,
+            side_effect=ValueError("Cannot submit manual results for an SOS feed election."),
+        ):
+            resp = await admin_client.post(
+                f"/api/v1/elections/{uuid.uuid4()}/results",
+                json=_MANUAL_RESULTS_BODY,
+            )
+
+        assert resp.status_code == 409
+
+    @pytest.mark.asyncio
+    async def test_submit_results_not_found_returns_404(self, admin_client):
+        with patch(
+            "voter_api.services.election_service.submit_manual_results",
+            new_callable=AsyncMock,
+            side_effect=ValueError("Election not found."),
+        ):
+            resp = await admin_client.post(
+                f"/api/v1/elections/{uuid.uuid4()}/results",
+                json=_MANUAL_RESULTS_BODY,
+            )
+
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_submit_results_requires_auth(self, client):
+        resp = await client.post(
+            f"/api/v1/elections/{uuid.uuid4()}/results",
+            json=_MANUAL_RESULTS_BODY,
+        )
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_submit_results_empty_candidates_returns_422(self, admin_client):
+        resp = await admin_client.post(
+            f"/api/v1/elections/{uuid.uuid4()}/results",
+            json={"candidates": []},
+        )
+        assert resp.status_code == 422
