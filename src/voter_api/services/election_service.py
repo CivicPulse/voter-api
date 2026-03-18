@@ -544,7 +544,7 @@ async def submit_manual_results(
     session: AsyncSession,
     election_id: uuid.UUID,
     request: ManualResultSubmitRequest,
-) -> ElectionResultsResponse:
+) -> tuple[ElectionResultsResponse, bool]:
     """Submit manual election results for a non-SOS-feed election.
 
     Args:
