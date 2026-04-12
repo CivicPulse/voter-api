@@ -58,7 +58,7 @@ dev = [
     "pytest-httpx>=0.36.0",
     "types-tqdm>=4.67.3.20260205",
     "types-openpyxl~=3.1.5.20250919",
-    "hypothesis>=6.151.9",
+    "hypothesis>=6.151.12",
 ]
 
 [project.scripts]
